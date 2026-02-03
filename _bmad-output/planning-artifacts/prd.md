@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [1, 2, 3, 4, 7, 8, 9, 10]
+stepsCompleted: [1, 2, 3, 4, 7, 8, 9, 10, 11]
 inputDocuments:
   - /home/bison/DEV/tiny-crm/_bmad-output/analysis/brainstorming-session-2026-01-06.md
   - /home/bison/DEV/tiny-crm/_bmad-output/analysis/brainstorming-session-2026-01-08.md
@@ -10,7 +10,9 @@ documentCounts:
   brainstormingCount: 3
   projectDocsCount: 0
 workflowType: 'prd'
-lastStep: 10
+lastStep: 11
+completedAt: '2026-02-02'
+majorUpdate: 'Replaced Global Sprints with Independent Battles per Funnel Stage'
 ---
 
 # Product Requirements Document - tiny-crm
@@ -40,7 +42,7 @@ The product addresses the unique freelance workflow: long periods in mission (hi
 
 1. **Performance Matrix (Variant × Funnel Stage)** - The central view that shows conversion rates for each CV/pitch variant at each funnel stage, with Bayesian updating to extract insights even from low sample sizes
 
-2. **Iterative Sprint A/B Testing** - Sprint 1: test A vs B → winner becomes baseline. Sprint 2: test winner vs C, and so on. Continuous learning velocity instead of analysis paralysis waiting for statistical significance
+2. **Independent Battles per Funnel Stage** - Each funnel stage has its own A/B test "Battle" that progresses independently based on its volume. When statistical significance is reached for a stage, declare a winner and start the next Battle (winner vs new challenger) - without resetting other stages. This addresses the volume asymmetry: early stages (CV sending) accumulate data fast, while late stages (interviews) take longer
 
 3. **Cold Start Optimization** - LinkedIn CSV import to go from 0 to 50 prospects in under 2 hours. The tool must be ready to activate "war mode" within 24 hours
 
@@ -78,9 +80,29 @@ The product addresses the unique freelance workflow: long periods in mission (hi
 
 **Innovation Signals:**
 - Bayesian updating for low-volume contexts
-- Iterative sprint-based A/B testing system
+- Independent Battles per funnel stage for A/B testing (volume-aware progression)
 - Hybrid qualitative + quantitative lead scoring
 - "War machine hibernation" mental model
+
+### Why Independent Battles (Not Global Sprints)
+
+**The Problem with Global Sprints:**
+A global sprint (e.g., "test CV v1 vs v2 for 2 weeks across all stages") fails because of volume asymmetry:
+- Early funnel stages (CV sending) accumulate 50+ data points in 2 weeks
+- Late funnel stages (interviews) may only have 5 data points in the same period
+- A global reset would waste accumulated learning on high-volume stages while low-volume stages learned nothing
+
+**The Battle Solution:**
+Each funnel stage runs its own independent "Battle" (A vs B test):
+- **Envoi CV: Battle #4** (CV v3 vs v4) - already on 4th iteration due to high volume
+- **Relance: Battle #2** (Msg v1 vs v2) - progressing at its own pace
+- **Entretien: Battle #1** (Pitch v1 vs v2) - still on first test due to low volume
+
+**Key Benefits:**
+1. **Volume-Adaptive:** Each stage progresses at its natural pace
+2. **No Wasted Learning:** Closing a Battle on one stage doesn't reset others
+3. **Continuous Optimization:** High-volume stages iterate faster, providing quicker wins
+4. **Statistical Integrity:** Each Battle reaches significance before declaring a winner
 
 ## Success Criteria
 
@@ -88,10 +110,10 @@ The product addresses the unique freelance workflow: long periods in mission (hi
 
 **Primary Success Moment:** User realizes they can continuously improve their prospecting approach through simple, intuitive A/B testing with an interface that makes data entry faster than pen and paper. Every interaction becomes actionable data for self-improvement.
 
-**Immediate Success Indicators (First Sprint - 2 weeks):**
-- Identify which positioning variant (CV, pitch, message) performs best based on real conversion data
-- See measurable improvement in conversion rates starting from the second week
-- Successfully complete at least one A/B test cycle and designate a winner
+**Immediate Success Indicators (First Battles - 2-4 weeks):**
+- Identify which positioning variant (CV, pitch, message) performs best based on real conversion data for at least one funnel stage
+- See measurable improvement in conversion rates as Battles conclude
+- Successfully complete at least one Battle cycle (declare winner, start next Battle with winner vs new challenger)
 
 **Conversion Improvement Targets:**
 - **+10% conversion rate improvement** on any variant = significant success
@@ -125,8 +147,8 @@ The product addresses the unique freelance workflow: long periods in mission (hi
 - Positioning variants and funnel prepared and ready for war mode activation
 
 *War Mode Success:*
-- Significant continuous improvement week over week
-- Each sprint (2 weeks) successfully tests A/B variant and designates winner
+- Significant continuous improvement as Battles conclude per funnel stage
+- Multiple Battles completed across different funnel stages (early stages progress faster due to higher volume)
 - User actively using the tool for prospecting decisions
 
 **At 12 Months:**
@@ -169,10 +191,11 @@ The product addresses the unique freelance workflow: long periods in mission (hi
 
 ### Measurable Outcomes
 
-**Sprint-Level Metrics (Every 2 Weeks):**
-- One A/B test completed with winner designated
-- Conversion rate delta measured for each variant at each funnel stage
-- Statistical significance indicator (Bayesian confidence) displayed
+**Battle-Level Metrics (Per Funnel Stage):**
+- Each funnel stage tracks its own independent A/B Battle
+- Winner designated when statistical significance is reached (timing varies by stage volume)
+- Conversion rate delta measured for each variant within each Battle
+- Statistical significance indicator (Bayesian confidence) displayed per Battle
 
 **War Mode Metrics:**
 - Prospects imported: Target 50+ in first 2 hours
@@ -246,11 +269,12 @@ The product addresses the unique freelance workflow: long periods in mission (hi
    - Backend ignores `deleted_at` when archive search active
    - No data loss, just organizational cleanup
 
-10. **Simple Sprint Parameter**
-    - Sprint duration configurable (e.g., 2 weeks)
-    - Current sprint detected automatically based on date
-    - Performance Matrix can filter by current sprint
-    - Zero manual sprint management
+10. **Independent Battles per Funnel Stage**
+    - Each funnel stage has its own A/B test Battle (e.g., "CV Battle #3: v2 vs v3")
+    - Battles progress independently based on stage volume (early stages faster than late stages)
+    - When significance reached: close Battle, declare winner, optionally start next Battle (winner vs new challenger)
+    - No global reset - closing a Battle on one stage doesn't affect other stages
+    - Performance Matrix shows current Battle status per funnel stage
 
 **Technical Requirements (MVP):**
 - Stack: React + Vite / Adonis.js / Supabase / VPS
@@ -264,7 +288,7 @@ The product addresses the unique freelance workflow: long periods in mission (hi
 
 **Phase 1 (Quick Wins - 1-2 weeks):**
 - **Lead Scoring 3 Levels** (🟢 hot / 🟡 neutral / 🔴 cold)
-- **Advanced Sprint Filtering** (view historical sprints, compare sprint performance)
+- **Battle History & Comparison** (view historical Battles per stage, compare Battle performance over time)
 - **Search improvements** (fuzzy search, filters per view)
 
 **Phase 2 (Enhanced Analytics - 2-3 weeks):**
@@ -312,14 +336,14 @@ Romain est en mission longue depuis 18 mois chez un grand compte. Il apprécie l
 
 En moins de 2 heures, il importe 50 prospects depuis son export LinkedIn Sales Navigator. Le système détecte automatiquement 5 doublons qu'il avait déjà ajoutés manuellement le mois dernier, lui propose des mises à jour qu'il valide en 3 clics. Il assigne rapidement ses 3 variantes de CV (v1, v2 optimisé React, v3 focus architecture) et ses 2 templates de messages LinkedIn qu'il avait préparés en mode hibernation.
 
-Le breakthrough survient à la fin du premier sprint (2 semaines). La Performance Matrix lui montre clairement : CV v2 converti à 52% au passage "Lead qualifié → Premier contact" contre 38% pour CV v1. Pas besoin d'attendre 6 mois pour savoir. Sprint 2, il teste CV v2 (le gagnant) contre CV v3. Les données sont claires, froides, sans émotion : il sait exactement quelle approche marche.
+Le breakthrough survient après 10 jours. La Battle "Envoi CV" atteint la significativité statistique : CV v2 converti à 52% au passage "Lead qualifié → Premier contact" contre 38% pour CV v1. Le feu tricolore passe au vert 🟢. Romain clôture la Battle et lance la suivante : CV v2 (le gagnant) contre CV v3. Pendant ce temps, la Battle "Message Relance" continue indépendamment à son propre rythme - elle n'a pas encore assez de volume. Les données sont claires, froides, sans émotion : il sait exactement quelle approche marche, étape par étape.
 
 25 jours après avoir activé le mode guerre, Romain signe une nouvelle mission avec un TJM 15% plus élevé. Quand son ami freelance lui demande "comment tu as fait ?", sa réponse est simple : "J'ai traité ma prospection comme un produit à optimiser. Chaque semaine j'étais meilleur que la précédente. Les chiffres ne mentent pas."
 
 **Capacités révélées :**
 - Cold Start rapide (Import CSV + activation < 24h)
 - Performance Matrix avec Bayesian updating
-- Sprint itératif A/B testing
+- Battles indépendantes par étape de funnel (A/B testing adapté au volume)
 - Gestion positionnements multiples
 - Dashboard conversion temps réel
 
@@ -346,7 +370,7 @@ Romain lui montre tiny-crm un soir : "Regarde, j'ai testé 3 CV différents. Cel
 
 Thomas commence doucement. Import de 20 prospects, 2 variantes de CV. Les deux premières semaines, il trouve l'interface agréable mais pas révolutionnaire. La troisième semaine, la Performance Matrix commence à montrer des patterns : son CV "senior" performe mieux avec les grandes ESN, son CV "expert technique" marche mieux avec les ESN mid-size.
 
-Le déclic arrive au Sprint 2 : il teste son CV gagnant contre une nouvelle variante qui met plus en avant son expérience DevOps. En 10 jours il a sa réponse : +15% de conversion. Thomas réalise qu'il peut **apprendre de ses propres données**. Six semaines après avoir commencé, il a signé une mission et envoie un message à Romain : "Tu avais raison. Je ne retournerai jamais à mon Google Sheet."
+Le déclic arrive quand sa première Battle atteint la significativité : il teste son CV gagnant contre une nouvelle variante qui met plus en avant son expérience DevOps. En 10 jours il a sa réponse : +15% de conversion. Thomas réalise qu'il peut **apprendre de ses propres données**. Six semaines après avoir commencé, il a signé une mission et envoie un message à Romain : "Tu avais raison. Je ne retournerai jamais à mon Google Sheet."
 
 **Capacités révélées :**
 - Onboarding simple pour nouvel utilisateur
@@ -382,7 +406,7 @@ Deux mois après le lancement, Romain décide de fermer temporairement les inscr
 **Analytics & A/B Testing:**
 - Performance Matrix Variante × Étape Funnel
 - Bayesian updating pour faible volume
-- Sprint itératif avec gagnant/perdant
+- Battles indépendantes par étape (gagnant/perdant quand significativité atteinte)
 - Traffic light fiabilité statistique
 
 **Gestion Données:**
@@ -613,7 +637,7 @@ services:
 
 **MVP Approach:** Problem-Solving MVP avec Cold Start Optimization
 
-**Philosophy:** Résoudre le problème core du freelance qui doit activer son "mode guerre" en moins de 24h, avec capacité d'A/B testing dès le premier sprint. L'MVP doit être suffisamment ergonomique pour battre Excel/Notion dès la première semaine d'utilisation, sinon échec d'adoption.
+**Philosophy:** Résoudre le problème core du freelance qui doit activer son "mode guerre" en moins de 24h, avec capacité d'A/B testing via Battles indépendantes par étape de funnel. L'MVP doit être suffisamment ergonomique pour battre Excel/Notion dès la première semaine d'utilisation, sinon échec d'adoption.
 
 **Strategic Rationale:**
 - **User Value First:** Chaque feature MVP doit contribuer directement au succès utilisateur (import rapide, logging frictionless, Performance Matrix actionnable)
@@ -689,11 +713,12 @@ services:
    - Toggle "Search in archives"
    - Backend ignore `deleted_at` si archive search active
 
-10. **Simple Sprint Parameter**
-    - Sprint duration configurable (ex: 2 weeks)
-    - Current sprint auto-detected by date
-    - Performance Matrix filterable by sprint
-    - Zero manual sprint management
+10. **Independent Battles per Funnel Stage**
+    - Each funnel stage has its own A/B test Battle
+    - Battles progress independently based on stage volume
+    - Close Battle when significance reached → declare winner → start next Battle
+    - No global reset - stages are independent
+    - Performance Matrix shows Battle status per stage
 
 **Technical Foundation (Non-Negotiable):**
 - TypeScript strict mode (front + back)
@@ -709,7 +734,7 @@ services:
 
 Post-MVP immédiat (semaines 10-12):
 - Lead Scoring 3 Levels (🟢🟡🔴)
-- Advanced Sprint Filtering (historical sprints, comparisons)
+- Battle History & Analytics (historical Battles per stage, cross-Battle comparisons)
 - Search improvements (fuzzy search, filters per view)
 
 **Phase 3 - Enhanced Analytics (2-3 weeks)**
@@ -786,7 +811,7 @@ Semaines 22-25:
 **Resource Risks:**
 
 *Risk 1: MVP Prend Plus Que 9 Semaines*
-- **Contingency:** Scope reduction - retirer features 9 et 10 (Archive, Simple Sprint)
+- **Contingency:** Scope reduction - retirer features 9 et 10 (Archive, Independent Battles)
 - **Absolute Minimum:** Features 1-8 suffisent pour validation
 
 *Risk 2: Bugs Data Compromettent Adoption*
@@ -843,11 +868,11 @@ Semaines 22-25:
 - **FR30:** System calculates conversion rates using Bayesian updating for low-volume contexts
 - **FR31:** System displays statistical reliability indicators (traffic light: 🔴🟡🟢) for conversion rates
 - **FR32:** Users can drill down from Performance Matrix cells to see underlying prospects and interactions
-- **FR33:** Users can filter Performance Matrix by sprint (time period)
-- **FR34:** System auto-detects current sprint based on configurable sprint duration
-- **FR35:** Users can view historical sprint performance
-- **FR36:** Users can compare conversion rates across positioning variants
-- **FR37:** Users can identify winning variant per sprint based on conversion data
+- **FR33:** Users can view current Battle status per funnel stage in Performance Matrix
+- **FR34:** System tracks each funnel stage's independent Battle (which variants are being tested)
+- **FR35:** Users can view historical Battles per funnel stage (past winners, progression)
+- **FR36:** Users can compare conversion rates across positioning variants within a Battle
+- **FR37:** Users can identify winning variant per Battle based on conversion data and significance indicator
 
 ### Funnel Configuration
 
@@ -877,12 +902,16 @@ Semaines 22-25:
 - **FR55:** Administrator can enable/disable new user registration via environment variable
 - **FR56:** System enforces Row Level Security to prevent cross-user data access
 
-### Sprint Management
+### Battle Management (A/B Testing per Funnel Stage)
 
-- **FR57:** Users can configure sprint duration (e.g., 2 weeks)
-- **FR58:** System automatically detects current sprint based on date and sprint duration
-- **FR59:** Users can view which sprint a prospect or interaction belongs to
-- **FR60:** System enables filtering data by sprint across all views
+- **FR57:** Each funnel stage can have an active Battle (A vs B test between two positioning variants)
+- **FR58:** Users can start a new Battle for a funnel stage by selecting two variants to compare
+- **FR59:** Users can close a Battle when statistical significance is reached (system indicates via 🟢 traffic light)
+- **FR60:** When closing a Battle, users declare the winner which becomes the "champion" for that stage
+- **FR61:** Users can start the next Battle: champion vs new challenger variant
+- **FR62:** Closing a Battle on one funnel stage does NOT reset or affect Battles on other stages (independent progression)
+- **FR63:** System tracks Battle history per funnel stage (Battle #1, #2, #3... with winners)
+- **FR64:** Performance Matrix displays current Battle info per stage (which variants, current stats, significance indicator)
 
 ## Non-Functional Requirements
 
