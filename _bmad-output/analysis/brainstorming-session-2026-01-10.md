@@ -1,7 +1,7 @@
 ---
 stepsCompleted: [1, 2, 3, 4]
 inputDocuments: []
-session_topic: 'Features et architecture de tiny-crm - CRM data-driven pour freelance'
+session_topic: 'Features et architecture de BattleCRM - CRM data-driven pour freelance'
 session_goals: 'A/B Testing & Data-Driven, Funnel de conversion, KPI & Monitoring, Visualisation dashboard, Efficacité workflow, Intégrations & Extensibilité, Exploration aspects non-anticipés'
 selected_approach: 'AI-Recommended Techniques (continuation sessions 2026-01-06 et 2026-01-08)'
 techniques_used: ['SCAMPER Method (completed 2026-01-06)', 'Cross-Pollination (completed 2026-01-08)', 'Reverse Brainstorming (completed 2026-01-10)']
@@ -25,7 +25,7 @@ session_active: false
 
 ## Session Context (Continuation - Day 3)
 
-Cette session continue le travail de brainstorming initié le 2026-01-06 et poursuivi le 2026-01-08 sur tiny-crm.
+Cette session continue le travail de brainstorming initié le 2026-01-06 et poursuivi le 2026-01-08 sur BattleCRM.
 
 **État précédent:**
 - ✅ SCAMPER Method complété intégralement (session 2026-01-06)
@@ -41,7 +41,7 @@ Compléter le triptyque avec Reverse Brainstorming - Identifier les aspects crit
 
 ### Contexte de la Technique
 
-**Focus:** Identifier les aspects critiques en imaginant comment faire échouer spectaculairement tiny-crm, puis inverser ces échecs pour révéler les garde-fous essentiels et principes de design non-négociables.
+**Focus:** Identifier les aspects critiques en imaginant comment faire échouer spectaculairement BattleCRM, puis inverser ces échecs pour révéler les garde-fous essentiels et principes de design non-négociables.
 
 **Approche:** Exploration collaborative de scénarios catastrophes suivie d'inversion systématique pour extraire les solutions.
 
@@ -55,7 +55,7 @@ Compléter le triptyque avec Reverse Brainstorming - Identifier les aspects crit
 
 **Insight utilisateur majeur:** "L'ergonomie éclatée et une app ultra complexe pourrait complètement détruire l'intérêt du CRM. Il faut que ce soit factuellement mieux et que ça fasse gagner du temps par rapport à Excel, Airtable, ou Notion. Sinon il n'y a aucun intérêt."
 
-**Contrainte impitoyable révélée:** tiny-crm n'a AUCUNE marge d'erreur ergonomique. Templates Notion CRM existent déjà - si l'app est trop complexe ou pas assez ergonomique, abandon immédiat.
+**Contrainte impitoyable révélée:** BattleCRM n'a AUCUNE marge d'erreur ergonomique. Templates Notion CRM existent déjà - si l'app est trop complexe ou pas assez ergonomique, abandon immédiat.
 
 **Scénario 1: "L'Usine à Clics"**
 - Logger un appel de 5 min = 12 clics à travers 4 écrans
@@ -103,7 +103,7 @@ Compléter le triptyque avec Reverse Brainstorming - Identifier les aspects crit
 
 **Scénario 7: "Le Cold Start Raté"**
 - Mission se termine brutalement → mode GUERRE lundi
-- tiny-crm pas prêt (pas de variantes, funnel vide)
+- BattleCRM pas prêt (pas de variantes, funnel vide)
 - 3 jours de setup avant de prospecter
 - **Résultat:** "Fuck it", retour campagne Waalaxy freestyle
 
@@ -118,7 +118,7 @@ Compléter le triptyque avec Reverse Brainstorming - Identifier les aspects crit
 - App = friction dans le flow naturel
 - **Insight critique utilisateur:** "Je ne suis encore jamais passé en mode guerre. J'ai une idée précise de ce qu'il faut faire, mais je ne l'ai jamais réellement fait. Si l'app ne correspond pas parfaitement au workflow, elle risque de devenir une friction plutôt qu'un gain de temps."
 
-**Danger révélé:** Toute l'architecture de tiny-crm est basée sur un workflow hypothétique jamais testé en conditions réelles.
+**Danger révélé:** Toute l'architecture de BattleCRM est basée sur un workflow hypothétique jamais testé en conditions réelles.
 
 **Hypothèses de mismatch explorées:**
 - Rythme réel (15 appels en 3h) vs imaginé (3-4 appels/jour avec temps de logger)
@@ -360,7 +360,7 @@ Compléter le triptyque avec Reverse Brainstorming - Identifier les aspects crit
 ### 🔥 Insights Majeurs Révélés
 
 **1. Contrainte Impitoyable:**
-- tiny-crm n'a AUCUNE marge d'erreur ergonomique
+- BattleCRM n'a AUCUNE marge d'erreur ergonomique
 - Templates Notion CRM existent déjà
 - Si app trop complexe/lente → abandon immédiat
 
@@ -474,7 +474,7 @@ Compléter le triptyque avec Reverse Brainstorming - Identifier les aspects crit
 **Focus:** Expérience utilisateur impitoyable - zéro marge d'erreur
 
 **Contrainte Révélée (Reverse Brainstorming):**
-- tiny-crm n'a AUCUNE marge d'erreur ergonomique
+- BattleCRM n'a AUCUNE marge d'erreur ergonomique
 - Templates Notion CRM existent déjà
 - Si app trop complexe/lente → abandon immédiat
 
@@ -738,7 +738,7 @@ Compléter le triptyque avec Reverse Brainstorming - Identifier les aspects crit
 6. **Analyse IA Entretiens** (PUT TO OTHER USES)
    - **Concept:** Transcription + analyse GPT-4 des entretiens enregistrés
    - **Coût:** ~0.40-0.50$/entretien (acceptable)
-   - **Décision:** ❌ EXCLU de tiny-crm pour l'instant
+   - **Décision:** ❌ EXCLU de BattleCRM pour l'instant
    - **Rationale:** Bloc vraiment distinct = mieux dans app séparée dédiée
    - **Principe produit:** Focus sur 1 problématique unique (CRM data-driven prospection)
    - **Future potentiel:** App standalone "Interview Coach AI" + pont webhook
@@ -1069,7 +1069,7 @@ Compléter le triptyque avec Reverse Brainstorming - Identifier les aspects crit
 ## 💡 INSIGHTS MAJEURS DES 3 SESSIONS
 
 ### 1. **Contrainte Impitoyable (Reverse)**
-- tiny-crm n'a AUCUNE marge d'erreur ergonomique
+- BattleCRM n'a AUCUNE marge d'erreur ergonomique
 - Friction = mort instantanée
 - Benchmark: si plus lent que papier, c'est raté
 
@@ -1157,7 +1157,7 @@ Compléter le triptyque avec Reverse Brainstorming - Identifier les aspects crit
 
 Tu as complété un brainstorming intensif de 3 sessions qui a produit:
 
-✅ **Une architecture claire et validée** pour tiny-crm
+✅ **Une architecture claire et validée** pour BattleCRM
 ✅ **Un scope MVP strict et actionnable**
 ✅ **Des principes de design non-négociables** pour éviter les pièges
 ✅ **Un plan d'action concret** avec phases et timeline
@@ -1175,11 +1175,10 @@ Tu as complété un brainstorming intensif de 3 sessions qui a produit:
 > "Simplicité > Sophistication. Focus sur 1 problème vraiment bien résolu. Ergonomie impitoyable. Code quality non-négociable. Cold Start rapide. MVP ruthless."
 
 Tous les insights, features, et décisions sont maintenant documentés dans:
-- `/home/bison/DEV/tiny-crm/_bmad-output/analysis/brainstorming-session-2026-01-06.md`
-- `/home/bison/DEV/tiny-crm/_bmad-output/analysis/brainstorming-session-2026-01-08.md`
-- `/home/bison/DEV/tiny-crm/_bmad-output/analysis/brainstorming-session-2026-01-10.md`
+- `/home/bison/DEV/BattleCRM/_bmad-output/analysis/brainstorming-session-2026-01-06.md`
+- `/home/bison/DEV/BattleCRM/_bmad-output/analysis/brainstorming-session-2026-01-08.md`
+- `/home/bison/DEV/BattleCRM/_bmad-output/analysis/brainstorming-session-2026-01-10.md`
 
-**Tu as maintenant tout ce qu'il faut pour construire tiny-crm avec confiance !** 🚀
+**Tu as maintenant tout ce qu'il faut pour construire BattleCRM avec confiance !** 🚀
 
 ---
-

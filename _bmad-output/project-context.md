@@ -1,5 +1,5 @@
 ---
-project_name: 'tiny-crm'
+project_name: 'BattleCRM'
 user_name: 'Romain'
 date: '2026-02-03'
 status: 'complete'
@@ -7,7 +7,7 @@ status: 'complete'
 
 # Project Context for AI Agents
 
-_Critical rules and patterns for implementing tiny-crm. Read this before writing any code._
+_Critical rules and patterns for implementing BattleCRM. Read this before writing any code._
 
 ---
 

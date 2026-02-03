@@ -1,7 +1,7 @@
 ---
 stepsCompleted: [1, 2, 3]
 inputDocuments: []
-session_topic: 'Features et architecture de tiny-crm - CRM data-driven pour freelance'
+session_topic: 'Features et architecture de BattleCRM - CRM data-driven pour freelance'
 session_goals: 'A/B Testing & Data-Driven, Funnel de conversion, KPI & Monitoring, Visualisation dashboard, Efficacité workflow, Intégrations & Extensibilité, Exploration aspects non-anticipés'
 selected_approach: 'AI-Recommended Techniques (continuation session 2026-01-06)'
 techniques_used: ['SCAMPER Method (completed 2026-01-06)', 'Cross-Pollination']
@@ -22,7 +22,7 @@ continuation_from: '2026-01-06'
 
 ## Session Context (Continuation)
 
-Cette session continue le travail de brainstorming initié le 2026-01-06 sur tiny-crm.
+Cette session continue le travail de brainstorming initié le 2026-01-06 sur BattleCRM.
 
 **État précédent:**
 - ✅ SCAMPER Method complété intégralement (7 lettres explorées)
@@ -37,7 +37,7 @@ Explorer Cross-Pollination pour identifier innovations inattendues via transfert
 
 ### Contexte de la Technique
 
-**Focus:** Transférer des solutions d'industries complètement différentes vers tiny-crm pour générer des innovations inattendues.
+**Focus:** Transférer des solutions d'industries complètement différentes vers BattleCRM pour générer des innovations inattendues.
 
 **Approche:** Exploration collaborative de 6 domaines variés pour identifier patterns et concepts adaptables au CRM data-driven freelance.
 
@@ -53,7 +53,7 @@ Explorer Cross-Pollination pour identifier innovations inattendues via transfert
 - Chaque "run" = session complète avec stats, apprentissage, amélioration
 - Comparaison entre runs pour progression dans le temps
 
-**Adaptation pour tiny-crm:**
+**Adaptation pour BattleCRM:**
 - Chaque campagne de prospection = "Sprint" avec tracking dédié
 - **Use case principal:** Mode hibernation → guerre
 - Chaque activation mode guerre = nouveau sprint avec stats complètes
@@ -105,7 +105,7 @@ Explorer Cross-Pollination pour identifier innovations inattendues via transfert
 
 **Concept:** "Parce que tu as aimé X, essaye Y"
 
-**Décision:** Non applicable pour contexte tiny-crm
+**Décision:** Non applicable pour contexte BattleCRM
 
 #### 2. "Continue là où tu t'étais arrêté" ❌
 
@@ -137,7 +137,7 @@ Explorer Cross-Pollination pour identifier innovations inattendues via transfert
 **Concept médical:**
 - Historique complet chronologique avec distinction données objectives vs subjectives
 
-**Adaptation pour tiny-crm:**
+**Adaptation pour BattleCRM:**
 - **Données objectives:** "Appel 15 jan, durée 20min, CV v2 envoyé"
 - **Données subjectives:** "Semblait pressé, intérêt moyen"
 
@@ -153,7 +153,7 @@ Explorer Cross-Pollination pour identifier innovations inattendues via transfert
 - Certains symptômes = red flag = attention immédiate
 - Signaux d'alerte automatiques ou manuels
 
-**Adaptation pour tiny-crm:**
+**Adaptation pour BattleCRM:**
 - **Lead Scoring Manuel 3 Niveaux:**
   - 🟢 **Hot Lead** (particulièrement intéressé)
   - 🟡 **Neutre** (défaut, statut normal)
@@ -195,7 +195,7 @@ Explorer Cross-Pollination pour identifier innovations inattendues via transfert
 
 **Concept:** Documenter le raisonnement derrière les expériences pour reproducibilité
 
-**Adaptation pour tiny-crm:**
+**Adaptation pour BattleCRM:**
 - ✅ **Champ description/rationale pour positionnements**
 - Documenter pourquoi cette variante a été créée
 - Exemple: "CV v2 créé parce que v1 ne mettait pas assez en avant React. J'ai ajouté section projets React prominente."
@@ -222,7 +222,7 @@ Explorer Cross-Pollination pour identifier innovations inattendues via transfert
 - Vue d'ensemble visuelle de la production
 - Identification rapide des goulots d'étranglement
 
-**Adaptation pour tiny-crm:**
+**Adaptation pour BattleCRM:**
 - **Vue Kanban Funnel:** Colonnes = étapes du funnel, Cards = prospects
 - Drag & drop pour faire progresser prospect d'une étape à l'autre
 - **Alternative visuelle** à la Performance Matrix pour pilotage quotidien
@@ -247,7 +247,7 @@ Explorer Cross-Pollination pour identifier innovations inattendues via transfert
 **Concept Toyota:**
 - Méthodologie organisation: Sort, Set in order, Shine, Standardize, Sustain
 
-**Adaptation pour tiny-crm:**
+**Adaptation pour BattleCRM:**
 - ✅ **Fonction archivage manuel**
 - Prospects archivés restent **searchable** dans l'app
 - Permet "nettoyage de printemps" du CRM pour garder focus sur prospects actifs
@@ -256,7 +256,7 @@ Explorer Cross-Pollination pour identifier innovations inattendues via transfert
 
 #### 4. "Muda" (Élimination du Gaspillage)
 
-**Question posée:** Quelle friction actuelle doit être éliminée dans tiny-crm?
+**Question posée:** Quelle friction actuelle doit être éliminée dans BattleCRM?
 
 **Réponse utilisateur:** Rien de spécial identifié
 
@@ -395,7 +395,7 @@ Explorer Cross-Pollination pour identifier innovations inattendues via transfert
 
 **Focus:** Identification des aspects critiques en imaginant les échecs possibles puis en inversant pour trouver les solutions essentielles.
 
-**Objectif:** Compléter le triptyque des techniques recommandées pour tiny-crm.
+**Objectif:** Compléter le triptyque des techniques recommandées pour BattleCRM.
 
 ---
 

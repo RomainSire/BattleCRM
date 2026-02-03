@@ -1,7 +1,7 @@
 ---
 stepsCompleted: [1, 2, 3]
 inputDocuments: []
-session_topic: 'Features et architecture de tiny-crm - CRM data-driven pour freelance'
+session_topic: 'Features et architecture de BattleCRM - CRM data-driven pour freelance'
 session_goals: 'A/B Testing & Data-Driven, Funnel de conversion, KPI & Monitoring, Visualisation dashboard, Efficacité workflow, Intégrations & Extensibilité, Exploration aspects non-anticipés'
 selected_approach: 'AI-Recommended Techniques'
 techniques_used: ['SCAMPER Method']
@@ -20,7 +20,7 @@ scamper_progress: 'S-SUBSTITUTE: ✅ | C-COMBINE: ✅ | A-ADAPT: ✅ | M-MODIFY:
 
 ## Session Overview
 
-**Topic:** Features et architecture de tiny-crm - CRM data-driven pour freelance
+**Topic:** Features et architecture de BattleCRM - CRM data-driven pour freelance
 
 **Goals:**
 - 📊 A/B Testing & Data-Driven: Mécanismes de test, comparaison des variantes (CV, pitchs, approches)
@@ -33,12 +33,12 @@ scamper_progress: 'S-SUBSTITUTE: ✅ | C-COMBINE: ✅ | A-ADAPT: ✅ | M-MODIFY:
 
 ### Session Setup
 
-Cette session de brainstorming vise à explorer en profondeur l'architecture fonctionnelle et les features de tiny-crm, un CRM spécialisé pour l'activité freelance avec un focus particulier sur l'approche data-driven et l'optimisation continue via A/B testing.
+Cette session de brainstorming vise à explorer en profondeur l'architecture fonctionnelle et les features de BattleCRM, un CRM spécialisé pour l'activité freelance avec un focus particulier sur l'approche data-driven et l'optimisation continue via A/B testing.
 
 ## Technique Selection
 
 **Approach:** AI-Recommended Techniques
-**Analysis Context:** Features et architecture de tiny-crm avec focus sur A/B Testing, Funnel, KPI, Visualisation, Efficacité, et Intégrations
+**Analysis Context:** Features et architecture de BattleCRM avec focus sur A/B Testing, Funnel, KPI, Visualisation, Efficacité, et Intégrations
 
 **Recommended Techniques:**
 
@@ -517,7 +517,7 @@ CV v2 - Analyse qualitative :
 **1. Mapping Champs CSV → CRM**
 
 ```
-CSV LinkedIn                → CRM tiny-crm
+CSV LinkedIn                → CRM BattleCRM
 ─────────────────────────────────────────────────
 Prénom + Nom                → Prospect (nom complet)
 Entreprise                  → ESN (champ texte)
@@ -660,13 +660,13 @@ Autres infos disponibles    → Optionnel (bonus si pertinent)
 **Verdict coût :** ✅ Très acceptable pour la valeur apportée
 
 **Décision stratégique :**
-- ❌ **EXCLU de tiny-crm pour l'instant**
+- ❌ **EXCLU de BattleCRM pour l'instant**
 - **Rationale :** Bloc vraiment distinct = mieux dans app séparée dédiée
 - **Principe produit :** Focus sur 1 problématique unique (CRM data-driven prospection)
 - **Future potentiel :** App standalone "Interview Coach AI" pour freelances/commerciaux/consultants
-- **Intégration possible :** Pont webhook entre tiny-crm et app analyse IA (futur)
+- **Intégration possible :** Pont webhook entre BattleCRM et app analyse IA (futur)
 
-**Statut :** ❌ Hors scope tiny-crm v1 - Potentiel standalone futur
+**Statut :** ❌ Hors scope BattleCRM v1 - Potentiel standalone futur
 
 ---
 
@@ -723,7 +723,7 @@ Page "Configuration Funnel"
 **Verdict complexité technique :** ✅ CRUD standard, pas si complexe
 
 **Décision :**
-- ✅ **INCLUS dans le scope tiny-crm v1**
+- ✅ **INCLUS dans le scope BattleCRM v1**
 - **Rationale :** Très très très bénéfique même pour utilisateur unique
 - Permet évolution naturelle du process sans redéploiement code
 
@@ -739,7 +739,7 @@ Page "Configuration Funnel"
 
 **Décision utilisateur :**
 - ⏸️ **Pas à l'ordre du jour pour l'instant**
-- On garde nom "tiny-crm"
+- On garde nom "BattleCRM"
 - Focus freelance maintenu
 - Multi-user reste limité (amis freelances, variable env)
 - **Funnel customisable utile pour utilisateur principal déjà**
@@ -763,7 +763,7 @@ Page "Configuration Funnel"
 1. **Analyse IA Entretiens** - App séparée dédiée future
    - Coût acceptable (~0.40$/entretien) mais bloc distinct
    - Potentiel pont webhook plus tard
-   - Focus tiny-crm = CRM data-driven, pas coaching entretiens
+   - Focus BattleCRM = CRM data-driven, pas coaching entretiens
 
 **⏸️ PAS PRIORITAIRE :**
 1. **Généralisation app tous contextes prospection** - Pas à l'ordre du jour
@@ -1039,7 +1039,7 @@ Ultra-simple, non-intrusif
 
 ## 🎯 SCAMPER COMPLET : SYNTHÈSE GLOBALE
 
-**Technique SCAMPER appliquée intégralement sur tiny-crm :**
+**Technique SCAMPER appliquée intégralement sur BattleCRM :**
 
 ### Résumé par Lettre
 

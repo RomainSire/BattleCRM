@@ -14,7 +14,7 @@ documentCounts:
   projectDocsCount: 0
   projectContextCount: 0
 workflowType: 'architecture'
-project_name: 'tiny-crm'
+project_name: 'BattleCRM'
 user_name: 'Romain'
 date: '2026-02-03'
 ---
@@ -125,7 +125,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 
 ### Initialization Commands
 
-**Note:** Commands assume execution from existing `tiny-crm/` project root (already contains BMAD structure).
+**Note:** Commands assume execution from existing `BattleCRM/` project root (already contains BMAD structure).
 
 **1. Monorepo Root Setup:**
 
@@ -208,7 +208,7 @@ pnpm install
 ### Project Structure
 
 ```
-tiny-crm/
+BattleCRM/
 ├── _bmad/                       # BMAD installation (existing)
 ├── _bmad-output/                # Planning artifacts (existing)
 ├── pnpm-workspace.yaml
@@ -539,7 +539,7 @@ apps/backend/
 ### Complete Project Directory Structure
 
 ```
-tiny-crm/
+BattleCRM/
 ├── _bmad/                           # BMAD installation
 ├── _bmad-output/                    # Planning artifacts
 │
@@ -831,4 +831,3 @@ All technology choices work together without conflicts:
 **Next Phase:** Begin implementation using the architectural decisions and patterns documented herein.
 
 **Document Maintenance:** Update this architecture when major technical decisions are made during implementation.
-

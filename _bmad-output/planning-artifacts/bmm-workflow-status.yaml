@@ -16,7 +16,7 @@
 #   - skipped: Optional/conditional workflow that was skipped
 
 generated: "2026-01-06"
-project: "tiny-crm"
+project: "BattleCRM"
 
 # User Description
 user_description: |

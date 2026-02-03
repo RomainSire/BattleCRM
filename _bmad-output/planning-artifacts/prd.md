@@ -1,9 +1,9 @@
 ---
 stepsCompleted: [1, 2, 3, 4, 7, 8, 9, 10, 11]
 inputDocuments:
-  - /home/bison/DEV/tiny-crm/_bmad-output/analysis/brainstorming-session-2026-01-06.md
-  - /home/bison/DEV/tiny-crm/_bmad-output/analysis/brainstorming-session-2026-01-08.md
-  - /home/bison/DEV/tiny-crm/_bmad-output/analysis/brainstorming-session-2026-01-10.md
+  - /home/bison/DEV/BattleCRM/_bmad-output/analysis/brainstorming-session-2026-01-06.md
+  - /home/bison/DEV/BattleCRM/_bmad-output/analysis/brainstorming-session-2026-01-08.md
+  - /home/bison/DEV/BattleCRM/_bmad-output/analysis/brainstorming-session-2026-01-10.md
 documentCounts:
   briefCount: 0
   researchCount: 0
@@ -15,14 +15,14 @@ completedAt: '2026-02-02'
 majorUpdate: 'Replaced Global Sprints with Independent Battles per Funnel Stage'
 ---
 
-# Product Requirements Document - tiny-crm
+# Product Requirements Document - BattleCRM
 
 **Author:** Romain
 **Date:** 2026-01-28
 
 ## Executive Summary
 
-**tiny-crm** is a data-driven CRM specifically designed for freelance consultants operating in "war machine hibernation" mode. Unlike traditional CRMs that are either too simplistic or overwhelming productivity killers, tiny-crm enables continuous improvement through simple, intuitive A/B testing with a modern, enjoyable interface.
+**BattleCRM** is a data-driven CRM specifically designed for freelance consultants operating in "war machine hibernation" mode. Unlike traditional CRMs that are either too simplistic or overwhelming productivity killers, BattleCRM enables continuous improvement through simple, intuitive A/B testing with a modern, enjoyable interface.
 
 The product addresses the unique freelance workflow: long periods in mission (hibernation mode) with minimal prospecting, followed by the need for rapid activation into "war mode" when a mission ends. The critical requirement is the ability to go from 0 to active prospecting in less than 24 hours, then find a new mission within 30-45 days.
 
@@ -34,7 +34,7 @@ The product addresses the unique freelance workflow: long periods in mission (hi
 
 **The "Aha!" Moment:** Users realize they can continuously improve their prospecting approach through simple, intuitive A/B testing without fighting the tool. The modern, pleasant interface makes data entry faster than pen and paper, turning every interaction into actionable data for self-improvement.
 
-**Counter-Intuitive Insight:** Most CRMs optimize for volume (sales teams, high-frequency transactions). tiny-crm optimizes for quality in a low-volume, high-stakes context (1-2 missions per year). It applies growth hacking principles to personal freelance activity - treating yourself as the product to optimize.
+**Counter-Intuitive Insight:** Most CRMs optimize for volume (sales teams, high-frequency transactions). BattleCRM optimizes for quality in a low-volume, high-stakes context (1-2 missions per year). It applies growth hacking principles to personal freelance activity - treating yourself as the product to optimize.
 
 **Core Philosophy:** "A few highly significant KPIs > 50 KPIs measuring everything." Ruthless simplicity with scientific rigor. Every pixel must earn its place. Zero tolerance for friction.
 
@@ -152,7 +152,7 @@ Each funnel stage runs its own independent "Battle" (A vs B test):
 - User actively using the tool for prospecting decisions
 
 **At 12 Months:**
-- Primary user (Romain) actively using tiny-crm as daily prospecting tool
+- Primary user (Romain) actively using BattleCRM as daily prospecting tool
 - Multi-user capability functional but adoption by friends is nice-to-have
 - **No monetization goal** - success = self-improvement and continuous optimization
 - Portfolio value demonstrated: clean code, solid architecture, real-world usage
@@ -332,7 +332,7 @@ Each funnel stage runs its own independent "Battle" (A vs B test):
 
 ### Journey 1: Romain - Le Réveil de la Machine de Guerre
 
-Romain est en mission longue depuis 18 mois chez un grand compte. Il apprécie la stabilité mais sait que rien ne dure éternellement. Un vendredi soir, son manager lui annonce que le projet se termine dans 45 jours. Le lundi matin, au lieu de paniquer, Romain ouvre tiny-crm qu'il a préparé pendant ses soirées tranquilles.
+Romain est en mission longue depuis 18 mois chez un grand compte. Il apprécie la stabilité mais sait que rien ne dure éternellement. Un vendredi soir, son manager lui annonce que le projet se termine dans 45 jours. Le lundi matin, au lieu de paniquer, Romain ouvre BattleCRM qu'il a préparé pendant ses soirées tranquilles.
 
 En moins de 2 heures, il importe 50 prospects depuis son export LinkedIn Sales Navigator. Le système détecte automatiquement 5 doublons qu'il avait déjà ajoutés manuellement le mois dernier, lui propose des mises à jour qu'il valide en 3 clics. Il assigne rapidement ses 3 variantes de CV (v1, v2 optimisé React, v3 focus architecture) et ses 2 templates de messages LinkedIn qu'il avait préparés en mode hibernation.
 
@@ -349,9 +349,9 @@ Le breakthrough survient après 10 jours. La Battle "Envoi CV" atteint la signif
 
 ### Journey 2: Romain - L'Hibernation Productive
 
-Romain est en pleine mission, concentré sur son code. Mais tous les premiers dimanches du mois, il se réserve 2 heures pour "rester prêt". Ce dimanche, il ouvre tiny-crm et met à jour son CV avec les nouvelles technos qu'il maîtrise maintenant. Il crée une variante v4 qui met en avant son expérience récente en architecture microservices.
+Romain est en pleine mission, concentré sur son code. Mais tous les premiers dimanches du mois, il se réserve 2 heures pour "rester prêt". Ce dimanche, il ouvre BattleCRM et met à jour son CV avec les nouvelles technos qu'il maîtrise maintenant. Il crée une variante v4 qui met en avant son expérience récente en architecture microservices.
 
-Il parcourt LinkedIn de manière détendue, trouve 15 nouveaux chargés d'affaires ESN intéressants, exporte le CSV, l'importe dans tiny-crm. Aucun stress, aucune friction. Il ajoute aussi un nouveau template de message LinkedIn qui met l'accent sur son expertise cloud récemment acquise.
+Il parcourt LinkedIn de manière détendue, trouve 15 nouveaux chargés d'affaires ESN intéressants, exporte le CSV, l'importe dans BattleCRM. Aucun stress, aucune friction. Il ajoute aussi un nouveau template de message LinkedIn qui met l'accent sur son expertise cloud récemment acquise.
 
 Trois mois plus tard, quand son contrat se termine brusquement (le client coupe le budget), Romain n'a qu'à activer le mode guerre. Tout est déjà là : 80 prospects qualifiés, 4 variantes de CV testables, 3 templates de messages. Il n'a perdu aucune des 2 heures mensuelles d'investissement - c'était sa police d'assurance.
 
@@ -366,7 +366,7 @@ Trois mois plus tard, quand son contrat se termine brusquement (le client coupe 
 
 Thomas est développeur freelance et ami de Romain. Il prospecte "à l'ancienne" : un Google Sheet avec 30 prospects, des notes éparses dans Notion, ses CV dans un dossier Dropbox. Quand sa mission se termine, il panique toujours un peu et envoie le même CV à tout le monde.
 
-Romain lui montre tiny-crm un soir : "Regarde, j'ai testé 3 CV différents. Celui-ci converti 20% mieux. J'ai les chiffres." Thomas est intrigué mais sceptique. Romain lui crée un compte (variable `ALLOW_REGISTRATION=true` activée temporairement). "Teste pendant un mois, tes données sont 100% isolées des miennes."
+Romain lui montre BattleCRM un soir : "Regarde, j'ai testé 3 CV différents. Celui-ci converti 20% mieux. J'ai les chiffres." Thomas est intrigué mais sceptique. Romain lui crée un compte (variable `ALLOW_REGISTRATION=true` activée temporairement). "Teste pendant un mois, tes données sont 100% isolées des miennes."
 
 Thomas commence doucement. Import de 20 prospects, 2 variantes de CV. Les deux premières semaines, il trouve l'interface agréable mais pas révolutionnaire. La troisième semaine, la Performance Matrix commence à montrer des patterns : son CV "senior" performe mieux avec les grandes ESN, son CV "expert technique" marche mieux avec les ESN mid-size.
 
@@ -381,7 +381,7 @@ Le déclic arrive quand sa première Battle atteint la significativité : il tes
 
 ### Journey 4: Romain - L'Administrateur Technique (Edge Case: Gestion Multi-User)
 
-Romain vient de terminer le MVP de tiny-crm. Deux de ses amis freelances lui demandent d'essayer l'outil. Il se connecte en SSH sur son VPS, édite le fichier `.env` : `ALLOW_REGISTRATION=true`. Il envoie l'URL à Thomas et Julie avec un message : "Créez vos comptes, vous avez 48h. Après je referme les inscriptions."
+Romain vient de terminer le MVP de BattleCRM. Deux de ses amis freelances lui demandent d'essayer l'outil. Il se connecte en SSH sur son VPS, édite le fichier `.env` : `ALLOW_REGISTRATION=true`. Il envoie l'URL à Thomas et Julie avec un message : "Créez vos comptes, vous avez 48h. Après je referme les inscriptions."
 
 Thomas et Julie créent leurs comptes via l'interface standard email/password. Romain vérifie dans Supabase que le Row Level Security fonctionne correctement : chaque utilisateur ne voit que ses propres données. Il fait un test rapide : se connecte avec le compte de test, essaie d'accéder à l'API avec un autre user_id → accès refusé. Parfait.
 
@@ -431,7 +431,7 @@ Deux mois après le lancement, Romain décide de fermer temporairement les inscr
 
 ### Project-Type Overview
 
-tiny-crm is built as a **Single Page Application (SPA)** using React + Vite for the frontend and Adonis.js for the backend. The architecture prioritizes modern web standards, developer ergonomics, and portfolio-quality code over broad compatibility with legacy systems.
+BattleCRM is built as a **Single Page Application (SPA)** using React + Vite for the frontend and Adonis.js for the backend. The architecture prioritizes modern web standards, developer ergonomics, and portfolio-quality code over broad compatibility with legacy systems.
 
 **Target Audience:** Developers and technical freelancers with modern browsers and devices.
 
@@ -523,7 +523,7 @@ tiny-crm is built as a **Single Page Application (SPA)** using React + Vite for 
 
 **SEO Status:** Not required
 
-**Rationale:** tiny-crm is a private, authenticated application. No public pages need indexing. All content is behind authentication wall.
+**Rationale:** BattleCRM is a private, authenticated application. No public pages need indexing. All content is behind authentication wall.
 
 **Public Pages (if any):**
 - Login page (no SEO value needed)

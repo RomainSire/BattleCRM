@@ -15,7 +15,7 @@ pendingPrdUpdate: false
 prdUpdateCompletedAt: '2026-02-02'
 ---
 
-# UX Design Specification - tiny-crm
+# UX Design Specification - BattleCRM
 
 **Author:** Romain
 **Date:** 2026-02-02
@@ -26,7 +26,7 @@ prdUpdateCompletedAt: '2026-02-02'
 
 ### Project Vision
 
-tiny-crm est un CRM data-driven conçu spécifiquement pour les freelances consultants opérant en mode "machine de guerre en hibernation". L'application permet une optimisation continue de l'approche commerciale via A/B testing intuitif des variantes de positionnement (CV, pitchs, messages LinkedIn).
+BattleCRM est un CRM data-driven conçu spécifiquement pour les freelances consultants opérant en mode "machine de guerre en hibernation". L'application permet une optimisation continue de l'approche commerciale via A/B testing intuitif des variantes de positionnement (CV, pitchs, messages LinkedIn).
 
 **Proposition de valeur unique :** Appliquer les principes du growth hacking à sa propre activité freelance - traiter chaque interaction comme une donnée exploitable pour l'amélioration continue.
 
@@ -104,11 +104,11 @@ tiny-crm est un CRM data-driven conçu spécifiquement pour les freelances consu
 
 **Action Centrale : Visualiser la Performance Matrix**
 
-Le cœur de tiny-crm est la comparaison claire et sans erreur des positionnements (CV1 vs CV2 vs CV3...). Toutes les autres fonctionnalités (logging, import, navigation) existent pour alimenter et enrichir cette vue centrale.
+Le cœur de BattleCRM est la comparaison claire et sans erreur des positionnements (CV1 vs CV2 vs CV3...). Toutes les autres fonctionnalités (logging, import, navigation) existent pour alimenter et enrichir cette vue centrale.
 
 **But Ultime : Auto-amélioration continue**
 
-tiny-crm n'est pas un CRM de suivi classique - c'est un laboratoire d'optimisation personnelle. L'utilisateur doit pouvoir répondre à la question "Quel positionnement fonctionne le mieux ?" en un coup d'œil, à tout moment.
+BattleCRM n'est pas un CRM de suivi classique - c'est un laboratoire d'optimisation personnelle. L'utilisateur doit pouvoir répondre à la question "Quel positionnement fonctionne le mieux ?" en un coup d'œil, à tout moment.
 
 **Boucle d'Expérience Core :**
 1. Préparer variantes de positionnement (CV, messages, pitchs)
@@ -199,7 +199,7 @@ L'utilisateur doit percevoir de la valeur dès 10 prospects dans le système. Pa
 
 **Émotion Centrale : Protection Émotionnelle par la Data**
 
-tiny-crm doit créer une distance psychologique saine entre l'utilisateur et les rejets. Les refus, ghosts, et échecs ne sont plus des coups à l'ego - ce sont des data points neutres qui alimentent l'optimisation.
+BattleCRM doit créer une distance psychologique saine entre l'utilisateur et les rejets. Les refus, ghosts, et échecs ne sont plus des coups à l'ego - ce sont des data points neutres qui alimentent l'optimisation.
 
 **Reframing Psychologique Supporté :**
 - ❌ "Je me fais ghoster → Je suis nul → Déprime"
@@ -313,7 +313,7 @@ Le design met l'accent sur la progression (sprint après sprint) plutôt que sur
 
 **Stratégie Design System : Bibliothèque de Composants**
 
-Plutôt que de créer un design from scratch, tiny-crm s'appuiera sur une bibliothèque de composants moderne et éprouvée.
+Plutôt que de créer un design from scratch, BattleCRM s'appuiera sur une bibliothèque de composants moderne et éprouvée.
 
 **Options considérées :**
 - **shadcn/ui** (choix PRD) : Composants Radix UI + Tailwind, hautement customisables, accessibles
@@ -344,7 +344,7 @@ Plutôt que de créer un design from scratch, tiny-crm s'appuiera sur une biblio
 
 **Patterns à Adopter (depuis shadcn/ui et apps modernes) :**
 
-| Pattern | Application dans tiny-crm |
+| Pattern | Application dans BattleCRM |
 |---------|--------------------------|
 | **Cards épurées** | Affichage prospects/interactions dans listes |
 | **Tables minimalistes** | Performance Matrix, listes avec tri/filtre |
@@ -369,7 +369,7 @@ Plutôt que de créer un design from scratch, tiny-crm s'appuiera sur une biblio
 
 **Basé sur les apps abandonnées (Firefly 3, FreshRSS) :**
 
-| Anti-Pattern | Pourquoi c'est problématique | Solution tiny-crm |
+| Anti-Pattern | Pourquoi c'est problématique | Solution BattleCRM |
 |--------------|-----------------------------|--------------------|
 | **Interface "fouilli"** | Trop d'éléments, cognitive overload | Minimalisme agressif, chaque pixel justifié |
 | **Design "vieillot"** | Apparence datée, manque de confiance | shadcn/ui moderne, Tailwind pour polish |
@@ -424,7 +424,7 @@ Plutôt que de créer un design from scratch, tiny-crm s'appuiera sur une biblio
 
 **Choix Principal : shadcn/ui + Tailwind CSS**
 
-Stack UI retenue pour tiny-crm :
+Stack UI retenue pour BattleCRM :
 - **Tailwind CSS** : Utility-first CSS framework
 - **shadcn/ui** : Collection de composants Radix UI pré-stylés avec Tailwind
 - **Radix Primitives** : Fondation accessible sous-jacente
@@ -485,9 +485,9 @@ Stack UI retenue pour tiny-crm :
 
 **"Voir d'un coup d'œil quel positionnement gagne à chaque étape du funnel"**
 
-C'est l'interaction qui, si elle est parfaitement exécutée, fait le succès de tiny-crm. L'utilisateur doit pouvoir répondre instantanément à : "Pour l'étape X, quelle variante performe le mieux, et puis-je faire confiance à ce chiffre ?"
+C'est l'interaction qui, si elle est parfaitement exécutée, fait le succès de BattleCRM. L'utilisateur doit pouvoir répondre instantanément à : "Pour l'étape X, quelle variante performe le mieux, et puis-je faire confiance à ce chiffre ?"
 
-**Comment l'utilisateur décrirait tiny-crm à un ami :**
+**Comment l'utilisateur décrirait BattleCRM à un ami :**
 > "C'est un outil qui me dit quel CV marche le mieux, avec des vrais chiffres, pas du feeling."
 
 ### User Mental Model
@@ -556,7 +556,7 @@ Closing:     Pas de battle active        ← Volume insuffisant
 
 Ce pattern est une **combinaison de patterns établis** adaptée au use case unique :
 
-| Pattern utilisé | Source | Adaptation tiny-crm |
+| Pattern utilisé | Source | Adaptation BattleCRM |
 |-----------------|--------|---------------------|
 | Dashboard cards | Analytics tools | Une card par étape funnel |
 | Accordion expand | Standard UI | Drill-down inline sans navigation |
@@ -648,7 +648,7 @@ Ce pattern est une **combinaison de patterns établis** adaptée au use case uni
 
 **Approach: Tailwind/shadcn Defaults + Semantic Customization**
 
-tiny-crm adopte les couleurs par défaut de Tailwind CSS et shadcn/ui, avec des personnalisations minimales pour les besoins spécifiques.
+BattleCRM adopte les couleurs par défaut de Tailwind CSS et shadcn/ui, avec des personnalisations minimales pour les besoins spécifiques.
 
 **Base Colors (shadcn defaults):**
 - **Background:** `background` / `card` (light grays, whites)
@@ -658,7 +658,7 @@ tiny-crm adopte les couleurs par défaut de Tailwind CSS et shadcn/ui, avec des 
 - **Accent:** `accent` (hover states, highlights)
 - **Border:** `border` (séparateurs, contours)
 
-**Semantic Colors (custom pour tiny-crm):**
+**Semantic Colors (custom pour BattleCRM):**
 
 | Usage | Color | Application |
 |-------|-------|-------------|
@@ -997,7 +997,7 @@ flowchart TD
 
 **Utilisés tels quels :**
 
-| Component | Usage tiny-crm |
+| Component | Usage BattleCRM |
 |-----------|---------------|
 | `Button` | Actions primaires/secondaires partout |
 | `Input` / `Textarea` | Formulaires (prospect, interaction, positioning) |
@@ -1312,7 +1312,7 @@ src/components/
 
 **Approche : Desktop-First avec Mobile Consultation**
 
-tiny-crm est conçu pour un usage desktop intensif (mode guerre = prospection depuis bureau) avec consultation mobile occasionnelle (check stats rapide).
+BattleCRM est conçu pour un usage desktop intensif (mode guerre = prospection depuis bureau) avec consultation mobile occasionnelle (check stats rapide).
 
 | Device | Usage | Priorité |
 |--------|-------|----------|
@@ -1355,7 +1355,7 @@ tiny-crm est conçu pour un usage desktop intensif (mode guerre = prospection de
 ```
 Mobile (<768px):
 ┌─────────────────┐
-│ ☰ tiny-crm      │  ← Hamburger nav
+│ ☰ BattleCRM      │  ← Hamburger nav
 ├─────────────────┤
 │ [Funnel Card 1] │  ← Stacked
 ├─────────────────┤
