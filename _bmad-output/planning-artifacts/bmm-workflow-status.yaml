@@ -91,7 +91,7 @@ workflow_status:
 
       - id: "test-design"
         name: "Test Design"
-        status: "optional"
+        status: "_bmad-output/test-design-system.md"
         agent: "tea"
         command: "/bmad:bmm:workflows:testarch-test-design"
 
