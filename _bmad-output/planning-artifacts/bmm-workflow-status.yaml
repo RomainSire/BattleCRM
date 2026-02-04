@@ -97,7 +97,7 @@ workflow_status:
 
       - id: "implementation-readiness"
         name: "Implementation Readiness Check"
-        status: "required"
+        status: "_bmad-output/planning-artifacts/implementation-readiness-report-2026-02-04.md"
         agent: "architect"
         command: "/bmad:bmm:workflows:check-implementation-readiness"
 
