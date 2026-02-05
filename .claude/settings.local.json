@@ -3,7 +3,16 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(ls:*)",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:pnpm.io)",
+      "Bash(pnpm --version:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(pnpm list:*)",
+      "Bash(pnpm -r exec:*)",
+      "Bash(pnpm format:*)",
+      "Bash(pnpm type-check:*)"
     ],
     "deny": [],
     "ask": []

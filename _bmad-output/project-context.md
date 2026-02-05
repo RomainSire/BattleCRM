@@ -97,7 +97,7 @@ _Critical rules and patterns for implementing BattleCRM. Read this before writin
 pnpm -r --parallel dev
 
 # Add dependency to frontend
-pnpm --filter frontend add <package>
+pnpm --filter @battlecrm/frontend add <package>
 
 # Run backend migrations
 cd apps/backend && node ace migration:run
