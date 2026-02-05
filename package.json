@@ -1,0 +1,25 @@
+{
+  "name": "battlecrm",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "BattleCRM - Personal CRM for job hunting with A/B testing capabilities",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RomainSire/BattleCRM.git"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "format": "pnpm -r format",
+    "test": "pnpm -r test",
+    "type-check": "pnpm -r type-check"
+  },
+  "engines": {
+    "node": ">=20.6.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

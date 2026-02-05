@@ -1,0 +1,16 @@
+{
+  "name": "@battlecrm/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared types and utilities for BattleCRM (post-MVP evaluation)",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "echo '🚧 Shared package not yet implemented - deferred to post-MVP'",
+    "build": "echo '🚧 Shared package not yet implemented - deferred to post-MVP'",
+    "lint": "echo '🚧 Shared package not yet implemented - deferred to post-MVP'",
+    "format": "echo '🚧 Shared package not yet implemented - deferred to post-MVP'",
+    "test": "echo '🚧 Shared package not yet implemented - deferred to post-MVP'",
+    "type-check": "echo '🚧 Shared package not yet implemented - deferred to post-MVP'"
+  }
+}

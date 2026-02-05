@@ -1,0 +1,14 @@
+{
+  "name": "@battlecrm/frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo '🚧 Frontend not yet scaffolded - see Story 1.2'",
+    "build": "echo '🚧 Frontend not yet scaffolded - see Story 1.2'",
+    "lint": "echo '🚧 Frontend not yet scaffolded - see Story 1.2'",
+    "format": "echo '🚧 Frontend not yet scaffolded - see Story 1.2'",
+    "test": "echo '🚧 Frontend not yet scaffolded - see Story 1.2'",
+    "type-check": "echo '🚧 Frontend not yet scaffolded - see Story 1.2'"
+  }
+}
