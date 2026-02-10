@@ -22,6 +22,7 @@ _Critical rules and patterns for implementing BattleCRM. Read this before writin
 | Backend | Adonis.js 6 | API kit, sessions |
 | Database | Supabase (PostgreSQL) | RLS enabled |
 | Validation | VineJS | Both front and back (separate) |
+| Linting/Formatting | Biome | Root config, replaces ESLint+Prettier |
 | Monorepo | pnpm workspaces | No Turborepo |
 
 ---
@@ -87,6 +88,7 @@ _Critical rules and patterns for implementing BattleCRM. Read this before writin
 - ❌ Full-page loading overlays (use skeletons)
 - ❌ Separate .env per app (use root .env)
 - ❌ Generic component folders (use feature-based)
+- ❌ ESLint/Prettier (use Biome - single `biome.json` at monorepo root)
 
 ---
 
@@ -95,6 +97,12 @@ _Critical rules and patterns for implementing BattleCRM. Read this before writin
 ```bash
 # Run dev
 pnpm -r --parallel dev
+
+# Lint all workspaces (from root)
+pnpm lint
+
+# Format all workspaces (from root)
+pnpm format
 
 # Add dependency to frontend
 pnpm --filter @battlecrm/frontend add <package>

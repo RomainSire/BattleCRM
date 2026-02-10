@@ -12,7 +12,10 @@
       "Bash(pnpm list:*)",
       "Bash(pnpm -r exec:*)",
       "Bash(pnpm format:*)",
-      "Bash(pnpm type-check:*)"
+      "Bash(pnpm type-check:*)",
+      "WebFetch(domain:biomejs.dev)",
+      "WebFetch(domain:docs.adonisjs.com)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []
