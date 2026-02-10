@@ -29,9 +29,6 @@ out/
 # -------------------------------------------
 # IDE & Editors
 # -------------------------------------------
-.vscode/
-!.vscode/extensions.json
-!.vscode/settings.json.example
 .idea/
 *.swp
 *.swo
