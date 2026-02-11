@@ -15,7 +15,8 @@
       "Bash(pnpm type-check:*)",
       "WebFetch(domain:biomejs.dev)",
       "WebFetch(domain:docs.adonisjs.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:lucid.adonisjs.com)"
     ],
     "deny": [],
     "ask": []
