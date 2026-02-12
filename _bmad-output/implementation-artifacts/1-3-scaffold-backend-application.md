@@ -1,6 +1,6 @@
 # Story 1.3: Scaffold Backend Application
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-02-11 -->
 <!-- Previous stories: 1-1-initialize-monorepo-structure (done), 1-2-scaffold-frontend-application (done) -->
@@ -359,6 +359,7 @@ All future API routes should be added within the `/api` prefix group.
 
 The root `.env` already contains these backend-relevant variables:
 ```env
+APP_NAME=BattleCRM
 NODE_ENV=development
 APP_KEY=generate_32_char_random_key_here
 PORT=3333
@@ -470,6 +471,7 @@ Claude Opus 4.6
 |------|--------|--------|
 | 2026-02-11 | Story created with ultimate context analysis (AdonisJS 6 docs research, architecture discrepancies identified) | SM Agent (Opus 4.6) |
 | 2026-02-11 | All 10 tasks implemented and verified | Dev Agent (Opus 4.6) |
+| 2026-02-12 | Code review: 7 issues found (2H, 3M, 2L), all fixed. SESSION_DRIVER enum restricted to cookie-only, dead env vars removed from .env.example, .claude/ added to .gitignore, DB_PASSWORD made required, File List updated, LOG_LEVEL comment corrected, APP_NAME documented | Review Agent (Opus 4.6) |
 
 ### File List
 
@@ -478,6 +480,7 @@ Claude Opus 4.6
 - `apps/backend/adonisrc.ts` - AdonisRC config
 - `apps/backend/tsconfig.json` - TypeScript config (strict mode added)
 - `apps/backend/package.json` - Backend package (restored @battlecrm/backend, ENV_PATH scripts, Biome scripts)
+- `apps/backend/.gitignore` - Adonis-specific gitignore (build/, tmp/)
 - `apps/backend/bin/server.ts` - HTTP server entry
 - `apps/backend/bin/console.ts` - Console entry
 - `apps/backend/bin/test.ts` - Test runner entry
@@ -492,16 +495,24 @@ Claude Opus 4.6
 - `apps/backend/start/env.ts` - Env validation (all root .env variables)
 - `apps/backend/start/kernel.ts` - Middleware registration
 - `apps/backend/start/routes.ts` - Routes (GET /api/health)
-- `apps/backend/app/controllers/` - Controllers directory
-- `apps/backend/app/exceptions/` - Exceptions directory
-- `apps/backend/app/middleware/` - Middleware (auth, guest, etc.)
+- `apps/backend/app/exceptions/handler.ts` - Global exception handler
+- `apps/backend/app/middleware/auth_middleware.ts` - Auth guard middleware
+- `apps/backend/app/middleware/container_bindings_middleware.ts` - Container bindings
+- `apps/backend/app/middleware/force_json_response_middleware.ts` - Force JSON responses
+- `apps/backend/app/middleware/guest_middleware.ts` - Guest-only middleware
+- `apps/backend/app/middleware/silent_auth_middleware.ts` - Silent auth check
 - `apps/backend/app/models/user.ts` - User model
-- `apps/backend/app/validators/` - Validators directory
-- `apps/backend/database/migrations/` - Migration files (users table)
+- `apps/backend/database/migrations/1770843000426_create_users_table.ts` - Users table migration
+- `apps/backend/tests/bootstrap.ts` - Japa test bootstrap config
+- `.brunoCollection/bruno.json` - Bruno API collection config
+- `.brunoCollection/Health check.bru` - Bruno health check request
 
 **Modified files:**
-- `.env` - Renamed DB_NAME → DB_DATABASE, APP_KEY generated
-- `.env.example` - Renamed DB_NAME → DB_DATABASE
+- `.env` - Renamed DB_NAME → DB_DATABASE, APP_KEY generated, added APP_NAME
+- `.env.example` - Renamed DB_NAME → DB_DATABASE, cleaned up dead variables
+- `.gitignore` - Added `.claude/` to ignore list
+- `pnpm-lock.yaml` - Updated from pnpm install
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` - Story status tracking
 
 **Deleted files:**
 - `apps/backend/eslint.config.js` - Replaced by root Biome
