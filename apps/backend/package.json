@@ -53,6 +53,7 @@
     "@adonisjs/lucid": "^21.6.1",
     "@adonisjs/session": "^7.7.1",
     "@vinejs/vine": "^3.0.1",
+    "adonis-lucid-soft-deletes": "^2.1.0",
     "luxon": "^3.7.2",
     "pg": "^8.18.0",
     "reflect-metadata": "^0.2.2"
