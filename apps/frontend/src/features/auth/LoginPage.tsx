@@ -2,8 +2,11 @@ import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { useRegistrationStatus } from './hooks/useAuth'
 
 export function LoginPage() {
+  const { data: registrationStatus } = useRegistrationStatus()
+
   return (
     <div className="flex min-h-screen items-center justify-center p-8">
       <Card className="w-full max-w-md">
@@ -16,9 +19,11 @@ export function LoginPage() {
           <Input type="password" placeholder="Password" />
           <div className="flex items-center justify-between">
             <Button>Sign In</Button>
-            <Button variant="link" asChild>
-              <Link to="/">Back to Dashboard</Link>
-            </Button>
+            {registrationStatus?.allowed && (
+              <Button variant="link" asChild>
+                <Link to="/register">Create an account</Link>
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
