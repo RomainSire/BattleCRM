@@ -1,11 +1,13 @@
 import { Eye, EyeOff } from 'lucide-react'
 import { type ComponentProps, forwardRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
 const PasswordInput = forwardRef<HTMLInputElement, Omit<ComponentProps<typeof Input>, 'type'>>(
   ({ className, ...props }, ref) => {
+    const { t } = useTranslation()
     const [visible, setVisible] = useState(false)
 
     return (
@@ -23,7 +25,7 @@ const PasswordInput = forwardRef<HTMLInputElement, Omit<ComponentProps<typeof In
           className="absolute top-0 right-0 h-9 w-9 text-muted-foreground hover:text-foreground"
           onClick={() => setVisible((v) => !v)}
           tabIndex={-1}
-          aria-label={visible ? 'Hide password' : 'Show password'}
+          aria-label={visible ? t('accessibility.hidePassword') : t('accessibility.showPassword')}
         >
           {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </Button>

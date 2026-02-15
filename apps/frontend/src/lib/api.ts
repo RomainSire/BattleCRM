@@ -1,17 +1,41 @@
+import i18next from 'i18next'
+
 const API_BASE = import.meta.env.VITE_API_URL
+
+interface ApiErrorDetail {
+  message: string
+  field?: string
+  rule?: string
+  meta?: Record<string, unknown>
+}
 
 /**
  * Custom error class for API errors, containing status code and error details
  */
 export class ApiError extends Error {
   status: number
-  errors: Array<{ message: string; field?: string; rule?: string }>
+  errors: ApiErrorDetail[]
 
-  constructor(status: number, errors: Array<{ message: string; field?: string; rule?: string }>) {
+  constructor(status: number, errors: ApiErrorDetail[]) {
     super(errors[0]?.message ?? 'An error occurred')
     this.status = status
     this.errors = errors
   }
+}
+
+/**
+ * Translate a backend error using i18next.
+ * If the message looks like a translation key (contains a dot), translate it.
+ * Otherwise, return the message as-is (fallback).
+ */
+export function translateError(error: ApiErrorDetail): string {
+  if (i18next.exists(error.message)) {
+    return i18next.t(error.message, {
+      ...error.meta,
+      field: error.field ? i18next.t(`auth.fields.${error.field}`) : undefined,
+    })
+  }
+  return error.message
 }
 
 /**

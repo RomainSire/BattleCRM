@@ -1,10 +1,13 @@
+import { vineResolver } from '@hookform/resolvers/vine'
+import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import { Link, useNavigate } from 'react-router'
+import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { TextField } from '@/components/ui/text-field'
-import { ApiError } from '@/lib/api'
-import { vineResolver } from '@hookform/resolvers/vine'
-import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router'
+import { ApiError, translateError } from '@/lib/api'
+import { i18nMessagesProvider } from '@/lib/validation'
 import { useRegister, useRegistrationStatus } from './hooks/useAuth'
 import { registerSchema } from './schemas/schemas'
 
@@ -15,12 +18,13 @@ interface RegisterFormValues {
 }
 
 export function RegisterPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: registrationStatus, isLoading: isLoadingStatus } = useRegistrationStatus()
   const register = useRegister()
 
   const form = useForm<RegisterFormValues>({
-    resolver: vineResolver(registerSchema),
+    resolver: vineResolver(registerSchema, { messagesProvider: i18nMessagesProvider }),
     defaultValues: {
       email: '',
       password: '',
@@ -38,7 +42,7 @@ export function RegisterPage() {
             for (const err of error.errors) {
               if (err.field) {
                 form.setError(err.field as keyof RegisterFormValues, {
-                  message: err.message,
+                  message: translateError(err),
                 })
               }
             }
@@ -54,17 +58,18 @@ export function RegisterPage() {
 
   if (!registrationStatus?.allowed) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-8">
+      <div className="relative flex min-h-screen items-center justify-center p-8">
+        <div className="absolute top-4 right-4">
+          <LanguageSwitcher />
+        </div>
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Registration Disabled</CardTitle>
-            <CardDescription>
-              Registration is currently disabled. Please contact an administrator.
-            </CardDescription>
+            <CardTitle>{t('auth.registrationDisabled.title')}</CardTitle>
+            <CardDescription>{t('auth.registrationDisabled.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button variant="link" asChild className="p-0">
-              <Link to="/login">Go to login</Link>
+              <Link to="/login">{t('auth.registrationDisabled.goToLogin')}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -73,44 +78,47 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-8">
+    <div className="relative flex min-h-screen items-center justify-center p-8">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Register</CardTitle>
-          <CardDescription>Create your BattleCRM account</CardDescription>
+          <CardTitle>{t('auth.register.title')}</CardTitle>
+          <CardDescription>{t('auth.register.description')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <TextField
               control={form.control}
               name="email"
-              label="Email"
+              label={t('auth.fields.email')}
               type="email"
-              placeholder="you@example.com"
+              placeholder={t('auth.placeholders.email')}
             />
 
             <TextField
               control={form.control}
               name="password"
-              label="Password"
+              label={t('auth.fields.password')}
               type="password"
-              placeholder="Minimum 8 characters"
+              placeholder={t('auth.placeholders.password')}
             />
 
             <TextField
               control={form.control}
               name="passwordConfirmation"
-              label="Confirm Password"
+              label={t('auth.fields.confirmPassword')}
               type="password"
-              placeholder="Repeat your password"
+              placeholder={t('auth.placeholders.confirmPassword')}
             />
 
             <div className="flex items-center justify-between">
               <Button type="submit" disabled={register.isPending}>
-                {register.isPending ? 'Creating account...' : 'Create account'}
+                {register.isPending ? t('auth.register.submitting') : t('auth.register.submit')}
               </Button>
               <Button variant="link" asChild>
-                <Link to="/login">Already have an account? Sign in</Link>
+                <Link to="/login">{t('auth.register.signIn')}</Link>
               </Button>
             </div>
           </form>

@@ -1,0 +1,54 @@
+{
+  "common": {
+    "appName": "BattleCRM",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue"
+  },
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "description": "Connectez-vous à BattleCRM",
+      "submit": "Se connecter",
+      "createAccount": "Créer un compte"
+    },
+    "register": {
+      "title": "Inscription",
+      "description": "Créez votre compte BattleCRM",
+      "submit": "Créer le compte",
+      "submitting": "Création du compte...",
+      "signIn": "Déjà un compte ? Se connecter"
+    },
+    "registrationDisabled": {
+      "title": "Inscription désactivée",
+      "description": "L'inscription est actuellement désactivée. Veuillez contacter un administrateur.",
+      "goToLogin": "Aller à la connexion"
+    },
+    "notAuthenticated": "Non authentifié",
+    "fields": {
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "confirmPassword": "Confirmer le mot de passe"
+    },
+    "placeholders": {
+      "email": "vous@exemple.com",
+      "password": "Minimum 8 caractères",
+      "confirmPassword": "Répétez votre mot de passe"
+    }
+  },
+  "dashboard": {
+    "title": "BattleCRM",
+    "description": "Bienvenue dans votre CRM personnel",
+    "goToLogin": "Aller à la connexion"
+  },
+  "validation": {
+    "required": "{{field}} est requis",
+    "email": "Doit être une adresse e-mail valide",
+    "minLength": "Doit contenir au moins {{min}} caractères",
+    "confirmed": "Ne correspond pas",
+    "unique": "Déjà enregistré"
+  },
+  "accessibility": {
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe"
+  }
+}

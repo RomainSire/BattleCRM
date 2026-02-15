@@ -1,7 +1,7 @@
+import type { HttpContext } from '@adonisjs/core/http'
 import User from '#models/user'
 import env from '#start/env'
 import { registerValidator } from '#validators/auth'
-import type { HttpContext } from '@adonisjs/core/http'
 
 export default class AuthController {
   /**
@@ -11,7 +11,9 @@ export default class AuthController {
   async register({ request, response, auth }: HttpContext) {
     const allowRegistration = env.get('ALLOW_REGISTRATION')
     if (!allowRegistration) {
-      return response.forbidden({ message: 'Registration is currently disabled' })
+      return response.forbidden({
+        errors: [{ message: 'auth.registrationDisabled.description', rule: 'forbidden' }],
+      })
     }
 
     const data = await request.validateUsing(registerValidator)
@@ -27,7 +29,7 @@ export default class AuthController {
         (error as { code: string }).code === '23505'
       ) {
         return response.unprocessableEntity({
-          errors: [{ message: 'This email is already registered', field: 'email' }],
+          errors: [{ message: 'validation.unique', field: 'email', rule: 'unique' }],
         })
       }
       throw error
@@ -54,7 +56,9 @@ export default class AuthController {
   async me({ auth, response }: HttpContext) {
     const user = auth.user
     if (!user) {
-      return response.unauthorized({ message: 'Not authenticated' })
+      return response.unauthorized({
+        errors: [{ message: 'auth.notAuthenticated', rule: 'unauthorized' }],
+      })
     }
     return response.ok({ id: user.id, email: user.email })
   }

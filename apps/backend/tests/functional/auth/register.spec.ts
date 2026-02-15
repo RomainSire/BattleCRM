@@ -33,7 +33,7 @@ test.group('POST /api/auth/register', (group) => {
 
     response.assertStatus(422)
     response.assertBodyContains({
-      errors: [{ message: 'This email is already registered', field: 'email' }],
+      errors: [{ message: 'validation.unique', field: 'email', rule: 'unique' }],
     })
   })
 
