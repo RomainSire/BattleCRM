@@ -1,0 +1,54 @@
+{
+  "common": {
+    "appName": "BattleCRM",
+    "loading": "Loading...",
+    "error": "An error occurred"
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "description": "Sign in to BattleCRM",
+      "submit": "Sign In",
+      "createAccount": "Create an account"
+    },
+    "register": {
+      "title": "Register",
+      "description": "Create your BattleCRM account",
+      "submit": "Create account",
+      "submitting": "Creating account...",
+      "signIn": "Already have an account? Sign in"
+    },
+    "registrationDisabled": {
+      "title": "Registration Disabled",
+      "description": "Registration is currently disabled. Please contact an administrator.",
+      "goToLogin": "Go to login"
+    },
+    "notAuthenticated": "Not authenticated",
+    "fields": {
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm Password"
+    },
+    "placeholders": {
+      "email": "you@example.com",
+      "password": "Minimum 8 characters",
+      "confirmPassword": "Repeat your password"
+    }
+  },
+  "dashboard": {
+    "title": "BattleCRM",
+    "description": "Welcome to your personal CRM",
+    "logout": "Log out"
+  },
+  "validation": {
+    "required": "{{field}} is required",
+    "email": "Must be a valid email address",
+    "minLength": "Must be at least {{min}} characters",
+    "confirmed": "Does not match",
+    "unique": "Already registered"
+  },
+  "accessibility": {
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
+  }
+}

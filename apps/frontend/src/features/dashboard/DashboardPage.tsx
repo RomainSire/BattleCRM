@@ -1,21 +1,23 @@
-import { Link } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useLogout } from '@/features/auth/hooks/useAuth'
 
 export function DashboardPage() {
+  const { t } = useTranslation()
+  const logout = useLogout()
+
   return (
-    <div className="flex min-h-screen items-center justify-center p-8">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>BattleCRM</CardTitle>
-          <CardDescription>Welcome to your personal CRM</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild>
-            <Link to="/login">Go to Login</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>{t('dashboard.title')}</CardTitle>
+        <CardDescription>{t('dashboard.description')}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button variant="outline" onClick={() => logout.mutate()} disabled={logout.isPending}>
+          {t('dashboard.logout')}
+        </Button>
+      </CardContent>
+    </Card>
   )
 }
