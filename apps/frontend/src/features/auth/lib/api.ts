@@ -15,4 +15,8 @@ export const authApi = {
   me() {
     return fetchApi<{ id: string; email: string }>('/auth/me')
   },
+
+  logout() {
+    return fetchApi<{ message: string }>('/auth/logout', { method: 'POST' })
+  },
 }

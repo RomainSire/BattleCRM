@@ -38,7 +38,7 @@
   "dashboard": {
     "title": "BattleCRM",
     "description": "Welcome to your personal CRM",
-    "goToLogin": "Go to Login"
+    "logout": "Log out"
   },
   "validation": {
     "required": "{{field}} is required",

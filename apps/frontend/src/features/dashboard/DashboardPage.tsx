@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useLogout } from '@/features/auth/hooks/useAuth'
 
 export function DashboardPage() {
   const { t } = useTranslation()
+  const logout = useLogout()
 
   return (
     <Card className="w-full max-w-md">
@@ -13,8 +14,8 @@ export function DashboardPage() {
         <CardDescription>{t('dashboard.description')}</CardDescription>
       </CardHeader>
       <CardContent>
-        <Button asChild>
-          <Link to="/login">{t('dashboard.goToLogin')}</Link>
+        <Button variant="outline" onClick={() => logout.mutate()} disabled={logout.isPending}>
+          {t('dashboard.logout')}
         </Button>
       </CardContent>
     </Card>

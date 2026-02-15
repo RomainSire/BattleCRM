@@ -1,9 +1,26 @@
 import { test } from '@japa/runner'
 import User from '#models/user'
+import env from '#start/env'
 
 test.group('POST /api/auth/register', (group) => {
   group.each.teardown(async () => {
     await User.query().whereILike('email', '%@test-register.com').delete()
+  })
+
+  test('returns 403 when registration is disabled', async ({ client, cleanup }) => {
+    const original = env.get('ALLOW_REGISTRATION')
+    env.set('ALLOW_REGISTRATION', false)
+    cleanup(() => env.set('ALLOW_REGISTRATION', original))
+
+    const response = await client.post('/api/auth/register').json({
+      email: 'disabled@test-register.com',
+      password: 'password123',
+    })
+
+    response.assertStatus(403)
+    response.assertBodyContains({
+      errors: [{ message: 'auth.registrationDisabled.description' }],
+    })
   })
 
   test('creates a user and establishes session with valid data', async ({ client, assert }) => {

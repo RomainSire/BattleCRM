@@ -37,3 +37,17 @@ export function useRegister() {
     },
   })
 }
+
+/**
+ * Log out the current user and clear all auth-related queries
+ */
+export function useLogout() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => authApi.logout(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all })
+    },
+  })
+}

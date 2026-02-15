@@ -51,15 +51,18 @@ export default class AuthController {
 
   /**
    * Get the currently authenticated user's information
-   * @returns User data if authenticated, or an unauthorized error if not authenticated
+   * Route is protected by auth middleware — user is guaranteed to exist
    */
   async me({ auth, response }: HttpContext) {
-    const user = auth.user
-    if (!user) {
-      return response.unauthorized({
-        errors: [{ message: 'auth.notAuthenticated', rule: 'unauthorized' }],
-      })
-    }
+    const user = auth.user!
     return response.ok({ id: user.id, email: user.email })
+  }
+
+  /**
+   * Log out the current user by terminating their session
+   */
+  async logout({ auth, response }: HttpContext) {
+    await auth.use('web').logout()
+    return response.ok({ message: 'Logged out' })
   }
 }

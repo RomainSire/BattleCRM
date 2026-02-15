@@ -8,7 +8,7 @@ import { TextField } from '@/components/ui/text-field'
 import { ApiError, translateError } from '@/lib/api'
 import { i18nMessagesProvider } from '@/lib/validation'
 import { useRegister, useRegistrationStatus } from './hooks/useAuth'
-import { registerSchema } from './schemas/schemas'
+import { registerSchema } from './schemas/register'
 
 interface RegisterFormValues {
   email: string
