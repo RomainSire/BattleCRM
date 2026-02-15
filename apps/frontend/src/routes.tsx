@@ -1,4 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { AuthLayout } from '@/components/layouts/AuthLayout'
+import { GuestLayout } from '@/components/layouts/GuestLayout'
 import { AuthGuard } from '@/features/auth/components/AuthGuard'
 import { GuestGuard } from '@/features/auth/components/GuestGuard'
 import { LoginPage } from '@/features/auth/LoginPage'
@@ -10,11 +12,15 @@ export function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route element={<AuthGuard />}>
-          <Route path="/" element={<DashboardPage />} />
+          <Route element={<AuthLayout />}>
+            <Route path="/" element={<DashboardPage />} />
+          </Route>
         </Route>
         <Route element={<GuestGuard />}>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route element={<GuestLayout />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
