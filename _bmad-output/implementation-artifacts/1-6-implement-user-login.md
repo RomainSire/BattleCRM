@@ -1,6 +1,6 @@
 # Story 1.6: Implement User Login
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-02-15 -->
 <!-- Previous stories: 1-1 (done), 1-2 (done), 1-3 (done), 1-4 (done), 1-5 (done) -->
@@ -79,6 +79,10 @@ So that **I can access my BattleCRM data securely**.
 
 - [x] **Task 9: Add Bruno API File** (AC: 1)
   - [x] 9.1 Create `.brunoCollection/auth/Login.bru` with `POST /api/auth/login` endpoint definition
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][Medium] Add fallback error message in LoginPage `onError` for non-ApiError errors (network failures) — user sees no feedback currently [apps/frontend/src/features/auth/LoginPage.tsx:40-43]
 
 ## Dev Notes
 
@@ -315,6 +319,31 @@ apps/frontend/
 
 ---
 
+## Senior Developer Review (AI)
+
+**Review Date:** 2026-02-18
+**Reviewer:** Claude Opus 4.6 (Code Review Workflow)
+**Outcome:** Approved (all action items resolved)
+
+### Action Items
+
+- [x] [HIGH] Backend `catch` block catches ALL errors instead of only `E_INVALID_CREDENTIALS` — database failures masked as "invalid credentials" [apps/backend/app/controllers/auth_controller.ts:54]
+- [x] [MEDIUM] No visible feedback for network errors (non-ApiError) in LoginPage `onError` handler [apps/frontend/src/features/auth/LoginPage.tsx:40-43]
+- [x] [LOW] Unnecessary `async` keyword on `onSubmit` function [apps/frontend/src/features/auth/LoginPage.tsx:34]
+- [x] [LOW] Test for 422 (invalid email) doesn't verify VineJS error body structure [apps/backend/tests/functional/auth/login.spec.ts:56-63]
+
+### Review Notes
+
+- **AC Validation:** All 7 ACs properly implemented and verified
+- **Task Audit:** All 9 tasks marked [x] are genuinely complete — verified against actual code
+- **Git vs File List:** Consistent, no discrepancies
+- **Security:** Fixed critical issue where blanket `catch` could mask database errors as "invalid credentials". Now only catches `E_INVALID_CREDENTIALS` and re-throws other errors
+- **Test Quality:** Improved 422 tests to verify VineJS error body structure (field/rule assertions)
+- **Code Quality:** Removed unnecessary `async` keyword. Code follows RegisterPage patterns correctly
+- **Finding #4 (cookie assertion) withdrawn:** AdonisJS session middleware sets `battlecrm_session` cookie on every request regardless of auth status — this is expected behavior, not a bug
+
+---
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -336,6 +365,7 @@ No issues encountered during implementation.
 - 6 functional tests covering all login scenarios (valid credentials, wrong password, non-existent email, invalid format, missing fields, guest middleware redirect)
 - Bruno API file created for Login endpoint documentation
 - All 14 backend tests pass (0 regressions), TypeScript compiles clean, Biome passes
+- ✅ Resolved review finding [Medium]: Added fallback error message (`t('common.error')`) for non-ApiError network failures in LoginPage
 
 ### Change Log
 
@@ -343,6 +373,8 @@ No issues encountered during implementation.
 |------|--------|--------|
 | 2026-02-15 | Story created with ultimate context analysis (login: backend API + frontend form + validation + tests) | SM Agent (Opus 4.6) |
 | 2026-02-18 | Full story implementation: backend login API + frontend form + tests + i18n + Bruno file | Dev Agent (Opus 4.6) |
+| 2026-02-18 | Code review: fixed blanket catch (HIGH), removed async keyword (LOW), improved test assertions (LOW). 1 action item remaining (network error feedback). | Review Agent (Opus 4.6) |
+| 2026-02-18 | Addressed code review findings — 1 item resolved (network error fallback in LoginPage) | Dev Agent (Opus 4.6) |
 
 ### File List
 

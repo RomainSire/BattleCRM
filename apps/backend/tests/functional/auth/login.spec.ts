@@ -53,19 +53,28 @@ test.group('POST /api/auth/login', (group) => {
     })
   })
 
-  test('returns 422 with invalid email format', async ({ client }) => {
+  test('returns 422 with invalid email format', async ({ client, assert }) => {
     const response = await client.post('/api/auth/login').json({
       email: 'not-an-email',
       password: 'password123',
     })
 
     response.assertStatus(422)
+    const body = response.body()
+    assert.property(body, 'errors')
+    assert.isArray(body.errors)
+    assert.isNotEmpty(body.errors)
+    assert.equal(body.errors[0].field, 'email')
   })
 
-  test('returns 422 with missing fields', async ({ client }) => {
+  test('returns 422 with missing fields', async ({ client, assert }) => {
     const response = await client.post('/api/auth/login').json({})
 
     response.assertStatus(422)
+    const body = response.body()
+    assert.property(body, 'errors')
+    assert.isArray(body.errors)
+    assert.isAbove(body.errors.length, 0)
   })
 
   test('redirects when already logged in (guest middleware)', async ({ client }) => {

@@ -1,13 +1,13 @@
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { TextField } from '@/components/ui/text-field'
-import { ApiError, translateError } from '@/lib/api'
-import { i18nMessagesProvider } from '@/lib/validation'
 import { vineResolver } from '@hookform/resolvers/vine'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { TextField } from '@/components/ui/text-field'
+import { ApiError, translateError } from '@/lib/api'
+import { i18nMessagesProvider } from '@/lib/validation'
 import { useLogin, useRegistrationStatus } from './hooks/useAuth'
 import { loginSchema } from './schemas/login'
 
@@ -31,7 +31,7 @@ export function LoginPage() {
     },
   })
 
-  async function onSubmit(data: LoginFormValues) {
+  function onSubmit(data: LoginFormValues) {
     setServerError(null)
     login.mutate(
       { email: data.email, password: data.password },
@@ -40,6 +40,8 @@ export function LoginPage() {
         onError: (error) => {
           if (error instanceof ApiError && error.errors.length > 0) {
             setServerError(translateError(error.errors[0]))
+          } else {
+            setServerError(t('common.error'))
           }
         },
       },
