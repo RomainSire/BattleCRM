@@ -1,6 +1,6 @@
 # Story 1.6: Implement User Login
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate Context Engine Analysis: 2026-02-15 -->
 <!-- Previous stories: 1-1 (done), 1-2 (done), 1-3 (done), 1-4 (done), 1-5 (done) -->
@@ -23,62 +23,62 @@ So that **I can access my BattleCRM data securely**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create Login API Endpoint** (AC: 1, 2)
-  - [ ] 1.1 Add `loginValidator` to `app/validators/auth.ts` with VineJS schema: `email` (required, valid email, trim, lowercase), `password` (required, string)
-  - [ ] 1.2 Add `login` method to `app/controllers/auth_controller.ts`:
+- [x] **Task 1: Create Login API Endpoint** (AC: 1, 2)
+  - [x] 1.1 Add `loginValidator` to `app/validators/auth.ts` with VineJS schema: `email` (required, valid email, trim, lowercase), `password` (required, string)
+  - [x] 1.2 Add `login` method to `app/controllers/auth_controller.ts`:
     - Validate request with `loginValidator`
     - Call `User.verifyCredentials(data.email, data.password)` (from AuthFinder mixin)
     - Catch `E_INVALID_CREDENTIALS` exception → return 400 with `{ errors: [{ message: "auth.login.invalidCredentials" }] }`
     - On success: `await auth.use('web').login(user)`
     - Return 200 with `{ user: { id, email } }`
 
-- [ ] **Task 2: Add Login Route** (AC: 1, 3)
-  - [ ] 2.1 Add `router.post('/login', [AuthController, 'login']).use(middleware.guest())` in the auth route group in `start/routes.ts`
+- [x] **Task 2: Add Login Route** (AC: 1, 3)
+  - [x] 2.1 Add `router.post('/login', [AuthController, 'login']).use(middleware.guest())` in the auth route group in `start/routes.ts`
 
-- [ ] **Task 3: Add Frontend Login API Method** (AC: 1, 2)
-  - [ ] 3.1 Add `login(email: string, password: string)` method to `authApi` in `src/features/auth/lib/api.ts`
-  - [ ] 3.2 Method calls `POST /auth/login` with `{ email, password }` body, returns `{ user: { id, email } }`
+- [x] **Task 3: Add Frontend Login API Method** (AC: 1, 2)
+  - [x] 3.1 Add `login(email: string, password: string)` method to `authApi` in `src/features/auth/lib/api.ts`
+  - [x] 3.2 Method calls `POST /auth/login` with `{ email, password }` body, returns `{ user: { id, email } }`
 
-- [ ] **Task 4: Create Login Hook** (AC: 1, 2)
-  - [ ] 4.1 Add `useLogin()` mutation hook in `src/features/auth/hooks/useAuth.ts`
-  - [ ] 4.2 On success: `queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() })` to trigger auth state refresh
+- [x] **Task 4: Create Login Hook** (AC: 1, 2)
+  - [x] 4.1 Add `useLogin()` mutation hook in `src/features/auth/hooks/useAuth.ts`
+  - [x] 4.2 On success: `queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() })` to trigger auth state refresh
 
-- [ ] **Task 5: Create Login Schema** (AC: 5, 6)
-  - [ ] 5.1 Create `src/features/auth/schemas/login.ts` with VineJS schema: `email` (required, valid email, trim, lowercase), `password` (required, string — no minLength on login, only on register)
+- [x] **Task 5: Create Login Schema** (AC: 5, 6)
+  - [x] 5.1 Create `src/features/auth/schemas/login.ts` with VineJS schema: `email` (required, valid email, trim, lowercase), `password` (required, string — no minLength on login, only on register)
 
-- [ ] **Task 6: Implement Login Form in LoginPage** (AC: 1, 2, 5, 6, 7)
-  - [ ] 6.1 Refactor `src/features/auth/LoginPage.tsx` from placeholder to working form:
+- [x] **Task 6: Implement Login Form in LoginPage** (AC: 1, 2, 5, 6, 7)
+  - [x] 6.1 Refactor `src/features/auth/LoginPage.tsx` from placeholder to working form:
     - Use `react-hook-form` with `useForm()` and `@hookform/resolvers/vine` for VineJS validation
     - Use `TextField` component for email field (same pattern as RegisterPage)
     - Use `PasswordInput` wrapped in `Field` for password field (same pattern as RegisterPage)
     - Submit button with loading state (disabled + "Signing in..." text during mutation)
-  - [ ] 6.2 On form submit: call `useLogin()` mutation with `{ email, password }`
-  - [ ] 6.3 On success: navigate to `/` (dashboard) — TanStack Query auth invalidation triggers AuthGuard refresh
-  - [ ] 6.4 On error: display server error message above the form (translated via `i18next.t()`) — NOT as field-level error since "Invalid email or password" applies to both fields
-  - [ ] 6.5 Keep conditional link to register page (already exists, uses `useRegistrationStatus`)
-  - [ ] 6.6 Add link to register page: "Don't have an account? Create one" (already partially done)
+  - [x] 6.2 On form submit: call `useLogin()` mutation with `{ email, password }`
+  - [x] 6.3 On success: navigate to `/` (dashboard) — TanStack Query auth invalidation triggers AuthGuard refresh
+  - [x] 6.4 On error: display server error message above the form (translated via `i18next.t()`) — NOT as field-level error since "Invalid email or password" applies to both fields
+  - [x] 6.5 Keep conditional link to register page (already exists, uses `useRegistrationStatus`)
+  - [x] 6.6 Add link to register page: "Don't have an account? Create one" (already partially done)
 
-- [ ] **Task 7: Add i18n Translation Keys** (AC: 1, 2, 5, 6)
-  - [ ] 7.1 Add to `public/locales/en.json`:
+- [x] **Task 7: Add i18n Translation Keys** (AC: 1, 2, 5, 6)
+  - [x] 7.1 Add to `public/locales/en.json`:
     - `auth.login.submit`: "Sign In" (already exists)
     - `auth.login.submitting`: "Signing in..."
     - `auth.login.invalidCredentials`: "Invalid email or password"
-  - [ ] 7.2 Add to `public/locales/fr.json`:
+  - [x] 7.2 Add to `public/locales/fr.json`:
     - `auth.login.submitting`: "Connexion en cours..."
     - `auth.login.invalidCredentials`: "Email ou mot de passe invalide"
 
-- [ ] **Task 8: Backend Tests** (AC: 1, 2, 3)
-  - [ ] 8.1 Create `tests/functional/auth/login.spec.ts`:
+- [x] **Task 8: Backend Tests** (AC: 1, 2, 3)
+  - [x] 8.1 Create `tests/functional/auth/login.spec.ts`:
     - Test: POST /api/auth/login with valid credentials → 200, user data, session cookie set
     - Test: POST /api/auth/login with wrong password → 400 with error message
     - Test: POST /api/auth/login with non-existent email → 400 with error message (same error as wrong password for security)
     - Test: POST /api/auth/login with invalid email format → 422 validation error
     - Test: POST /api/auth/login with missing fields → 422 validation error
     - Test: POST /api/auth/login when already logged in → redirect (guest middleware)
-  - [ ] 8.2 Each test creates/deletes its own test user with `@test-login.com` email domain and teardown cleanup
+  - [x] 8.2 Each test creates/deletes its own test user with `@test-login.com` email domain and teardown cleanup
 
-- [ ] **Task 9: Add Bruno API File** (AC: 1)
-  - [ ] 9.1 Create `.brunoCollection/auth/Login.bru` with `POST /api/auth/login` endpoint definition
+- [x] **Task 9: Add Bruno API File** (AC: 1)
+  - [x] 9.1 Create `.brunoCollection/auth/Login.bru` with `POST /api/auth/login` endpoint definition
 
 ## Dev Notes
 
@@ -319,16 +319,41 @@ apps/frontend/
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+No issues encountered during implementation.
+
 ### Completion Notes List
+
+- Backend login endpoint implemented with VineJS validation and AuthFinder `verifyCredentials` pattern
+- Login route added with guest middleware for AC3 (redirect if already logged in)
+- Frontend login API method, `useLogin()` hook, and VineJS login schema created
+- LoginPage refactored from placeholder to fully functional form following RegisterPage patterns
+- Server-side "invalid credentials" error displayed as form-level alert (not field-level) per security best practices
+- i18n translation keys added for both EN and FR locales
+- 6 functional tests covering all login scenarios (valid credentials, wrong password, non-existent email, invalid format, missing fields, guest middleware redirect)
+- Bruno API file created for Login endpoint documentation
+- All 14 backend tests pass (0 regressions), TypeScript compiles clean, Biome passes
 
 ### Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-02-15 | Story created with ultimate context analysis (login: backend API + frontend form + validation + tests) | SM Agent (Opus 4.6) |
+| 2026-02-18 | Full story implementation: backend login API + frontend form + tests + i18n + Bruno file | Dev Agent (Opus 4.6) |
 
 ### File List
+
+- `apps/backend/app/controllers/auth_controller.ts` — MODIFIED: added `login` method
+- `apps/backend/app/validators/auth.ts` — MODIFIED: added `loginValidator`
+- `apps/backend/start/routes.ts` — MODIFIED: added POST `/login` route with guest middleware
+- `apps/backend/tests/functional/auth/login.spec.ts` — NEW: 6 functional tests for login endpoint
+- `apps/frontend/src/features/auth/lib/api.ts` — MODIFIED: added `login()` method to `authApi`
+- `apps/frontend/src/features/auth/hooks/useAuth.ts` — MODIFIED: added `useLogin()` mutation hook
+- `apps/frontend/src/features/auth/schemas/login.ts` — NEW: VineJS login schema (no minLength on password)
+- `apps/frontend/src/features/auth/LoginPage.tsx` — MODIFIED: refactored from placeholder to working login form
+- `apps/frontend/public/locales/en.json` — MODIFIED: added `auth.login.submitting` and `auth.login.invalidCredentials`
+- `apps/frontend/public/locales/fr.json` — MODIFIED: added `auth.login.submitting` and `auth.login.invalidCredentials`
+- `.brunoCollection/auth/Login.bru` — NEW: Bruno API file for login endpoint

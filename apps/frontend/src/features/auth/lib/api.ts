@@ -16,6 +16,13 @@ export const authApi = {
     return fetchApi<{ id: string; email: string }>('/auth/me')
   },
 
+  login(email: string, password: string) {
+    return fetchApi<{ user: { id: string; email: string } }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    })
+  },
+
   logout() {
     return fetchApi<{ message: string }>('/auth/logout', { method: 'POST' })
   },
