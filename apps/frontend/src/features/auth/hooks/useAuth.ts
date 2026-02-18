@@ -62,7 +62,7 @@ export function useLogout() {
   return useMutation({
     mutationFn: () => authApi.logout(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all })
+      queryClient.setQueryData(queryKeys.auth.me(), null)
     },
   })
 }

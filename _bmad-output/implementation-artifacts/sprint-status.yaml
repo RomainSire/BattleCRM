@@ -48,7 +48,7 @@ development_status:
   1-4-configure-supabase-database-schema: done
   1-5-implement-user-registration: done
   1-6-implement-user-login: done
-  1-7-implement-user-logout: backlog
+  1-7-implement-user-logout: review
   1-8-setup-docker-development-environment: backlog
   epic-1-retrospective: optional
 

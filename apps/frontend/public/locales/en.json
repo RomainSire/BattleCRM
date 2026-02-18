@@ -40,7 +40,8 @@
   "dashboard": {
     "title": "BattleCRM",
     "description": "Welcome to your personal CRM",
-    "logout": "Log out"
+    "logout": "Log out",
+    "loggingOut": "Logging out..."
   },
   "validation": {
     "required": "{{field}} is required",
