@@ -1,6 +1,6 @@
 # Story 1.7: Implement User Logout
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-02-18 -->
 <!-- Previous stories: 1-1 (done), 1-2 (done), 1-3 (done), 1-4 (done), 1-5 (done), 1-6 (done) -->
@@ -61,7 +61,7 @@ async logout({ auth, response }: HttpContext) {
 router.post('/logout', [AuthController, 'logout']).use(middleware.auth())
 ```
 
-**Frontend — ALREADY EXISTS, DO NOT MODIFY (except DashboardPage loading text):**
+**Frontend — ALREADY EXISTS, DO NOT MODIFY (except DashboardPage loading text and useLogout cache strategy):**
 ```typescript
 // apps/frontend/src/features/auth/lib/api.ts
 logout() {
@@ -69,12 +69,14 @@ logout() {
 }
 
 // apps/frontend/src/features/auth/hooks/useAuth.ts
+// NOTE: useLogout was fixed during this story — see "Logout Redirect Loop Fix" below
 export function useLogout() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => authApi.logout(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all })
+      // setQueryData(null) instead of invalidateQueries — see bug fix notes below
+      queryClient.setQueryData(queryKeys.auth.me(), null)
     },
   })
 }
@@ -95,16 +97,15 @@ Frontend                           Backend
    (destroys session in DB/store)
    ← 200 { message: 'Logged out' }
 
-3. Frontend: queryClient.invalidateQueries({ queryKey: queryKeys.auth.all })
-   → useCurrentUser() refetches → GET /api/auth/me
-   ← 401 (no session)
+3. Frontend: queryClient.setQueryData(queryKeys.auth.me(), null)
+   → useCurrentUser() data immediately set to null (no refetch needed)
    → AuthGuard detects no user → Navigate to /login
 ```
 
 **AC2 & AC3 are handled by AuthGuard:**
 - `AuthGuard` checks `useCurrentUser()` on every render
 - If user is not authenticated, it redirects to `/login`
-- After logout, the query cache is cleared → `useCurrentUser()` returns error → AuthGuard redirects
+- After logout, the `auth.me` query data is set to `null` → `useCurrentUser()` returns no data → AuthGuard redirects
 - Browser back button triggers AuthGuard re-evaluation → still no user → stays on `/login`
 
 ### Files to MODIFY
@@ -128,7 +129,6 @@ apps/backend/
 
 - `app/controllers/auth_controller.ts` — logout method already exists
 - `start/routes.ts` — logout route already exists
-- `src/features/auth/hooks/useAuth.ts` — useLogout hook already exists
 - `src/features/auth/lib/api.ts` — logout API method already exists
 - `src/features/auth/components/AuthGuard.tsx` — already handles redirect
 - `.brunoCollection/auth/Logout.bru` — already exists
@@ -160,6 +160,7 @@ apps/backend/
 - **DO NOT** create a new Bruno file — it already exists
 - **DO NOT** use `assertCookieMissing('battlecrm_session')` — AdonisJS always sets session cookie
 - **DO NOT** add explicit `navigate('/login')` after logout — AuthGuard cascade handles this correctly
+- **DO NOT** use `invalidateQueries` for logout — it keeps stale cached data while refetching, causing AuthGuard/GuestGuard redirect loop. Use `setQueryData(null)` instead to immediately clear data and notify observers
 
 ### References
 
@@ -179,7 +180,14 @@ Claude Opus 4.6
 
 ### Debug Log References
 
-No issues encountered during implementation.
+#### Logout Redirect Loop Fix
+
+User testing revealed a critical redirect loop bug after logout:
+- **Symptom:** "Maximum update depth exceeded", "Too many calls to Location or History APIs", page freezes
+- **Root cause:** `invalidateQueries` keeps stale cached user data while triggering a refetch. GuestGuard sees stale data → redirects to `/`, AuthGuard sees refetch error → redirects to `/login` → infinite loop
+- **Attempted fix 1:** `removeQueries` → removed query entirely but TanStack Query observers are not notified → page stays on dashboard
+- **Final fix:** `queryClient.setQueryData(queryKeys.auth.me(), null)` → immediately sets data to null, all observers (AuthGuard) re-render reactively, natural redirect via guard cascade
+- **Scope note:** Changed from `queryKeys.auth.all` to `queryKeys.auth.me()` — only the user query needs clearing on logout, `registrationStatus` is independent of auth state
 
 ### Completion Notes List
 
@@ -187,6 +195,7 @@ No issues encountered during implementation.
 - Created 3 functional tests for logout endpoint (authenticated logout, unauthenticated attempt, protected route guard)
 - All 17 backend tests pass (0 regressions), TypeScript compiles clean, Biome passes
 - Backend logout endpoint, route, frontend API, hook, and Bruno file were all pre-existing from Story 1.5 code review
+- Fixed critical logout redirect loop: changed `useLogout` from `invalidateQueries` to `setQueryData(null)` after user testing revealed AuthGuard/GuestGuard conflict
 
 ### Change Log
 
@@ -194,10 +203,13 @@ No issues encountered during implementation.
 |------|--------|--------|
 | 2026-02-18 | Story created with ultimate context analysis (logout: tests + loading state, most code already exists) | SM Agent (Opus 4.6) |
 | 2026-02-18 | Full story implementation: logout loading state + i18n keys + 3 functional tests | Dev Agent (Opus 4.6) |
+| 2026-02-18 | Bug fix: changed useLogout from invalidateQueries to setQueryData(null) to fix redirect loop | Dev Agent (Opus 4.6) |
+| 2026-02-18 | Code review: updated story documentation (File List, Dev Notes, Debug Log, Change Log) | Review (Opus 4.6) |
 
 ### File List
 
 - `apps/frontend/src/features/dashboard/DashboardPage.tsx` — MODIFIED: added loading text on logout button
+- `apps/frontend/src/features/auth/hooks/useAuth.ts` — MODIFIED: changed `useLogout` cache strategy from `invalidateQueries` to `setQueryData(null)` (redirect loop fix)
 - `apps/frontend/public/locales/en.json` — MODIFIED: added `dashboard.loggingOut`
 - `apps/frontend/public/locales/fr.json` — MODIFIED: added `dashboard.loggingOut`
 - `apps/backend/tests/functional/auth/logout.spec.ts` — NEW: 3 functional tests for logout endpoint
