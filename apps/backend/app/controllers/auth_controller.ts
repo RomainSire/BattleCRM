@@ -1,7 +1,8 @@
+import { errors as authErrors } from '@adonisjs/auth'
 import type { HttpContext } from '@adonisjs/core/http'
 import User from '#models/user'
 import env from '#start/env'
-import { registerValidator } from '#validators/auth'
+import { loginValidator, registerValidator } from '#validators/auth'
 
 export default class AuthController {
   /**
@@ -38,6 +39,27 @@ export default class AuthController {
     await auth.use('web').login(user)
 
     return response.created({ user: { id: user.id, email: user.email } })
+  }
+
+  /**
+   * Handle user login with email and password
+   * @returns Authenticated user data or error if credentials are invalid
+   */
+  async login({ request, response, auth }: HttpContext) {
+    const data = await request.validateUsing(loginValidator)
+
+    try {
+      const user = await User.verifyCredentials(data.email, data.password)
+      await auth.use('web').login(user)
+      return response.ok({ user: { id: user.id, email: user.email } })
+    } catch (error) {
+      if (error instanceof authErrors.E_INVALID_CREDENTIALS) {
+        return response.badRequest({
+          errors: [{ message: 'auth.login.invalidCredentials' }],
+        })
+      }
+      throw error
+    }
   }
 
   /**

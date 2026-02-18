@@ -23,6 +23,7 @@ router
       .group(() => {
         router.get('/registration-status', [AuthController, 'registrationStatus'])
         router.post('/register', [AuthController, 'register']).use(middleware.guest())
+        router.post('/login', [AuthController, 'login']).use(middleware.guest())
         router.get('/me', [AuthController, 'me']).use(middleware.auth())
         router.post('/logout', [AuthController, 'logout']).use(middleware.auth())
       })

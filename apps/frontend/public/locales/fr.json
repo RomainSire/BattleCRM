@@ -9,6 +9,8 @@
       "title": "Connexion",
       "description": "Connectez-vous à BattleCRM",
       "submit": "Se connecter",
+      "submitting": "Connexion en cours...",
+      "invalidCredentials": "Email ou mot de passe invalide",
       "createAccount": "Créer un compte"
     },
     "register": {

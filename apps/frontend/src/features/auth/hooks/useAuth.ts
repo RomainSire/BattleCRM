@@ -39,6 +39,21 @@ export function useRegister() {
 }
 
 /**
+ * Log in a user and invalidate the current user query on success
+ */
+export function useLogin() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) =>
+      authApi.login(email, password),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() })
+    },
+  })
+}
+
+/**
  * Log out the current user and clear all auth-related queries
  */
 export function useLogout() {

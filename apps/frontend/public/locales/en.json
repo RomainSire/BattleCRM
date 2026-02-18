@@ -9,6 +9,8 @@
       "title": "Login",
       "description": "Sign in to BattleCRM",
       "submit": "Sign In",
+      "submitting": "Signing in...",
+      "invalidCredentials": "Invalid email or password",
       "createAccount": "Create an account"
     },
     "register": {
