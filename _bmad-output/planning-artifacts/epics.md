@@ -91,7 +91,7 @@ This document provides the complete epic and story breakdown for BattleCRM, deco
 - FR53: Users can log out
 - FR54: System isolates user data by user_id (multi-tenant architecture)
 - FR55: Administrator can enable/disable new user registration via environment variable
-- FR56: System enforces Row Level Security to prevent cross-user data access
+- FR56: System enforces application-level user isolation to prevent cross-user data access (implemented via AdonisJS `forUser()` query scope — RLS removed in Story 1.8 architecture change)
 
 **Battle Management - A/B Testing per Funnel Stage (FR57-FR64)**
 - FR57: Each funnel stage can have an active Battle (A vs B test between two positioning variants)
@@ -339,7 +339,7 @@ This document provides the complete epic and story breakdown for BattleCRM, deco
 | FR53 | Epic 1 | Log out |
 | FR54 | Epic 1 | Isolate user data by user_id |
 | FR55 | Epic 1 | ALLOW_REGISTRATION env control |
-| FR56 | Epic 1 | Row Level Security enforcement |
+| FR56 | Epic 1 | Application-level user isolation (forUser() scope, not RLS) |
 | FR57 | Epic 7 | Active Battle per funnel stage |
 | FR58 | Epic 7 | Start new Battle |
 | FR59 | Epic 7 | Close Battle on significance |
@@ -355,7 +355,7 @@ This document provides the complete epic and story breakdown for BattleCRM, deco
 Établir l'infrastructure technique et permettre aux utilisateurs de créer un compte et se connecter de manière sécurisée. L'utilisateur peut créer un compte, se connecter, et accéder à une application fonctionnelle avec isolation des données.
 
 **FRs covered:** FR51, FR52, FR53, FR54, FR55, FR56
-**Additional:** Setup monorepo (pnpm workspaces), frontend (Vite+React), backend (Adonis.js), PostgreSQL schema + migrations, Docker Compose (prod + local DB), backend user isolation middleware
+**Additional:** Setup monorepo (pnpm workspaces), frontend (Vite+React), backend (Adonis.js), PostgreSQL schema + migrations, Docker Compose (prod + local DB), application-level user isolation via `forUser()` query scope (RLS removed — plain PostgreSQL, not Supabase)
 
 ### Epic 2: Funnel Configuration
 Permettre aux utilisateurs de configurer leur pipeline de prospection personnalisé. L'utilisateur peut créer, modifier et organiser les étapes de son funnel (max 15 étapes) via une page Settings dédiée.
@@ -612,7 +612,7 @@ So that users can have a working funnel from day one.
 **Given** I am setting up the funnel configuration feature
 **When** I run the database migration
 **Then** a funnel_stages table is created with: id, user_id, name, position (integer), created_at, updated_at, deleted_at
-**And** Row Level Security is enabled filtering by user_id
+**And** a `forUser(userId)` query scope is implemented on the FunnelStage model for application-level user isolation (no RLS — architecture decision from Story 1.8)
 **And** a unique constraint exists on (user_id, position) for active stages
 **And** an index exists on (user_id, deleted_at) for efficient queries
 
