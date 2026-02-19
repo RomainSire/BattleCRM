@@ -39,7 +39,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 | Performance Analytics | FR29-FR37 | **Élevée** - Bayesian calculations, Battle tracking |
 | Funnel Configuration | FR38-FR44 | Configuration dynamique (max 15 étapes) |
 | Data Import/Export | FR45-FR50 | **Élevée** - CSV parsing, duplicate detection, mapping |
-| User Management | FR51-FR56 | Supabase Auth + RLS multi-tenant |
+| User Management | FR51-FR56 | Adonis native auth + backend-enforced multi-tenant |
 | Battle Management | FR57-FR64 | **Élevée** - A/B test state machine per funnel stage |
 
 **Non-Functional Requirements:**
@@ -49,7 +49,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 | Catégorie | NFRs | Impact Architectural |
 |-----------|------|---------------------|
 | Performance | NFR1-NFR9 | Page load <2s, bundle <300KB, CSV import <5min |
-| Security | NFR10-NFR20 | Supabase RLS, HTTPS, CSRF, user isolation |
+| Security | NFR10-NFR20 | Adonis sessions, HTTPS, CSRF, backend user isolation |
 | Data Integrity | NFR21-NFR28 | **Critique** - Transactions, soft delete, zero bug policy |
 | Accessibility | NFR29-NFR40 | WCAG 2.1 Level A, shadcn/ui built-in |
 | Usability | NFR41-NFR48 | 3-click rule, <1min logging, pre-fill |
@@ -61,7 +61,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 - Primary domain: **Full-stack Web SPA**
 - Complexity level: **Medium** (unique business logic, limited scope)
 - Estimated architectural components: **~15-20** (3 views + analytics + auth + config + import)
-- Multi-tenancy: **Yes** (via Supabase RLS, low user count)
+- Multi-tenancy: **Yes** (via backend middleware + user_id query filtering, low user count)
 - Real-time: **No** (standard request/response)
 - Compliance: **No** (personal tool)
 
@@ -74,8 +74,8 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 | Frontend | React 18+ / Vite | Fast dev, optimized builds |
 | Styling | Tailwind CSS + shadcn/ui | Modern, accessible, Tailwind-native |
 | Backend | Adonis.js | TypeScript, batteries-included |
-| Database | Supabase (PostgreSQL) | Auth + RLS + managed infra |
-| Deployment | Docker + Docker Compose | Consistent envs, VPS-ready |
+| Database | PostgreSQL 16 (Docker) | Self-hosted, no external dependency |
+| Deployment | Docker + Docker Compose | Primary: production on VPS; also usable for local dev |
 | Monorepo | pnpm workspaces | Fast, disk-efficient |
 
 **Technical Constraints:**
@@ -90,7 +90,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 
 | Concern | Impact | Implementation Approach |
 |---------|--------|------------------------|
-| **Multi-tenant Isolation** | All queries | Supabase RLS policies on all tables |
+| **Multi-tenant Isolation** | All queries | Backend middleware + `WHERE user_id = :currentUser` on all queries |
 | **Soft Delete** | All entities | `deleted_at` field, archive search toggle |
 | **Data Validation** | All mutations | Backend validation + frontend UX |
 | **Error Handling** | All operations | Inline errors, no popups, clear messages |
@@ -117,7 +117,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 
 **Rationale for Selection:**
 
-1. **PRD Alignment** - Stack already defined (React/Vite + Adonis.js + Supabase)
+1. **PRD Alignment** - Stack already defined (React/Vite + Adonis.js + PostgreSQL/Docker)
 2. **Separation of Concerns** - Frontend and backend evolve independently
 3. **Tool Currency** - Each tool can be updated independently
 4. **No Lock-in** - Not dependent on opinionated framework decisions
@@ -154,7 +154,7 @@ cd ../..
 
 ```bash
 cd apps
-npm init adonisjs@latest backend -- --kit=api --db=postgres --auth-guard=access_tokens
+npm init adonisjs@latest backend -- --kit=api --db=postgres --auth-guard=session
 cd ..
 ```
 
@@ -189,8 +189,8 @@ pnpm install
 
 **Backend (Adonis.js 6):**
 - API starter kit (no views, REST-focused)
-- PostgreSQL database driver (for Supabase)
-- Access tokens authentication guard
+- PostgreSQL database driver
+- Session authentication guard (httpOnly cookies)
 - Ace CLI for commands and migrations
 
 **UI Components (shadcn/ui):**
@@ -276,8 +276,8 @@ BattleCRM/
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | **Auth Method** | Adonis Sessions + httpOnly cookies | Simpler than JWT for same-origin SPA, no refresh token management, secure by default |
-| **Auth Provider** | Supabase Auth + Adonis session guard | Supabase handles user storage, Adonis handles session |
-| **Authorization** | Supabase RLS + backend middleware | Defense in depth - RLS at DB level, middleware at API level |
+| **Auth Provider** | Adonis native auth (scrypt hashing) | Users stored in local PostgreSQL, Adonis manages all auth |
+| **Authorization** | Backend middleware + user_id query filtering | All queries scoped to authenticated user_id; no RLS (not available without Supabase) |
 
 **Implementation Notes:**
 - Configure Adonis session guard (not access tokens)
@@ -366,7 +366,7 @@ BattleCRM/
 
 ### Naming Patterns
 
-**Database (PostgreSQL/Supabase):**
+**Database (PostgreSQL):**
 
 | Element | Convention | Example |
 |---------|------------|---------|
@@ -621,8 +621,8 @@ BattleCRM/
 ```
 Frontend (React)              Backend (Adonis)              Database
 ────────────────              ────────────────              ────────
-TanStack Query                Controllers                   Supabase
-    │                              │                        (PostgreSQL + RLS)
+TanStack Query                Controllers                   PostgreSQL
+    │                              │                        (Docker, user_id isolated)
     │──── HTTP/REST ──────────────►│                              │
     │     (credentials: include)   │                              │
     │                              ▼                              │
@@ -746,11 +746,12 @@ All technology choices work together without conflicts:
 **Confidence Level:** HIGH
 
 **Key Strengths:**
-- Coherent technology choices (React/Vite + Adonis + Supabase)
+- Coherent technology choices (React/Vite + Adonis + PostgreSQL/Docker)
 - Clear separation of concerns (frontend/backend/database)
 - Well-defined patterns preventing AI agent conflicts
 - Feature-based organization scales well
 - Proven stack with strong documentation
+- Fully self-contained deployment (no external DB dependency)
 
 **Areas for Future Enhancement:**
 - Shared types package (evaluate after initial development)
@@ -771,8 +772,8 @@ All technology choices work together without conflicts:
 1. Initialize monorepo with pnpm workspace
 2. Scaffold frontend with Vite + React + TypeScript
 3. Scaffold backend with Adonis.js API kit
-4. Configure root .env and Docker Compose
-5. Set up Supabase project and RLS policies
+4. Configure root .env and Docker Compose (including PostgreSQL service)
+5. Run database migrations to create schema
 
 ## Architecture Completion Summary
 
@@ -799,7 +800,7 @@ All technology choices work together without conflicts:
 - 131 requirements fully supported
 
 **AI Agent Implementation Guide**
-- Technology stack: React/Vite + Adonis.js + Supabase + pnpm workspaces
+- Technology stack: React/Vite + Adonis.js + PostgreSQL (Docker) + pnpm workspaces
 - Consistency rules preventing implementation conflicts
 - Project structure with clear boundaries (feature-based frontend, Adonis standard backend)
 - Integration patterns (REST, sessions, RLS)

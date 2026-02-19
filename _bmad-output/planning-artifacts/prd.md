@@ -62,9 +62,9 @@ The product addresses the unique freelance workflow: long periods in mission (hi
 **Technical Architecture:**
 - **Frontend:** React + Vite
 - **Backend:** Adonis.js
-- **Database:** Supabase (built-in auth + Row Level Security + delegated backup/infrastructure)
+- **Database:** PostgreSQL (self-hosted via Docker Compose — no external dependency)
 - **Hosting:** Self-hosted VPS
-- **Authentication:** Email/Password via Supabase with `ALLOW_REGISTRATION` environment variable control
+- **Authentication:** Email/Password via Adonis native auth (scrypt hashing, httpOnly session cookies) with `ALLOW_REGISTRATION` environment variable control
 - **Repository Structure:** Simple monorepo with front app, back app, and shared schemas/types/DTOs
 
 **Core Data Model:**
@@ -179,8 +179,8 @@ Each funnel stage runs its own independent "Battle" (A vs B test):
 - Tool must be objectively faster than Excel/Notion/Airtable for every operation
 
 **Architecture Success:**
-- Multi-user data isolation via user_id functional from day one
-- Authentication (Supabase) working securely with Row Level Security
+- Multi-user data isolation via user_id functional from day one (enforced at backend middleware level)
+- Authentication working securely with user isolation (Adonis native sessions)
 - Customizable funnel (max 15 stages) operational without code changes
 - Bayesian updating calculations producing actionable baseline comparisons
 
@@ -238,10 +238,9 @@ Each funnel stage runs its own independent "Battle" (A vs B test):
    - Max 15 stages, linear order (no complex branching)
    - Settings page for configuration (isolated from daily workflow)
 
-5. **Multi-User + Auth (Supabase)**
-   - Email/Password authentication
-   - Data isolation via user_id from day one
-   - Row Level Security enforced
+5. **Multi-User + Auth**
+   - Email/Password authentication (Adonis native sessions)
+   - Data isolation via user_id from day one (enforced at backend level)
    - `ALLOW_REGISTRATION` environment variable control
 
 6. **Interactions Timeline**
@@ -277,7 +276,7 @@ Each funnel stage runs its own independent "Battle" (A vs B test):
     - Performance Matrix shows current Battle status per funnel stage
 
 **Technical Requirements (MVP):**
-- Stack: React + Vite / Adonis.js / Supabase / VPS
+- Stack: React + Vite / Adonis.js / PostgreSQL (Docker) / VPS
 - Repository: Simple monorepo (front app / back app / shared types-schemas-DTOs)
 - Automated tests on critical operations
 - Data integrity absolute (transactions, validation, soft delete everywhere)
@@ -366,7 +365,7 @@ Trois mois plus tard, quand son contrat se termine brusquement (le client coupe 
 
 Thomas est développeur freelance et ami de Romain. Il prospecte "à l'ancienne" : un Google Sheet avec 30 prospects, des notes éparses dans Notion, ses CV dans un dossier Dropbox. Quand sa mission se termine, il panique toujours un peu et envoie le même CV à tout le monde.
 
-Romain lui montre BattleCRM un soir : "Regarde, j'ai testé 3 CV différents. Celui-ci converti 20% mieux. J'ai les chiffres." Thomas est intrigué mais sceptique. Romain lui crée un compte (variable `ALLOW_REGISTRATION=true` activée temporairement). "Teste pendant un mois, tes données sont 100% isolées des miennes."
+Romain lui montre BattleCRM un soir : "Regarde, j'ai testé 3 CV différents. Celui-ci converti 20% mieux. J'ai les chiffres." Thomas est intrigué mais sceptique. Romain lui crée un compte (variable `ALLOW_REGISTRATION=true` activée temporairement, redémarre le backend). "Teste pendant un mois, tes données sont 100% isolées des miennes."
 
 Thomas commence doucement. Import de 20 prospects, 2 variantes de CV. Les deux premières semaines, il trouve l'interface agréable mais pas révolutionnaire. La troisième semaine, la Performance Matrix commence à montrer des patterns : son CV "senior" performe mieux avec les grandes ESN, son CV "expert technique" marche mieux avec les ESN mid-size.
 
@@ -383,7 +382,7 @@ Le déclic arrive quand sa première Battle atteint la significativité : il tes
 
 Romain vient de terminer le MVP de BattleCRM. Deux de ses amis freelances lui demandent d'essayer l'outil. Il se connecte en SSH sur son VPS, édite le fichier `.env` : `ALLOW_REGISTRATION=true`. Il envoie l'URL à Thomas et Julie avec un message : "Créez vos comptes, vous avez 48h. Après je referme les inscriptions."
 
-Thomas et Julie créent leurs comptes via l'interface standard email/password. Romain vérifie dans Supabase que le Row Level Security fonctionne correctement : chaque utilisateur ne voit que ses propres données. Il fait un test rapide : se connecte avec le compte de test, essaie d'accéder à l'API avec un autre user_id → accès refusé. Parfait.
+Thomas et Julie créent leurs comptes via l'interface standard email/password. Romain vérifie que l'isolation fonctionne correctement : chaque utilisateur ne voit que ses propres données. Il fait un test rapide : se connecte avec le compte de test, essaie d'accéder à l'API avec un autre user_id → accès refusé par le backend. Parfait.
 
 Une semaine plus tard, Thomas signale un bug étrange : "Mes doublons ne sont pas bien détectés lors de l'import CSV." Romain se connecte à son propre compte (pas celui de Thomas - il ne peut pas accéder aux données de Thomas), reproduit le bug avec ses propres données, identifie le problème dans le code, déploie un fix en 30 minutes.
 
@@ -416,8 +415,8 @@ Deux mois après le lancement, Romain décide de fermer temporairement les inscr
 - Archive searchable (soft delete)
 
 **Multi-User & Admin:**
-- Auth Supabase avec RLS
-- Isolation totale par user_id
+- Auth Adonis native sessions
+- Isolation totale par user_id (backend-enforced)
 - Variable ALLOW_REGISTRATION
 - Onboarding simple
 
@@ -586,13 +585,13 @@ BattleCRM is built as a **Single Page Application (SPA)** using React + Vite for
 - pnpm for fast, efficient dependency management
 
 **Deployment Strategy:**
-- **Containerization:** Docker + Docker Compose
+- **Containerization:** Docker + Docker Compose (primary use: **production** on VPS; can also be used for local dev)
 - **Frontend Container:** Node-based build → nginx serving static files
 - **Backend Container:** Node runtime with Adonis.js application
+- **Database Container:** PostgreSQL 16 (self-hosted, no external dependency)
 - **Reverse Proxy:** nginx container routing /api/* to backend
-- **Database:** Supabase (external managed service, not containerized)
 
-**Docker Compose Structure:**
+**Docker Compose Structure (production):**
 ```yaml
 services:
   frontend:
@@ -605,6 +604,11 @@ services:
     - Port 3333 internal
     - Environment variables for config
 
+  postgres:
+    - PostgreSQL 16
+    - Persistent volume for data
+    - Internal network only
+
   nginx-proxy:
     - Routes / to frontend
     - Routes /api/* to backend
@@ -612,7 +616,8 @@ services:
 ```
 
 **Benefits of Docker Approach:**
-- Consistent environments (dev/staging/prod)
+- Self-contained deployment (no external database dependency)
+- Consistent environments (dev/prod)
 - Easy deployment and rollback
 - Isolated dependencies
 - Simplified VPS setup
@@ -626,7 +631,7 @@ services:
 
 **Security Considerations:**
 - HTTPS enforced
-- CSRF protection via Supabase/backend
+- CSRF protection via Adonis backend
 - XSS prevention via React's default escaping
 - Content Security Policy headers
 - Environment variables for secrets (never committed)
@@ -647,8 +652,8 @@ services:
 **Resource Requirements:**
 - **Team Size:** Solo developer (toi) avec AI assistance pour accélération
 - **Timeline:** 7-9 semaines de développement MVP
-- **Skills:** Full-stack TypeScript, React, Adonis.js, Supabase, Docker
-- **Infrastructure:** VPS self-hosted, Supabase managed database
+- **Skills:** Full-stack TypeScript, React, Adonis.js, PostgreSQL, Docker
+- **Infrastructure:** VPS self-hosted, PostgreSQL in Docker
 
 ### MVP Feature Set (Phase 1 - 7-9 Weeks)
 
@@ -684,9 +689,9 @@ services:
    - Max 15 stages, ordre linéaire
    - Settings page isolée du workflow quotidien
 
-5. **Multi-User + Auth (Supabase)**
-   - Email/Password authentication
-   - Data isolation via user_id (RLS)
+5. **Multi-User + Auth**
+   - Email/Password authentication (Adonis native sessions)
+   - Data isolation via user_id (backend-enforced, no RLS)
    - Variable `ALLOW_REGISTRATION` pour contrôle
 
 6. **Interactions Timeline**
@@ -937,21 +942,21 @@ Semaines 22-25:
 ### Security
 
 **Authentication & Authorization:**
-- **NFR10:** All user authentication must use Supabase Email/Password with secure token management
-- **NFR11:** Row Level Security (RLS) must enforce data isolation between users
+- **NFR10:** All user authentication must use Adonis native session auth with httpOnly cookies (scrypt password hashing)
+- **NFR11:** Backend middleware must enforce data isolation between users (all queries filtered by user_id)
 - **NFR12:** No user can access another user's data under any circumstance
 - **NFR13:** Administrator registration control via `ALLOW_REGISTRATION` environment variable
 
 **Data Protection:**
 - **NFR14:** HTTPS must be enforced for all connections
-- **NFR15:** CSRF protection must be implemented via Supabase/backend
+- **NFR15:** CSRF protection must be implemented via Adonis backend
 - **NFR16:** XSS prevention via React's default escaping
 - **NFR17:** Content Security Policy headers must be configured
 - **NFR18:** Environment variables for secrets must never be committed to repository
 
 **Multi-Tenant Isolation:**
-- **NFR19:** All database queries must filter by user_id automatically
-- **NFR20:** Supabase RLS policies must prevent cross-user data leakage
+- **NFR19:** All database queries must filter by user_id automatically (enforced in backend services/controllers)
+- **NFR20:** Backend middleware must reject requests attempting to access data belonging to another user_id
 
 ### Reliability & Data Integrity
 
@@ -1030,7 +1035,7 @@ Semaines 22-25:
 **Development Experience:**
 - **NFR56:** Hot Module Replacement (HMR) must work reliably via Vite
 - **NFR57:** pnpm workspaces must enable efficient monorepo management
-- **NFR58:** Docker Compose must provide consistent dev/staging/prod environments
+- **NFR58:** Docker Compose must provide a consistent production environment (also usable for local dev)
 
 **Deployment Quality:**
 - **NFR59:** Docker containers must be production-ready and optimized

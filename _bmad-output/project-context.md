@@ -20,7 +20,7 @@ _Critical rules and patterns for implementing BattleCRM. Read this before writin
 | State | TanStack Query | Centralized query keys |
 | Routing | React Router v7 | Declarative mode |
 | Backend | Adonis.js 6 | API kit, sessions |
-| Database | Supabase (PostgreSQL) | RLS enabled |
+| Database | PostgreSQL 16 (Docker) | Backend-enforced user isolation |
 | Validation | VineJS | Both front and back (separate) |
 | Linting/Formatting | Biome | Root config, replaces ESLint+Prettier |
 | Monorepo | pnpm workspaces | No Turborepo |
@@ -47,8 +47,9 @@ _Critical rules and patterns for implementing BattleCRM. Read this before writin
 
 ### Authentication
 - Sessions with httpOnly cookies (NOT JWT)
+- Adonis native auth: scrypt password hashing, users in local PostgreSQL
 - All fetch calls: `credentials: 'include'`
-- Supabase RLS enforces user isolation
+- User isolation enforced at backend level (all queries scoped to `auth.user.id`)
 
 ### Data Patterns
 - **Soft delete only** - never hard delete, use `deleted_at`
@@ -89,6 +90,8 @@ _Critical rules and patterns for implementing BattleCRM. Read this before writin
 - ❌ Separate .env per app (use root .env)
 - ❌ Generic component folders (use feature-based)
 - ❌ ESLint/Prettier (use Biome - single `biome.json` at monorepo root)
+- ❌ Supabase SDK or external DB (use local PostgreSQL in Docker)
+- ❌ Database-level RLS (not applicable without Supabase — enforce isolation in backend)
 
 ---
 

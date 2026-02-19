@@ -1,6 +1,13 @@
-# Story 1.4: Configure Supabase & Database Schema
+# Story 1.4: Configure PostgreSQL Database Schema
 
 Status: done
+
+> **⚠️ ARCHITECTURE CHANGE NOTE (2026-02-19):** The original implementation used Supabase as the database host with RLS policies. The architecture has been revised: **PostgreSQL now runs locally in Docker Compose** (no external Supabase dependency). As a result:
+> - The RLS migration (`0002_enable_rls_on_users.ts`) and `SetRlsUserMiddleware` are **deprecated** and should be removed (handled in Story 1.8)
+> - SSL config (`DB_SSL`) is no longer needed for Docker-based PostgreSQL (always `false`)
+> - The `db_dev/docker-compose.yml` quick-fix is replaced by the main `docker-compose.yml` from Story 1.8
+> - User isolation is enforced at **backend level** (`forUser` scope + auth middleware) — the `forUser` scope remains valid
+> - Auth was already Adonis native (this was always correct)
 
 <!-- Ultimate Context Engine Analysis: 2026-02-12 -->
 <!-- Previous stories: 1-1-initialize-monorepo-structure (done), 1-2-scaffold-frontend-application (done), 1-3-scaffold-backend-application (done) -->
@@ -8,19 +15,19 @@ Status: done
 ## Story
 
 As a **developer**,
-I want **Supabase connected with user authentication tables and RLS policies**,
-So that **user data is properly isolated and secure from day one**.
+I want **PostgreSQL connected (Docker) with user authentication tables and migrations**,
+So that **user data is properly stored and isolated from day one**.
 
 ## Acceptance Criteria
 
-1. **AC1:** Lucid ORM connects to Supabase PostgreSQL with SSL enabled and proper pool configuration
-2. **AC2:** The existing users migration is replaced with UUID primary key (`gen_random_uuid()`) and `deleted_at` column
-3. **AC3:** The User model uses UUID (`id: string`), soft delete via `adonis-lucid-soft-deletes`, and composes `AuthFinder` + `SoftDeletes` mixins
-4. **AC4:** Row Level Security is enabled on the users table with a policy ensuring users can only read/update their own record
-5. **AC5:** A middleware sets the PostgreSQL session variable `app.current_user_id` for RLS enforcement
-6. **AC6:** Lucid query scopes provide application-level user isolation (`forUser` scope pattern)
-7. **AC7:** `ENV_PATH=../../ node ace migration:run` executes successfully against Supabase PostgreSQL
-8. **AC8:** The users table has proper indexes (unique on email, index on deleted_at)
+1. **AC1:** Lucid ORM connects to local PostgreSQL (Docker) with pool configuration — ~~SSL was for Supabase, no longer required~~
+2. **AC2:** The existing users migration is replaced with UUID primary key (`gen_random_uuid()`) and `deleted_at` column ✅
+3. **AC3:** The User model uses UUID (`id: string`), soft delete via `adonis-lucid-soft-deletes`, and composes `AuthFinder` + `SoftDeletes` mixins ✅
+4. ~~**AC4:** Row Level Security is enabled~~ — **DEPRECATED** (Story 1.8 will remove this migration)
+5. ~~**AC5:** A middleware sets `app.current_user_id` for RLS~~ — **DEPRECATED** (Story 1.8 will remove this middleware)
+6. **AC6:** Lucid query scopes provide application-level user isolation (`forUser` scope pattern) ✅ — **PRIMARY isolation mechanism**
+7. **AC7:** `ENV_PATH=../../ node ace migration:run` executes successfully against local PostgreSQL ✅
+8. **AC8:** The users table has proper indexes (unique on email, index on deleted_at) ✅
 
 ## Tasks / Subtasks
 
@@ -81,33 +88,27 @@ So that **user data is properly isolated and secure from day one**.
 
 ## Dev Notes
 
-### Critical Architecture Requirements
-
-**MUST USE these exact technologies - NO substitutions:**
+### Architecture Requirements
 
 | Technology | Version/Choice | Notes |
 |-----------|---------------|-------|
-| Database | Supabase PostgreSQL | Direct connection (port 5432), NOT transaction mode pooler (port 6543) |
-| UUID function | `gen_random_uuid()` | Native PostgreSQL 13+, NO extension required. Do NOT use `uuid_generate_v4()` |
+| Database | PostgreSQL 16 (Docker) | Local container, port 5432, no SSL |
+| UUID function | `gen_random_uuid()` | Native PostgreSQL 13+, NO extension required |
 | Soft delete | `adonis-lucid-soft-deletes` | Community package for AdonisJS 6 Lucid |
-| User isolation | Lucid query scopes (primary) + RLS (defense-in-depth) | Dual-layer approach |
-| Auth | AdonisJS session auth (scrypt) | Already configured in Story 1.3. NOT Supabase Auth SDK |
+| User isolation | Lucid query scopes (`forUser`) | **Only** application-level isolation — RLS deprecated |
+| Auth | AdonisJS session auth (scrypt) | Configured in Story 1.3 |
 
-### CRITICAL: Auth Clarification
+### Auth Clarification
 
-The PRD and architecture documents mention "Supabase Auth" but the implementation uses **AdonisJS native session authentication** (configured in Story 1.3 with `sessionGuard` + `scrypt` hashing + httpOnly cookies). Supabase is used **ONLY as managed PostgreSQL database**, not for authentication. This means:
+The implementation uses **AdonisJS native session authentication** (configured in Story 1.3 with `sessionGuard` + `scrypt` hashing + httpOnly cookies). No Supabase Auth SDK is used or needed.
 
-- User passwords are hashed by AdonisJS (scrypt), not Supabase Auth
-- Sessions are managed by AdonisJS session middleware, not Supabase tokens
-- RLS policies must use `current_setting('app.current_user_id')`, not `auth.uid()` (Supabase Auth function)
-- No Supabase Auth SDK (`@supabase/supabase-js`) is needed
+- User passwords are hashed by AdonisJS (scrypt)
+- Sessions are managed by AdonisJS session middleware
+- No Supabase Auth SDK (`@supabase/supabase-js`) is needed or installed
 
-### CRITICAL: Connection Mode
+### Connection Mode
 
-AdonisJS is a long-running server process. Lucid ORM (Knex) uses prepared statements internally. Use **direct/session mode (port 5432)** for Supabase connections, NOT transaction mode pooler (port 6543) which does not support prepared statements.
-
-**For local development:** Use a local PostgreSQL instance (port 5432, no SSL).
-**For Supabase:** Use the direct connection host with SSL enabled.
+PostgreSQL runs in Docker on port 5432. Use direct connection (no SSL, no connection pooler quirks). `DB_SSL=false` always.
 
 ### Migration Code: Users Table
 
@@ -286,13 +287,14 @@ const dbConfig = defineConfig({
 export default dbConfig
 ```
 
-### Environment Variables to Add
+### Environment Variables
 
-| Variable | Value (local dev) | Value (Supabase) | Purpose |
-|----------|-------------------|-------------------|---------|
-| `DB_SSL` | `false` | `true` | Enable SSL for Supabase connections |
-
-**Existing variables (already in .env):** `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE` - no changes needed to these.
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `DB_SSL` | `false` | Always false for Docker PostgreSQL (was for Supabase) |
+| `DB_HOST` | `localhost` (dev) / `postgres` (Docker) | DB host |
+| `DB_PORT` | `5432` | PostgreSQL port |
+| `DB_USER`, `DB_PASSWORD`, `DB_DATABASE` | configured in `.env` | DB credentials |
 
 ### Previous Story Intelligence
 
@@ -334,11 +336,9 @@ export default dbConfig
 - **DO NOT** use `uuid_generate_v4()` - requires `uuid-ossp` extension; use `gen_random_uuid()` (native)
 - **DO NOT** use `selfAssignPrimaryKey = true` - database generates UUID via `gen_random_uuid()`, not application
 - **DO NOT** use `this.raw()` in migrations - that's AdonisJS 5 syntax; use `this.db.rawQuery().knexQuery` for defaults, `this.schema.raw()` for standalone SQL
-- **DO NOT** use Supabase Auth SDK (`@supabase/supabase-js`) - auth is AdonisJS native
-- **DO NOT** use transaction mode pooler (port 6543) - Lucid uses prepared statements; use direct connection (port 5432)
+- **DO NOT** use Supabase SDK or connect to external Supabase — use Docker PostgreSQL
 - **DO NOT** hard delete records - always use soft delete (`deleted_at`)
-- **DO NOT** register RLS middleware globally - register as named middleware, applied per route group
-- **DO NOT** use `auth.uid()` in RLS policies - that's Supabase Auth; use `current_setting('app.current_user_id')`
+- **Note:** RLS migration (0002), RLS middleware, and SSL config from original implementation are **deprecated** (see architecture change note at top — Story 1.8 handles cleanup)
 
 ### Project Structure Notes
 

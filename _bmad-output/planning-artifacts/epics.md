@@ -117,17 +117,17 @@ This document provides the complete epic and story breakdown for BattleCRM, deco
 - NFR9: Tailwind CSS production build must purge unused styles
 
 **Security (NFR10-NFR20)**
-- NFR10: All user authentication must use Supabase Email/Password with secure token management
-- NFR11: Row Level Security (RLS) must enforce data isolation between users
+- NFR10: All user authentication must use Adonis native session auth with httpOnly cookies (scrypt password hashing)
+- NFR11: Backend middleware must enforce data isolation between users (all queries filtered by user_id)
 - NFR12: No user can access another user's data under any circumstance
 - NFR13: Administrator registration control via `ALLOW_REGISTRATION` environment variable
 - NFR14: HTTPS must be enforced for all connections
-- NFR15: CSRF protection must be implemented via Supabase/backend
+- NFR15: CSRF protection must be implemented via Adonis backend
 - NFR16: XSS prevention via React's default escaping
 - NFR17: Content Security Policy headers must be configured
 - NFR18: Environment variables for secrets must never be committed to repository
-- NFR19: All database queries must filter by user_id automatically
-- NFR20: Supabase RLS policies must prevent cross-user data leakage
+- NFR19: All database queries must filter by user_id automatically (enforced in backend services/controllers)
+- NFR20: Backend middleware must reject requests attempting to access data belonging to another user_id
 
 **Reliability & Data Integrity (NFR21-NFR28)**
 - NFR21: Zero tolerance for data bugs - any data integrity issue is immediate critical failure
@@ -173,7 +173,7 @@ This document provides the complete epic and story breakdown for BattleCRM, deco
 - NFR55: Tests must run in headless Chrome for consistency
 - NFR56: Hot Module Replacement (HMR) must work reliably via Vite
 - NFR57: pnpm workspaces must enable efficient monorepo management
-- NFR58: Docker Compose must provide consistent dev/staging/prod environments
+- NFR58: Docker Compose must provide a consistent production environment (also usable for local dev)
 - NFR59: Docker containers must be production-ready and optimized
 - NFR60: Deployment must be reproducible and rollback-capable
 - NFR61: Environment-based configuration via environment variables
@@ -197,7 +197,7 @@ This document provides the complete epic and story breakdown for BattleCRM, deco
 
 *Authentication Strategy:*
 - Adonis Sessions with httpOnly cookies (not JWT/access tokens)
-- Supabase Auth for user storage + Adonis session guard
+- Adonis native auth with scrypt hashing (users stored in local PostgreSQL)
 - `credentials: 'include'` for frontend fetch calls
 - CORS configured for same-origin
 
@@ -355,7 +355,7 @@ This document provides the complete epic and story breakdown for BattleCRM, deco
 Établir l'infrastructure technique et permettre aux utilisateurs de créer un compte et se connecter de manière sécurisée. L'utilisateur peut créer un compte, se connecter, et accéder à une application fonctionnelle avec isolation des données.
 
 **FRs covered:** FR51, FR52, FR53, FR54, FR55, FR56
-**Additional:** Setup monorepo (pnpm workspaces), frontend (Vite+React), backend (Adonis.js), Supabase config, Docker Compose, RLS policies
+**Additional:** Setup monorepo (pnpm workspaces), frontend (Vite+React), backend (Adonis.js), PostgreSQL schema + migrations, Docker Compose (prod + local DB), backend user isolation middleware
 
 ### Epic 2: Funnel Configuration
 Permettre aux utilisateurs de configurer leur pipeline de prospection personnalisé. L'utilisateur peut créer, modifier et organiser les étapes de son funnel (max 15 étapes) via une page Settings dédiée.
@@ -453,27 +453,28 @@ So that I can build secure API endpoints with proper authentication.
 
 ---
 
-### Story 1.4: Configure Supabase & Database Schema
+### Story 1.4: Configure PostgreSQL Database Schema
 
 As a developer,
-I want Supabase connected with user authentication tables and RLS policies,
-So that user data is properly isolated and secure from day one.
+I want a local PostgreSQL database (via Docker) with the users table and proper schema,
+So that user data is stored securely and isolated from day one.
 
 **Acceptance Criteria:**
 
 **Given** the backend application exists from Story 1.3
-**When** I configure Supabase integration
-**Then** Supabase client is configured in the backend with connection pooling
-**And** A users table exists with: id (uuid), email, password_hash, created_at, updated_at, deleted_at
-**And** Row Level Security is enabled on the users table
-**And** RLS policy ensures users can only read/update their own record
-**And** Lucid ORM is configured to connect to Supabase PostgreSQL
+**When** I configure the PostgreSQL connection
+**Then** Lucid ORM is configured to connect to the local PostgreSQL instance (Docker)
 **And** Database migrations are set up in database/migrations/
-**And** The initial migration creates the users table with proper indexes
+**And** A users table exists with: id (uuid), email (unique), password (varchar, hashed by Adonis scrypt), created_at, updated_at, deleted_at
+**And** The initial migration creates the users table with proper indexes on (email) and (deleted_at)
+**And** A `.env` entry documents all required DB_ variables (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_DATABASE)
 
-**Given** RLS is enabled
-**When** a user tries to access another user's data via direct SQL
-**Then** the query returns no results (FR54, FR56)
+**Given** the local Docker PostgreSQL is running (`docker compose up postgres` or similar)
+**When** I run the migrations (`node ace migration:run`)
+**Then** the users table is created successfully
+**And** the backend health check still returns { status: "ok" }
+
+**Note:** Data isolation between users is enforced at the backend layer (all queries include `WHERE user_id = :currentUser`), not via database-level RLS. (FR54, FR56)
 
 ---
 
@@ -560,30 +561,39 @@ So that my session is securely terminated.
 
 ---
 
-### Story 1.8: Setup Docker Development Environment
+### Story 1.8: Setup Docker Production Environment
 
 As a developer,
-I want a Docker Compose setup for local development,
-So that I can run the full stack consistently across environments.
+I want a Docker Compose setup for production deployment on a VPS,
+So that the full stack (frontend, backend, PostgreSQL) can be deployed and run consistently.
+
+**Note:** The `db_dev/docker-compose.yml` quick-fix file is deprecated and must be deleted as part of this story. The new Docker Compose at the root is the single source of truth.
 
 **Acceptance Criteria:**
 
-**Given** I have Docker installed
-**When** I run docker-compose up
-**Then** the frontend container builds and serves on port 80
-**And** the backend container runs on port 3333 (internal)
-**And** nginx routes / to frontend and /api/* to backend
-**And** environment variables are loaded from root .env
+**Given** I have Docker installed on a production VPS (or local machine for testing)
+**When** I run `docker compose up --build`
+**Then** the PostgreSQL container starts and is ready (with persistent volume for data)
+**And** the backend container starts and connects to the PostgreSQL container
+**And** the frontend container builds (Vite production build) and is served via nginx
+**And** nginx routes `/` to frontend and `/api/*` to backend
+**And** environment variables are loaded from root `.env`
+**And** the `db_dev/` directory and its contents are removed (replaced by this setup)
 
 **Given** the containers are running
-**When** I make changes to frontend code
-**Then** the changes are reflected via volume mounts (development mode)
+**When** I call the health check endpoint
+**Then** `GET /api/health` returns `{ status: "ok" }`
+**And** the frontend is accessible on port 80
 
-**Given** I want to build for production
-**When** I run docker-compose -f docker-compose.prod.yml build
-**Then** optimized production images are created
-**And** frontend is built with Vite and served via nginx
-**And** backend runs in production mode
+**Given** I want to run only the database locally during development (without full Docker stack)
+**When** I run `docker compose up postgres`
+**Then** only the PostgreSQL container starts on port 5432
+**And** I can run the backend locally with `node ace serve` connected to this containerized DB
+**And** this replaces the deprecated `db_dev/docker-compose.yml` workflow
+
+**Given** I need to deploy a new version
+**When** I rebuild and restart containers (`docker compose up --build -d`)
+**Then** the new images are built and containers restarted with zero data loss (persistent volume)
 
 ---
 
