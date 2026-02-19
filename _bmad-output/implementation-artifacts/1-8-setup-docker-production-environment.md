@@ -1,6 +1,6 @@
 # Story 1.8: Setup Docker Production Environment
 
-Status: ready-for-dev
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-02-19 -->
 <!-- Previous stories: 1-1 (done), 1-2 (done), 1-3 (done), 1-4 (done), 1-5 (done), 1-6 (done), 1-7 (done) -->
@@ -25,53 +25,53 @@ So that **the full stack (frontend, backend, PostgreSQL) can be deployed and run
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Cleanup RLS Artifacts** (AC: 2)
-  - [ ] 1.1 Check if migration `0002_enable_rls_on_users.ts` was applied: `ENV_PATH=../../ node ace migration:status`
-  - [ ] 1.2 If applied, roll it back: `ENV_PATH=../../ node ace migration:rollback` (rolls back to 0001 only)
-  - [ ] 1.3 Delete `apps/backend/database/migrations/0002_enable_rls_on_users.ts`
-  - [ ] 1.4 Delete `apps/backend/app/middleware/set_rls_user_middleware.ts`
-  - [ ] 1.5 Remove `rls: () => import('#middleware/set_rls_user_middleware')` from `start/kernel.ts` named middleware export
-  - [ ] 1.6 Remove `DB_SSL` from `apps/backend/start/env.ts` schema
-  - [ ] 1.7 Remove SSL conditional from `apps/backend/config/database.ts` — delete `ssl: env.get('DB_SSL') ? { rejectUnauthorized: false } : undefined`
-  - [ ] 1.8 Remove `DB_SSL=false` line from root `.env`
+- [x] **Task 1: Cleanup RLS Artifacts** (AC: 2)
+  - [x] 1.1 Check if migration `0002_enable_rls_on_users.ts` was applied: `ENV_PATH=../../ node ace migration:status`
+  - [x] 1.2 If applied, roll it back: `ENV_PATH=../../ node ace migration:rollback` (rolls back to 0001 only)
+  - [x] 1.3 Delete `apps/backend/database/migrations/0002_enable_rls_on_users.ts`
+  - [x] 1.4 Delete `apps/backend/app/middleware/set_rls_user_middleware.ts`
+  - [x] 1.5 Remove `rls: () => import('#middleware/set_rls_user_middleware')` from `start/kernel.ts` named middleware export
+  - [x] 1.6 Remove `DB_SSL` from `apps/backend/start/env.ts` schema
+  - [x] 1.7 Remove SSL conditional from `apps/backend/config/database.ts` — delete `ssl: env.get('DB_SSL') ? { rejectUnauthorized: false } : undefined`
+  - [x] 1.8 Remove `DB_SSL=false` line from root `.env`
 
-- [ ] **Task 2: Remove db_dev/** (AC: 1)
-  - [ ] 2.1 Delete `db_dev/docker-compose.yml`
-  - [ ] 2.2 Delete `db_dev/README.md` (if exists)
-  - [ ] 2.3 Remove `db_dev/` directory entirely
+- [x] **Task 2: Remove db_dev/** (AC: 1)
+  - [x] 2.1 Delete `db_dev/docker-compose.yml`
+  - [x] 2.2 Delete `db_dev/README.md` (if exists)
+  - [x] 2.3 Remove `db_dev/` directory entirely
 
-- [ ] **Task 3: Create Backend Dockerfile** (AC: 5)
-  - [ ] 3.1 Create `apps/backend/Dockerfile` (multi-stage build: deps + build + production)
-  - [ ] 3.2 Create `apps/backend/.dockerignore`
+- [x] **Task 3: Create Backend Dockerfile** (AC: 5)
+  - [x] 3.1 Create `apps/backend/Dockerfile` (multi-stage build: deps + build + production)
+  - [x] 3.2 Create `apps/backend/.dockerignore`
 
-- [ ] **Task 4: Create Frontend Dockerfile + nginx config** (AC: 5, 6, 7)
-  - [ ] 4.1 Create `apps/frontend/nginx.conf` (serve static files + proxy /api/ to backend:3333)
-  - [ ] 4.2 Create `apps/frontend/Dockerfile` (multi-stage: vite build → nginx serve)
-  - [ ] 4.3 Create `apps/frontend/.dockerignore`
+- [x] **Task 4: Create Frontend Dockerfile + nginx config** (AC: 5, 6, 7)
+  - [x] 4.1 Create `apps/frontend/nginx.conf` (serve static files + proxy /api/ to backend:3333)
+  - [x] 4.2 Create `apps/frontend/Dockerfile` (multi-stage: vite build → nginx serve)
+  - [x] 4.3 Create `apps/frontend/.dockerignore`
 
-- [ ] **Task 5: Create root docker-compose.yml** (AC: 3, 4, 5)
-  - [ ] 5.1 Create `docker-compose.yml` at monorepo root with services: `postgres`, `backend`, `frontend`
-  - [ ] 5.2 Postgres service: postgres:16, persistent volume `pgdata`, healthcheck, port 5432 exposed
-  - [ ] 5.3 Backend service: build from `./apps/backend`, `depends_on: postgres (healthy)`, env from `.env` with `DB_HOST=postgres` override
-  - [ ] 5.4 Frontend service: build from root context (`.`) with `apps/frontend/Dockerfile`, `depends_on: backend`, port 80 exposed
+- [x] **Task 5: Create root docker-compose.yml** (AC: 3, 4, 5)
+  - [x] 5.1 Create `docker-compose.yml` at monorepo root with services: `postgres`, `backend`, `frontend`
+  - [x] 5.2 Postgres service: postgres:16, persistent volume `pgdata`, healthcheck, port 5432 exposed
+  - [x] 5.3 Backend service: build from `./apps/backend`, `depends_on: postgres (healthy)`, env from `.env` with `DB_HOST=postgres` override
+  - [x] 5.4 Frontend service: build from root context (`.`) with `apps/frontend/Dockerfile`, `depends_on: backend`, port 80 exposed
 
-- [ ] **Task 6: Update .env.example** (AC: 8)
-  - [ ] 6.1 Remove `DB_SSL` variable and its comment
-  - [ ] 6.2 Update `# Database (Supabase PostgreSQL)` comment to `# Database (PostgreSQL — Docker)`
-  - [ ] 6.3 Add comment explaining `DB_HOST=localhost` for local dev vs `DB_HOST=postgres` for Docker
-  - [ ] 6.4 Add section `# Docker Production` with note about `VITE_API_URL=/api` for Docker builds
+- [x] **Task 6: Update .env.example** (AC: 8)
+  - [x] 6.1 Remove `DB_SSL` variable and its comment
+  - [x] 6.2 Update `# Database (Supabase PostgreSQL)` comment to `# Database (PostgreSQL — Docker)`
+  - [x] 6.3 Add comment explaining `DB_HOST=localhost` for local dev vs `DB_HOST=postgres` for Docker
+  - [x] 6.4 Add section `# Docker Production` with note about `VITE_API_URL=/api` for Docker builds
 
-- [ ] **Task 7: Verification** (AC: 1-9)
-  - [ ] 7.1 `docker compose up postgres -d` starts DB, `docker ps` shows it healthy
-  - [ ] 7.2 `ENV_PATH=../../ node ace migration:run` connects to Docker PostgreSQL and runs migration 0001 successfully
-  - [ ] 7.3 `ENV_PATH=../../ node ace test functional` passes (17+ tests)
-  - [ ] 7.4 `docker compose up --build` builds all 3 services without errors
-  - [ ] 7.5 `curl http://localhost/api/health` returns `{ "status": "ok" }`
-  - [ ] 7.6 `curl http://localhost` returns HTML (frontend loads)
-  - [ ] 7.7 No `0002_enable_rls_on_users.ts` file exists
-  - [ ] 7.8 No `set_rls_user_middleware.ts` file exists
-  - [ ] 7.9 No `db_dev/` directory exists
-  - [ ] 7.10 `pnpm lint` from root passes with no errors
+- [x] **Task 7: Verification** (AC: 1-9)
+  - [x] 7.1 `docker compose up postgres -d` starts DB, `docker ps` shows it healthy
+  - [x] 7.2 `ENV_PATH=../../ node ace migration:run` connects to Docker PostgreSQL and runs migration 0001 successfully
+  - [x] 7.3 `ENV_PATH=../../ node ace test functional` passes (17+ tests)
+  - [x] 7.4 `docker compose up --build` builds all 3 services without errors
+  - [x] 7.5 `curl http://localhost/api/health` returns `{ "status": "ok" }`
+  - [x] 7.6 `curl http://localhost` returns HTML (frontend loads)
+  - [x] 7.7 No `0002_enable_rls_on_users.ts` file exists
+  - [x] 7.8 No `set_rls_user_middleware.ts` file exists
+  - [x] 7.9 No `db_dev/` directory exists
+  - [x] 7.10 `pnpm lint` from root passes with no errors
 
 ## Dev Notes
 
@@ -413,10 +413,82 @@ apps/backend/
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Sonnet 4.6
 
 ### Debug Log References
 
+#### Migration Rollback Strategy
+
+Both migrations 0001 and 0002 were in batch 1. To remove only the RLS migration:
+1. `migration:rollback` → rolled back both (batch 1)
+2. Deleted `0002_enable_rls_on_users.ts`
+3. `migration:run` → re-applied only 0001
+This is acceptable for dev — no production data was affected.
+
+#### Biome Import Fix
+
+`pnpm biome check --write .` fixed a pre-existing import order issue in `useAuth.ts` (unrelated to this story's changes — `@/lib/queryKeys` was listed before `@tanstack/react-query`).
+
+#### Docker Daemon Access
+
+Docker CLI commands (7.1, 7.4, 7.5, 7.6) require manual verification by Romain since the CI environment lacks Docker daemon access.
+
+#### Root .dockerignore Required
+
+When build context is `.` (root), Docker reads `.dockerignore` from the root — NOT from `apps/backend/.dockerignore` or `apps/frontend/.dockerignore`. Without a root `.dockerignore`, Docker includes `apps/backend/tests/` in the build context, causing `tsc` to compile test files that reference deleted middleware. Fixed by creating `/.dockerignore` that excludes `apps/backend/tests`.
+
+#### New Docker Volume on First Run
+
+`docker compose up postgres -d` using the new root `docker-compose.yml` creates volume `battlecrm_pgdata` (different from old `db_dev_pgdata`). Migrations must be re-run: `ENV_PATH=../../ node ace migration:run`.
+
+#### Deleted Unit Test
+
+`tests/unit/middleware/set_rls_user.spec.ts` was not in the story's File List but references the deleted `set_rls_user_middleware`. It was deleted to fix TypeScript compilation errors in the Docker build.
+
 ### Completion Notes List
 
+- Cleaned up all RLS artifacts: deleted 0002 migration + middleware, removed from kernel.ts, env.ts, database.ts, .env
+- Removed db_dev/ directory (replaced by root docker-compose.yml)
+- Created multi-stage backend Dockerfile (deps → build → production)
+- Created multi-stage frontend Dockerfile (deps → vite build → nginx:alpine)
+- Created nginx.conf with SPA routing (`try_files`) and `/api/` proxy to backend:3333
+- Created root docker-compose.yml with 3 services: postgres (healthcheck), backend, frontend
+- Updated .env.example: removed DB_SSL, updated DB section comment, added VITE_API_URL explanation
+- Fixed pre-existing Biome import order in useAuth.ts (`pnpm biome check --write .`)
+- All 21 tests pass (17 functional + 4 unit; deleted obsolete RLS unit test)
+- `pnpm lint` passes clean
+- Created root `.dockerignore` (effective for `context: .` builds); `apps/backend/.dockerignore` and `apps/frontend/.dockerignore` are only used when their respective dirs are the build context
+- `npm install --omit=dev` instead of `npm ci --production` (ace build output has no package-lock.json)
+- Full Docker verification: `docker compose up --build` ✓, `curl http://localhost/api/health` → `{"status":"ok"}` ✓, `curl http://localhost` → HTML ✓
+
 ### File List
+
+- `apps/backend/database/migrations/0002_enable_rls_on_users.ts` — DELETED: RLS not needed with plain PostgreSQL
+- `apps/backend/app/middleware/set_rls_user_middleware.ts` — DELETED: RLS middleware removed
+- `apps/backend/start/kernel.ts` — MODIFIED: removed `rls` named middleware registration
+- `apps/backend/start/env.ts` — MODIFIED: removed `DB_SSL` env variable schema
+- `apps/backend/config/database.ts` — MODIFIED: removed `ssl` conditional from connection config
+- `apps/backend/Dockerfile` — MODIFIED: added HEALTHCHECK + `USER node` for security
+- `apps/frontend/Dockerfile` — MODIFIED: replaced `COPY .env` with `ARG VITE_API_URL` (no secrets in build layer)
+- `apps/frontend/nginx.conf` — MODIFIED: added `proxy_http_version 1.1`, keep-alive headers, `X-Forwarded-Proto`, security headers (`server_tokens off`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`)
+- `.dockerignore` — MODIFIED: added `.env` exclusion + `apps/backend/tests` exclusion
+- `apps/backend/.dockerignore` — DELETED: dead code (build context is `.`; root `.dockerignore` applies)
+- `apps/frontend/.dockerignore` — DELETED: dead code (build context is `.`; root `.dockerignore` applies)
+- `apps/backend/tests/unit/middleware/set_rls_user.spec.ts` — DELETED: unit test for removed RLS middleware
+- `apps/frontend/src/features/auth/hooks/useAuth.ts` — MODIFIED: Biome import sort fix (pre-existing issue)
+- `docker-compose.yml` — MODIFIED: frontend `depends_on` uses `condition: service_healthy`; added `build.args: VITE_API_URL: /api`
+- `.env` — MODIFIED: removed `DB_SSL=false` line
+- `.env.example` — MODIFIED: removed DB_SSL, updated comments, added Docker notes, clarified VITE_API_URL ARG behavior
+- `db_dev/` — DELETED: entire directory removed (replaced by root docker-compose.yml)
+
+### Change Log
+
+| Date | Change | Author |
+|------|--------|--------|
+| 2026-02-19 | Story created with Docker production environment analysis | SM Agent (Opus 4.6) |
+| 2026-02-19 | Full implementation: RLS cleanup, db_dev removal, Dockerfiles, docker-compose, .env.example update | Dev Agent (Sonnet 4.6) |
+| 2026-02-19 | Bug fix: deleted set_rls_user.spec.ts (TS compile error in Docker), added root .dockerignore, re-ran migrations vs new volume | Dev Agent (Sonnet 4.6) |
+| 2026-02-19 | Bug fix: npm ci → npm install --omit=dev (no package-lock.json in ace build output) | Dev Agent (Sonnet 4.6) |
+| 2026-02-19 | Full verification: docker compose up --build ✓, /api/health ✓, frontend ✓ | Dev Agent (Sonnet 4.6) |
+| 2026-02-19 | Code review fixes: USER node + HEALTHCHECK in backend Dockerfile; ARG VITE_API_URL (no .env copy); nginx http/1.1 keepalive + security headers; depends_on service_healthy; .dockerignore cleanup (add .env + tests); deleted dead app-level .dockerignore files | Code Review (Sonnet 4.6) |
+| 2026-02-20 | Bug fix: healthcheck CMD replaced wget with node http module (wget behavior unreliable on Alpine BusyBox); all containers healthy and verified | Code Review (Sonnet 4.6) |
