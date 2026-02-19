@@ -15,7 +15,7 @@ export function DashboardPage() {
       </CardHeader>
       <CardContent>
         <Button variant="outline" onClick={() => logout.mutate()} disabled={logout.isPending}>
-          {t('dashboard.logout')}
+          {logout.isPending ? t('dashboard.loggingOut') : t('dashboard.logout')}
         </Button>
       </CardContent>
     </Card>

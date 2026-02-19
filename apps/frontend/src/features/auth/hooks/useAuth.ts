@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queryKeys'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { authApi } from '../lib/api'
 
 /**
@@ -62,7 +62,8 @@ export function useLogout() {
   return useMutation({
     mutationFn: () => authApi.logout(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all })
+      // setQueryData is used here instead of invalidateQueries to immediately reflect the logged-out state without waiting for a refetch
+      queryClient.setQueryData(queryKeys.auth.me(), null)
     },
   })
 }

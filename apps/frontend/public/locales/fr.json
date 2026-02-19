@@ -40,7 +40,8 @@
   "dashboard": {
     "title": "BattleCRM",
     "description": "Bienvenue dans votre CRM personnel",
-    "logout": "Se déconnecter"
+    "logout": "Se déconnecter",
+    "loggingOut": "Déconnexion en cours..."
   },
   "validation": {
     "required": "{{field}} est requis",
