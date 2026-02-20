@@ -53,6 +53,8 @@ coverage/
 .nyc_output/
 test-results/
 playwright-report/
+# Playwright auth state (contains session cookies — never commit)
+tests/.auth/
 
 # -------------------------------------------
 # OS files

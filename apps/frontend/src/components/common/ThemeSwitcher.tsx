@@ -1,9 +1,9 @@
-import { Monitor, Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useTheme } from '@/lib/theme'
+import { Moon, Sun, SunMoon } from 'lucide-react'
 
 const icons = {
-  system: Monitor,
+  system: SunMoon,
   light: Sun,
   dark: Moon,
 }
