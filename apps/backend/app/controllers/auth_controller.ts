@@ -1,12 +1,15 @@
 import { errors as authErrors } from '@adonisjs/auth'
 import type { HttpContext } from '@adonisjs/core/http'
+import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
+import { seedDefaultStages } from '#services/funnel_stage_service'
 import env from '#start/env'
 import { loginValidator, registerValidator } from '#validators/auth'
 
 export default class AuthController {
   /**
    * Handle user registration
+   * Creates user and seeds default funnel stages atomically in a transaction.
    * @returns Created user data or error if registration fails
    */
   async register({ request, response, auth }: HttpContext) {
@@ -21,7 +24,14 @@ export default class AuthController {
 
     let user: User
     try {
-      user = await User.create({ email: data.email, password: data.password })
+      user = await db.transaction(async (trx) => {
+        const newUser = await User.create(
+          { email: data.email, password: data.password },
+          { client: trx },
+        )
+        await seedDefaultStages(newUser.id, trx)
+        return newUser
+      })
     } catch (error) {
       if (
         error &&
@@ -36,6 +46,7 @@ export default class AuthController {
       throw error
     }
 
+    // Session login happens outside the transaction (HTTP layer, not DB layer)
     await auth.use('web').login(user)
 
     return response.created({ user: { id: user.id, email: user.email } })
