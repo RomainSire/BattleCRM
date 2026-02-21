@@ -53,8 +53,8 @@ development_status:
   epic-1-retrospective: done
 
   # Epic 2: Funnel Configuration
-  epic-2: backlog
-  2-1-create-funnel-stages-database-schema: backlog
+  epic-2: in-progress
+  2-1-create-funnel-stages-database-schema: review
   2-2-implement-funnel-stages-api: backlog
   2-3-build-funnel-configuration-ui: backlog
   2-4-enforce-funnel-constraints: backlog
