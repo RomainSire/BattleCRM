@@ -1,10 +1,10 @@
+import { errors as authErrors } from '@adonisjs/auth'
+import type { HttpContext } from '@adonisjs/core/http'
+import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import { seedDefaultStages } from '#services/funnel_stage_service'
 import env from '#start/env'
 import { loginValidator, registerValidator } from '#validators/auth'
-import { errors as authErrors } from '@adonisjs/auth'
-import type { HttpContext } from '@adonisjs/core/http'
-import db from '@adonisjs/lucid/services/db'
 
 export default class AuthController {
   /**

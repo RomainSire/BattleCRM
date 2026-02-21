@@ -1,5 +1,5 @@
-import FunnelStage from '#models/funnel_stage'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
+import FunnelStage from '#models/funnel_stage'
 
 export const DEFAULT_FUNNEL_STAGES = [
   'Lead qualified',

@@ -28,6 +28,7 @@ export default class extends BaseSchema {
 
   async down() {
     this.schema.raw('DROP INDEX IF EXISTS idx_funnel_stages_user_position_active')
+    this.schema.raw('DROP INDEX IF EXISTS idx_funnel_stages_user_deleted')
     this.schema.dropTable(this.tableName)
   }
 }

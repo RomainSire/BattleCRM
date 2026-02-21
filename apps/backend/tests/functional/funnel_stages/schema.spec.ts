@@ -73,6 +73,9 @@ test.group('FunnelStage schema and default seeding', (group) => {
       password: 'password123',
     })
 
+    resA.assertStatus(201)
+    resB.assertStatus(201)
+
     const userAId = resA.body().user.id
     const userBId = resB.body().user.id
 

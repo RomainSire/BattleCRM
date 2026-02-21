@@ -1,6 +1,6 @@
 # Story 2.1: Create Funnel Stages Database Schema
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-02-20 -->
 <!-- Previous stories: 1-1 through 1-8 (all done), Epic 1 retrospective done -->
@@ -17,17 +17,16 @@ So that **users can have a working funnel from day one**.
 2. **AC2:** A partial unique index enforces `(user_id, position)` uniqueness only for active (non-deleted) stages
 3. **AC3:** An index exists on `(user_id, deleted_at)` for efficient per-user queries
 4. **AC4:** A `FunnelStage` Lucid model is created with `forUser(userId)` query scope and soft-delete support
-5. **AC5:** When a new user registers, exactly 10 default funnel stages are created for that user (in order):
+5. **AC5:** When a new user registers, default funnel stages are created for that user (in order). The exact list is defined by `DEFAULT_FUNNEL_STAGES` in `funnel_stage_service.ts` — currently 9 stages:
    1. Lead qualified
-   2. First contact
-   3. Connection established
-   4. Positive response
-   5. ESN qualification
-   6. Application sent
-   7. ESN interview(s)
-   8. Final client interview(s)
-   9. Proposal received
-   10. Contract signed ✅
+   2. Linkedin connection
+   3. First contact
+   4. Resume sent
+   5. ENS interview
+   6. Client interview
+   7. Technical tests
+   8. Offer negotiation
+   9. Contract signed
 6. **AC6:** Default stage seeding is transactional with user creation (if seeding fails → user creation rolls back)
 7. **AC7:** `ENV_PATH=../../ node ace migration:run` runs successfully with the new migration
 8. **AC8:** `pnpm lint` passes from root (Biome v2 — no TypeScript errors, no lint errors)
@@ -52,7 +51,7 @@ So that **users can have a working funnel from day one**.
 - [x] **Task 3: Create FunnelStageService** (AC: 5, 6)
   - [x] 3.1 Create `apps/backend/app/services/funnel_stage_service.ts` (new `services/` directory)
   - [x] 3.2 Implement `seedDefaultStages(userId: string, trx: TransactionClientContract): Promise<void>`
-  - [x] 3.3 Create the 10 default stages using `FunnelStage.createMany()` with positions 1–10 within the transaction
+  - [x] 3.3 Create default stages using `FunnelStage.createMany()` with sequential positions within the transaction (count driven by `DEFAULT_FUNNEL_STAGES` array)
 
 - [x] **Task 4: Update AuthController.register** (AC: 5, 6)
   - [x] 4.1 Import `db` from `@adonisjs/lucid/services/db` and `{ seedDefaultStages }` from service
@@ -61,7 +60,7 @@ So that **users can have a working funnel from day one**.
 
 - [x] **Task 5: Write functional tests** (AC: 9)
   - [x] 5.1 Create `apps/backend/tests/functional/funnel_stages/schema.spec.ts`
-  - [x] 5.2 Test: registration via `POST /api/auth/register` creates exactly 10 funnel stages for the new user
+  - [x] 5.2 Test: registration via `POST /api/auth/register` creates exactly `DEFAULT_FUNNEL_STAGES.length` funnel stages for the new user
   - [x] 5.3 Test: stages are in correct order (position 1–10, names match expected values)
   - [x] 5.4 Test: `FunnelStage.query().withScopes((s) => s.forUser(userId))` returns only that user's stages
   - [x] 5.5 Test: stages with `deleted_at` set are excluded from default queries
@@ -94,8 +93,8 @@ This was identified in the Epic 1 retrospective as an architectural decision to 
 
 **Updated `AuthController.register` pattern:**
 ```typescript
+import { seedDefaultStages } from '#services/funnel_stage_service'
 import db from '@adonisjs/lucid/services/db'
-import FunnelStageService from '#services/funnel_stage_service'
 
 async register({ request, response, auth }: HttpContext) {
   // ... ALLOW_REGISTRATION check stays unchanged ...
@@ -107,9 +106,9 @@ async register({ request, response, auth }: HttpContext) {
     user = await db.transaction(async (trx) => {
       const newUser = await User.create(
         { email: data.email, password: data.password },
-        { client: trx }
+        { client: trx },
       )
-      await FunnelStageService.seedDefaultStages(newUser.id, trx)
+      await seedDefaultStages(newUser.id, trx)
       return newUser
     })
   } catch (error) {
@@ -235,39 +234,37 @@ export default class FunnelStage extends compose(BaseModel, SoftDeletes) {
 **Note:** Create the `services/` directory — it does NOT exist yet in `apps/backend/app/`.
 
 ```typescript
-import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import FunnelStage from '#models/funnel_stage'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 
-const DEFAULT_FUNNEL_STAGES = [
+// Exported so tests can derive counts/names dynamically without hardcoding
+export const DEFAULT_FUNNEL_STAGES = [
   'Lead qualified',
+  'Linkedin connection',
   'First contact',
-  'Connection established',
-  'Positive response',
-  'ESN qualification',
-  'Application sent',
-  'ESN interview(s)',
-  'Final client interview(s)',
-  'Proposal received',
-  'Contract signed ✅',
+  'Resume sent',
+  'ENS interview',
+  'Client interview',
+  'Technical tests',
+  'Offer negotiation',
+  'Contract signed',
 ] as const
 
-export default class FunnelStageService {
-  /**
-   * Seed 10 default funnel stages for a newly registered user.
-   * Must be called within a database transaction.
-   */
-  static async seedDefaultStages(
-    userId: string,
-    trx: TransactionClientContract
-  ): Promise<void> {
-    const stages = DEFAULT_FUNNEL_STAGES.map((name, index) => ({
-      userId,
-      name,
-      position: index + 1,
-    }))
+/**
+ * Seed default funnel stages for a newly registered user.
+ * Must be called within a database transaction.
+ */
+export async function seedDefaultStages(
+  userId: string,
+  trx: TransactionClientContract,
+): Promise<void> {
+  const stages = DEFAULT_FUNNEL_STAGES.map((name, index) => ({
+    userId,
+    name,
+    position: index + 1,
+  }))
 
-    await FunnelStage.createMany(stages, { client: trx })
-  }
+  await FunnelStage.createMany(stages, { client: trx })
 }
 ```
 
@@ -488,8 +485,10 @@ Claude Sonnet 4.6
 ### Completion Notes List
 
 - All 9 acceptance criteria satisfied.
-- `FunnelStageService` implemented as plain exported function (not class) — Biome `noStaticOnlyClass` rule disallows static-only classes.
-- Story Dev Notes contain `await` before `this.schema.raw()` in the migration snippet — the actual file does NOT have `await` (correct). The story template snipped was not updated but the implementation is correct.
+- **AC5 note:** The default stage list was intentionally customized by the product owner after initial implementation. The source of truth is `DEFAULT_FUNNEL_STAGES` in `funnel_stage_service.ts` (currently 9 stages). Tests use this constant dynamically — no hardcoded count.
+- `seedDefaultStages` implemented as plain exported async function (not class) — Biome `noStaticOnlyClass` rule disallows static-only classes.
+- `DEFAULT_FUNNEL_STAGES` is exported so test files can import it and derive counts/names dynamically.
+- Migration: no `await` on `this.schema.raw()` calls — both `up()` and `down()` queue operations on the same Knex schema builder without `await` so they run in the correct order.
 - Test file includes `group.setup` (cleanup before group) in addition to `group.each.teardown` — handles leftover data from previously failed runs.
 - `group.each.teardown` uses `.delete()` on query builder (raw SQL DELETE, bypassing SoftDeletes) — cascade on `user_id` FK removes funnel stages automatically.
 - 22 tests total: 17 pre-existing functional (auth) + 5 new funnel stage tests. All pass.
