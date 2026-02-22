@@ -36,15 +36,26 @@ export default class FunnelStagesController {
     const { name } = await request.validateUsing(createFunnelStageValidator)
     const userId = auth.user!.id
 
-    // Find the last active stage to determine next position
-    const lastStage = await FunnelStage.query()
-      .withScopes((s) => s.forUser(userId))
-      .orderBy('position', 'desc')
-      .first()
+    // Transaction + FOR UPDATE lock prevents two concurrent POST requests from
+    // reading the same MAX(position) and both inserting at position N+1.
+    const stage = await db.transaction(async (trx) => {
+      const lastStage = await FunnelStage.query({ client: trx })
+        .withScopes((s) => s.forUser(userId))
+        .orderBy('position', 'desc')
+        .forUpdate()
+        .first()
 
-    const newPosition = lastStage ? lastStage.position + 1 : 1
+      const newPosition = lastStage ? lastStage.position + 1 : 1
 
-    const stage = await FunnelStage.create({ userId, name, position: newPosition })
+      const newStage = new FunnelStage()
+      newStage.userId = userId
+      newStage.name = name
+      newStage.position = newPosition
+      newStage.useTransaction(trx)
+      await newStage.save()
+      return newStage
+    })
+
     return response.created(stage)
   }
 
@@ -92,15 +103,21 @@ export default class FunnelStagesController {
     const { order } = await request.validateUsing(reorderFunnelStagesValidator)
     const userId = auth.user!.id
 
-    // Validate: all IDs must belong to this user and be active
-    const stages = await FunnelStage.query()
-      .withScopes((s) => s.forUser(userId))
-      .whereIn('id', order)
+    // Validate: order must contain ALL active stage IDs — no extras, no missing.
+    // A partial list would cause unique constraint violations during position reassignment
+    // because remaining stages would collide with the newly assigned positions.
+    const allActiveStages = await FunnelStage.query().withScopes((s) => s.forUser(userId))
+    const activeIds = new Set(allActiveStages.map((s) => s.id))
+    const isValid =
+      order.length === allActiveStages.length && order.every((id) => activeIds.has(id))
 
-    if (stages.length !== order.length) {
+    if (!isValid) {
       return response.badRequest({
         errors: [
-          { message: 'Some stage IDs are invalid or do not belong to you', rule: 'invalid' },
+          {
+            message: 'Order must contain all active stage IDs (no more, no less)',
+            rule: 'invalid',
+          },
         ],
       })
     }

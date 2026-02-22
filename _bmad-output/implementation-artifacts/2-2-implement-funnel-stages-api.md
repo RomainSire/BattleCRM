@@ -1,6 +1,6 @@
 # Story 2.2: Implement Funnel Stages API
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-02-22 -->
 <!-- Previous story: 2-1-create-funnel-stages-database-schema (done) -->
@@ -649,6 +649,12 @@ None — implementation proceeded cleanly without errors.
 - `apps/backend/app/controllers/funnel_stages_controller.ts`
 - `apps/backend/tests/functional/funnel_stages/api.spec.ts`
 - `apps/backend/types/soft_deletes.d.ts`
+- `.brunoCollection/funnel_stages/List Stages.bru`
+- `.brunoCollection/funnel_stages/List Stages (with archived).bru`
+- `.brunoCollection/funnel_stages/Create Stage.bru`
+- `.brunoCollection/funnel_stages/Update Stage.bru`
+- `.brunoCollection/funnel_stages/Delete Stage.bru`
+- `.brunoCollection/funnel_stages/Reorder Stages.bru`
 
 **Modified files:**
-- `apps/backend/start/routes.ts` — added FunnelStagesController lazy import + `/funnel_stages` route group with `middleware.auth()`
+- `apps/backend/start/routes.ts` — added FunnelStagesController lazy import + `/funnel_stages` route group with `middleware.auth()` + UUID regex matchers on `PUT /:id` and `DELETE /:id`

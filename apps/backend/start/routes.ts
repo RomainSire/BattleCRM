@@ -10,6 +10,8 @@
 import router from '@adonisjs/core/services/router'
 import { middleware } from '#start/kernel'
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const AuthController = () => import('#controllers/auth_controller')
 const FunnelStagesController = () => import('#controllers/funnel_stages_controller')
 
@@ -37,8 +39,8 @@ router
         router.put('/reorder', [FunnelStagesController, 'reorder'])
         router.get('/', [FunnelStagesController, 'index'])
         router.post('/', [FunnelStagesController, 'store'])
-        router.put('/:id', [FunnelStagesController, 'update'])
-        router.delete('/:id', [FunnelStagesController, 'destroy'])
+        router.put('/:id', [FunnelStagesController, 'update']).where('id', UUID_REGEX)
+        router.delete('/:id', [FunnelStagesController, 'destroy']).where('id', UUID_REGEX)
       })
       .prefix('/funnel_stages')
       .use(middleware.auth())

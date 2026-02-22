@@ -176,6 +176,16 @@ test.group('FunnelStages API', (group) => {
     response.assertStatus(404)
   })
 
+  test('PUT /api/funnel_stages/:id returns 404 for non-UUID id format', async ({ client }) => {
+    const user = await registerUser(client, 'put-invalid-format')
+    const response = await client
+      .put('/api/funnel_stages/not-a-uuid')
+      .loginAs(user)
+      .json({ name: 'Test' })
+
+    response.assertStatus(404)
+  })
+
   // ===========================
   // DELETE /api/funnel_stages/:id
   // ===========================
@@ -215,6 +225,12 @@ test.group('FunnelStages API', (group) => {
     const fakeId = '00000000-0000-0000-0000-000000000000'
 
     const response = await client.delete(`/api/funnel_stages/${fakeId}`).loginAs(user)
+    response.assertStatus(404)
+  })
+
+  test('DELETE /api/funnel_stages/:id returns 404 for non-UUID id format', async ({ client }) => {
+    const user = await registerUser(client, 'delete-invalid-format')
+    const response = await client.delete('/api/funnel_stages/not-a-uuid').loginAs(user)
     response.assertStatus(404)
   })
 
@@ -261,6 +277,25 @@ test.group('FunnelStages API', (group) => {
       .put('/api/funnel_stages/reorder')
       .loginAs(user)
       .json({ order: [fakeId] })
+
+    response.assertStatus(400)
+  })
+
+  test('PUT /api/funnel_stages/reorder returns 400 for incomplete (partial) stage ID list', async ({
+    client,
+  }) => {
+    const user = await registerUser(client, 'put-reorder-partial')
+    const stages = await FunnelStage.query()
+      .withScopes((s) => s.forUser(user.id))
+      .orderBy('position', 'asc')
+
+    // Omit the last stage — valid IDs but not the complete list
+    const partialIds = stages.slice(0, stages.length - 1).map((s) => s.id)
+
+    const response = await client
+      .put('/api/funnel_stages/reorder')
+      .loginAs(user)
+      .json({ order: partialIds })
 
     response.assertStatus(400)
   })
