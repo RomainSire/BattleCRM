@@ -1,0 +1,30 @@
+meta {
+  name: Reorder Stages
+  type: http
+  seq: 6
+}
+
+put {
+  url: http://localhost:3333/api/funnel_stages/reorder
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "order": [
+      "00000000-0000-0000-0000-000000000001",
+      "00000000-0000-0000-0000-000000000002",
+      "00000000-0000-0000-0000-000000000003"
+    ]
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

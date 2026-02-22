@@ -1,0 +1,26 @@
+meta {
+  name: Update Stage
+  type: http
+  seq: 4
+}
+
+put {
+  url: http://localhost:3333/api/funnel_stages/:id
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Updated Stage Name"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
