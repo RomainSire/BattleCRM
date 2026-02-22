@@ -1,0 +1,26 @@
+meta {
+  name: Create Stage
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:3333/api/funnel_stages
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "New Stage"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
