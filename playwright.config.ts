@@ -62,6 +62,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         storageState: STORAGE_STATE,
+        locale: 'en',
       },
       dependencies: ['setup'],
     },

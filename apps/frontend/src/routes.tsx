@@ -6,6 +6,7 @@ import { GuestGuard } from '@/features/auth/components/GuestGuard'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { SettingsPage } from '@/features/settings/SettingsPage'
 
 export function AppRouter() {
   return (
@@ -14,6 +15,7 @@ export function AppRouter() {
         <Route element={<AuthGuard />}>
           <Route element={<AuthLayout />}>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>
         <Route element={<GuestGuard />}>

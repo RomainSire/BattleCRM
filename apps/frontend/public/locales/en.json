@@ -2,7 +2,15 @@
   "common": {
     "appName": "BattleCRM",
     "loading": "Loading...",
-    "error": "An error occurred"
+    "error": "An error occurred",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "prospects": "Prospects",
+    "positionings": "Positionings"
   },
   "auth": {
     "login": {
@@ -42,6 +50,41 @@
     "description": "Welcome to your personal CRM",
     "logout": "Log out",
     "loggingOut": "Logging out..."
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Configure your prospecting pipeline.",
+    "funnelConfig": {
+      "title": "Funnel Configuration"
+    }
+  },
+  "funnelStages": {
+    "loadError": "Failed to load funnel stages. Please try again.",
+    "addStage": "Add Stage",
+    "stageName": "Stage name",
+    "add": "Add",
+    "aria": {
+      "reorder": "Reorder stage",
+      "edit": "Edit stage",
+      "delete": "Delete stage",
+      "saveName": "Save stage name",
+      "cancelEdit": "Cancel edit",
+      "cancelAdd": "Cancel"
+    },
+    "deleteDialog": {
+      "title": "Delete stage?",
+      "description": "\"{{name}}\" will be archived. This cannot be undone.",
+      "confirm": "Delete"
+    },
+    "toast": {
+      "added": "Stage added",
+      "updated": "Stage updated",
+      "deleted": "Stage deleted",
+      "addFailed": "Failed to add stage",
+      "updateFailed": "Failed to update stage",
+      "deleteFailed": "Failed to delete stage",
+      "reorderFailed": "Failed to reorder stages"
+    }
   },
   "validation": {
     "required": "{{field}} is required",
