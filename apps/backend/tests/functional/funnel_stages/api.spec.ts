@@ -220,6 +220,40 @@ test.group('FunnelStages API', (group) => {
     assert.isNotNull(softDeletedStage?.deletedAt, 'deleted_at should be set')
   })
 
+  test('DELETE /api/funnel_stages/:id renumbers remaining positions sequentially', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'delete-renumber')
+
+    // Get all active stages ordered by position
+    const stagesBefore = await FunnelStage.query()
+      .withScopes((s) => s.forUser(user.id))
+      .orderBy('position', 'asc')
+
+    // Delete a middle stage (not first, not last) to verify both sides are renumbered
+    const middleIndex = Math.floor(stagesBefore.length / 2)
+    const stageToDelete = stagesBefore[middleIndex]
+
+    const deleteResponse = await client
+      .delete(`/api/funnel_stages/${stageToDelete.id}`)
+      .loginAs(user)
+    deleteResponse.assertStatus(200)
+
+    // Fetch remaining active stages
+    const listResponse = await client.get('/api/funnel_stages').loginAs(user)
+    listResponse.assertStatus(200)
+    const stagesAfter: { id: string; position: number }[] = listResponse.body().data
+
+    // Should have one fewer stage
+    assert.equal(stagesAfter.length, stagesBefore.length - 1)
+
+    // Positions must be sequential: 1, 2, 3, ...
+    const positions = stagesAfter.map((s) => s.position)
+    const expectedPositions = stagesAfter.map((_, i) => i + 1)
+    assert.deepEqual(positions, expectedPositions, 'Positions should be sequential from 1 after delete')
+  })
+
   test('DELETE /api/funnel_stages/:id returns 404 for non-existent stage', async ({ client }) => {
     const user = await registerUser(client, 'delete-404')
     const fakeId = '00000000-0000-0000-0000-000000000000'

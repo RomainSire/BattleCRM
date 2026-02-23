@@ -85,12 +85,30 @@ export default class FunnelStagesController {
   async destroy({ params, response, auth }: HttpContext) {
     const userId = auth.user!.id
 
-    const stage = await FunnelStage.query()
-      .withScopes((s) => s.forUser(userId))
-      .where('id', params.id)
-      .firstOrFail()
+    await db.transaction(async (trx) => {
+      const stage = await FunnelStage.query({ client: trx })
+        .withScopes((s) => s.forUser(userId))
+        .where('id', params.id)
+        .forUpdate()
+        .firstOrFail()
 
-    await stage.delete() // SoftDeletes mixin: sets deleted_at, does NOT hard-delete
+      await stage.useTransaction(trx).delete()
+
+      // Renumber remaining active stages sequentially to close the gap.
+      // Two-step approach (same as reorder) to avoid unique constraint violations
+      // on (user_id, position) WHERE deleted_at IS NULL.
+      const remaining = await FunnelStage.query({ client: trx })
+        .withScopes((s) => s.forUser(userId))
+        .orderBy('position', 'asc')
+
+      for (const [idx, s] of remaining.entries()) {
+        await FunnelStage.query({ client: trx }).where('id', s.id).update({ position: 10000 + idx + 1 })
+      }
+      for (const [idx, s] of remaining.entries()) {
+        await FunnelStage.query({ client: trx }).where('id', s.id).update({ position: idx + 1 })
+      }
+    })
+
     return response.ok({ message: 'Stage deleted' })
   }
 

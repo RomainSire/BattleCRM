@@ -2,7 +2,15 @@
   "common": {
     "appName": "BattleCRM",
     "loading": "Chargement...",
-    "error": "Une erreur est survenue"
+    "error": "Une erreur est survenue",
+    "cancel": "Annuler",
+    "save": "Enregistrer"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "settings": "Paramètres",
+    "prospects": "Prospects",
+    "positionings": "Positionnements"
   },
   "auth": {
     "login": {
@@ -42,6 +50,41 @@
     "description": "Bienvenue dans votre CRM personnel",
     "logout": "Se déconnecter",
     "loggingOut": "Déconnexion en cours..."
+  },
+  "settings": {
+    "title": "Paramètres",
+    "description": "Configurez votre pipeline de prospection.",
+    "funnelConfig": {
+      "title": "Configuration du tunnel de vente"
+    }
+  },
+  "funnelStages": {
+    "loadError": "Impossible de charger les étapes. Veuillez réessayer.",
+    "addStage": "Ajouter une étape",
+    "stageName": "Nom de l'étape",
+    "add": "Ajouter",
+    "aria": {
+      "reorder": "Réorganiser l'étape",
+      "edit": "Modifier l'étape",
+      "delete": "Supprimer l'étape",
+      "saveName": "Enregistrer le nom de l'étape",
+      "cancelEdit": "Annuler la modification",
+      "cancelAdd": "Annuler"
+    },
+    "deleteDialog": {
+      "title": "Supprimer l'étape ?",
+      "description": "\"{{name}}\" sera archivée. Cette action est irréversible.",
+      "confirm": "Supprimer"
+    },
+    "toast": {
+      "added": "Étape ajoutée",
+      "updated": "Étape mise à jour",
+      "deleted": "Étape supprimée",
+      "addFailed": "Impossible d'ajouter l'étape",
+      "updateFailed": "Impossible de mettre à jour l'étape",
+      "deleteFailed": "Impossible de supprimer l'étape",
+      "reorderFailed": "Impossible de réorganiser les étapes"
+    }
   },
   "validation": {
     "required": "{{field}} est requis",
