@@ -98,8 +98,15 @@ export function FunnelStageList() {
 
       {reorderError && <p className="text-sm text-destructive">{reorderError}</p>}
 
-      <div className="pt-1">
-        <AddStageForm />
+      <div className="space-y-1 pt-1">
+        {localStages.length >= 15 ? (
+          <p className="text-sm text-muted-foreground">{t('funnelStages.maxReached')}</p>
+        ) : (
+          <AddStageForm />
+        )}
+        <p className="text-right text-xs text-muted-foreground">
+          {t('funnelStages.stageCount', { total: localStages.length })}
+        </p>
       </div>
     </div>
   )

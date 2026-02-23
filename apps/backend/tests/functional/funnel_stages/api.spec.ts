@@ -147,6 +147,30 @@ test.group('FunnelStages API', (group) => {
     response.assertStatus(422)
   })
 
+  test('POST /api/funnel_stages returns 422 when user already has 15 active stages', async ({
+    client,
+  }) => {
+    const user = await registerUser(client, 'post-max-stages')
+
+    // User starts with 9 default stages (seeded on registration in Story 2.1).
+    // Add 6 more to reach the 15-stage limit.
+    for (let i = 1; i <= 6; i++) {
+      const res = await client
+        .post('/api/funnel_stages')
+        .loginAs(user)
+        .json({ name: `Extra Stage ${i}` })
+      res.assertStatus(201)
+    }
+
+    // Attempt to add a 16th stage — must be rejected with 422 (FR40: max 15)
+    const response = await client
+      .post('/api/funnel_stages')
+      .loginAs(user)
+      .json({ name: 'Over The Limit Stage' })
+
+    response.assertStatus(422)
+  })
+
   // ===========================
   // PUT /api/funnel_stages/:id
   // ===========================
