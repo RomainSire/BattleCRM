@@ -52,3 +52,19 @@ export async function checkHealth(request: APIRequestContext): Promise<boolean> 
     return false
   }
 }
+
+/**
+ * Reset funnel stages to a known set of defaults.
+ * Deletes all active stages then recreates a minimal set.
+ * Requires an authenticated request context (session cookie).
+ */
+export async function resetFunnelStages(request: APIRequestContext): Promise<void> {
+  const res = await request.get(`${API_URL}/api/funnel_stages`)
+  const body = await res.json()
+  for (const stage of body.data ?? []) {
+    await request.delete(`${API_URL}/api/funnel_stages/${stage.id}`)
+  }
+  for (const name of ['Lead qualified', 'Linkedin connection', 'First contact']) {
+    await request.post(`${API_URL}/api/funnel_stages`, { data: { name } })
+  }
+}

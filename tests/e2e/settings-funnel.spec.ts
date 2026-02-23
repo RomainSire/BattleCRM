@@ -4,11 +4,25 @@
  * Covers: navigation, list display, add stage, inline edit, delete with confirmation.
  * All tests run as authenticated user (storageState from playwright.config.ts).
  * Drag-and-drop reorder is not covered (hard to automate reliably with DnD).
+ *
+ * Tests run serially (shared user account — state must be predictable).
+ * beforeAll resets funnel stages to a known 3-stage set before the suite runs.
  */
 
 import { expect, test } from '../support/fixtures'
+import { resetFunnelStages } from '../support/helpers/api'
+import { STORAGE_STATE } from '../../playwright.config'
 
 test.describe('Settings - Funnel Configuration', () => {
+  test.describe.configure({ mode: 'serial' })
+
+  test.beforeAll(async ({ browser }) => {
+    // Use a fresh browser context with the E2E auth session to reset stages via API
+    const context = await browser.newContext({ storageState: STORAGE_STATE })
+    await resetFunnelStages(context.request)
+    await context.close()
+  })
+
   test('navigates to settings page via navbar', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('link', { name: 'Settings' }).click()
@@ -130,7 +144,7 @@ test.describe('Settings - Funnel Configuration', () => {
     await page.getByRole('button', { name: /^delete$/i }).click()
     await deleteResponse
 
-    await expect(page.getByText(stageName)).not.toBeVisible()
+    await expect(page.locator(`[data-stage-name="${stageName}"]`)).not.toBeVisible()
   })
 
   test('cancel delete confirmation keeps the stage', async ({ page }) => {
@@ -148,8 +162,10 @@ test.describe('Settings - Funnel Configuration', () => {
     // Cancel — stage should NOT be deleted
     await page.getByRole('button', { name: /cancel/i }).click()
 
+    // Wait for dialog to close, then check the stage row is still present
+    await expect(page.getByRole('alertdialog')).not.toBeVisible()
     if (stageName) {
-      await expect(page.getByText(stageName)).toBeVisible()
+      await expect(page.locator(`[data-stage-name="${stageName}"]`)).toBeVisible()
     }
   })
 })

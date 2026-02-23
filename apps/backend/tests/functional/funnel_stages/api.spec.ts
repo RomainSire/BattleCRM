@@ -251,7 +251,11 @@ test.group('FunnelStages API', (group) => {
     // Positions must be sequential: 1, 2, 3, ...
     const positions = stagesAfter.map((s) => s.position)
     const expectedPositions = stagesAfter.map((_, i) => i + 1)
-    assert.deepEqual(positions, expectedPositions, 'Positions should be sequential from 1 after delete')
+    assert.deepEqual(
+      positions,
+      expectedPositions,
+      'Positions should be sequential from 1 after delete',
+    )
   })
 
   test('DELETE /api/funnel_stages/:id returns 404 for non-existent stage', async ({ client }) => {

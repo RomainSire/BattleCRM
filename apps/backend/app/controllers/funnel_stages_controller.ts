@@ -102,10 +102,14 @@ export default class FunnelStagesController {
         .orderBy('position', 'asc')
 
       for (const [idx, s] of remaining.entries()) {
-        await FunnelStage.query({ client: trx }).where('id', s.id).update({ position: 10000 + idx + 1 })
+        await FunnelStage.query({ client: trx })
+          .where('id', s.id)
+          .update({ position: 10000 + idx + 1 })
       }
       for (const [idx, s] of remaining.entries()) {
-        await FunnelStage.query({ client: trx }).where('id', s.id).update({ position: idx + 1 })
+        await FunnelStage.query({ client: trx })
+          .where('id', s.id)
+          .update({ position: idx + 1 })
       }
     })
 
