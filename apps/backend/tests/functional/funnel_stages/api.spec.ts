@@ -1,6 +1,9 @@
+import type { ApiClient } from '@japa/api-client'
 import { test } from '@japa/runner'
 import FunnelStage from '#models/funnel_stage'
 import User from '#models/user'
+
+type StageDto = { id: string; position: number }
 
 const TEST_EMAIL_DOMAIN = '@test-funnel-api.com'
 
@@ -17,7 +20,7 @@ test.group('FunnelStages API', (group) => {
   })
 
   // Helper to register a user and return the model instance for loginAs
-  async function registerUser(client: any, prefix: string): Promise<User> {
+  async function registerUser(client: ApiClient, prefix: string): Promise<User> {
     const res = await client.post('/api/auth/register').json({
       email: `${prefix}${TEST_EMAIL_DOMAIN}`,
       password: 'password123',
@@ -47,7 +50,7 @@ test.group('FunnelStages API', (group) => {
     assert.isAbove(body.data.length, 0)
     assert.equal(body.meta.total, body.data.length)
     // Verify stages are ordered by position ASC
-    const positions = body.data.map((s: any) => s.position as number)
+    const positions = body.data.map((s: StageDto) => s.position)
     assert.deepEqual(
       positions,
       [...positions].sort((a, b) => a - b),
@@ -70,7 +73,7 @@ test.group('FunnelStages API', (group) => {
     const response = await client.get('/api/funnel_stages').loginAs(user)
     response.assertStatus(200)
 
-    const ids = response.body().data.map((s: any) => s.id)
+    const ids = response.body().data.map((s: StageDto) => s.id)
     assert.notInclude(ids, stage.id, 'Soft-deleted stage should not appear in active list')
   })
 
@@ -103,7 +106,7 @@ test.group('FunnelStages API', (group) => {
     )
 
     // The soft-deleted stage should be present in archived response
-    const archivedIds = archivedResponse.body().data.map((s: any) => s.id)
+    const archivedIds = archivedResponse.body().data.map((s: StageDto) => s.id)
     assert.include(archivedIds, stage.id, 'Archived stage should appear with include_archived=true')
   })
 
@@ -201,14 +204,14 @@ test.group('FunnelStages API', (group) => {
 
     // Stage should not appear in active list
     const listResponse = await client.get('/api/funnel_stages').loginAs(user)
-    const ids = listResponse.body().data.map((s: any) => s.id)
+    const ids = listResponse.body().data.map((s: StageDto) => s.id)
     assert.notInclude(ids, stage.id, 'Soft-deleted stage should not appear in active list')
 
     // But should appear with include_archived=true
     const archivedResponse = await client
       .get('/api/funnel_stages?include_archived=true')
       .loginAs(user)
-    const archivedIds = archivedResponse.body().data.map((s: any) => s.id)
+    const archivedIds = archivedResponse.body().data.map((s: StageDto) => s.id)
     assert.include(
       archivedIds,
       stage.id,
@@ -298,11 +301,11 @@ test.group('FunnelStages API', (group) => {
     assert.property(response.body(), 'meta')
 
     // Verify positions match the provided order
-    const returnedIds = response.body().data.map((s: any) => s.id)
+    const returnedIds = response.body().data.map((s: StageDto) => s.id)
     assert.deepEqual(returnedIds, reversedIds, 'Returned order should match requested order')
 
     // Verify positions are sequential starting from 1
-    const returnedPositions = response.body().data.map((s: any) => s.position as number)
+    const returnedPositions = response.body().data.map((s: StageDto) => s.position)
     const expectedPositions = reversedIds.map((_: string, i: number) => i + 1)
     assert.deepEqual(returnedPositions, expectedPositions, 'Positions should be sequential from 1')
   })
@@ -397,7 +400,7 @@ test.group('FunnelStages API', (group) => {
     // User B's list should NOT contain user A's stages
     const listRes = await client.get('/api/funnel_stages').loginAs(userB)
     listRes.assertStatus(200)
-    const returnedIds = listRes.body().data.map((s: any) => s.id)
+    const returnedIds = listRes.body().data.map((s: StageDto) => s.id)
 
     for (const id of stageAIds) {
       assert.notInclude(returnedIds, id, `User B should not see user A's stage ${id}`)
