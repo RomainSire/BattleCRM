@@ -18,6 +18,7 @@ interface FormValues {
 export function AddStageForm() {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
   const create = useCreateFunnelStage()
   const {
     register,
@@ -32,6 +33,7 @@ export function AddStageForm() {
   const nameValue = watch('name')
 
   function onSubmit({ name }: FormValues) {
+    setApiError(null)
     create.mutate(name.trim(), {
       onSuccess: () => {
         reset()
@@ -40,13 +42,14 @@ export function AddStageForm() {
       },
       onError: (error) => {
         const message = error instanceof ApiError ? error.errors[0]?.message : undefined
-        toast.error(message ?? t('funnelStages.toast.addFailed'))
+        setApiError(message ?? t('funnelStages.toast.addFailed'))
       },
     })
   }
 
   function handleCancel() {
     reset()
+    setApiError(null)
     setIsOpen(false)
   }
 
@@ -73,6 +76,7 @@ export function AddStageForm() {
           }}
         />
         {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+        {apiError && <p className="text-xs text-destructive">{apiError}</p>}
       </div>
       <Button type="submit" size="sm" disabled={create.isPending || !nameValue.trim()}>
         {create.isPending ? '...' : t('funnelStages.add')}

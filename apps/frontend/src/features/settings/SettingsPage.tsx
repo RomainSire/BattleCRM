@@ -5,7 +5,7 @@ export function SettingsPage() {
   const { t } = useTranslation()
 
   return (
-    <main className="space-y-6">
+    <div className="space-y-6">
       <header>
         <h1 className="text-3xl font-bold">{t('settings.title')}</h1>
         <p className="text-muted-foreground">{t('settings.description')}</p>
@@ -17,6 +17,6 @@ export function SettingsPage() {
           <FunnelStageList />
         </div>
       </section>
-    </main>
+    </div>
   )
 }

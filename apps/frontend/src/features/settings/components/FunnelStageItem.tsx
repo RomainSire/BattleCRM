@@ -27,18 +27,21 @@ import { funnelStageSchema } from '../schemas/funnelStage'
 
 type Props = {
   stage: FunnelStageType
+  displayPosition: number
 }
 
 interface FormValues {
   name: string
 }
 
-export function FunnelStageItem({ stage }: Props) {
+export function FunnelStageItem({ stage, displayPosition }: Props) {
   const { t } = useTranslation()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: stage.id,
   })
   const [isEditing, setIsEditing] = useState(false)
+  const [updateError, setUpdateError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const update = useUpdateFunnelStage()
   const deleteMutation = useDeleteFunnelStage()
@@ -63,6 +66,7 @@ export function FunnelStageItem({ stage }: Props) {
 
   function handleEditStart() {
     reset({ name: stage.name })
+    setUpdateError(null)
     setIsEditing(true)
   }
 
@@ -77,6 +81,7 @@ export function FunnelStageItem({ stage }: Props) {
       setIsEditing(false)
       return
     }
+    setUpdateError(null)
     update.mutate(
       { id: stage.id, name: trimmed },
       {
@@ -86,20 +91,21 @@ export function FunnelStageItem({ stage }: Props) {
         },
         onError: (error) => {
           const message = error instanceof ApiError ? error.errors[0]?.message : undefined
-          toast.error(message ?? t('funnelStages.toast.updateFailed'))
+          setUpdateError(message ?? t('funnelStages.toast.updateFailed'))
         },
       },
     )
   }
 
   function handleDelete() {
+    setDeleteError(null)
     deleteMutation.mutate(stage.id, {
       onSuccess: () => {
         toast.success(t('funnelStages.toast.deleted'))
       },
       onError: (error) => {
         const message = error instanceof ApiError ? error.errors[0]?.message : undefined
-        toast.error(message ?? t('funnelStages.toast.deleteFailed'))
+        setDeleteError(message ?? t('funnelStages.toast.deleteFailed'))
       },
     })
   }
@@ -109,105 +115,112 @@ export function FunnelStageItem({ stage }: Props) {
       ref={setNodeRef}
       style={style}
       data-stage-name={stage.name}
-      className="flex items-center gap-3 rounded-md border bg-card px-3 py-2"
+      className="flex flex-col rounded-md border bg-card px-3 py-2"
     >
-      {/* Drag handle */}
-      <button
-        type="button"
-        aria-label={t('funnelStages.aria.reorder')}
-        className="cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="size-4" />
-      </button>
+      {/* Main row */}
+      <div className="flex items-center gap-3">
+        {/* Drag handle */}
+        <button
+          type="button"
+          aria-label={t('funnelStages.aria.reorder')}
+          className="cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-4" />
+        </button>
 
-      {/* Position badge */}
-      <span className="w-6 text-center text-xs font-medium text-muted-foreground">
-        {stage.position}
-      </span>
+        {/* Position badge — reflects current visual order (updated optimistically on drag) */}
+        <span className="w-6 text-center text-xs font-medium text-muted-foreground">
+          {displayPosition}
+        </span>
 
-      {/* Name / inline edit */}
-      {isEditing ? (
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 items-center gap-2">
-          <div className="flex flex-1 flex-col gap-1">
-            <Input
-              {...register('name')}
-              autoFocus
-              className="h-7 text-sm"
-              aria-label={t('funnelStages.stageName')}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') handleCancel()
-              }}
-            />
-            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
-          </div>
-          <Button
-            type="submit"
-            size="icon-sm"
-            disabled={update.isPending || !nameValue.trim()}
-            aria-label={t('funnelStages.aria.saveName')}
-          >
-            <Check className="size-4" />
-          </Button>
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            onClick={handleCancel}
-            aria-label={t('funnelStages.aria.cancelEdit')}
-          >
-            <X className="size-4" />
-          </Button>
-        </form>
-      ) : (
-        <span className="flex-1 text-sm">{stage.name}</span>
-      )}
+        {/* Name / inline edit */}
+        {isEditing ? (
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 items-center gap-2">
+            <div className="flex flex-1 flex-col gap-1">
+              <Input
+                {...register('name')}
+                autoFocus
+                className="h-7 text-sm"
+                aria-label={t('funnelStages.stageName')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') handleCancel()
+                }}
+              />
+              {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+              {updateError && <p className="text-xs text-destructive">{updateError}</p>}
+            </div>
+            <Button
+              type="submit"
+              size="icon-sm"
+              disabled={update.isPending || !nameValue.trim()}
+              aria-label={t('funnelStages.aria.saveName')}
+            >
+              <Check className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              onClick={handleCancel}
+              aria-label={t('funnelStages.aria.cancelEdit')}
+            >
+              <X className="size-4" />
+            </Button>
+          </form>
+        ) : (
+          <span className="flex-1 text-sm">{stage.name}</span>
+        )}
 
-      {/* Actions (hidden while editing) */}
-      {!isEditing && (
-        <div className="flex items-center gap-1">
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            onClick={handleEditStart}
-            aria-label={t('funnelStages.aria.edit')}
-          >
-            <Pencil className="size-3" />
-          </Button>
+        {/* Actions (hidden while editing) */}
+        {!isEditing && (
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              onClick={handleEditStart}
+              aria-label={t('funnelStages.aria.edit')}
+            >
+              <Pencil className="size-3" />
+            </Button>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                aria-label={t('funnelStages.aria.delete')}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="size-3" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent size="sm">
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t('funnelStages.deleteDialog.title')}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t('funnelStages.deleteDialog.description', { name: stage.name })}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                <AlertDialogAction
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={deleteMutation.isPending}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={t('funnelStages.aria.delete')}
+                  className="text-destructive hover:text-destructive"
                 >
-                  {t('funnelStages.deleteDialog.confirm')}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      )}
+                  <Trash2 className="size-3" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent size="sm">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t('funnelStages.deleteDialog.title')}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t('funnelStages.deleteDialog.description', { name: stage.name })}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={deleteMutation.isPending}
+                  >
+                    {t('funnelStages.deleteDialog.confirm')}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+      </div>
+
+      {/* Delete error — shown inline when the API call fails after dialog confirmation */}
+      {deleteError && <p className="mt-1 text-xs text-destructive">{deleteError}</p>}
     </div>
   )
 }

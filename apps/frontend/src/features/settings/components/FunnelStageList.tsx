@@ -15,7 +15,6 @@ import {
 } from '@dnd-kit/sortable'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 import { ApiError } from '@/lib/api'
 import { useFunnelStages, useReorderFunnelStages } from '../hooks/useFunnelStages'
 import type { FunnelStageType } from '../lib/api'
@@ -27,8 +26,9 @@ export function FunnelStageList() {
   const { data, isLoading, isError } = useFunnelStages()
   const reorder = useReorderFunnelStages()
 
-  // Local state for optimistic reorder
+  // Local state for optimistic reorder — displayPosition is derived from index, not stage.position
   const [localStages, setLocalStages] = useState<FunnelStageType[]>([])
+  const [reorderError, setReorderError] = useState<string | null>(null)
 
   useEffect(() => {
     if (data?.data) {
@@ -49,8 +49,9 @@ export function FunnelStageList() {
     const newIndex = localStages.findIndex((s) => s.id === over.id)
     const reordered = arrayMove(localStages, oldIndex, newIndex)
 
-    // Optimistic update
+    // Optimistic update — position badges update immediately via index prop
     setLocalStages(reordered)
+    setReorderError(null)
 
     // Send complete ordered list to backend
     reorder.mutate(
@@ -60,7 +61,7 @@ export function FunnelStageList() {
           // Rollback on error
           setLocalStages(data?.data ?? [])
           const message = error instanceof ApiError ? error.errors[0]?.message : undefined
-          toast.error(message ?? t('funnelStages.toast.reorderFailed'))
+          setReorderError(message ?? t('funnelStages.toast.reorderFailed'))
         },
       },
     )
@@ -88,12 +89,14 @@ export function FunnelStageList() {
           strategy={verticalListSortingStrategy}
         >
           <div className="space-y-1">
-            {localStages.map((stage) => (
-              <FunnelStageItem key={stage.id} stage={stage} />
+            {localStages.map((stage, index) => (
+              <FunnelStageItem key={stage.id} stage={stage} displayPosition={index + 1} />
             ))}
           </div>
         </SortableContext>
       </DndContext>
+
+      {reorderError && <p className="text-sm text-destructive">{reorderError}</p>}
 
       <div className="pt-1">
         <AddStageForm />
