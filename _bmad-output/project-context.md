@@ -53,6 +53,8 @@ _Critical rules and patterns for implementing BattleCRM. Read this before writin
 
 ### Data Patterns
 - **Soft delete only** - never hard delete, use `deleted_at`
+- Soft delete implemented via `adonis-lucid-soft-deletes` package; `.delete()` on a model instance performs a soft delete
+- `withTrashed()` is not declared in the default Lucid types — use `apps/backend/types/soft_deletes.d.ts` module augmentation (already exists)
 - API lists: wrapped `{ data: [...], meta: {...} }`
 - API single: direct object `{ id, name, ... }`
 - Dates: ISO 8601 strings
@@ -70,7 +72,8 @@ _Critical rules and patterns for implementing BattleCRM. Read this before writin
 
 ### Error Handling
 - Use Adonis default error format
-- Frontend: inline errors under fields, toast for API errors
+- Frontend: inline errors for ALL API errors — **never `toast.error()`** for mutation failures
+- Toasts (`toast.success()`) for successful mutations only — reserved for actions with no obvious visual feedback
 - Never use popups except for destructive confirmations
 
 ### Environment
@@ -110,8 +113,8 @@ pnpm format
 # Add dependency to frontend
 pnpm --filter @battlecrm/frontend add <package>
 
-# Run backend migrations
-cd apps/backend && node ace migration:run
+# Run backend migrations (from apps/backend/)
+ENV_PATH=../../ node ace migration:run
 ```
 
 ```typescript

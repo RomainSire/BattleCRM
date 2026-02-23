@@ -70,7 +70,7 @@ This document provides the complete epic and story breakdown for BattleCRM, deco
 
 **Funnel Configuration (FR38-FR44)**
 - FR38: Users can configure custom funnel stages (names and order)
-- FR39: System provides 10 default funnel stages pre-filled
+- FR39: System provides 9 default funnel stages pre-filled
 - FR40: Users can add, remove, or reorder funnel stages (max 15 stages)
 - FR41: Users can configure funnel stages without touching code (via Settings page)
 - FR42: System enforces linear funnel order (no branching)
@@ -322,7 +322,7 @@ This document provides the complete epic and story breakdown for BattleCRM, deco
 | FR36 | Epic 7 | Compare conversion rates |
 | FR37 | Epic 7 | Identify winning variant |
 | FR38 | Epic 2 | Configure custom funnel stages |
-| FR39 | Epic 2 | 10 default funnel stages |
+| FR39 | Epic 2 | 9 default funnel stages |
 | FR40 | Epic 2 | Add/remove/reorder stages (max 15) |
 | FR41 | Epic 2 | Configure via Settings page |
 | FR42 | Epic 2 | Enforce linear funnel order |
@@ -618,17 +618,16 @@ So that users can have a working funnel from day one.
 
 **Given** a new user registers
 **When** their account is created
-**Then** 10 default funnel stages are seeded for their user_id (FR39):
+**Then** 9 default funnel stages are seeded for their user_id (FR39):
   1. Lead qualified
-  2. First contact
-  3. Connection established
-  4. Positive response
-  5. ESN qualification
-  6. Application sent
-  7. ESN interview(s)
-  8. Final client interview(s)
-  9. Proposal received
-  10. Contract signed ✅
+  2. Linkedin connection
+  3. First contact
+  4. Resume sent
+  5. ENS interview
+  6. Client interview
+  7. Technical tests
+  8. Offer negotiation
+  9. Contract signed ✅
 
 ---
 
@@ -759,7 +758,7 @@ So that users can store and manage their prospect data.
   - positioning_id (uuid, foreign key to positionings, nullable)
   - notes (text, optional)
   - created_at, updated_at, deleted_at
-**And** Row Level Security filters by user_id
+**And** user isolation is enforced via `forUser(user_id)` query scope on the Prospect model (NOT database-level RLS)
 **And** indexes exist on (user_id, deleted_at) and (user_id, funnel_stage_id)
 
 ---
@@ -795,6 +794,12 @@ So that the frontend can perform all prospect operations.
 **Given** I am authenticated
 **When** I call DELETE /api/prospects/:id
 **Then** the prospect is soft-deleted (deleted_at = now) (FR4)
+
+**Given** funnel stages are returned by GET /api/funnel_stages
+**When** the response is serialized
+**Then** each stage includes a `prospect_count` field (count of active prospects at that stage)
+**And** the frontend delete confirmation dialog in `FunnelStageItem` uses this count to show "X prospects will be unassigned" when count > 0
+**Note:** This implements the deferred AC4 from Story 2.4 — requires prospects table to exist first.
 
 ---
 
@@ -970,7 +975,7 @@ So that users can track different variants for each stage of their pipeline.
   - description (text, optional) - rationale for this variant
   - content (text, optional) - actual content or file reference
   - created_at, updated_at, deleted_at
-**And** Row Level Security filters by user_id
+**And** user isolation is enforced via `forUser(user_id)` query scope on the Positioning model (NOT database-level RLS)
 **And** index exists on (user_id, deleted_at, funnel_stage_id)
 
 ---
@@ -1121,7 +1126,7 @@ So that users can track their outreach activities over time.
   - notes (text, optional) - free text for details (objective + subjective)
   - interaction_date (timestamp, defaults to now)
   - created_at, updated_at, deleted_at
-**And** Row Level Security filters by user_id
+**And** user isolation is enforced via `forUser(user_id)` query scope on the Interaction model (NOT database-level RLS)
 **And** indexes exist on (user_id, prospect_id), (user_id, interaction_date), (user_id, positioning_id)
 **And** no type/subtype fields - the funnel stage of the prospect defines the interaction context
 
@@ -1426,7 +1431,7 @@ So that users can manage independent testing per stage.
   - started_at (timestamp)
   - closed_at (timestamp, nullable)
   - created_at, updated_at
-**And** Row Level Security filters by user_id
+**And** user isolation is enforced via `forUser(user_id)` query scope on the Battle model (NOT database-level RLS)
 **And** unique constraint on (user_id, funnel_stage_id, status='active') ensures one active battle per stage
 **And** index exists on (user_id, funnel_stage_id, status)
 

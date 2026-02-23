@@ -53,12 +53,12 @@ development_status:
   epic-1-retrospective: done
 
   # Epic 2: Funnel Configuration
-  epic-2: in-progress
+  epic-2: done
   2-1-create-funnel-stages-database-schema: done
   2-2-implement-funnel-stages-api: done
   2-3-build-funnel-configuration-ui: done
   2-4-enforce-funnel-constraints: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
 
   # Epic 3: Prospect Management
   epic-3: backlog
