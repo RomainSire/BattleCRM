@@ -152,9 +152,9 @@ test.group('FunnelStages API', (group) => {
   }) => {
     const user = await registerUser(client, 'post-max-stages')
 
-    // User starts with 10 default stages (seeded on registration in Story 2.1).
-    // Add 5 more to reach the 15-stage limit.
-    for (let i = 1; i <= 5; i++) {
+    // User starts with 9 default stages (seeded on registration in Story 2.1).
+    // Add 6 more to reach the 15-stage limit.
+    for (let i = 1; i <= 6; i++) {
       const res = await client
         .post('/api/funnel_stages')
         .loginAs(user)

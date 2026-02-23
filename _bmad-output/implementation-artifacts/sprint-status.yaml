@@ -57,7 +57,7 @@ development_status:
   2-1-create-funnel-stages-database-schema: done
   2-2-implement-funnel-stages-api: done
   2-3-build-funnel-configuration-ui: done
-  2-4-enforce-funnel-constraints: review
+  2-4-enforce-funnel-constraints: done
   epic-2-retrospective: optional
 
   # Epic 3: Prospect Management

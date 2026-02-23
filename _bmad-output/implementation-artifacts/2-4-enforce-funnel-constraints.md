@@ -1,6 +1,6 @@
 # Story 2.4: Enforce Funnel Constraints
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-02-23 -->
 <!-- Previous story: 2-3-build-funnel-configuration-ui (done) -->
@@ -38,7 +38,7 @@ So that users cannot create invalid funnel configurations.
 - [x] **Task 4: Verification** (AC5)
   - [x] 4.1 `pnpm lint` from root → 0 errors
   - [x] 4.2 `pnpm --filter @battlecrm/frontend type-check` → 0 errors
-  - [ ] 4.3 `ENV_PATH=../../ node ace test functional` → all pass (requires running DB)
+  - [x] 4.3 `ENV_PATH=../../ node ace test functional` → all pass (49/49)
 
 ---
 
@@ -113,9 +113,9 @@ Add this test in the `POST /api/funnel_stages` section (after the empty string t
 test('POST /api/funnel_stages returns 422 when user has 15 active stages', async ({ client }) => {
   const user = await registerUser(client, 'post-max-stages')
 
-  // User starts with 10 default stages (seeded on registration in Story 2.1).
-  // Add 5 more to reach the 15-stage limit.
-  for (let i = 1; i <= 5; i++) {
+  // User starts with 9 default stages (seeded on registration in Story 2.1).
+  // Add 6 more to reach the 15-stage limit.
+  for (let i = 1; i <= 6; i++) {
     const res = await client
       .post('/api/funnel_stages')
       .loginAs(user)
@@ -308,6 +308,8 @@ claude-sonnet-4-6
 ### Debug Log References
 
 - Biome formatter required multi-line chaining for `.query().withScopes().select()` — fixed by splitting onto separate lines
+- Code review (M2): `{{count}}` is a reserved i18next pluralization key — renamed to `{{total}}` in en.json, fr.json, and FunnelStageList.tsx
+- Code review (M1 bug): Test assumed 10 default stages but `DEFAULT_FUNNEL_STAGES` has 9 — fixed loop from `i <= 5` to `i <= 6`
 
 ### Completion Notes List
 
@@ -316,6 +318,8 @@ claude-sonnet-4-6
 - AC4 deferred to Epic 3 (requires prospects table); `AlertDialog` from Story 2.3 already satisfies "must confirm"
 - Frontend: `FunnelStageList` shows `X/15 stages` counter always; when count >= 15 replaces `AddStageForm` with max-reached message
 - Inline API error for 422 (if backend check somehow bypassed) handled automatically by `setApiError` from Story 2.3 review fix
+- i18n stageCount key uses `{{total}}` (not `{{count}}`) to avoid i18next reserved pluralization variable
+- All 49 functional tests pass (49/49)
 
 ### File List
 

@@ -105,7 +105,7 @@ export function FunnelStageList() {
           <AddStageForm />
         )}
         <p className="text-right text-xs text-muted-foreground">
-          {t('funnelStages.stageCount', { count: localStages.length })}
+          {t('funnelStages.stageCount', { total: localStages.length })}
         </p>
       </div>
     </div>

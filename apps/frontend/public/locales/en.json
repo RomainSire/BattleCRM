@@ -76,7 +76,7 @@
       "description": "\"{{name}}\" will be archived. This cannot be undone.",
       "confirm": "Delete"
     },
-    "stageCount": "{{count}}/15 stages",
+    "stageCount": "{{total}}/15 stages",
     "maxReached": "Maximum of 15 stages reached. Archive a stage to add more.",
     "toast": {
       "added": "Stage added",
