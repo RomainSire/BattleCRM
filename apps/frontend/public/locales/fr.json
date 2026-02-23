@@ -76,6 +76,8 @@
       "description": "\"{{name}}\" sera archivée. Cette action est irréversible.",
       "confirm": "Supprimer"
     },
+    "stageCount": "{{count}}/15 étapes",
+    "maxReached": "Maximum de 15 étapes atteint. Archivez une étape pour en ajouter.",
     "toast": {
       "added": "Étape ajoutée",
       "updated": "Étape mise à jour",

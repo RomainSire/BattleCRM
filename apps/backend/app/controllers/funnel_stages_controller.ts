@@ -31,10 +31,23 @@ export default class FunnelStagesController {
   /**
    * POST /api/funnel_stages
    * Creates a new stage at position = max(active positions) + 1.
+   * Enforces FR40: maximum 15 active stages per user.
    */
   async store({ request, response, auth }: HttpContext) {
     const { name } = await request.validateUsing(createFunnelStageValidator)
     const userId = auth.user!.id
+
+    // Enforce FR40: maximum 15 active stages per user.
+    // Pre-transaction check is acceptable for MVP single-user CRM — concurrent
+    // race at exactly 14 stages is negligible risk in this context.
+    const activeStages = await FunnelStage.query()
+      .withScopes((s) => s.forUser(userId))
+      .select('id')
+    if (activeStages.length >= 15) {
+      return response.unprocessableEntity({
+        errors: [{ message: 'Maximum 15 stages allowed', rule: 'maxStages', field: 'name' }],
+      })
+    }
 
     // Transaction + FOR UPDATE lock prevents two concurrent POST requests from
     // reading the same MAX(position) and both inserting at position N+1.
