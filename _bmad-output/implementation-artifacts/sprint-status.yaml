@@ -61,8 +61,8 @@ development_status:
   epic-2-retrospective: done
 
   # Epic 3: Prospect Management
-  epic-3: backlog
-  3-1-create-prospects-database-schema: backlog
+  epic-3: in-progress
+  3-1-create-prospects-database-schema: done
   3-2-implement-prospects-crud-api: backlog
   3-3-build-prospects-list-view: backlog
   3-4-implement-prospect-create-edit: backlog
