@@ -36,12 +36,16 @@ export default class extends BaseSchema {
 
       // Index for filtering prospects by funnel stage (FR6: filter prospects by funnel stage)
       table.index(['user_id', 'funnel_stage_id'], 'idx_prospects_user_stage')
+
+      // Index for linkedin_url duplicate detection (Story 6.3: CSV import deduplication)
+      // linkedin_url is the primary deduplication key (exact match, unique per user)
+      table.index(['user_id', 'linkedin_url'], 'idx_prospects_user_linkedin')
     })
   }
 
   async down() {
-    this.schema.raw('DROP INDEX IF EXISTS idx_prospects_user_stage')
-    this.schema.raw('DROP INDEX IF EXISTS idx_prospects_user_deleted')
+    // Indexes created via table.index() inside createTable() are automatically
+    // dropped by dropTable() — no need for explicit DROP INDEX calls
     this.schema.dropTable(this.tableName)
   }
 }

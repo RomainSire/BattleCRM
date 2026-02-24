@@ -1,6 +1,6 @@
 # Story 3.1: Create Prospects Database Schema
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-02-24 -->
 <!-- Epic 3: Prospect Management — first story of the epic -->
@@ -15,7 +15,7 @@ So that users can store and manage their prospect data.
 
 1. **AC1 (Migration):** Running the migration creates a `prospects` table with all specified columns: `id` (uuid, PK), `user_id` (uuid, FK to users, CASCADE), `funnel_stage_id` (uuid, FK to funnel_stages, NOT NULL), `positioning_id` (uuid, nullable, no FK constraint yet — positionings table doesn't exist until Epic 4), `name` (varchar, required), `company` (varchar, optional), `linkedin_url` (varchar, optional), `email` (varchar, optional), `phone` (varchar, optional), `title` (varchar, optional), `notes` (text, optional), `created_at`, `updated_at`, `deleted_at`.
 2. **AC2 (User isolation scope):** The `Prospect` Lucid model has a `static forUser = scope(...)` that filters by `user_id` — same pattern as `FunnelStage`. All queries in Epic 3+ MUST use this scope for user isolation (NOT database-level RLS).
-3. **AC3 (Indexes):** Indexes exist on `(user_id, deleted_at)` (efficient per-user soft-delete filtering) and `(user_id, funnel_stage_id)` (efficient filtering by stage — FR6).
+3. **AC3 (Indexes):** Indexes exist on `(user_id, deleted_at)` (efficient per-user soft-delete filtering), `(user_id, funnel_stage_id)` (efficient filtering by stage — FR6), and `(user_id, linkedin_url)` (exact-match deduplication for Story 6.3 CSV import).
 4. **AC4 (Migration runs cleanly):** `ENV_PATH=../../ node ace migration:run` from `apps/backend/` completes with no errors. The `prospects` table is visible in the database.
 5. **AC5 (Lint + type check):** `pnpm biome check --write .` from root passes with 0 errors; `pnpm --filter @battlecrm/backend type-check` passes with 0 errors.
 
@@ -32,7 +32,8 @@ So that users can store and manage their prospect data.
   - [x] 1.8 Add timestamps: `created_at` (notNullable), `updated_at` (nullable), `deleted_at` (nullable)
   - [x] 1.9 Add index `idx_prospects_user_deleted` on `(user_id, deleted_at)` via `table.index(['user_id', 'deleted_at'], 'idx_prospects_user_deleted')`
   - [x] 1.10 Add index `idx_prospects_user_stage` on `(user_id, funnel_stage_id)` via `table.index(['user_id', 'funnel_stage_id'], 'idx_prospects_user_stage')`
-  - [x] 1.11 Implement `down()` method: drop indexes then `dropTable`
+  - [x] 1.11 Add index `idx_prospects_user_linkedin` on `(user_id, linkedin_url)` — added post-review (L3: Story 6.3 CSV deduplication support)
+  - [x] 1.12 Implement `down()` method: `this.schema.dropTable(this.tableName)` — indexes created via `table.index()` inside `createTable()` are auto-dropped by DROP TABLE (no explicit DROP INDEX needed — L2 fix)
 
 - [x] **Task 2: Create Prospect Lucid model** (AC2)
   - [x] 2.1 Create file `apps/backend/app/models/prospect.ts` following the `funnel_stage.ts` pattern exactly
@@ -81,17 +82,14 @@ export default class extends BaseSchema {
     this.schema.createTable(this.tableName, (table) => {
       table.uuid('id').primary().defaultTo(this.db.rawQuery('gen_random_uuid()').knexQuery)
       table.uuid('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE')
-      table
-        .uuid('funnel_stage_id')
-        .notNullable()
-        .references('id')
-        .inTable('funnel_stages')
-        // No onDelete: funnel_stages are only soft-deleted — FK row always exists in DB
-        // If a stage is archived (deleted_at set), its DB row persists, FK reference remains valid
+      table.uuid('funnel_stage_id').notNullable().references('id').inTable('funnel_stages')
+      // No onDelete: funnel_stages are only ever soft-deleted — the DB row always exists,
+      // so the FK reference remains valid. RESTRICT (default) is a safe fallback
+      // that prevents accidental hard-deletes of stages that have prospects.
 
-      // positioning_id: nullable, NO FK constraint yet
-      // Positionings table created in Epic 4 (Story 4.1).
-      // FK will be added in migration 0005 (or the positionings migration) via ALTER TABLE:
+      // positioning_id: nullable UUID, NO FK constraint yet.
+      // The positionings table is created in Epic 4 (Story 4.1).
+      // FK will be added in that migration via:
       //   ALTER TABLE prospects ADD CONSTRAINT fk_prospects_positioning
       //   FOREIGN KEY (positioning_id) REFERENCES positionings(id) ON DELETE SET NULL
       table.uuid('positioning_id').nullable()
@@ -111,14 +109,18 @@ export default class extends BaseSchema {
       // Index for efficient per-user soft-delete filtering (used by forUser scope + default list queries)
       table.index(['user_id', 'deleted_at'], 'idx_prospects_user_deleted')
 
-      // Index for filtering prospects by funnel stage (FR6: filter by funnel stage)
+      // Index for filtering prospects by funnel stage (FR6: filter prospects by funnel stage)
       table.index(['user_id', 'funnel_stage_id'], 'idx_prospects_user_stage')
+
+      // Index for linkedin_url duplicate detection (Story 6.3: CSV import deduplication)
+      // linkedin_url is the primary deduplication key (exact match, unique per user)
+      table.index(['user_id', 'linkedin_url'], 'idx_prospects_user_linkedin')
     })
   }
 
   async down() {
-    this.schema.raw('DROP INDEX IF EXISTS idx_prospects_user_stage')
-    this.schema.raw('DROP INDEX IF EXISTS idx_prospects_user_deleted')
+    // Indexes created via table.index() inside createTable() are automatically
+    // dropped by dropTable() — no need for explicit DROP INDEX calls
     this.schema.dropTable(this.tableName)
   }
 }
@@ -208,6 +210,47 @@ The `positionings` table is created in **Epic 4, Story 4.1**. Until then:
 - Validation in controllers must ensure `positioning_id` belongs to the user if provided (query positionings table if it exists)
 - **In Story 4.1's migration, add:** `this.schema.raw('ALTER TABLE prospects ADD CONSTRAINT fk_prospects_positioning FOREIGN KEY (positioning_id) REFERENCES positionings(id) ON DELETE SET NULL')`
 - Why `ON DELETE SET NULL`? If a positioning is ever hard-deleted (won't happen — soft-delete only), prospects safely lose the reference. For soft-deleted positionings, the FK row still exists anyway.
+
+---
+
+### ⚠️ CODE REVIEW M1 — Security: funnel_stage_id Cross-User Validation (Story 3.2 must-fix)
+
+**Finding:** The DB FK constraint on `funnel_stage_id` only enforces **existence** (the stage row exists), NOT **ownership** (the stage belongs to the authenticated user). A malicious user could pass a `funnel_stage_id` belonging to another user's funnel — the FK would pass, but the prospect would be associated with a stage the user doesn't own.
+
+**Required fix in Story 3.2 controller (`prospects_controller.ts`):**
+
+```typescript
+// BEFORE creating/updating a prospect, validate that funnel_stage_id belongs to auth user
+const stage = await FunnelStage.query()
+  .withScopes((s) => s.forUser(auth.user!.id))
+  .where('id', payload.funnelStageId)
+  .firstOrFail() // throws 404 if not found OR belongs to another user
+```
+
+**Why this matters:** Without this check, a crafty user could enumerate another user's funnel stage UUIDs and link their own prospects to them. This violates NFR11/NFR12 (zero cross-user access). The `forUser()` scope alone on Prospect queries is insufficient — all FK references must also be ownership-validated.
+
+**Pattern to follow:** Same validation must apply to `positioningId` in Stories 4.x (when the positionings table exists).
+
+---
+
+### ⚠️ CODE REVIEW M2 — Story 3.2 Must Modify funnel_stage.ts
+
+**Finding:** `apps/backend/app/models/funnel_stage.ts` currently has no `hasMany(() => Prospect)` reverse relation. Story 3.2 needs to implement `prospect_count` per stage (deferred AC4 from Story 2.4).
+
+**Required addition in Story 3.2 (not this story):**
+
+```typescript
+// In apps/backend/app/models/funnel_stage.ts
+import Prospect from '#models/prospect'
+import type { HasMany } from '@adonisjs/lucid/types/relations'
+// ...
+@hasMany(() => Prospect)
+declare prospects: HasMany<typeof Prospect>
+```
+
+**Why needed:** The `GET /api/funnel_stages` response (Story 2.2) needs to return `prospect_count` per stage for the funnel configuration UI. This requires either loading `hasMany` and using `.count()`, or a raw subquery. The relation must be defined before Story 3.2 can implement the count.
+
+**Note:** Adding `hasMany` to FunnelStage is a non-breaking change — it's additive only.
 
 ---
 
@@ -357,16 +400,20 @@ claude-sonnet-4-6
 
 - Biome reformatted `funnel_stage_id` chain from multi-line to single line in migration — expected, no impact on functionality.
 - `positioning_id` relation (`belongsTo(() => Positioning)`) skipped in model (Task 2.8) — Positioning model does not exist yet, will be added in Epic 4.
+- **Code review (L2):** `down()` originally had explicit `DROP INDEX IF EXISTS` calls — removed because indexes created via `table.index()` inside `createTable()` are auto-dropped by `dropTable()`. (Unlike migration 0002 where the unique index was created via `this.schema.raw()` outside `createTable()` and needed explicit DROP.)
+- **Code review (L3):** Migration rollback required to add `idx_prospects_user_linkedin` index — `node ace migration:rollback --batch=1` unexpectedly rolled back BOTH 0002 and 0003 (same batch). Re-ran `node ace migration:run` to reapply both. No data loss (dev environment).
 
 ### Completion Notes List
 
 - AC1: Migration `0003_create_prospects_table.ts` created with all required columns — id, user_id, funnel_stage_id, positioning_id (nullable, no FK), name, company, linkedin_url, email, phone, title, notes, created_at, updated_at, deleted_at.
 - AC2: `Prospect` model created with `compose(BaseModel, SoftDeletes)`, `forUser()` scope, and `belongsTo` relations to `User` and `FunnelStage`.
-- AC3: Two indexes created — `idx_prospects_user_deleted (user_id, deleted_at)` and `idx_prospects_user_stage (user_id, funnel_stage_id)`.
-- AC4: Migration ran cleanly in 116ms. No errors.
-- AC5: `pnpm biome check --write .` — 0 errors (1 file auto-reformatted). `pnpm --filter @battlecrm/backend type-check` — 0 errors.
+- AC3: Three indexes created — `idx_prospects_user_deleted (user_id, deleted_at)`, `idx_prospects_user_stage (user_id, funnel_stage_id)`, `idx_prospects_user_linkedin (user_id, linkedin_url)` (added post-review for Story 6.3 deduplication).
+- AC4: Migration ran cleanly (116ms initial run; re-applied after rollback in 131ms). No errors.
+- AC5: `pnpm biome check --write .` — 0 errors. `pnpm --filter @battlecrm/backend type-check` — 0 errors.
 - Regression check: 49/49 functional tests pass — no regressions.
 - `positioning_id` FK deferred to Story 4.1 migration as planned (positionings table doesn't exist yet).
+- **Code review fixes applied:** L2 (simplified `down()` — removed redundant DROP INDEX calls), L3 (added `idx_prospects_user_linkedin` index).
+- **Code review items documented:** M1 (security: cross-user `funnel_stage_id` validation → Story 3.2 must-fix), M2 (`hasMany(() => Prospect)` missing in FunnelStage model → Story 3.2 must-add).
 
 ---
 
@@ -388,3 +435,6 @@ claude-sonnet-4-6
 **Created:**
 - `apps/backend/database/migrations/0003_create_prospects_table.ts`
 - `apps/backend/app/models/prospect.ts`
+
+**Modified:**
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (epic-3 status: backlog → in-progress; 3-1 status: backlog → done)
