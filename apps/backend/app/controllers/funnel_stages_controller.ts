@@ -187,11 +187,20 @@ export default class FunnelStagesController {
       }
     })
 
-    // Return updated ordered list
+    // Return updated ordered list — include prospect_count for consistency with index()
     const updatedStages = await FunnelStage.query()
       .withScopes((s) => s.forUser(userId))
       .orderBy('position', 'asc')
+      .withCount('prospects', (q) => {
+        q.whereNull('deleted_at')
+      })
 
-    return response.ok({ data: updatedStages, meta: { total: updatedStages.length } })
+    return response.ok({
+      data: updatedStages.map((stage) => ({
+        ...stage.serialize(),
+        prospect_count: Number(stage.$extras.prospects_count ?? 0),
+      })),
+      meta: { total: updatedStages.length },
+    })
   }
 }

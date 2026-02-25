@@ -67,9 +67,11 @@ test.group('Prospects API', (group) => {
     const user = await registerUser(client, 'get-list')
     const stage = await getFirstStage(user.id)
 
-    // Create two prospects
-    await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'Alice' })
+    // Create Alice first, then Bob
+    const alice = await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'Alice' })
     await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'Bob' })
+    // Touch Alice after Bob so she gets the most recent updated_at
+    await alice.merge({ company: 'Updated' }).save()
 
     const response = await client.get('/api/prospects').loginAs(user)
 
@@ -77,8 +79,9 @@ test.group('Prospects API', (group) => {
     const body = response.body()
     assert.equal(body.data.length, 2)
     assert.equal(body.meta.total, 2)
-    // Both prospects have the expected funnelStageId (Lucid serializes camelCase by default)
-    assert.isTrue(body.data.every((p: ProspectDto) => p.funnelStageId === stage.id))
+    // Alice was updated last, so she must appear first (updated_at DESC ordering)
+    assert.equal(body.data[0].name, 'Alice', 'Most recently updated prospect should come first')
+    assert.equal(body.data[1].name, 'Bob')
   })
 
   test('GET /api/prospects excludes soft-deleted prospects by default', async ({
@@ -161,6 +164,24 @@ test.group('Prospects API', (group) => {
     const body = response.body()
     assert.equal(body.data.length, 1)
     assert.equal(body.data[0].name, 'In Stage 1')
+  })
+
+  test('GET /api/prospects?funnel_stage_id returns 422 for non-UUID value', async ({ client }) => {
+    const user = await registerUser(client, 'get-filter-bad-uuid')
+    const response = await client.get('/api/prospects?funnel_stage_id=not-a-uuid').loginAs(user)
+    response.assertStatus(422)
+  })
+
+  test('GET /api/prospects?funnel_stage_id returns 404 for another user stage', async ({
+    client,
+  }) => {
+    const userA = await registerUser(client, 'filter-iso-a')
+    const userB = await registerUser(client, 'filter-iso-b')
+    const stageA = await getFirstStage(userA.id)
+
+    // User B filters by user A's stage — must get 404, not empty list
+    const response = await client.get(`/api/prospects?funnel_stage_id=${stageA.id}`).loginAs(userB)
+    response.assertStatus(404)
   })
 
   // ===========================
@@ -301,6 +322,21 @@ test.group('Prospects API', (group) => {
       .loginAs(user)
       .json({ name: 'Test', funnel_stage_id: 'not-a-uuid' })
 
+    response.assertStatus(422)
+  })
+
+  test('POST /api/prospects returns 422 when user has no active stages', async ({ client }) => {
+    const user = await registerUser(client, 'post-no-stages')
+    // Archive all user stages so the default funnel_stage_id fallback finds nothing
+    const stages = await FunnelStage.query().withScopes((s) => s.forUser(user.id))
+    for (const stage of stages) {
+      await stage.delete() // SoftDeletes: sets deleted_at
+    }
+
+    const response = await client
+      .post('/api/prospects')
+      .loginAs(user)
+      .json({ name: 'Orphan Prospect' })
     response.assertStatus(422)
   })
 

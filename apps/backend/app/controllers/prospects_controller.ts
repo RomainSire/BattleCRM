@@ -3,6 +3,8 @@ import FunnelStage from '#models/funnel_stage'
 import Prospect from '#models/prospect'
 import { createProspectValidator, updateProspectValidator } from '#validators/prospects'
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export default class ProspectsController {
   /**
    * GET /api/prospects
@@ -24,6 +26,20 @@ export default class ProspectsController {
     }
 
     if (funnelStageId) {
+      // H1: Reject non-UUID values before they reach the DB (PostgreSQL uuid column throws on invalid format)
+      if (!UUID_REGEX.test(funnelStageId)) {
+        return response.unprocessableEntity({
+          errors: [{ message: 'validation.uuid', field: 'funnel_stage_id', rule: 'uuid' }],
+        })
+      }
+      // L1: Verify stage belongs to the authenticated user (consistent with M1 security pattern)
+      const stage = await FunnelStage.query()
+        .withScopes((s) => s.forUser(userId))
+        .where('id', funnelStageId)
+        .first()
+      if (!stage) {
+        return response.notFound()
+      }
       query.where('funnel_stage_id', funnelStageId)
     }
 
