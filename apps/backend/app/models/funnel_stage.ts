@@ -1,8 +1,9 @@
 import { compose } from '@adonisjs/core/helpers'
-import { BaseModel, belongsTo, column, scope } from '@adonisjs/lucid/orm'
-import type { BelongsTo } from '@adonisjs/lucid/types/relations'
+import { BaseModel, belongsTo, column, hasMany, scope } from '@adonisjs/lucid/orm'
+import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import { SoftDeletes } from 'adonis-lucid-soft-deletes'
 import type { DateTime } from 'luxon'
+import Prospect from '#models/prospect'
 import User from '#models/user'
 
 export default class FunnelStage extends compose(BaseModel, SoftDeletes) {
@@ -34,4 +35,7 @@ export default class FunnelStage extends compose(BaseModel, SoftDeletes) {
 
   @belongsTo(() => User)
   declare user: BelongsTo<typeof User>
+
+  @hasMany(() => Prospect)
+  declare prospects: HasMany<typeof Prospect>
 }

@@ -1,0 +1,16 @@
+meta {
+  name: List Prospects (with archived)
+  type: http
+  seq: 2
+}
+
+get {
+  url: http://localhost:3333/api/prospects?include_archived=true
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

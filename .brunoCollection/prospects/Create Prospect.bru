@@ -1,0 +1,33 @@
+meta {
+  name: Create Prospect
+  type: http
+  seq: 5
+}
+
+post {
+  url: http://localhost:3333/api/prospects
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Jean Dupont",
+    "company": "Acme Corp",
+    "email": "jean.dupont@acme.com",
+    "phone": "+33612345678",
+    "linkedin_url": "https://linkedin.com/in/jeandupont",
+    "title": "CTO",
+    "notes": "Rencontré à la conf LeadGen 2026",
+    "funnel_stage_id": ""
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
