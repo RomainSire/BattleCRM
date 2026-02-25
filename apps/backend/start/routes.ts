@@ -14,6 +14,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 const AuthController = () => import('#controllers/auth_controller')
 const FunnelStagesController = () => import('#controllers/funnel_stages_controller')
+const ProspectsController = () => import('#controllers/prospects_controller')
 
 router
   .group(() => {
@@ -43,6 +44,17 @@ router
         router.delete('/:id', [FunnelStagesController, 'destroy']).where('id', UUID_REGEX)
       })
       .prefix('/funnel_stages')
+      .use(middleware.auth())
+    // Prospects routes — ALL require auth
+    router
+      .group(() => {
+        router.get('/', [ProspectsController, 'index'])
+        router.post('/', [ProspectsController, 'store'])
+        router.get('/:id', [ProspectsController, 'show']).where('id', UUID_REGEX)
+        router.put('/:id', [ProspectsController, 'update']).where('id', UUID_REGEX)
+        router.delete('/:id', [ProspectsController, 'destroy']).where('id', UUID_REGEX)
+      })
+      .prefix('/prospects')
       .use(middleware.auth())
   })
   .prefix('/api')

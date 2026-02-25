@@ -1,0 +1,32 @@
+meta {
+  name: Update Prospect
+  type: http
+  seq: 6
+}
+
+put {
+  url: http://localhost:3333/api/prospects/:id
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Jean Dupont",
+    "company": "New Corp",
+    "email": "jean@newcorp.com",
+    "phone": null,
+    "title": "CEO",
+    "notes": "Promu CEO en janvier",
+    "funnel_stage_id": ""
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

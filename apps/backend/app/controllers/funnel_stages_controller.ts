@@ -19,13 +19,22 @@ export default class FunnelStagesController {
     const query = FunnelStage.query()
       .withScopes((s) => s.forUser(userId))
       .orderBy('position', 'asc')
+      .withCount('prospects', (q) => {
+        q.whereNull('deleted_at')
+      })
 
     if (includeArchived) {
       query.withTrashed()
     }
 
     const stages = await query
-    return response.ok({ data: stages, meta: { total: stages.length } })
+    return response.ok({
+      data: stages.map((stage) => ({
+        ...stage.serialize(),
+        prospect_count: Number(stage.$extras.prospects_count ?? 0),
+      })),
+      meta: { total: stages.length },
+    })
   }
 
   /**
@@ -178,11 +187,20 @@ export default class FunnelStagesController {
       }
     })
 
-    // Return updated ordered list
+    // Return updated ordered list — include prospect_count for consistency with index()
     const updatedStages = await FunnelStage.query()
       .withScopes((s) => s.forUser(userId))
       .orderBy('position', 'asc')
+      .withCount('prospects', (q) => {
+        q.whereNull('deleted_at')
+      })
 
-    return response.ok({ data: updatedStages, meta: { total: updatedStages.length } })
+    return response.ok({
+      data: updatedStages.map((stage) => ({
+        ...stage.serialize(),
+        prospect_count: Number(stage.$extras.prospects_count ?? 0),
+      })),
+      meta: { total: updatedStages.length },
+    })
   }
 }
