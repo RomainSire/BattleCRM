@@ -16,7 +16,7 @@ export function ProspectsList() {
     isError: prospectsError,
   } = useProspects(activeStageFilter ? { funnel_stage_id: activeStageFilter } : undefined)
 
-  const { data: stagesData, isLoading: stagesLoading } = useFunnelStages()
+  const { data: stagesData, isLoading: stagesLoading, isError: stagesError } = useFunnelStages()
 
   const isLoading = prospectsLoading || stagesLoading
   const stages = stagesData?.data ?? []
@@ -30,8 +30,12 @@ export function ProspectsList() {
   }
 
   function handleStageFilter(stageId: string) {
+    if (activeStageFilter === stageId) {
+      clearFilter()
+      return
+    }
     setActiveStageFilter(stageId)
-    setExpandedId(null) // collapse on filter change
+    setExpandedId(null)
   }
 
   function clearFilter() {
@@ -49,7 +53,7 @@ export function ProspectsList() {
     )
   }
 
-  if (prospectsError) {
+  if (prospectsError || stagesError) {
     return <p className="text-sm text-destructive">{t('prospects.loadError')}</p>
   }
 

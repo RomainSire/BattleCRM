@@ -11,6 +11,14 @@ interface ProspectRowProps {
 
 export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: ProspectRowProps) {
   const { t } = useTranslation()
+  const hasDetails = !!(
+    prospect.company ||
+    prospect.linkedinUrl ||
+    prospect.email ||
+    prospect.phone ||
+    prospect.title ||
+    prospect.notes
+  )
 
   return (
     <article className="border-b last:border-b-0">
@@ -20,6 +28,7 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
         onClick={onToggle}
         className="flex w-full items-center gap-4 px-4 py-3 text-left hover:bg-accent"
         aria-expanded={isExpanded}
+        aria-controls={`prospect-panel-${prospect.id}`}
       >
         {isExpanded ? (
           <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
@@ -38,54 +47,64 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
 
       {/* Expanded detail panel */}
       {isExpanded && (
-        <div className="space-y-2 border-t bg-muted/30 px-4 py-4">
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-            {prospect.company && (
-              <>
-                <dt className="text-muted-foreground">{t('prospects.fields.company')}</dt>
-                <dd>{prospect.company}</dd>
-              </>
-            )}
-            {prospect.linkedinUrl && (
-              <>
-                <dt className="text-muted-foreground">{t('prospects.fields.linkedinUrl')}</dt>
-                <dd>
-                  <a
-                    href={prospect.linkedinUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block truncate text-primary underline-offset-4 hover:underline"
-                  >
-                    {prospect.linkedinUrl}
-                  </a>
-                </dd>
-              </>
-            )}
-            {prospect.email && (
-              <>
-                <dt className="text-muted-foreground">{t('prospects.fields.email')}</dt>
-                <dd>{prospect.email}</dd>
-              </>
-            )}
-            {prospect.phone && (
-              <>
-                <dt className="text-muted-foreground">{t('prospects.fields.phone')}</dt>
-                <dd>{prospect.phone}</dd>
-              </>
-            )}
-            {prospect.title && (
-              <>
-                <dt className="text-muted-foreground">{t('prospects.fields.title')}</dt>
-                <dd>{prospect.title}</dd>
-              </>
-            )}
-            {prospect.notes && (
-              <>
-                <dt className="text-muted-foreground">{t('prospects.fields.notes')}</dt>
-                <dd className="whitespace-pre-wrap">{prospect.notes}</dd>
-              </>
-            )}
-          </dl>
+        <div
+          id={`prospect-panel-${prospect.id}`}
+          className="space-y-2 border-t bg-muted/30 px-4 py-4"
+        >
+          {hasDetails && (
+            <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+              {prospect.company && (
+                <>
+                  <dt className="text-muted-foreground">{t('prospects.fields.company')}</dt>
+                  <dd>{prospect.company}</dd>
+                </>
+              )}
+              {prospect.linkedinUrl && (
+                <>
+                  <dt className="text-muted-foreground">{t('prospects.fields.linkedinUrl')}</dt>
+                  <dd>
+                    <a
+                      href={
+                        prospect.linkedinUrl.startsWith('https://') ||
+                        prospect.linkedinUrl.startsWith('http://')
+                          ? prospect.linkedinUrl
+                          : '#'
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block truncate text-primary underline-offset-4 hover:underline"
+                    >
+                      {prospect.linkedinUrl}
+                    </a>
+                  </dd>
+                </>
+              )}
+              {prospect.email && (
+                <>
+                  <dt className="text-muted-foreground">{t('prospects.fields.email')}</dt>
+                  <dd>{prospect.email}</dd>
+                </>
+              )}
+              {prospect.phone && (
+                <>
+                  <dt className="text-muted-foreground">{t('prospects.fields.phone')}</dt>
+                  <dd>{prospect.phone}</dd>
+                </>
+              )}
+              {prospect.title && (
+                <>
+                  <dt className="text-muted-foreground">{t('prospects.fields.title')}</dt>
+                  <dd>{prospect.title}</dd>
+                </>
+              )}
+              {prospect.notes && (
+                <>
+                  <dt className="text-muted-foreground">{t('prospects.fields.notes')}</dt>
+                  <dd className="whitespace-pre-wrap">{prospect.notes}</dd>
+                </>
+              )}
+            </dl>
+          )}
           {/* Interactions — Epic 5 */}
           <p className="mt-4 text-xs italic text-muted-foreground">
             {t('prospects.interactionsComingSoon')}

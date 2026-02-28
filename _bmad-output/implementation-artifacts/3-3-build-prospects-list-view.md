@@ -1,6 +1,6 @@
 # Story 3.3: Build Prospects List View
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-02-28 -->
 <!-- Epic 3: Prospect Management — first frontend story of the epic -->
@@ -745,6 +745,14 @@ f3866b8 feat(prospects): finalize implementation of CRUD API and update status t
 claude-sonnet-4-6
 
 ### Debug Log References
+
+### Code Review Findings (resolved)
+
+- **[MEDIUM] LinkedIn URL `javascript:` scheme not sanitized** — `ProspectRow.tsx` — Fixed: `href` now only passes `http://`/`https://` URLs; falls back to `#`.
+- **[MEDIUM] `useFunnelStages()` error not handled** — `ProspectsList.tsx` — Fixed: destructured `isError: stagesError`; included in combined error check `prospectsError || stagesError`.
+- **[MEDIUM] `aria-pressed` buttons didn't toggle** — `ProspectsList.tsx` — Fixed: `handleStageFilter` now calls `clearFilter()` when clicking the already-active stage, matching WAI-ARIA toggle semantics.
+- **[LOW] Empty `<dl>` when all optional fields null** — `ProspectRow.tsx` — Fixed: `hasDetails` guard wraps the `<dl>`; panel shows only the interactions placeholder when no fields are set.
+- **[LOW] Missing `aria-controls` on accordion button** — `ProspectRow.tsx` — Fixed: button has `aria-controls={prospect-panel-{id}}`; panel div has matching `id`.
 
 ### Completion Notes List
 
