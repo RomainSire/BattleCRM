@@ -32,7 +32,16 @@ export function AppNavbar() {
           >
             {t('nav.settings')}
           </NavLink>
-          <span className="cursor-not-allowed text-muted-foreground/50">{t('nav.prospects')}</span>
+          <NavLink
+            to="/prospects"
+            className={({ isActive }) =>
+              isActive
+                ? 'font-medium text-foreground underline underline-offset-4'
+                : 'text-muted-foreground hover:text-foreground'
+            }
+          >
+            {t('nav.prospects')}
+          </NavLink>
           <span className="cursor-not-allowed text-muted-foreground/50">
             {t('nav.positionings')}
           </span>

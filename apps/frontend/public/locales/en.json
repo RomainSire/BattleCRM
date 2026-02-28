@@ -88,6 +88,30 @@
       "reorderFailed": "Failed to reorder stages"
     }
   },
+  "prospects": {
+    "title": "Prospects",
+    "description": "Manage your prospecting contacts.",
+    "loadError": "Failed to load prospects. Please try again.",
+    "empty": "No prospects yet.",
+    "emptyFiltered": "No prospects in this stage.",
+    "clearFilter": "Clear filter",
+    "count": "{{count}} prospect(s)",
+    "interactionsComingSoon": "Interaction history coming soon.",
+    "columns": {
+      "name": "Name",
+      "company": "Company",
+      "stage": "Funnel Stage",
+      "email": "Email"
+    },
+    "fields": {
+      "company": "Company",
+      "linkedinUrl": "LinkedIn",
+      "email": "Email",
+      "phone": "Phone",
+      "title": "Title",
+      "notes": "Notes"
+    }
+  },
   "validation": {
     "required": "{{field}} is required",
     "email": "Must be a valid email address",

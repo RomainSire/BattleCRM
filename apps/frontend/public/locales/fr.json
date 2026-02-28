@@ -88,6 +88,30 @@
       "reorderFailed": "Impossible de réorganiser les étapes"
     }
   },
+  "prospects": {
+    "title": "Prospects",
+    "description": "Gérez vos contacts de prospection.",
+    "loadError": "Impossible de charger les prospects. Veuillez réessayer.",
+    "empty": "Aucun prospect pour le moment.",
+    "emptyFiltered": "Aucun prospect dans cette étape.",
+    "clearFilter": "Effacer le filtre",
+    "count": "{{count}} prospect(s)",
+    "interactionsComingSoon": "Historique des interactions à venir.",
+    "columns": {
+      "name": "Nom",
+      "company": "Entreprise",
+      "stage": "Étape du funnel",
+      "email": "Email"
+    },
+    "fields": {
+      "company": "Entreprise",
+      "linkedinUrl": "LinkedIn",
+      "email": "Email",
+      "phone": "Téléphone",
+      "title": "Poste",
+      "notes": "Notes"
+    }
+  },
   "validation": {
     "required": "{{field}} est requis",
     "email": "Doit être une adresse e-mail valide",
