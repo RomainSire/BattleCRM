@@ -64,7 +64,7 @@ development_status:
   epic-3: in-progress
   3-1-create-prospects-database-schema: done
   3-2-implement-prospects-crud-api: done
-  3-3-build-prospects-list-view: backlog
+  3-3-build-prospects-list-view: done
   3-4-implement-prospect-create-edit: backlog
   3-5-add-archive-restore-functionality: backlog
   3-6-implement-funnel-stage-management: backlog
