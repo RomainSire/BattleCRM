@@ -465,7 +465,7 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
                           key={tr.id}
                           className="flex items-center gap-2 text-xs text-muted-foreground"
                         >
-                          <span>{new Date(tr.transitionedAt).toLocaleDateString()}</span>
+                          <span>{new Date(tr.transitionedAt).toLocaleString()}</span>
                           <span>—</span>
                           <span>
                             {tr.fromStageName ?? t('prospects.initialStage')}

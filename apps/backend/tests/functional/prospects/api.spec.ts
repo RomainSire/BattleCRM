@@ -1,5 +1,6 @@
 import type { ApiClient } from '@japa/api-client'
 import { test } from '@japa/runner'
+import { DateTime } from 'luxon'
 import FunnelStage from '#models/funnel_stage'
 import Prospect from '#models/prospect'
 import ProspectStageTransition from '#models/prospect_stage_transition'
@@ -871,15 +872,23 @@ test.group('Prospects API', (group) => {
       name: 'HistList',
     })
 
-    // Make two sequential stage changes
-    await client
-      .put(`/api/prospects/${prospect.id}`)
-      .loginAs(user)
-      .json({ funnel_stage_id: stage2.id })
-    await client
-      .put(`/api/prospects/${prospect.id}`)
-      .loginAs(user)
-      .json({ funnel_stage_id: stage3.id })
+    // Create transitions directly with explicit timestamps to guarantee deterministic ordering
+    // (avoids flakiness from DateTime.now() resolving to the same millisecond in fast CI)
+    const now = DateTime.now()
+    await ProspectStageTransition.create({
+      userId: user.id,
+      prospectId: prospect.id,
+      fromStageId: stage1.id,
+      toStageId: stage2.id,
+      transitionedAt: now.minus({ minutes: 1 }), // older
+    })
+    await ProspectStageTransition.create({
+      userId: user.id,
+      prospectId: prospect.id,
+      fromStageId: stage2.id,
+      toStageId: stage3.id,
+      transitionedAt: now, // newer
+    })
 
     const res = await client.get(`/api/prospects/${prospect.id}/stage-transitions`).loginAs(user)
     res.assertStatus(200)
@@ -918,5 +927,39 @@ test.group('Prospects API', (group) => {
       '/api/prospects/00000000-0000-0000-0000-000000000001/stage-transitions',
     )
     res.assertStatus(401)
+  })
+
+  test('GET /api/prospects/:id/stage-transitions returns history for archived prospect', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'stage-hist-archived')
+    const stages = await FunnelStage.query()
+      .withScopes((s) => s.forUser(user.id))
+      .orderBy('position', 'asc')
+    const [stage1, stage2] = stages
+
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage1.id,
+      name: 'ArchivedWithHistory',
+    })
+
+    // Record a stage transition while prospect is active
+    await client
+      .put(`/api/prospects/${prospect.id}`)
+      .loginAs(user)
+      .json({ funnel_stage_id: stage2.id })
+
+    // Archive the prospect
+    await client.delete(`/api/prospects/${prospect.id}`).loginAs(user)
+
+    // Stage history must still be accessible for archived prospects
+    const res = await client.get(`/api/prospects/${prospect.id}/stage-transitions`).loginAs(user)
+    res.assertStatus(200)
+    const data = res.body().data
+    assert.lengthOf(data, 1)
+    assert.equal(data[0].fromStageId, stage1.id)
+    assert.equal(data[0].toStageId, stage2.id)
   })
 })

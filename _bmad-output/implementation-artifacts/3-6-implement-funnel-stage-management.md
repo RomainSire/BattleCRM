@@ -1,6 +1,6 @@
 # Story 3.6: Implement Funnel Stage Management
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-03-01 -->
 <!-- Epic 3: Prospect Management — backend + frontend story (new migration/model + UI) -->
@@ -870,7 +870,7 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
-- All 8 tasks implemented in a single session
+- All 8 tasks implemented in a single session; code review fixes applied in follow-up session
 - Migration `0004` executed successfully against local PostgreSQL
 - Backend: `ProspectStageTransition` model + migration with FK constraints and indexes; `update()` records transitions only when stage ID actually changes; `stageTransitions()` action with `preload` for stage names
 - Frontend: `UpdateProspectPayload` type fixed to include `funnel_stage_id`; new `StageTransitionType` + API method; `useProspectStageTransitions` hook with `enabled: isExpanded` for lazy loading; shadcn `Select` in `ProspectRow` read-only panel with inline stage change (uses existing `useUpdateProspect`); stage position indicator; transitions timeline
@@ -891,3 +891,4 @@ claude-sonnet-4-6
 - `apps/frontend/src/features/prospects/components/ProspectRow.tsx` — MODIFIED: stage Select + handleStageChange + stagePosition + transitions timeline
 - `apps/frontend/public/locales/en.json` — MODIFIED: added stageHistory, noStageHistory, initialStage, stagePosition, toast.stageMoved/stageMoveFailed, aria.stageSelect
 - `apps/frontend/public/locales/fr.json` — MODIFIED: same keys in French
+- `apps/frontend/src/components/ui/switch.tsx` — MODIFIED: Biome formatting pass (double→single quotes)

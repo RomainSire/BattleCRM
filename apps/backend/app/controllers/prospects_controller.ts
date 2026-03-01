@@ -214,12 +214,15 @@ export default class ProspectsController {
     const userId = auth.user!.id
 
     // Verify prospect exists and belongs to authenticated user (consistent with show() pattern)
+    // withTrashed() ensures archived prospects' stage history remains accessible (AC3)
     const prospect = await Prospect.query()
+      .withTrashed()
       .withScopes((s) => s.forUser(userId))
       .where('id', params.id)
       .firstOrFail()
 
     const transitions = await ProspectStageTransition.query()
+      .withScopes((s) => s.forUser(userId))
       .where('prospect_id', prospect.id)
       .preload('fromStage')
       .preload('toStage')
