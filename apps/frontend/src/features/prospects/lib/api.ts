@@ -44,12 +44,27 @@ export type CreateProspectPayload = {
 
 export type UpdateProspectPayload = {
   name?: string
+  funnel_stage_id?: string
   company?: string | null
   linkedin_url?: string | null
   email?: string | null
   phone?: string | null
   title?: string | null
   notes?: string | null
+}
+
+// ⚠️ camelCase — Lucid v3 default serialization (same divergence as ProspectType)
+export type StageTransitionType = {
+  id: string
+  fromStageId: string | null
+  fromStageName: string | null
+  toStageId: string
+  toStageName: string
+  transitionedAt: string
+}
+
+export type StageTransitionsResponseType = {
+  data: StageTransitionType[]
 }
 
 export const prospectsApi = {
@@ -89,5 +104,9 @@ export const prospectsApi = {
     return fetchApi<ProspectType>(`/prospects/${id}/restore`, {
       method: 'PATCH',
     })
+  },
+
+  stageTransitions(id: string): Promise<StageTransitionsResponseType> {
+    return fetchApi<StageTransitionsResponseType>(`/prospects/${id}/stage-transitions`)
   },
 }

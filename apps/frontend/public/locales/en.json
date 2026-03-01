@@ -138,21 +138,28 @@
       "description": "\"{{name}}\" will be moved to the archive. You can restore it later.",
       "confirm": "Archive"
     },
+    "stageHistory": "Stage History",
+    "noStageHistory": "No stage changes recorded yet.",
+    "initialStage": "Initial",
+    "stagePosition": "({{current}} of {{total}})",
     "toast": {
       "created": "Prospect created",
       "updated": "Prospect updated",
       "archived": "Prospect archived",
       "restored": "Prospect restored",
+      "stageMoved": "Prospect moved to new stage",
       "createFailed": "Failed to create prospect.",
       "updateFailed": "Failed to update prospect.",
       "archiveFailed": "Failed to archive prospect.",
-      "restoreFailed": "Failed to restore prospect."
+      "restoreFailed": "Failed to restore prospect.",
+      "stageMoveFailed": "Failed to move prospect to new stage."
     },
     "aria": {
       "editProspect": "Edit {{name}}",
       "cancelEdit": "Cancel editing",
       "archiveProspect": "Archive {{name}}",
-      "restoreProspect": "Restore {{name}}"
+      "restoreProspect": "Restore {{name}}",
+      "stageSelect": "Change funnel stage for {{name}}"
     }
   },
   "phoneInput": {

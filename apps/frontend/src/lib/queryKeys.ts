@@ -15,5 +15,7 @@ export const queryKeys = {
         ? ([...queryKeys.prospects.all, 'list', filters] as const)
         : ([...queryKeys.prospects.all, 'list'] as const),
     detail: (id: string) => [...queryKeys.prospects.all, 'detail', id] as const,
+    stageTransitions: (id: string) =>
+      [...queryKeys.prospects.all, 'stage-transitions', id] as const,
   },
 }

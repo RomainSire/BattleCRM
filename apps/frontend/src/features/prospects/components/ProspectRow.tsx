@@ -20,7 +20,15 @@ import { FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhoneInput } from '@/components/ui/phone-input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { i18nMessagesProvider } from '@/lib/validation'
@@ -29,6 +37,7 @@ import {
   useRestoreProspect,
   useUpdateProspect,
 } from '../hooks/useProspectMutations'
+import { useProspectStageTransitions } from '../hooks/useProspectStageTransitions'
 import type { ProspectType } from '../lib/api'
 import { updateProspectSchema } from '../schemas/prospect'
 
@@ -62,9 +71,22 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
   const [apiError, setApiError] = useState<string | null>(null)
   const [archiveError, setArchiveError] = useState<string | null>(null)
   const [restoreError, setRestoreError] = useState<string | null>(null)
+  const [stageError, setStageError] = useState<string | null>(null)
   const update = useUpdateProspect()
   const archive = useArchiveProspect()
   const restore = useRestoreProspect()
+
+  const { data: stagesData } = useFunnelStages()
+  const stages = stagesData?.data ?? []
+
+  const { data: transitionsData, isLoading: transitionsLoading } = useProspectStageTransitions(
+    prospect.id,
+    { enabled: isExpanded },
+  )
+  const transitions = transitionsData?.data ?? []
+
+  const currentStageIndex = stages.findIndex((s) => s.id === prospect.funnelStageId)
+  const stagePosition = currentStageIndex >= 0 ? currentStageIndex + 1 : null
 
   const isArchived = prospect.deletedAt !== null
 
@@ -140,6 +162,22 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
         setRestoreError(message ?? t('prospects.toast.restoreFailed'))
       },
     })
+  }
+
+  function handleStageChange(newStageId: string) {
+    setStageError(null)
+    update.mutate(
+      { id: prospect.id, funnel_stage_id: newStageId },
+      {
+        onSuccess: () => {
+          toast.success(t('prospects.toast.stageMoved'))
+        },
+        onError: (error) => {
+          const message = error instanceof ApiError ? error.errors[0]?.message : undefined
+          setStageError(message ?? t('prospects.toast.stageMoveFailed'))
+        },
+      },
+    )
   }
 
   function onSubmit(values: EditFormValues) {
@@ -371,6 +409,75 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
                     )}
                   </dl>
                 )}
+                {/* Stage management — active prospects only (AC1, AC4) */}
+                {!isArchived && (
+                  <div className="mt-4 flex flex-col gap-1">
+                    <Label htmlFor={`stage-select-${prospect.id}`}>
+                      {t('prospects.fields.funnelStage')}
+                      {stagePosition !== null && stages.length > 0 && (
+                        <span className="ml-2 text-xs font-normal text-muted-foreground">
+                          {t('prospects.stagePosition', {
+                            current: stagePosition,
+                            total: stages.length,
+                          })}
+                        </span>
+                      )}
+                    </Label>
+                    <Select
+                      value={prospect.funnelStageId}
+                      onValueChange={handleStageChange}
+                      disabled={update.isPending || stages.length === 0}
+                    >
+                      <SelectTrigger
+                        id={`stage-select-${prospect.id}`}
+                        className="w-full"
+                        aria-label={t('prospects.aria.stageSelect', { name: prospect.name })}
+                      >
+                        <SelectValue placeholder={t('prospects.fields.funnelStage')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stages.map((stage) => (
+                          <SelectItem key={stage.id} value={stage.id}>
+                            {stage.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {stageError && <p className="text-xs text-destructive">{stageError}</p>}
+                  </div>
+                )}
+
+                {/* Stage History (FR44, AC3) */}
+                <div className="mt-4">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">
+                    {t('prospects.stageHistory')}
+                  </p>
+                  {transitionsLoading ? (
+                    <p className="text-xs italic text-muted-foreground">...</p>
+                  ) : transitions.length === 0 ? (
+                    <p className="text-xs italic text-muted-foreground">
+                      {t('prospects.noStageHistory')}
+                    </p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {transitions.map((tr) => (
+                        <li
+                          key={tr.id}
+                          className="flex items-center gap-2 text-xs text-muted-foreground"
+                        >
+                          <span>{new Date(tr.transitionedAt).toLocaleDateString()}</span>
+                          <span>—</span>
+                          <span>
+                            {tr.fromStageName ?? t('prospects.initialStage')}
+                            {' → '}
+                            {tr.toStageName}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
                 {/* Interactions — Epic 5 */}
                 <p className="mt-4 text-xs italic text-muted-foreground">
                   {t('prospects.interactionsComingSoon')}
