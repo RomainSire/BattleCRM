@@ -97,6 +97,7 @@
     "clearFilter": "Effacer le filtre",
     "count": "{{count}} prospect(s)",
     "interactionsComingSoon": "Historique des interactions à venir.",
+    "addProspect": "Ajouter un prospect",
     "columns": {
       "name": "Nom",
       "company": "Entreprise",
@@ -104,13 +105,43 @@
       "email": "Email"
     },
     "fields": {
+      "name": "Nom",
       "company": "Entreprise",
       "linkedinUrl": "LinkedIn",
       "email": "Email",
       "phone": "Téléphone",
       "title": "Poste",
-      "notes": "Notes"
+      "notes": "Notes",
+      "funnelStage": "Étape du funnel"
+    },
+    "placeholders": {
+      "name": "Nom complet",
+      "company": "Nom de l'entreprise",
+      "linkedinUrl": "https://linkedin.com/in/...",
+      "email": "email@exemple.com",
+      "phone": "06 12 34 56 78",
+      "title": "Poste occupé",
+      "notes": "Notes supplémentaires..."
+    },
+    "createForm": {
+      "title": "Ajouter un prospect",
+      "description": "Créez un nouveau prospect dans votre pipeline.",
+      "submit": "Créer le prospect"
+    },
+    "toast": {
+      "created": "Prospect créé",
+      "updated": "Prospect mis à jour",
+      "createFailed": "Impossible de créer le prospect.",
+      "updateFailed": "Impossible de mettre à jour le prospect."
+    },
+    "aria": {
+      "editProspect": "Modifier {{name}}",
+      "cancelEdit": "Annuler la modification"
     }
+  },
+  "phoneInput": {
+    "searchCountry": "Rechercher un pays...",
+    "noCountryFound": "Aucun pays trouvé."
   },
   "validation": {
     "required": "{{field}} est requis",

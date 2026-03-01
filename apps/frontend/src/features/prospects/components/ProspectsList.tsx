@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { useProspects } from '../hooks/useProspects'
@@ -63,28 +64,28 @@ export function ProspectsList() {
       {stages.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           {stages.map((stage) => (
-            <button
+            <Button
               key={stage.id}
               type="button"
+              size="sm"
+              variant={activeStageFilter === stage.id ? 'default' : 'outline'}
               onClick={() => handleStageFilter(stage.id)}
               aria-pressed={activeStageFilter === stage.id}
-              className={
-                activeStageFilter === stage.id
-                  ? 'rounded-full border border-primary bg-primary px-3 py-1 text-sm font-medium text-primary-foreground'
-                  : 'rounded-full border px-3 py-1 text-sm hover:bg-accent'
-              }
+              className="rounded-full"
             >
               {stage.name}
-            </button>
+            </Button>
           ))}
           {activeStageFilter && (
-            <button
+            <Button
               type="button"
+              size="sm"
+              variant="outline"
               onClick={clearFilter}
-              className="rounded-full border border-destructive px-3 py-1 text-sm text-destructive hover:bg-destructive/10"
+              className="rounded-full border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
               {t('prospects.clearFilter')}
-            </button>
+            </Button>
           )}
         </div>
       )}
