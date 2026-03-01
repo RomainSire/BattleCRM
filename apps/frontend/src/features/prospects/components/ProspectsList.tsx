@@ -130,7 +130,11 @@ export function ProspectsList() {
       {filteredProspects.length === 0 ? (
         <div className="rounded-md border py-12 text-center">
           <p className="text-muted-foreground">
-            {activeStageFilter ? t('prospects.emptyFiltered') : t('prospects.empty')}
+            {searchQuery.trim()
+              ? t('prospects.emptySearch')
+              : activeStageFilter
+                ? t('prospects.emptyFiltered')
+                : t('prospects.empty')}
           </p>
         </div>
       ) : (

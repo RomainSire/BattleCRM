@@ -94,6 +94,7 @@
     "loadError": "Failed to load prospects. Please try again.",
     "empty": "No prospects yet.",
     "emptyFiltered": "No prospects in this stage.",
+    "emptySearch": "No prospects match your search.",
     "clearFilter": "Clear filter",
     "count": "{{count}} prospect(s)",
     "interactionsComingSoon": "Interaction history coming soon.",

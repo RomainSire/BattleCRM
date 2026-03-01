@@ -94,6 +94,7 @@
     "loadError": "Impossible de charger les prospects. Veuillez réessayer.",
     "empty": "Aucun prospect pour le moment.",
     "emptyFiltered": "Aucun prospect dans cette étape.",
+    "emptySearch": "Aucun prospect ne correspond à votre recherche.",
     "clearFilter": "Effacer le filtre",
     "count": "{{count}} prospect(s)",
     "interactionsComingSoon": "Historique des interactions à venir.",

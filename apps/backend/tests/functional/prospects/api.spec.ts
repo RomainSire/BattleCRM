@@ -469,6 +469,7 @@ test.group('Prospects API', (group) => {
 
     const deleteResponse = await client.delete(`/api/prospects/${prospect.id}`).loginAs(user)
     deleteResponse.assertStatus(200)
+    assert.equal(deleteResponse.body().message, 'Prospect archived')
 
     // Should not appear in active list
     const listResponse = await client.get('/api/prospects').loginAs(user)
@@ -703,51 +704,6 @@ test.group('Prospects API', (group) => {
   })
 
   // ===========================
-  // DELETE /api/prospects/:id (archive / soft-delete)
-  // ===========================
-
-  test('DELETE /api/prospects/:id soft-deletes the prospect', async ({ client, assert }) => {
-    const user = await registerUser(client, 'delete-soft')
-    const stage = await getFirstStage(user.id)
-    const prospect = await Prospect.create({
-      userId: user.id,
-      funnelStageId: stage.id,
-      name: 'ToArchive',
-    })
-
-    const res = await client.delete(`/api/prospects/${prospect.id}`).loginAs(user)
-    res.assertStatus(200)
-    assert.equal(res.body().message, 'Prospect archived')
-
-    // Verify soft-deleted — no longer in normal query
-    const notFound = await Prospect.query().where('id', prospect.id).first()
-    assert.isNull(notFound)
-
-    // Verify it exists with withTrashed
-    const found = await Prospect.query().withTrashed().where('id', prospect.id).first()
-    assert.isNotNull(found?.deletedAt)
-  })
-
-  test("DELETE /api/prospects/:id returns 404 for another user's prospect", async ({ client }) => {
-    const user1 = await registerUser(client, 'delete-404-u1')
-    const user2 = await registerUser(client, 'delete-404-u2')
-    const stage = await getFirstStage(user1.id)
-    const prospect = await Prospect.create({
-      userId: user1.id,
-      funnelStageId: stage.id,
-      name: 'NotMine',
-    })
-
-    const res = await client.delete(`/api/prospects/${prospect.id}`).loginAs(user2)
-    res.assertStatus(404)
-  })
-
-  test('DELETE /api/prospects/:id requires authentication', async ({ client }) => {
-    const res = await client.delete('/api/prospects/00000000-0000-0000-0000-000000000001')
-    res.assertStatus(401)
-  })
-
-  // ===========================
   // PATCH /api/prospects/:id/restore
   // ===========================
 
@@ -794,5 +750,22 @@ test.group('Prospects API', (group) => {
   test('PATCH /api/prospects/:id/restore requires authentication', async ({ client }) => {
     const res = await client.patch('/api/prospects/00000000-0000-0000-0000-000000000001/restore')
     res.assertStatus(401)
+  })
+
+  test('PATCH /api/prospects/:id/restore returns 404 for non-existent prospect', async ({
+    client,
+  }) => {
+    const user = await registerUser(client, 'restore-not-found')
+    const fakeId = '00000000-0000-0000-0000-000000000000'
+    const res = await client.patch(`/api/prospects/${fakeId}/restore`).loginAs(user)
+    res.assertStatus(404)
+  })
+
+  test('PATCH /api/prospects/:id/restore returns 404 for non-UUID id format', async ({
+    client,
+  }) => {
+    const user = await registerUser(client, 'restore-bad-uuid')
+    const res = await client.patch('/api/prospects/not-a-uuid/restore').loginAs(user)
+    res.assertStatus(404)
   })
 })

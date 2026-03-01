@@ -186,6 +186,7 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
             'size-4 shrink-0 text-muted-foreground transition',
             isExpanded ? 'rotate-90' : '',
           )}
+          aria-hidden="true"
         />
         <span
           className={cn(

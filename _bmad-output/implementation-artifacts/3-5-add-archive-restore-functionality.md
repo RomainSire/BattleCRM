@@ -1,6 +1,6 @@
 # Story 3.5: Add Archive & Restore Functionality
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-03-01 -->
 <!-- Epic 3: Prospect Management — backend + frontend story (new endpoint + UI) -->
@@ -15,7 +15,7 @@ so that I can keep my active list clean without losing data.
 
 1. **AC1 (Archive with confirmation):** In the expanded `ProspectRow` panel (read-only view), an "Archive" button is visible for active (non-archived) prospects. Clicking it opens an `AlertDialog` confirmation. On confirm, `DELETE /api/prospects/:id` is called. On success: `toast.success(...)`, the prospect disappears from the active list (query invalidation). On error: inline error message in the panel — **never `toast.error()`**.
 
-2. **AC2 (Show archived toggle):** The `ProspectsList` filter bar includes a "Show archived" toggle button (same style as stage filter buttons). When toggled ON:
+2. **AC2 (Show archived toggle):** The `ProspectsList` filter bar includes a "Show archived" `<Switch>` (shadcn/ui) paired with a `<Label>`, placed in the first toolbar row alongside the search input. When toggled ON:
    - The query uses `?include_archived=true` (shows all prospects — active + archived)
    - Archived rows display a visual indicator (muted styling + small "Archived" badge)
    - The count footer updates to reflect the total including archived
@@ -736,10 +736,21 @@ Recent commits (last 5):
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-sonnet-4-6
 
 ### Debug Log References
 
 ### Completion Notes List
 
 ### File List
+
+- `apps/backend/app/controllers/prospects_controller.ts` — added `restore()` action
+- `apps/backend/start/routes.ts` — added `PATCH /:id/restore` route
+- `apps/backend/tests/functional/prospects/api.spec.ts` — added archive/restore tests, fixed duplicate test, added missing restore edge-case tests
+- `apps/frontend/src/features/prospects/lib/api.ts` — added `archive()` and `restore()` methods
+- `apps/frontend/src/features/prospects/hooks/useProspectMutations.ts` — added `useArchiveProspect()` and `useRestoreProspect()`
+- `apps/frontend/src/features/prospects/components/ProspectRow.tsx` — archive/restore UI with AlertDialog, archived visual indicator, a11y fix
+- `apps/frontend/src/features/prospects/components/ProspectsList.tsx` — search input, show-archived Switch, two-row toolbar layout, emptySearch state
+- `apps/frontend/src/components/ui/switch.tsx` — shadcn Switch component (installed)
+- `apps/frontend/public/locales/en.json` — archive/restore/search i18n keys incl. `emptySearch`
+- `apps/frontend/public/locales/fr.json` — idem en français
