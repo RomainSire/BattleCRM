@@ -1,6 +1,6 @@
 # Story 3.4: Implement Prospect Create & Edit
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-03-01 -->
 <!-- Epic 3: Prospect Management — first write-mutation story (frontend only) -->
@@ -39,7 +39,7 @@ so that I can maintain accurate data about my contacts.
 
 - [x] **Task 4: Create `AddProspectDialog` component** (AC1, AC2, AC5)
   - [x] 4.1 Create `apps/frontend/src/features/prospects/components/AddProspectDialog.tsx` — Dialog wrapping a create form
-  - [x] 4.2 Form fields: name (required Input), company, linkedinUrl, email, phone, title (optional Inputs), notes (optional `<textarea>`), funnel stage native `<select>` (populated from `useFunnelStages()`, defaults to first stage by position)
+  - [x] 4.2 Form fields: name (required `Input`), linkedinUrl, title, company, email (optional `Input`s), phone (`PhoneInput` with country selector via `react-phone-number-input`), funnel stage (`Select` shadcn, populated from `useFunnelStages()`, defaults to first stage by position), notes (`Textarea` shadcn). All form controls use shadcn components (`Label`, `FieldError`, `Input`, `Textarea`, `Select`, `PhoneInput`).
   - [x] 4.3 Use `react-hook-form` with `vineResolver(createProspectSchema)` + `i18nMessagesProvider`; show per-field errors inline
   - [x] 4.4 On submit: convert empty strings to undefined, call `useCreateProspect`; `toast.success()` + close dialog on success; show API error inline on failure
   - [x] 4.5 Reset form and apiError state when dialog closes (`onOpenChange`)
@@ -1038,11 +1038,20 @@ claude-sonnet-4-6
 - `apps/frontend/src/features/prospects/schemas/prospect.ts`
 - `apps/frontend/src/features/prospects/hooks/useProspectMutations.ts`
 - `apps/frontend/src/features/prospects/components/AddProspectDialog.tsx`
+- `apps/frontend/src/components/ui/phone-input.tsx` (custom PhoneInput built on `react-phone-number-input` + shadcn)
+- `apps/frontend/src/components/ui/select.tsx` (shadcn Select, installed via CLI)
+- `apps/frontend/src/components/ui/textarea.tsx` (shadcn Textarea, installed via CLI)
+- `apps/frontend/src/components/ui/command.tsx` (shadcn Command, installed as PhoneInput dependency)
 
 **Modified:**
 - `apps/frontend/src/features/prospects/lib/api.ts` (added `CreateProspectPayload`, `UpdateProspectPayload`, `prospectsApi.create()`, `prospectsApi.update()`)
-- `apps/frontend/src/features/prospects/components/ProspectRow.tsx` (added inline edit mode, edit button, react-hook-form, `useUpdateProspect`)
+- `apps/frontend/src/features/prospects/components/ProspectRow.tsx` (added inline edit mode, edit button, react-hook-form, `useUpdateProspect`, shadcn components, `tel:` link for phone)
+- `apps/frontend/src/features/prospects/components/ProspectsList.tsx` (filter buttons refactored to use shadcn `Button`)
 - `apps/frontend/src/features/prospects/ProspectsPage.tsx` (added `AddProspectDialog` in header)
-- `apps/frontend/public/locales/en.json` (added `prospects.addProspect`, `createForm`, `toast`, `aria`, `placeholders`, `fields.name`, `fields.funnelStage`)
+- `apps/frontend/public/locales/en.json` (added `prospects.*`, `phoneInput.*` keys)
 - `apps/frontend/public/locales/fr.json` (same keys in French)
+- `apps/frontend/src/components/ui/popover.tsx` (updated by shadcn CLI)
+- `apps/frontend/src/components/ui/scroll-area.tsx` (updated by shadcn CLI)
+- `apps/frontend/package.json` (added `react-phone-number-input` dependency)
+- `pnpm-lock.yaml` (lockfile updated)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (3-4 status: ready-for-dev → in-progress → review)

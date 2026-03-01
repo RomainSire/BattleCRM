@@ -197,6 +197,8 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
                       onChange={(value) => field.onChange(value ?? '')}
                       defaultCountry="FR"
                       placeholder={t('prospects.placeholders.phone')}
+                      searchPlaceholder={t('phoneInput.searchCountry')}
+                      noCountryFound={t('phoneInput.noCountryFound')}
                     />
                   )}
                 />
@@ -277,7 +279,14 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
                     {prospect.phone && (
                       <>
                         <dt className="text-muted-foreground">{t('prospects.fields.phone')}</dt>
-                        <dd>{prospect.phone}</dd>
+                        <dd>
+                          <a
+                            href={`tel:${prospect.phone}`}
+                            className="text-primary underline-offset-4 hover:underline"
+                          >
+                            {prospect.phone}
+                          </a>
+                        </dd>
                       </>
                     )}
                     {prospect.title && (

@@ -119,7 +119,7 @@
       "company": "Company name",
       "linkedinUrl": "https://linkedin.com/in/...",
       "email": "email@example.com",
-      "phone": "+1 234 567 890",
+      "phone": "201 555 0123",
       "title": "Job title",
       "notes": "Additional notes..."
     },
@@ -138,6 +138,10 @@
       "editProspect": "Edit {{name}}",
       "cancelEdit": "Cancel editing"
     }
+  },
+  "phoneInput": {
+    "searchCountry": "Search country...",
+    "noCountryFound": "No country found."
   },
   "validation": {
     "required": "{{field}} is required",

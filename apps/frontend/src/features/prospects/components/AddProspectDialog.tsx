@@ -179,6 +179,8 @@ export function AddProspectDialog() {
                   onChange={(value) => field.onChange(value ?? '')}
                   defaultCountry="FR"
                   placeholder={t('prospects.placeholders.phone')}
+                  searchPlaceholder={t('phoneInput.searchCountry')}
+                  noCountryFound={t('phoneInput.noCountryFound')}
                 />
               )}
             />

@@ -16,29 +16,57 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 
+// Context to pass i18n strings from PhoneInput down to CountrySelect
+// without breaking the RPNInput countrySelectComponent API
+type PhoneInputI18n = {
+  searchPlaceholder: string
+  noCountryFound: string
+}
+
+const PhoneInputI18nContext = React.createContext<PhoneInputI18n>({
+  searchPlaceholder: 'Search country...',
+  noCountryFound: 'No country found.',
+})
+
 type PhoneInputProps = Omit<React.ComponentProps<'input'>, 'onChange' | 'value' | 'ref'> &
   Omit<RPNInput.Props<typeof RPNInput.default>, 'onChange'> & {
     onChange?: (value: RPNInput.Value) => void
+    searchPlaceholder?: string
+    noCountryFound?: string
   }
 
 const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> = React.forwardRef<
   React.ElementRef<typeof RPNInput.default>,
   PhoneInputProps
->(({ className, onChange, value, ...props }, ref) => {
-  return (
-    <RPNInput.default
-      ref={ref}
-      className={cn('flex', className)}
-      flagComponent={FlagComponent}
-      countrySelectComponent={CountrySelect}
-      inputComponent={InputComponent}
-      smartCaret={false}
-      value={value || undefined}
-      onChange={(value) => onChange?.(value || ('' as RPNInput.Value))}
-      {...props}
-    />
-  )
-})
+>(
+  (
+    {
+      className,
+      onChange,
+      value,
+      searchPlaceholder = 'Search country...',
+      noCountryFound = 'No country found.',
+      ...props
+    },
+    ref,
+  ) => {
+    return (
+      <PhoneInputI18nContext.Provider value={{ searchPlaceholder, noCountryFound }}>
+        <RPNInput.default
+          ref={ref}
+          className={cn('flex', className)}
+          flagComponent={FlagComponent}
+          countrySelectComponent={CountrySelect}
+          inputComponent={InputComponent}
+          smartCaret={false}
+          value={value || undefined}
+          onChange={(value) => onChange?.(value || ('' as RPNInput.Value))}
+          {...props}
+        />
+      </PhoneInputI18nContext.Provider>
+    )
+  },
+)
 PhoneInput.displayName = 'PhoneInput'
 
 const InputComponent = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
@@ -63,6 +91,7 @@ const CountrySelect = ({
   options: countryList,
   onChange,
 }: CountrySelectProps) => {
+  const { searchPlaceholder, noCountryFound } = React.useContext(PhoneInputI18nContext)
   const scrollAreaRef = React.useRef<HTMLDivElement>(null)
   const [searchValue, setSearchValue] = React.useState('')
   const [isOpen, setIsOpen] = React.useState(false)
@@ -106,11 +135,11 @@ const CountrySelect = ({
                 }
               }, 0)
             }}
-            placeholder="Search country..."
+            placeholder={searchPlaceholder}
           />
           <CommandList>
             <ScrollArea ref={scrollAreaRef} className="h-72">
-              <CommandEmpty>No country found.</CommandEmpty>
+              <CommandEmpty>{noCountryFound}</CommandEmpty>
               <CommandGroup>
                 {countryList.map(({ value, label }) =>
                   value ? (
