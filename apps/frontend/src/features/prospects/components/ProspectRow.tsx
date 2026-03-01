@@ -1,3 +1,20 @@
+import { vineResolver } from '@hookform/resolvers/vine'
+import { Archive, ChevronRight, Pencil, RotateCcw, X } from 'lucide-react'
+import { useState } from 'react'
+import { Controller, useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -7,13 +24,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { i18nMessagesProvider } from '@/lib/validation'
-import { vineResolver } from '@hookform/resolvers/vine'
-import { ChevronRight, Pencil, X } from 'lucide-react'
-import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-import { useUpdateProspect } from '../hooks/useProspectMutations'
+import {
+  useArchiveProspect,
+  useRestoreProspect,
+  useUpdateProspect,
+} from '../hooks/useProspectMutations'
 import type { ProspectType } from '../lib/api'
 import { updateProspectSchema } from '../schemas/prospect'
 
@@ -45,7 +60,13 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
   const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
+  const [archiveError, setArchiveError] = useState<string | null>(null)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
   const update = useUpdateProspect()
+  const archive = useArchiveProspect()
+  const restore = useRestoreProspect()
+
+  const isArchived = prospect.deletedAt !== null
 
   const {
     register,
@@ -95,6 +116,32 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
     setIsEditing(false)
   }
 
+  function handleArchiveConfirm() {
+    setArchiveError(null)
+    archive.mutate(prospect.id, {
+      onSuccess: () => {
+        toast.success(t('prospects.toast.archived'))
+      },
+      onError: (error) => {
+        const message = error instanceof ApiError ? error.errors[0]?.message : undefined
+        setArchiveError(message ?? t('prospects.toast.archiveFailed'))
+      },
+    })
+  }
+
+  function handleRestore() {
+    setRestoreError(null)
+    restore.mutate(prospect.id, {
+      onSuccess: () => {
+        toast.success(t('prospects.toast.restored'))
+      },
+      onError: (error) => {
+        const message = error instanceof ApiError ? error.errors[0]?.message : undefined
+        setRestoreError(message ?? t('prospects.toast.restoreFailed'))
+      },
+    })
+  }
+
   function onSubmit(values: EditFormValues) {
     setApiError(null)
     update.mutate(
@@ -127,16 +174,40 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-4 px-4 py-3 text-left hover:bg-accent"
+        className={cn(
+          'flex w-full items-center gap-4 px-4 py-3 text-left hover:bg-accent',
+          isArchived && 'opacity-60',
+        )}
         aria-expanded={isExpanded}
         aria-controls={`prospect-panel-${prospect.id}`}
       >
-        <ChevronRight className={cn("size-4 shrink-0 text-muted-foreground transition", isExpanded ? "rotate-90" : "")} />
-        <span className="min-w-0 flex-1 truncate font-medium">{prospect.name}</span>
+        <ChevronRight
+          className={cn(
+            'size-4 shrink-0 text-muted-foreground transition',
+            isExpanded ? 'rotate-90' : '',
+          )}
+          aria-hidden="true"
+        />
+        <span
+          className={cn(
+            'min-w-0 flex-1 truncate font-medium',
+            isArchived && 'line-through text-muted-foreground',
+          )}
+        >
+          {prospect.name}
+        </span>
         <span className="w-40 shrink-0 truncate text-sm text-muted-foreground">
           {prospect.company ?? '—'}
         </span>
-        <span className="w-40 shrink-0 truncate text-sm">{stageName ?? '—'}</span>
+        <span className="w-40 shrink-0 truncate text-sm">
+          {isArchived ? (
+            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              {t('prospects.archived')}
+            </span>
+          ) : (
+            (stageName ?? '—')
+          )}
+        </span>
         <span className="w-48 shrink-0 truncate text-sm text-muted-foreground">
           {prospect.email ?? '—'}
         </span>
@@ -306,17 +377,66 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
                 </p>
               </div>
 
-              {/* Edit button */}
-              <Button
-                type="button"
-                size="icon-sm"
-                variant="ghost"
-                onClick={handleEditStart}
-                aria-label={t('prospects.aria.editProspect', { name: prospect.name })}
-                className="shrink-0"
-              >
-                <Pencil className="size-3" />
-              </Button>
+              {/* Actions: Edit (active only) + Archive/Restore */}
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                {!isArchived && (
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="ghost"
+                    onClick={handleEditStart}
+                    aria-label={t('prospects.aria.editProspect', { name: prospect.name })}
+                  >
+                    <Pencil className="size-3" />
+                  </Button>
+                )}
+                {isArchived ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleRestore}
+                    disabled={restore.isPending}
+                    aria-label={t('prospects.aria.restoreProspect', { name: prospect.name })}
+                  >
+                    <RotateCcw className="size-3" />
+                    {t('prospects.restore')}
+                  </Button>
+                ) : (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        aria-label={t('prospects.aria.archiveProspect', { name: prospect.name })}
+                      >
+                        <Archive className="size-3" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{t('prospects.archiveDialog.title')}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {t('prospects.archiveDialog.description', { name: prospect.name })}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleArchiveConfirm}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          {t('prospects.archiveDialog.confirm')}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+                {archiveError && <p className="text-xs text-destructive">{archiveError}</p>}
+                {restoreError && <p className="text-xs text-destructive">{restoreError}</p>}
+              </div>
             </div>
           )}
         </div>

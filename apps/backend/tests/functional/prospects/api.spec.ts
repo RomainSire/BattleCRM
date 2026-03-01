@@ -469,6 +469,7 @@ test.group('Prospects API', (group) => {
 
     const deleteResponse = await client.delete(`/api/prospects/${prospect.id}`).loginAs(user)
     deleteResponse.assertStatus(200)
+    assert.equal(deleteResponse.body().message, 'Prospect archived')
 
     // Should not appear in active list
     const listResponse = await client.get('/api/prospects').loginAs(user)
@@ -700,5 +701,71 @@ test.group('Prospects API', (group) => {
     const stageData = response.body().data.find((s: { id: string }) => s.id === stage.id)
     assert.equal(stageData.prospect_count, 1, 'Only 1 active prospect — archived should not count')
     assert.isDefined(active.id) // active is used — confirm it was created successfully
+  })
+
+  // ===========================
+  // PATCH /api/prospects/:id/restore
+  // ===========================
+
+  test('PATCH /api/prospects/:id/restore restores a soft-deleted prospect', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'restore-ok')
+    const stage = await getFirstStage(user.id)
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'ToRestore',
+    })
+    await prospect.delete() // soft-delete first
+
+    const res = await client.patch(`/api/prospects/${prospect.id}/restore`).loginAs(user)
+    res.assertStatus(200)
+    assert.isNull(res.body().deletedAt)
+
+    // Verify it shows in normal query again (no withTrashed needed)
+    const found = await Prospect.query().where('id', prospect.id).first()
+    assert.isNotNull(found)
+    assert.isNull(found!.deletedAt)
+  })
+
+  test("PATCH /api/prospects/:id/restore returns 404 for another user's archived prospect", async ({
+    client,
+  }) => {
+    const user1 = await registerUser(client, 'restore-404-u1')
+    const user2 = await registerUser(client, 'restore-404-u2')
+    const stage = await getFirstStage(user1.id)
+    const prospect = await Prospect.create({
+      userId: user1.id,
+      funnelStageId: stage.id,
+      name: 'NotMineRestore',
+    })
+    await prospect.delete() // soft-delete
+
+    const res = await client.patch(`/api/prospects/${prospect.id}/restore`).loginAs(user2)
+    res.assertStatus(404)
+  })
+
+  test('PATCH /api/prospects/:id/restore requires authentication', async ({ client }) => {
+    const res = await client.patch('/api/prospects/00000000-0000-0000-0000-000000000001/restore')
+    res.assertStatus(401)
+  })
+
+  test('PATCH /api/prospects/:id/restore returns 404 for non-existent prospect', async ({
+    client,
+  }) => {
+    const user = await registerUser(client, 'restore-not-found')
+    const fakeId = '00000000-0000-0000-0000-000000000000'
+    const res = await client.patch(`/api/prospects/${fakeId}/restore`).loginAs(user)
+    res.assertStatus(404)
+  })
+
+  test('PATCH /api/prospects/:id/restore returns 404 for non-UUID id format', async ({
+    client,
+  }) => {
+    const user = await registerUser(client, 'restore-bad-uuid')
+    const res = await client.patch('/api/prospects/not-a-uuid/restore').loginAs(user)
+    res.assertStatus(404)
   })
 })

@@ -168,4 +168,22 @@ export default class ProspectsController {
     await prospect.delete() // SoftDeletes: sets deleted_at = now()
     return response.ok({ message: 'Prospect archived' })
   }
+
+  /**
+   * PATCH /api/prospects/:id/restore
+   * Restores a soft-deleted prospect (sets deleted_at to null).
+   * Must use withTrashed() to find archived prospects.
+   */
+  async restore({ params, response, auth }: HttpContext) {
+    const userId = auth.user!.id
+
+    const prospect = await Prospect.query()
+      .withTrashed()
+      .withScopes((s) => s.forUser(userId))
+      .where('id', params.id)
+      .firstOrFail()
+
+    await prospect.restore()
+    return response.ok(prospect)
+  }
 }

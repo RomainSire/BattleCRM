@@ -78,4 +78,16 @@ export const prospectsApi = {
       body: JSON.stringify(payload),
     })
   },
+
+  archive(id: string): Promise<{ message: string }> {
+    return fetchApi<{ message: string }>(`/prospects/${id}`, {
+      method: 'DELETE',
+    })
+  },
+
+  restore(id: string): Promise<ProspectType> {
+    return fetchApi<ProspectType>(`/prospects/${id}/restore`, {
+      method: 'PATCH',
+    })
+  },
 }

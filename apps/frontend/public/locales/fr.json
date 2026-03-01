@@ -94,6 +94,7 @@
     "loadError": "Impossible de charger les prospects. Veuillez réessayer.",
     "empty": "Aucun prospect pour le moment.",
     "emptyFiltered": "Aucun prospect dans cette étape.",
+    "emptySearch": "Aucun prospect ne correspond à votre recherche.",
     "clearFilter": "Effacer le filtre",
     "count": "{{count}} prospect(s)",
     "interactionsComingSoon": "Historique des interactions à venir.",
@@ -128,15 +129,30 @@
       "description": "Créez un nouveau prospect dans votre pipeline.",
       "submit": "Créer le prospect"
     },
+    "archived": "Archivé",
+    "showArchived": "Voir archivés",
+    "restore": "Restaurer",
+    "searchPlaceholder": "Rechercher un prospect...",
+    "archiveDialog": {
+      "title": "Archiver ce prospect ?",
+      "description": "\"{{name}}\" sera déplacé dans les archives. Vous pourrez le restaurer plus tard.",
+      "confirm": "Archiver"
+    },
     "toast": {
       "created": "Prospect créé",
       "updated": "Prospect mis à jour",
+      "archived": "Prospect archivé",
+      "restored": "Prospect restauré",
       "createFailed": "Impossible de créer le prospect.",
-      "updateFailed": "Impossible de mettre à jour le prospect."
+      "updateFailed": "Impossible de mettre à jour le prospect.",
+      "archiveFailed": "Impossible d'archiver le prospect.",
+      "restoreFailed": "Impossible de restaurer le prospect."
     },
     "aria": {
       "editProspect": "Modifier {{name}}",
-      "cancelEdit": "Annuler la modification"
+      "cancelEdit": "Annuler la modification",
+      "archiveProspect": "Archiver {{name}}",
+      "restoreProspect": "Restaurer {{name}}"
     }
   },
   "phoneInput": {
