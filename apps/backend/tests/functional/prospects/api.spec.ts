@@ -701,4 +701,98 @@ test.group('Prospects API', (group) => {
     assert.equal(stageData.prospect_count, 1, 'Only 1 active prospect — archived should not count')
     assert.isDefined(active.id) // active is used — confirm it was created successfully
   })
+
+  // ===========================
+  // DELETE /api/prospects/:id (archive / soft-delete)
+  // ===========================
+
+  test('DELETE /api/prospects/:id soft-deletes the prospect', async ({ client, assert }) => {
+    const user = await registerUser(client, 'delete-soft')
+    const stage = await getFirstStage(user.id)
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'ToArchive',
+    })
+
+    const res = await client.delete(`/api/prospects/${prospect.id}`).loginAs(user)
+    res.assertStatus(200)
+    assert.equal(res.body().message, 'Prospect archived')
+
+    // Verify soft-deleted — no longer in normal query
+    const notFound = await Prospect.query().where('id', prospect.id).first()
+    assert.isNull(notFound)
+
+    // Verify it exists with withTrashed
+    const found = await Prospect.query().withTrashed().where('id', prospect.id).first()
+    assert.isNotNull(found?.deletedAt)
+  })
+
+  test("DELETE /api/prospects/:id returns 404 for another user's prospect", async ({ client }) => {
+    const user1 = await registerUser(client, 'delete-404-u1')
+    const user2 = await registerUser(client, 'delete-404-u2')
+    const stage = await getFirstStage(user1.id)
+    const prospect = await Prospect.create({
+      userId: user1.id,
+      funnelStageId: stage.id,
+      name: 'NotMine',
+    })
+
+    const res = await client.delete(`/api/prospects/${prospect.id}`).loginAs(user2)
+    res.assertStatus(404)
+  })
+
+  test('DELETE /api/prospects/:id requires authentication', async ({ client }) => {
+    const res = await client.delete('/api/prospects/00000000-0000-0000-0000-000000000001')
+    res.assertStatus(401)
+  })
+
+  // ===========================
+  // PATCH /api/prospects/:id/restore
+  // ===========================
+
+  test('PATCH /api/prospects/:id/restore restores a soft-deleted prospect', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'restore-ok')
+    const stage = await getFirstStage(user.id)
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'ToRestore',
+    })
+    await prospect.delete() // soft-delete first
+
+    const res = await client.patch(`/api/prospects/${prospect.id}/restore`).loginAs(user)
+    res.assertStatus(200)
+    assert.isNull(res.body().deletedAt)
+
+    // Verify it shows in normal query again (no withTrashed needed)
+    const found = await Prospect.query().where('id', prospect.id).first()
+    assert.isNotNull(found)
+    assert.isNull(found!.deletedAt)
+  })
+
+  test("PATCH /api/prospects/:id/restore returns 404 for another user's archived prospect", async ({
+    client,
+  }) => {
+    const user1 = await registerUser(client, 'restore-404-u1')
+    const user2 = await registerUser(client, 'restore-404-u2')
+    const stage = await getFirstStage(user1.id)
+    const prospect = await Prospect.create({
+      userId: user1.id,
+      funnelStageId: stage.id,
+      name: 'NotMineRestore',
+    })
+    await prospect.delete() // soft-delete
+
+    const res = await client.patch(`/api/prospects/${prospect.id}/restore`).loginAs(user2)
+    res.assertStatus(404)
+  })
+
+  test('PATCH /api/prospects/:id/restore requires authentication', async ({ client }) => {
+    const res = await client.patch('/api/prospects/00000000-0000-0000-0000-000000000001/restore')
+    res.assertStatus(401)
+  })
 })

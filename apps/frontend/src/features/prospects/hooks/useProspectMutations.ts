@@ -22,3 +22,23 @@ export function useUpdateProspect() {
     },
   })
 }
+
+export function useArchiveProspect() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => prospectsApi.archive(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.prospects.all })
+    },
+  })
+}
+
+export function useRestoreProspect() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => prospectsApi.restore(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.prospects.all })
+    },
+  })
+}

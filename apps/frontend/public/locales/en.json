@@ -128,15 +128,30 @@
       "description": "Create a new prospect in your pipeline.",
       "submit": "Create Prospect"
     },
+    "archived": "Archived",
+    "showArchived": "Show archived",
+    "restore": "Restore",
+    "searchPlaceholder": "Search prospects...",
+    "archiveDialog": {
+      "title": "Archive prospect?",
+      "description": "\"{{name}}\" will be moved to the archive. You can restore it later.",
+      "confirm": "Archive"
+    },
     "toast": {
       "created": "Prospect created",
       "updated": "Prospect updated",
+      "archived": "Prospect archived",
+      "restored": "Prospect restored",
       "createFailed": "Failed to create prospect.",
-      "updateFailed": "Failed to update prospect."
+      "updateFailed": "Failed to update prospect.",
+      "archiveFailed": "Failed to archive prospect.",
+      "restoreFailed": "Failed to restore prospect."
     },
     "aria": {
       "editProspect": "Edit {{name}}",
-      "cancelEdit": "Cancel editing"
+      "cancelEdit": "Cancel editing",
+      "archiveProspect": "Archive {{name}}",
+      "restoreProspect": "Restore {{name}}"
     }
   },
   "phoneInput": {
