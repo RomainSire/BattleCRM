@@ -67,7 +67,7 @@ development_status:
   3-3-build-prospects-list-view: done
   3-4-implement-prospect-create-edit: done
   3-5-add-archive-restore-functionality: done
-  3-6-implement-funnel-stage-management: backlog
+  3-6-implement-funnel-stage-management: ready-for-dev
   3-7-implement-prospect-detail-view: backlog
   epic-3-retrospective: optional
 
