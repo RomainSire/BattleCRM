@@ -30,6 +30,28 @@ export type ProspectsFilterType = {
   include_archived?: boolean
 }
 
+// snake_case because these are POST/PUT request body fields (AdonisJS validator convention)
+export type CreateProspectPayload = {
+  name: string
+  funnel_stage_id?: string
+  company?: string | null
+  linkedin_url?: string | null
+  email?: string | null
+  phone?: string | null
+  title?: string | null
+  notes?: string | null
+}
+
+export type UpdateProspectPayload = {
+  name?: string
+  company?: string | null
+  linkedin_url?: string | null
+  email?: string | null
+  phone?: string | null
+  title?: string | null
+  notes?: string | null
+}
+
 export const prospectsApi = {
   list(filters?: ProspectsFilterType): Promise<ProspectsListResponseType> {
     const params = new URLSearchParams()
@@ -41,5 +63,19 @@ export const prospectsApi = {
     }
     const queryString = params.toString()
     return fetchApi<ProspectsListResponseType>(`/prospects${queryString ? `?${queryString}` : ''}`)
+  },
+
+  create(payload: CreateProspectPayload): Promise<ProspectType> {
+    return fetchApi<ProspectType>('/prospects', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+
+  update(id: string, payload: UpdateProspectPayload): Promise<ProspectType> {
+    return fetchApi<ProspectType>(`/prospects/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
   },
 }

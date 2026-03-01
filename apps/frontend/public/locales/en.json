@@ -97,6 +97,7 @@
     "clearFilter": "Clear filter",
     "count": "{{count}} prospect(s)",
     "interactionsComingSoon": "Interaction history coming soon.",
+    "addProspect": "Add Prospect",
     "columns": {
       "name": "Name",
       "company": "Company",
@@ -104,12 +105,38 @@
       "email": "Email"
     },
     "fields": {
+      "name": "Name",
       "company": "Company",
       "linkedinUrl": "LinkedIn",
       "email": "Email",
       "phone": "Phone",
       "title": "Title",
-      "notes": "Notes"
+      "notes": "Notes",
+      "funnelStage": "Funnel Stage"
+    },
+    "placeholders": {
+      "name": "Full name",
+      "company": "Company name",
+      "linkedinUrl": "https://linkedin.com/in/...",
+      "email": "email@example.com",
+      "phone": "+1 234 567 890",
+      "title": "Job title",
+      "notes": "Additional notes..."
+    },
+    "createForm": {
+      "title": "Add Prospect",
+      "description": "Create a new prospect in your pipeline.",
+      "submit": "Create Prospect"
+    },
+    "toast": {
+      "created": "Prospect created",
+      "updated": "Prospect updated",
+      "createFailed": "Failed to create prospect.",
+      "updateFailed": "Failed to update prospect."
+    },
+    "aria": {
+      "editProspect": "Edit {{name}}",
+      "cancelEdit": "Cancel editing"
     }
   },
   "validation": {
