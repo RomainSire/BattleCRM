@@ -54,6 +54,9 @@ router
         router.put('/:id', [ProspectsController, 'update']).where('id', UUID_REGEX)
         router.delete('/:id', [ProspectsController, 'destroy']).where('id', UUID_REGEX)
         router.patch('/:id/restore', [ProspectsController, 'restore']).where('id', UUID_REGEX)
+        router
+          .get('/:id/stage-transitions', [ProspectsController, 'stageTransitions'])
+          .where('id', UUID_REGEX)
       })
       .prefix('/prospects')
       .use(middleware.auth())
