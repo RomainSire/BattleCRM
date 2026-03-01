@@ -89,23 +89,33 @@ development_status:
   5-5-build-interactions-timeline-view: backlog
   epic-5-retrospective: optional
 
-  # Epic 6: CSV Import (Cold Start)
+  # Epic 6: Performance Analytics & Battle Management
   epic-6: backlog
-  6-1-build-csv-upload-component: backlog
-  6-2-implement-csv-field-mapping: backlog
-  6-3-implement-duplicate-detection: backlog
-  6-4-implement-bulk-import-processing: backlog
-  6-5-add-manual-validation-review: backlog
+  6-1-create-battles-database-schema: backlog
+  6-2-implement-conversion-rate-calculations: backlog
+  6-3-build-dashboard-with-funnel-cards: backlog
+  6-4-implement-traffic-light-significance-indicator: backlog
+  6-5-implement-battle-management: backlog
+  6-6-build-battle-history-view: backlog
+  6-7-implement-performance-matrix-drill-down: backlog
+  6-8-add-dashboard-summary-metrics: backlog
   epic-6-retrospective: optional
 
-  # Epic 7: Performance Analytics & Battle Management
+  # Epic 7: LinkedIn Browser Extension
   epic-7: backlog
-  7-1-create-battles-database-schema: backlog
-  7-2-implement-conversion-rate-calculations: backlog
-  7-3-build-dashboard-with-funnel-cards: backlog
-  7-4-implement-traffic-light-significance-indicator: backlog
-  7-5-implement-battle-management: backlog
-  7-6-build-battle-history-view: backlog
-  7-7-implement-performance-matrix-drill-down: backlog
-  7-8-add-dashboard-summary-metrics: backlog
+  7-1-extension-token-authentication-backend: backlog
+  7-2-extension-facing-prospect-api-backend: backlog
+  7-3-extension-app-scaffold: backlog
+  7-4-extension-settings-and-authentication-ui: backlog
+  7-5-linkedin-profile-detection-and-badge-update: backlog
+  7-6-prospect-add-update-floating-window: backlog
   epic-7-retrospective: optional
+
+  # Epic 8: CSV Import (Cold Start)
+  epic-8: backlog
+  8-1-build-csv-upload-component: backlog
+  8-2-implement-csv-field-mapping: backlog
+  8-3-implement-duplicate-detection: backlog
+  8-4-implement-bulk-import-processing: backlog
+  8-5-add-manual-validation-review: backlog
+  epic-8-retrospective: optional
