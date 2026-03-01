@@ -289,15 +289,15 @@ inputDocuments:
 | FR26 | Epic 5 | Story 5.2, 5.5 | ✅ Covered |
 | FR27 | Epic 5 | Story 5.3, 5.4 | ✅ Covered |
 | FR28 | Epic 5 | Story 5.5 | ✅ Covered |
-| FR29 | Epic 7 | Story 7.3 | ✅ Covered |
-| FR30 | Epic 7 | Story 7.2 | ✅ Covered |
-| FR31 | Epic 7 | Story 7.4 | ✅ Covered |
-| FR32 | Epic 7 | Story 7.7 | ✅ Covered |
-| FR33 | Epic 7 | Story 7.3 | ✅ Covered |
-| FR34 | Epic 7 | Story 7.1 | ✅ Covered |
-| FR35 | Epic 7 | Story 7.6 | ✅ Covered |
-| FR36 | Epic 7 | Story 7.3 | ✅ Covered |
-| FR37 | Epic 7 | Story 7.4 | ✅ Covered |
+| FR29 | Epic 6 | Story 6.3 | ✅ Covered |
+| FR30 | Epic 6 | Story 6.2 | ✅ Covered |
+| FR31 | Epic 6 | Story 6.4 | ✅ Covered |
+| FR32 | Epic 6 | Story 6.7 | ✅ Covered |
+| FR33 | Epic 6 | Story 6.3 | ✅ Covered |
+| FR34 | Epic 6 | Story 6.1 | ✅ Covered |
+| FR35 | Epic 6 | Story 6.6 | ✅ Covered |
+| FR36 | Epic 6 | Story 6.3 | ✅ Covered |
+| FR37 | Epic 6 | Story 6.4 | ✅ Covered |
 | FR38 | Epic 2 | Story 2.2, 2.3 | ✅ Covered |
 | FR39 | Epic 2 | Story 2.1 | ✅ Covered |
 | FR40 | Epic 2 | Story 2.3, 2.4 | ✅ Covered |
@@ -305,26 +305,26 @@ inputDocuments:
 | FR42 | Epic 2 | Story 2.4 | ✅ Covered |
 | FR43 | Epic 3 | Story 3.6 | ✅ Covered |
 | FR44 | Epic 3 | Story 3.6 | ✅ Covered |
-| FR45 | Epic 6 | Story 6.1 | ✅ Covered |
-| FR46 | Epic 6 | Story 6.2 | ✅ Covered |
-| FR47 | Epic 6 | Story 6.3 | ✅ Covered |
-| FR48 | Epic 6 | Story 6.3 | ✅ Covered |
-| FR49 | Epic 6 | Story 6.4 | ✅ Covered |
-| FR50 | Epic 6 | Story 6.5 | ✅ Covered |
+| FR45 | Epic 8 | Story 8.1 | ✅ Covered |
+| FR46 | Epic 8 | Story 8.2 | ✅ Covered |
+| FR47 | Epic 8 | Story 8.3 | ✅ Covered |
+| FR48 | Epic 8 | Story 8.3 | ✅ Covered |
+| FR49 | Epic 8 | Story 8.4 | ✅ Covered |
+| FR50 | Epic 8 | Story 8.5 | ✅ Covered |
 | FR51 | Epic 1 | Story 1.5 | ✅ Covered |
 | FR52 | Epic 1 | Story 1.6 | ✅ Covered |
 | FR53 | Epic 1 | Story 1.7 | ✅ Covered |
 | FR54 | Epic 1 | Story 1.4 | ✅ Covered |
 | FR55 | Epic 1 | Story 1.5 | ✅ Covered |
 | FR56 | Epic 1 | Story 1.4 | ✅ Covered |
-| FR57 | Epic 7 | Story 7.1, 7.5 | ✅ Covered |
-| FR58 | Epic 7 | Story 7.5 | ✅ Covered |
-| FR59 | Epic 7 | Story 7.4, 7.5 | ✅ Covered |
-| FR60 | Epic 7 | Story 7.5 | ✅ Covered |
-| FR61 | Epic 7 | Story 7.5 | ✅ Covered |
-| FR62 | Epic 7 | Story 7.5 | ✅ Covered |
-| FR63 | Epic 7 | Story 7.1, 7.6 | ✅ Covered |
-| FR64 | Epic 7 | Story 7.3 | ✅ Covered |
+| FR57 | Epic 6 | Story 6.1, 6.5 | ✅ Covered |
+| FR58 | Epic 6 | Story 6.5 | ✅ Covered |
+| FR59 | Epic 6 | Story 6.4, 6.5 | ✅ Covered |
+| FR60 | Epic 6 | Story 6.5 | ✅ Covered |
+| FR61 | Epic 6 | Story 6.5 | ✅ Covered |
+| FR62 | Epic 6 | Story 6.5 | ✅ Covered |
+| FR63 | Epic 6 | Story 6.1, 6.6 | ✅ Covered |
+| FR64 | Epic 6 | Story 6.3 | ✅ Covered |
 
 ### Coverage Summary by Epic
 
@@ -335,8 +335,8 @@ inputDocuments:
 | Epic 3: Prospect Management | FR1-9, FR43-44 (11 FRs) | 7 stories |
 | Epic 4: Positioning Variants | FR10-17 (8 FRs) | 5 stories |
 | Epic 5: Interaction Logging | FR18-28 (11 FRs) | 5 stories |
-| Epic 6: CSV Import | FR45-50 (6 FRs) | 5 stories |
-| Epic 7: Performance Analytics & Battle Management | FR29-37, FR57-64 (17 FRs) | 8 stories |
+| Epic 8: CSV Import | FR45-50 (6 FRs) | 5 stories |
+| Epic 6: Performance Analytics & Battle Management | FR29-37, FR57-64 (17 FRs) | 8 stories |
 
 ### Coverage Statistics
 
@@ -412,11 +412,11 @@ Complete UX specification document including:
 
 | UX Custom Component | Architecture Location | Epic Coverage |
 |---------------------|----------------------|---------------|
-| `FunnelCard` | `features/dashboard/components/` | Epic 7: Story 7.3 |
-| `HeatmapCell` | `features/dashboard/components/` | Epic 7: Story 7.2, 7.3 |
-| `TrafficLight` | `components/custom/` (shared) | Epic 7: Story 7.4 |
+| `FunnelCard` | `features/dashboard/components/` | Epic 6: Story 6.3 |
+| `HeatmapCell` | `features/dashboard/components/` | Epic 6: Story 6.2, 6.3 |
+| `TrafficLight` | `components/custom/` (shared) | Epic 6: Story 6.4 |
 | `LeadScoreBadge` | `components/custom/` (shared) | Post-MVP (Lead Scoring) |
-| `CSVImportWizard` | `features/prospects/components/` | Epic 6: Stories 6.1-6.5 |
+| `CSVImportWizard` | `features/prospects/components/` | Epic 8: Stories 8.1-8.5 |
 
 ### Alignment Issues Identified
 
@@ -457,8 +457,8 @@ Complete UX specification document including:
 | Epic 3 | Prospect Management | "L'utilisateur peut créer, consulter, modifier, archiver et restaurer des prospects" | ✅ Valid - Pure user value |
 | Epic 4 | Positioning Variants | "L'utilisateur peut créer des variantes pour l'A/B testing" | ✅ Valid - Pure user value |
 | Epic 5 | Interaction Logging | "L'utilisateur peut capturer chaque interaction avec minimal friction" | ✅ Valid - Pure user value |
-| Epic 6 | CSV Import (Cold Start) | "L'utilisateur peut importer 50+ prospects en < 2h" | ✅ Valid - Pure user value |
-| Epic 7 | Performance Analytics & Battle Management | "L'utilisateur peut visualiser ses performances et optimiser via A/B testing" | ✅ Valid - Pure user value |
+| Epic 8 | CSV Import (Cold Start) | "L'utilisateur peut importer 50+ prospects en < 2h" | ✅ Valid - Pure user value |
+| Epic 6 | Performance Analytics & Battle Management | "L'utilisateur peut visualiser ses performances et optimiser via A/B testing" | ✅ Valid - Pure user value |
 
 **Assessment:** All epics deliver clear user value. Epic 1 follows the acceptable "Foundation Epic" pattern for greenfield projects.
 
@@ -471,8 +471,8 @@ Complete UX specification document including:
 | Epic 3 | Epic 1 + Epic 2 | ✅ Independent - Uses funnel stages |
 | Epic 4 | Epic 1 + Epic 2 | ✅ Independent - Uses funnel stages |
 | Epic 5 | Epic 1 + Epic 2 + Epic 3 + Epic 4 | ✅ Independent - Uses prospects & positionings |
-| Epic 6 | Epic 1 + Epic 2 + Epic 3 | ✅ Independent - Creates prospects |
-| Epic 7 | All previous | ✅ Independent - Aggregates all data |
+| Epic 8 | Epic 1 + Epic 2 + Epic 3 | ✅ Independent - Creates prospects |
+| Epic 6 | All previous | ✅ Independent - Aggregates all data |
 
 **Assessment:** ✅ No forward dependencies. Each epic builds on previous epics only.
 
@@ -487,8 +487,8 @@ Complete UX specification document including:
 | Epic 3 | 7 stories | ✅ All properly sized, user-focused |
 | Epic 4 | 5 stories | ✅ All properly sized, user-focused |
 | Epic 5 | 5 stories | ✅ All properly sized, user-focused |
-| Epic 6 | 5 stories | ✅ All properly sized, follows wizard pattern |
-| Epic 7 | 8 stories | ✅ All properly sized, user-focused |
+| Epic 8 | 5 stories | ✅ All properly sized, follows wizard pattern |
+| Epic 6 | 8 stories | ✅ All properly sized, user-focused |
 
 **Assessment:** 38/42 stories are pure user value. 4 technical stories in Epic 1 are justified for greenfield bootstrap.
 
@@ -521,8 +521,8 @@ And I am redirected to the dashboard (FR51)
 | Epic 3 | 3.1 → 3.2 → 3.3/3.4/3.5/3.6 → 3.7 | ✅ Schema first, then features |
 | Epic 4 | 4.1 → 4.2 → 4.3/4.4 → 4.5 | ✅ Linear, no forward refs |
 | Epic 5 | 5.1 → 5.2 → 5.3/5.4 → 5.5 | ✅ Schema first, then features |
-| Epic 6 | 6.1 → 6.2 → 6.3 → 6.4 → 6.5 | ✅ Wizard step pattern |
-| Epic 7 | 7.1 → 7.2 → 7.3/7.4/7.5 → 7.6/7.7 → 7.8 | ✅ Schema → Calc → UI → Features |
+| Epic 8 | 8.1 → 8.2 → 8.3 → 8.4 → 8.5 | ✅ Wizard step pattern |
+| Epic 6 | 6.1 → 6.2 → 6.3/6.4/6.5 → 6.6/6.7 → 6.8 | ✅ Schema → Calc → UI → Features |
 
 **Assessment:** ✅ No forward dependencies. All stories can reference only previous stories.
 
@@ -535,13 +535,13 @@ And I am redirected to the dashboard (FR51)
 | `prospects` | Story 3.1 | ✅ When prospect management starts |
 | `positionings` | Story 4.1 | ✅ When positioning management starts |
 | `interactions` | Story 5.1 | ✅ When interaction logging starts |
-| `battles` | Story 7.1 | ✅ When battle management starts |
+| `battles` | Story 6.1 | ✅ When battle management starts |
 
 **Assessment:** ✅ Tables created just-in-time, not all upfront.
 
 ### Best Practices Compliance Checklist
 
-| Criterion | Epic 1 | Epic 2 | Epic 3 | Epic 4 | Epic 5 | Epic 6 | Epic 7 |
+| Criterion | Epic 1 | Epic 2 | Epic 3 | Epic 4 | Epic 5 | Epic 8 | Epic 6 |
 |-----------|--------|--------|--------|--------|--------|--------|--------|
 | Delivers user value | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Functions independently | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -619,7 +619,7 @@ BattleCRM is fully prepared to move from Phase 3 (Solutioning) to Phase 4 (Imple
 
 | # | Recommendation | Priority | Impact |
 |---|----------------|----------|--------|
-| 1 | Consider adding CI/CD pipeline story to Epic 1 or as separate Epic 8 | Low | Deployment automation |
+| 1 | Consider adding CI/CD pipeline story to Epic 1 or as separate Epic 9 | Low | Deployment automation |
 | 2 | Monitor Story 1.1-1.4 duration - technical setup can take longer than expected | Low | Timeline risk |
 
 ### Implementation Readiness Checklist

@@ -14,8 +14,8 @@ workflowType: 'prd'
 lastStep: 11
 completedAt: '2026-02-02'
 majorUpdate: 'Replaced Global Sprints with Independent Battles per Funnel Stage'
-lastUpdated: '2026-02-28'
-lastUpdateReason: 'Added Epic 8 - LinkedIn Browser Extension (FR65-FR75, NFR68-NFR73)'
+lastUpdated: '2026-03-01'
+lastUpdateReason: 'Reprioritized epics: CSV Import delayed to Epic 8; Performance Analytics promoted to Epic 6; LinkedIn Browser Extension moved to Epic 7'
 ---
 
 # Product Requirements Document - BattleCRM
@@ -756,7 +756,7 @@ Semaines 13-16:
 **Phase 4 - Integrations (3-4 weeks)**
 
 Semaines 17-21:
-- **LinkedIn Browser Extension** (Epic 8 — capture prospect en 1 clic depuis LinkedIn)
+- **LinkedIn Browser Extension** (Epic 7 — capture prospect en 1 clic depuis LinkedIn)
 - Waalaxy Integration (webhook tracking, campaign sync)
 - n8n Automation (trigger workflows)
 

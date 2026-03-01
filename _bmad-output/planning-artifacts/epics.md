@@ -3,7 +3,7 @@ stepsCompleted: [1, 2, 3, 4]
 status: complete
 completedAt: '2026-02-04'
 lastUpdated: '2026-03-01'
-lastUpdateReason: 'Epic 8 stories refined with architecture decisions (Adonis opaque tokens, message passing pattern, Navigation API, panel/popup entrypoints, partial DB index) and UX spec details (neutral state, tab order, dirty form edge cases, deeplink, no skeletons)'
+lastUpdateReason: 'Reprioritized epics: CSV Import (Cold Start) delayed to Epic 8; Performance Analytics promoted to Epic 6; LinkedIn Browser Extension moved to Epic 7'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
@@ -391,22 +391,22 @@ Permettre aux utilisateurs de capturer chaque interaction avec un prospect avec 
 
 **FRs covered:** FR18, FR19, FR20, FR21, FR22, FR23, FR24, FR25, FR26, FR27, FR28
 
-### Epic 6: CSV Import (Cold Start)
-Permettre l'activation "mode guerre" en moins de 24h avec import massif depuis LinkedIn. L'utilisateur peut importer 50+ prospects depuis un CSV LinkedIn en < 2h avec mapping automatique, détection de doublons, et validation manuelle.
-
-**FRs covered:** FR45, FR46, FR47, FR48, FR49, FR50
-
-### Epic 7: Performance Analytics & Battle Management
+### Epic 6: Performance Analytics & Battle Management
 Permettre aux utilisateurs de visualiser leurs performances et optimiser via A/B testing indépendant par étape. L'utilisateur peut voir la Performance Matrix (Dashboard Funnel Cards), comprendre quel positionnement gagne à chaque étape via indicateurs 🟢🟡🟢, et gérer des Battles indépendantes par étape funnel.
 
 **FRs covered:** FR29, FR30, FR31, FR32, FR33, FR34, FR35, FR36, FR37, FR57, FR58, FR59, FR60, FR61, FR62, FR63, FR64
 
-### Epic 8: LinkedIn Browser Extension
+### Epic 7: LinkedIn Browser Extension
 Permettre aux utilisateurs d'ajouter ou mettre à jour un prospect LinkedIn en un clic depuis leur navigateur, directement dans BattleCRM, sans quitter la page LinkedIn. L'extension détecte automatiquement si le profil visité est déjà dans le CRM (badge visuel sur l'icône) et ouvre une fenêtre flottante avec formulaire pré-rempli pour ajout ou modification. Complémentaire à l'import CSV : l'extension couvre la prospection continue en temps réel, profil par profil.
 
 **FRs covered:** FR65, FR66, FR67, FR68, FR69, FR70, FR71, FR72, FR73, FR74, FR75
 **NFRs covered:** NFR68, NFR69, NFR70, NFR71, NFR72, NFR73, NFR74
 **Dependencies:** Epic 1 (auth backend), Epic 3 (Prospect model + API)
+
+### Epic 8: CSV Import (Cold Start)
+Permettre l'activation "mode guerre" en moins de 24h avec import massif depuis LinkedIn. L'utilisateur peut importer 50+ prospects depuis un CSV LinkedIn en < 2h avec mapping automatique, détection de doublons, et validation manuelle.
+
+**FRs covered:** FR45, FR46, FR47, FR48, FR49, FR50
 
 ---
 
@@ -1283,154 +1283,11 @@ So that I can review my prospecting activity over time.
 
 ---
 
-## Epic 6: CSV Import (Cold Start)
-
-Permettre l'activation "mode guerre" en moins de 24h avec import massif de prospects depuis LinkedIn CSV.
-
-### Story 6.1: Build CSV Upload Component
-
-As a user,
-I want to upload a LinkedIn CSV export file,
-So that I can quickly import my prospects into BattleCRM.
-
-**Acceptance Criteria:**
-
-**Given** I am on the Prospects page
-**When** I click "Import CSV"
-**Then** the CSVImportWizard opens at Step 1: Upload (FR45)
-**And** I see a file drop zone accepting .csv files
-**And** I see instructions for exporting from LinkedIn Sales Navigator
-
-**Given** I drag and drop a CSV file
-**When** the file is valid CSV format
-**Then** the file is parsed client-side
-**And** I see a preview of detected columns
-**And** I can proceed to Step 2: Mapping
-
-**Given** I upload an invalid file
-**When** the file is not CSV or is corrupted
-**Then** I see a clear error message
-**And** I can try again with a different file
-
----
-
-### Story 6.2: Implement CSV Field Mapping
-
-As a user,
-I want to map CSV columns to prospect fields,
-So that my data is correctly imported into the right fields.
-
-**Acceptance Criteria:**
-
-**Given** I uploaded a valid CSV
-**When** I reach Step 2: Mapping
-**Then** I see each CSV column with a dropdown to map to BattleCRM fields (FR46):
-  - Name (required)
-  - Company
-  - LinkedIn URL
-  - Email
-  - Phone
-  - Title
-  - (Skip this column)
-**And** common LinkedIn export columns are auto-mapped (First Name + Last Name → Name)
-
-**Given** columns are being mapped
-**When** I change a mapping
-**Then** I see a live preview of how data will be imported
-**And** I can verify the mapping is correct
-
-**Given** the required "Name" field is not mapped
-**When** I try to proceed
-**Then** I see an error "Name field must be mapped"
-**And** I cannot continue until mapped
-
----
-
-### Story 6.3: Implement Duplicate Detection
-
-As a user,
-I want the system to detect existing prospects in my import,
-So that I don't create duplicates accidentally.
-
-**Acceptance Criteria:**
-
-**Given** I have mapped my CSV columns
-**When** I proceed to Step 3: Validation
-**Then** the system checks each row against existing prospects (FR47)
-**And** matching is done on: LinkedIn URL (exact), or Email (exact), or Name + Company (fuzzy)
-
-**Given** duplicates are detected
-**When** Step 3 displays results
-**Then** I see a list of detected duplicates (FR48)
-**And** each duplicate shows: CSV data vs existing data
-**And** I can choose per duplicate: Skip, Update Existing, Create Anyway
-
-**Given** no duplicates are found
-**When** Step 3 displays results
-**Then** I see "No duplicates detected - X prospects ready to import"
-**And** I can proceed directly to import
-
----
-
-### Story 6.4: Implement Bulk Import Processing
-
-As a user,
-I want to import all validated prospects in one action,
-So that I can quickly populate my CRM with 50+ prospects.
-
-**Acceptance Criteria:**
-
-**Given** I have resolved all duplicates
-**When** I click "Import Prospects"
-**Then** all validated prospects are created in the database
-**And** each prospect is assigned to "Lead qualified" funnel stage (FR49)
-**And** all prospects get my user_id
-
-**Given** the import is processing
-**When** there are many prospects (50+)
-**Then** I see a progress indicator
-**And** the import completes in under 5 minutes (NFR6)
-
-**Given** the import completes successfully
-**When** the wizard closes
-**Then** I see a success message "X prospects imported"
-**And** the prospects list is refreshed with new data
-**And** I can start prospecting immediately
-
----
-
-### Story 6.5: Add Manual Validation & Review
-
-As a user,
-I want to review and adjust imported data before finalizing,
-So that I can ensure data quality in my CRM.
-
-**Acceptance Criteria:**
-
-**Given** I am in Step 3: Validation
-**When** I review the import preview
-**Then** I can edit individual prospect data before import (FR50)
-**And** I can remove specific prospects from the import
-**And** changes are reflected in the preview
-
-**Given** I spot an error in the mapping
-**When** I click "Back to Mapping"
-**Then** I return to Step 2 without losing my duplicate resolution choices
-**And** I can adjust mappings and re-validate
-
-**Given** the import contains validation errors
-**When** errors are detected (e.g., invalid email format)
-**Then** I see inline warnings on affected rows
-**And** I can fix or skip those rows
-**And** the import can proceed with valid rows only
-
----
-
-## Epic 7: Performance Analytics & Battle Management
+## Epic 6: Performance Analytics & Battle Management
 
 Permettre aux utilisateurs de visualiser leurs performances via la Performance Matrix et optimiser via A/B testing avec Battles indépendantes par étape funnel.
 
-### Story 7.1: Create Battles Database Schema
+### Story 6.1: Create Battles Database Schema
 
 As a developer,
 I want a battles table to track A/B tests per funnel stage,
@@ -1458,7 +1315,7 @@ So that users can manage independent testing per stage.
 
 ---
 
-### Story 7.2: Implement Conversion Rate Calculations
+### Story 6.2: Implement Conversion Rate Calculations
 
 As a developer,
 I want a service to calculate conversion rates per positioning per stage,
@@ -1483,7 +1340,7 @@ So that the Performance Matrix can display accurate analytics.
 
 ---
 
-### Story 7.3: Build Dashboard with Funnel Cards
+### Story 6.3: Build Dashboard with Funnel Cards
 
 As a user,
 I want to see my performance data in a dashboard with funnel cards,
@@ -1511,7 +1368,7 @@ So that I can quickly understand which positioning works best at each stage.
 
 ---
 
-### Story 7.4: Implement Traffic Light Significance Indicator
+### Story 6.4: Implement Traffic Light Significance Indicator
 
 As a user,
 I want to see a traffic light indicator for statistical significance,
@@ -1539,7 +1396,7 @@ So that I know if I can trust the conversion data.
 
 ---
 
-### Story 7.5: Implement Battle Management
+### Story 6.5: Implement Battle Management
 
 As a user,
 I want to start, close, and iterate Battles per funnel stage,
@@ -1572,7 +1429,7 @@ So that I can continuously optimize my positioning through A/B testing.
 
 ---
 
-### Story 7.6: Build Battle History View
+### Story 6.6: Build Battle History View
 
 As a user,
 I want to see the history of Battles per funnel stage,
@@ -1599,7 +1456,7 @@ So that I can track my optimization progress over time.
 
 ---
 
-### Story 7.7: Implement Performance Matrix Drill-Down
+### Story 6.7: Implement Performance Matrix Drill-Down
 
 As a user,
 I want to drill down from analytics to see underlying data,
@@ -1625,7 +1482,7 @@ So that I can understand the details behind the numbers.
 
 ---
 
-### Story 7.8: Add Dashboard Summary Metrics
+### Story 6.8: Add Dashboard Summary Metrics
 
 As a user,
 I want to see high-level metrics on the Dashboard,
@@ -1655,11 +1512,11 @@ So that I can quickly assess my overall prospecting performance.
 
 ---
 
-## Epic 8: LinkedIn Browser Extension
+## Epic 7: LinkedIn Browser Extension
 
 Permettre aux utilisateurs d'ajouter ou mettre à jour un prospect LinkedIn en un clic depuis leur navigateur, directement dans BattleCRM, sans quitter la page LinkedIn.
 
-### Story 8.1: Extension Token Authentication (Backend)
+### Story 7.1: Extension Token Authentication (Backend)
 
 As a BattleCRM user,
 I want to authenticate the browser extension with my BattleCRM credentials,
@@ -1705,7 +1562,7 @@ So that the extension can securely access my data without sharing my session coo
 
 ---
 
-### Story 8.2: Extension-Facing Prospect API (Backend)
+### Story 7.2: Extension-Facing Prospect API (Backend)
 
 As a browser extension,
 I want dedicated API endpoints to check and manage prospects by LinkedIn URL,
@@ -1757,7 +1614,7 @@ So that I can provide real-time duplicate detection and one-click prospect creat
 
 ---
 
-### Story 8.3: Extension App Scaffold
+### Story 7.3: Extension App Scaffold
 
 As a developer,
 I want a properly configured browser extension workspace in the pnpm monorepo,
@@ -1805,7 +1662,7 @@ So that I can develop the extension with modern tooling consistent with the rest
 
 ---
 
-### Story 8.4: Extension Settings & Authentication UI
+### Story 7.4: Extension Settings & Authentication UI
 
 As a BattleCRM user,
 I want to configure and authenticate the browser extension with my BattleCRM instance,
@@ -1853,7 +1710,7 @@ So that the extension knows where to connect and can act on my behalf.
 
 ---
 
-### Story 8.5: LinkedIn Profile Detection & Badge Update
+### Story 7.5: LinkedIn Profile Detection & Badge Update
 
 As a BattleCRM user,
 I want the extension to automatically detect LinkedIn profiles I visit and indicate if they are already in my CRM,
@@ -1902,7 +1759,7 @@ So that I know at a glance whether to add a new prospect without opening the ext
 
 ---
 
-### Story 8.6: Prospect Add/Update Floating Window
+### Story 7.6: Prospect Add/Update Floating Window
 
 As a BattleCRM user,
 I want to open a floating window that adapts to whether the prospect is already in my CRM,
@@ -1919,7 +1776,7 @@ So that I can add a new prospect in under 30 seconds, or consult/update an exist
 **Given** the panel window opens
 **When** the React app initializes
 **Then** the panel sends `chrome.runtime.sendMessage({ type: 'GET_PANEL_DATA' })` to the service worker
-**And** the service worker returns the cached check result (cached during profile detection in Story 8.5) — no new API call is made
+**And** the service worker returns the cached check result (cached during profile detection in Story 7.5) — no new API call is made
 **And** the window opens immediately with data already available (NO skeleton loaders — data was pre-fetched on profile load)
 
 **Given** the prospect is NOT in BattleCRM (found: false)
@@ -2007,3 +1864,146 @@ So that I can add a new prospect in under 30 seconds, or consult/update an exist
 - Company field scraping failure → empty field with placeholder, never an incorrect value
 - URL LinkedIn is permanently read-only across all modes and never sent in PATCH requests
 - See `ux-design-specification.md` → "Browser Extension UX" section for full wireframe reference
+---
+
+## Epic 8: CSV Import (Cold Start)
+
+Permettre l'activation "mode guerre" en moins de 24h avec import massif de prospects depuis LinkedIn CSV.
+
+### Story 8.1: Build CSV Upload Component
+
+As a user,
+I want to upload a LinkedIn CSV export file,
+So that I can quickly import my prospects into BattleCRM.
+
+**Acceptance Criteria:**
+
+**Given** I am on the Prospects page
+**When** I click "Import CSV"
+**Then** the CSVImportWizard opens at Step 1: Upload (FR45)
+**And** I see a file drop zone accepting .csv files
+**And** I see instructions for exporting from LinkedIn Sales Navigator
+
+**Given** I drag and drop a CSV file
+**When** the file is valid CSV format
+**Then** the file is parsed client-side
+**And** I see a preview of detected columns
+**And** I can proceed to Step 2: Mapping
+
+**Given** I upload an invalid file
+**When** the file is not CSV or is corrupted
+**Then** I see a clear error message
+**And** I can try again with a different file
+
+---
+
+### Story 8.2: Implement CSV Field Mapping
+
+As a user,
+I want to map CSV columns to prospect fields,
+So that my data is correctly imported into the right fields.
+
+**Acceptance Criteria:**
+
+**Given** I uploaded a valid CSV
+**When** I reach Step 2: Mapping
+**Then** I see each CSV column with a dropdown to map to BattleCRM fields (FR46):
+  - Name (required)
+  - Company
+  - LinkedIn URL
+  - Email
+  - Phone
+  - Title
+  - (Skip this column)
+**And** common LinkedIn export columns are auto-mapped (First Name + Last Name → Name)
+
+**Given** columns are being mapped
+**When** I change a mapping
+**Then** I see a live preview of how data will be imported
+**And** I can verify the mapping is correct
+
+**Given** the required "Name" field is not mapped
+**When** I try to proceed
+**Then** I see an error "Name field must be mapped"
+**And** I cannot continue until mapped
+
+---
+
+### Story 8.3: Implement Duplicate Detection
+
+As a user,
+I want the system to detect existing prospects in my import,
+So that I don't create duplicates accidentally.
+
+**Acceptance Criteria:**
+
+**Given** I have mapped my CSV columns
+**When** I proceed to Step 3: Validation
+**Then** the system checks each row against existing prospects (FR47)
+**And** matching is done on: LinkedIn URL (exact), or Email (exact), or Name + Company (fuzzy)
+
+**Given** duplicates are detected
+**When** Step 3 displays results
+**Then** I see a list of detected duplicates (FR48)
+**And** each duplicate shows: CSV data vs existing data
+**And** I can choose per duplicate: Skip, Update Existing, Create Anyway
+
+**Given** no duplicates are found
+**When** Step 3 displays results
+**Then** I see "No duplicates detected - X prospects ready to import"
+**And** I can proceed directly to import
+
+---
+
+### Story 8.4: Implement Bulk Import Processing
+
+As a user,
+I want to import all validated prospects in one action,
+So that I can quickly populate my CRM with 50+ prospects.
+
+**Acceptance Criteria:**
+
+**Given** I have resolved all duplicates
+**When** I click "Import Prospects"
+**Then** all validated prospects are created in the database
+**And** each prospect is assigned to "Lead qualified" funnel stage (FR49)
+**And** all prospects get my user_id
+
+**Given** the import is processing
+**When** there are many prospects (50+)
+**Then** I see a progress indicator
+**And** the import completes in under 5 minutes (NFR6)
+
+**Given** the import completes successfully
+**When** the wizard closes
+**Then** I see a success message "X prospects imported"
+**And** the prospects list is refreshed with new data
+**And** I can start prospecting immediately
+
+---
+
+### Story 8.5: Add Manual Validation & Review
+
+As a user,
+I want to review and adjust imported data before finalizing,
+So that I can ensure data quality in my CRM.
+
+**Acceptance Criteria:**
+
+**Given** I am in Step 3: Validation
+**When** I review the import preview
+**Then** I can edit individual prospect data before import (FR50)
+**And** I can remove specific prospects from the import
+**And** changes are reflected in the preview
+
+**Given** I spot an error in the mapping
+**When** I click "Back to Mapping"
+**Then** I return to Step 2 without losing my duplicate resolution choices
+**And** I can adjust mappings and re-validate
+
+**Given** the import contains validation errors
+**When** errors are detected (e.g., invalid email format)
+**Then** I see inline warnings on affected rows
+**And** I can fix or skip those rows
+**And** the import can proceed with valid rows only
+
