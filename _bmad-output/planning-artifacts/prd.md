@@ -4,15 +4,18 @@ inputDocuments:
   - /home/bison/DEV/BattleCRM/_bmad-output/analysis/brainstorming-session-2026-01-06.md
   - /home/bison/DEV/BattleCRM/_bmad-output/analysis/brainstorming-session-2026-01-08.md
   - /home/bison/DEV/BattleCRM/_bmad-output/analysis/brainstorming-session-2026-01-10.md
+  - /home/bison/DEV/BattleCRM/_bmad-output/analysis/brainstorming-extension-linkedin-2026-02-28.md
 documentCounts:
   briefCount: 0
   researchCount: 0
-  brainstormingCount: 3
+  brainstormingCount: 4
   projectDocsCount: 0
 workflowType: 'prd'
 lastStep: 11
 completedAt: '2026-02-02'
 majorUpdate: 'Replaced Global Sprints with Independent Battles per Funnel Stage'
+lastUpdated: '2026-02-28'
+lastUpdateReason: 'Added Epic 8 - LinkedIn Browser Extension (FR65-FR75, NFR68-NFR73)'
 ---
 
 # Product Requirements Document - BattleCRM
@@ -64,8 +67,8 @@ The product addresses the unique freelance workflow: long periods in mission (hi
 - **Backend:** Adonis.js
 - **Database:** PostgreSQL (self-hosted via Docker Compose — no external dependency)
 - **Hosting:** Self-hosted VPS
-- **Authentication:** Email/Password via Adonis native auth (scrypt hashing, httpOnly session cookies) with `ALLOW_REGISTRATION` environment variable control
-- **Repository Structure:** Simple monorepo with front app, back app, and shared schemas/types/DTOs
+- **Authentication:** Email/Password via Adonis native auth (scrypt hashing, httpOnly session cookies) with `ALLOW_REGISTRATION` environment variable control; Bearer token auth for browser extension
+- **Repository Structure:** Monorepo with front app, back app, browser extension, and shared schemas/types/DTOs
 
 **Core Data Model:**
 - **3 Primary Tables:** Prospects (people), Interactions (timeline), Positionings (A/B test variants)
@@ -450,6 +453,7 @@ BattleCRM is built as a **Single Page Application (SPA)** using React + Vite for
 - **Workspace Management:** pnpm workspaces (turborepo if needed, but likely overkill)
 - `/apps/frontend` - React + Vite SPA
 - `/apps/backend` - Adonis.js REST API
+- `/apps/extension` - Browser extension (WXT + React + Tailwind, Manifest V3)
 - `/packages/shared` - Shared TypeScript types, schemas, DTOs
 
 **TypeScript Configuration:**
@@ -752,9 +756,9 @@ Semaines 13-16:
 **Phase 4 - Integrations (3-4 weeks)**
 
 Semaines 17-21:
+- **LinkedIn Browser Extension** (Epic 8 — capture prospect en 1 clic depuis LinkedIn)
 - Waalaxy Integration (webhook tracking, campaign sync)
 - n8n Automation (trigger workflows)
-- LinkedIn API (si available)
 
 **Phase 5 - Power User (2-3 weeks)**
 
@@ -918,6 +922,20 @@ Semaines 22-25:
 - **FR63:** System tracks Battle history per funnel stage (Battle #1, #2, #3... with winners)
 - **FR64:** Performance Matrix displays current Battle info per stage (which variants, current stats, significance indicator)
 
+### LinkedIn Browser Extension
+
+- **FR65:** Users can install a browser extension and authenticate using their BattleCRM email and password credentials
+- **FR66:** Extension detects when the user is viewing a LinkedIn profile page (`linkedin.com/in/*`)
+- **FR67:** Extension silently checks (without user action) if the visited LinkedIn profile already exists as a prospect in BattleCRM, using the LinkedIn URL as unique key
+- **FR68:** Extension icon displays a visual badge indicating prospect status: red "+" badge = not in CRM (invite to add), green "✓" badge = already in CRM
+- **FR69:** Users can open a floating form window pre-filled with data scraped from the LinkedIn profile (first name, last name, title, company, LinkedIn URL)
+- **FR70:** If the prospect already exists in CRM, the extension displays a prominent warning and pre-fills the form with the existing CRM data (not the scraped LinkedIn data), offering an update option
+- **FR71:** Users can add a new prospect from the extension — the prospect is automatically assigned to the user's first funnel stage ("Lead qualified")
+- **FR72:** Users can update an existing prospect's information from the extension
+- **FR73:** Extension auth token is stored securely and persists across browser sessions (user stays logged in until explicit logout)
+- **FR74:** Users can configure the BattleCRM instance URL in extension settings (supports both localhost and production VPS URLs)
+- **FR75:** Users can logout from the extension, which revokes the token server-side and clears local storage
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -1057,3 +1075,20 @@ Semaines 22-25:
 - **NFR67:** No separate mobile app required
 
 **Rationale:** Target audience is developers with modern browsers - eliminates legacy support burden.
+
+### Browser Extension
+
+**Compatibility:**
+- **NFR68:** Extension must be compatible with Chromium-based browsers (Chrome, Edge, Brave) as primary target and Firefox as secondary target (via WXT cross-browser build)
+
+**Security:**
+- **NFR69:** Extension authentication token must be stored in `chrome.storage.local` — not in localStorage, cookies, or any web-accessible storage
+- **NFR70:** Extension token must never be displayed in the UI after initial creation (only the hash is stored server-side)
+
+**UX & Ergonomics:**
+- **NFR71:** The extension form window must remain open during copy-paste operations on the LinkedIn page (implemented as `chrome.windows.create` standalone window, not a standard browser action popup which closes on outside click)
+- **NFR72:** Prospect existence check triggered on profile page visit must respond in under 1 second
+
+**Resilience:**
+- **NFR73:** Extension must gracefully degrade when BattleCRM server is unreachable (silent badge state, clear error in popup if opened — no crash)
+- **NFR74:** Extension must re-trigger profile detection on LinkedIn SPA navigation (URL changes without full page reload, handled via MutationObserver or Navigation API)

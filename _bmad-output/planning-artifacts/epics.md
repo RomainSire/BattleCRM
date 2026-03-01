@@ -2,15 +2,18 @@
 stepsCompleted: [1, 2, 3, 4]
 status: complete
 completedAt: '2026-02-04'
+lastUpdated: '2026-03-01'
+lastUpdateReason: 'Epic 8 stories refined with architecture decisions (Adonis opaque tokens, message passing pattern, Navigation API, panel/popup entrypoints, partial DB index) and UX spec details (neutral state, tab order, dirty form edge cases, deeplink, no skeletons)'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
+  - _bmad-output/analysis/brainstorming-extension-linkedin-2026-02-28.md
 summary:
-  epics: 7
-  stories: 42
-  frs_covered: 64
-  nfrs_integrated: 67
+  epics: 8
+  stories: 48
+  frs_covered: 75
+  nfrs_integrated: 74
 ---
 
 # BattleCRM - Epic Breakdown
@@ -348,6 +351,17 @@ This document provides the complete epic and story breakdown for BattleCRM, deco
 | FR62 | Epic 7 | Independent Battle progression |
 | FR63 | Epic 7 | Track Battle history |
 | FR64 | Epic 7 | Display Battle info in Performance Matrix |
+| FR65 | Epic 8 | Authenticate browser extension with BattleCRM credentials |
+| FR66 | Epic 8 | Detect LinkedIn profile pages automatically |
+| FR67 | Epic 8 | Check prospect existence by LinkedIn URL (silent, real-time) |
+| FR68 | Epic 8 | Visual badge on extension icon (red = not in CRM, green = in CRM) |
+| FR69 | Epic 8 | Open pre-filled floating form with LinkedIn profile data |
+| FR70 | Epic 8 | Show warning and CRM data when prospect already exists |
+| FR71 | Epic 8 | Add new prospect from extension (auto-assigned to first funnel stage) |
+| FR72 | Epic 8 | Update existing prospect from extension |
+| FR73 | Epic 8 | Persist auth token across browser sessions |
+| FR74 | Epic 8 | Configure BattleCRM instance URL in extension settings |
+| FR75 | Epic 8 | Logout from extension with server-side token revocation |
 
 ## Epic List
 
@@ -386,6 +400,13 @@ Permettre l'activation "mode guerre" en moins de 24h avec import massif depuis L
 Permettre aux utilisateurs de visualiser leurs performances et optimiser via A/B testing indépendant par étape. L'utilisateur peut voir la Performance Matrix (Dashboard Funnel Cards), comprendre quel positionnement gagne à chaque étape via indicateurs 🟢🟡🟢, et gérer des Battles indépendantes par étape funnel.
 
 **FRs covered:** FR29, FR30, FR31, FR32, FR33, FR34, FR35, FR36, FR37, FR57, FR58, FR59, FR60, FR61, FR62, FR63, FR64
+
+### Epic 8: LinkedIn Browser Extension
+Permettre aux utilisateurs d'ajouter ou mettre à jour un prospect LinkedIn en un clic depuis leur navigateur, directement dans BattleCRM, sans quitter la page LinkedIn. L'extension détecte automatiquement si le profil visité est déjà dans le CRM (badge visuel sur l'icône) et ouvre une fenêtre flottante avec formulaire pré-rempli pour ajout ou modification. Complémentaire à l'import CSV : l'extension couvre la prospection continue en temps réel, profil par profil.
+
+**FRs covered:** FR65, FR66, FR67, FR68, FR69, FR70, FR71, FR72, FR73, FR74, FR75
+**NFRs covered:** NFR68, NFR69, NFR70, NFR71, NFR72, NFR73, NFR74
+**Dependencies:** Epic 1 (auth backend), Epic 3 (Prospect model + API)
 
 ---
 
@@ -1631,3 +1652,358 @@ So that I can quickly assess my overall prospecting performance.
   - "Import prospects to get started"
   - "Create positionings to start A/B testing"
   - "Log interactions to see conversion data"
+
+---
+
+## Epic 8: LinkedIn Browser Extension
+
+Permettre aux utilisateurs d'ajouter ou mettre à jour un prospect LinkedIn en un clic depuis leur navigateur, directement dans BattleCRM, sans quitter la page LinkedIn.
+
+### Story 8.1: Extension Token Authentication (Backend)
+
+As a BattleCRM user,
+I want to authenticate the browser extension with my BattleCRM credentials,
+So that the extension can securely access my data without sharing my session cookie.
+
+**Acceptance Criteria:**
+
+**Given** the backend is running
+**When** the Adonis opaque access tokens migration runs (`node ace auth:make-tokens-migration`)
+**Then** the `auth_access_tokens` table exists (Adonis standard schema)
+**And** a dedicated `extension` auth guard is configured in `config/auth.ts` using `AccessTokensGuard` with `type = 'extension_token'`
+
+**Given** a user sends POST /api/extension/auth/login with valid email, password, and optional token name (e.g., "Mon Chrome")
+**When** the request is processed
+**Then** a new opaque access token is generated via the Adonis built-in token system
+**And** the token is stored hashed in `auth_access_tokens` with `type = 'extension_token'` and the provided name (default: "Extension")
+**And** the response is 200 with `{ token: "<raw token value>", user: { id, email } }`
+**And** the raw token value is NEVER stored in the database — only the hash
+**And** `last_used_at` is managed automatically by the Adonis guard on each authenticated request
+
+**Given** a user sends POST /api/extension/auth/login with invalid credentials
+**When** the request is processed
+**Then** the response is 401 with `{ message: "Invalid credentials" }`
+**And** no token is created
+
+**Given** a valid Bearer token is included in the Authorization header of an API request to `/api/extension/*`
+**When** the `BearerTokenMiddleware` processes the request
+**Then** the token is validated against `auth_access_tokens` (type = 'extension_token')
+**And** `last_used_at` is updated automatically
+**And** the request proceeds with the authenticated user in context
+**And** invalid or deleted tokens are rejected with 401
+
+**Given** a user sends POST /api/extension/auth/logout with a valid Bearer token
+**When** the request is processed
+**Then** the token record is deleted from `auth_access_tokens`
+**And** subsequent requests with the same token return 401
+
+**Given** the EXTENSION_ORIGINS environment variable is set (comma-separated list of chrome-extension:// and moz-extension:// origins)
+**When** `config/cors.ts` processes a request from an extension origin
+**Then** the request is allowed with appropriate CORS headers
+**And** the existing session-based CORS configuration for the frontend remains unchanged
+**And** extension endpoints do NOT require `credentials: true` (Bearer tokens, not cookies)
+
+---
+
+### Story 8.2: Extension-Facing Prospect API (Backend)
+
+As a browser extension,
+I want dedicated API endpoints to check and manage prospects by LinkedIn URL,
+So that I can provide real-time duplicate detection and one-click prospect creation.
+
+**Acceptance Criteria:**
+
+**Given** a new migration is added for the prospects index
+**When** the migration runs
+**Then** a unique partial index exists: `CREATE UNIQUE INDEX idx_prospects_user_linkedin ON prospects (user_id, linkedin_url) WHERE linkedin_url IS NOT NULL AND deleted_at IS NULL`
+**And** this ensures fast lookup for the real-time check (NFR72 < 1s) while handling null linkedin_urls and soft-deleted prospects correctly
+
+**Given** a GET /api/extension/prospects/check?linkedin_url=https://linkedin.com/in/johndoe?utm_source=x with a valid Bearer token
+**When** the request is processed
+**Then** the controller normalizes the linkedin_url before querying (strips query params and trailing slash: `https://linkedin.com/in/johndoe`)
+**And** the query is scoped to the authenticated user (forUser() pattern)
+
+**Given** the normalized URL matches a prospect for this user
+**Then** the response is 200 with `{ found: true, prospect: { id, firstName, lastName, title, company, linkedinUrl, email, phone, funnelStageId, funnelStageName } }`
+**And** `funnelStageName` is the human-readable stage name (needed for READ mode display in the floating window)
+
+**Given** the normalized URL does NOT match any prospect for this user
+**Then** the response is 200 with `{ found: false }`
+
+**Given** a GET /api/extension/prospects/check with a missing or malformed linkedin_url
+**When** the request is processed
+**Then** the response is 422 with a validation error
+
+**Given** a POST /api/extension/prospects with valid prospect data and a valid Bearer token
+**When** the prospect does not already exist (no linkedin_url conflict)
+**Then** a new prospect is created for the authenticated user
+**And** `linkedin_url` is required for extension-created prospects (validation error 422 if missing)
+**And** the prospect is automatically assigned to the user's first funnel stage (lowest `position` value)
+**And** the response is 201 with the created prospect data
+
+**Given** a POST /api/extension/prospects where linkedin_url already exists for this user
+**When** the request is processed
+**Then** the response is 409 Conflict with `{ message: "Prospect already exists", prospectId: "<id>" }`
+
+**Given** a PATCH /api/extension/prospects/:id with partial update data and a valid Bearer token
+**When** the prospect belongs to the authenticated user
+**Then** only the provided fields are updated
+**And** `linkedin_url` is NOT updatable via this endpoint (read-only key, ignored if provided)
+**And** the response is 200 with the updated prospect data
+
+**Given** a PATCH /api/extension/prospects/:id where the prospect belongs to a different user
+**When** the request is processed
+**Then** the response is 404 (consistent with forUser() pattern)
+
+---
+
+### Story 8.3: Extension App Scaffold
+
+As a developer,
+I want a properly configured browser extension workspace in the pnpm monorepo,
+So that I can develop the extension with modern tooling consistent with the rest of the project.
+
+**Acceptance Criteria:**
+
+**Given** the monorepo root
+**When** apps/extension is added as a pnpm workspace
+**Then** WXT is installed and configured with React + TypeScript + Tailwind CSS in apps/extension/
+**And** the manifest (generated by WXT) targets Manifest V3
+**And** the extension declares permissions: `storage`, `activeTab`, `scripting`
+**And** the extension declares host permissions for `*://www.linkedin.com/*`
+**And** the content script is configured to match `*://www.linkedin.com/in/*` URLs
+
+**Given** the WXT configuration
+**When** `wxt.config.ts` is created
+**Then** it includes a `key` field (Chrome extension fixed key) to maintain a stable extension ID across dev reloads
+**And** this allows EXTENSION_ORIGINS in `.env` to remain stable without reconfiguring CORS on every unpacked reload
+**And** Biome is configured for linting/formatting (same config as the rest of the monorepo — no separate ESLint/Prettier)
+
+**Given** the WXT entrypoints structure
+**When** `src/entrypoints/` is scaffolded
+**Then** the following entrypoints exist:
+  - `background.ts` → compiled as MV3 service worker (message handler, API calls, badge management)
+  - `content.ts` → content script injected on `*://www.linkedin.com/in/*` (profile detection, DOM scraping)
+  - `popup/` → action popup (default icon click handler: neutral state + settings access)
+  - `panel/` → floating window (add/edit form, opened via `chrome.windows.create`)
+**And** the following lib utilities exist: `lib/api.ts` (typed fetch client with Bearer), `lib/storage.ts` (chrome.storage.local wrapper), `lib/linkedin.ts` (DOM scraping functions)
+
+**Given** the root package.json
+**When** extension scripts are added
+**Then** `pnpm dev:extension` runs the WXT dev server with HMR
+**And** `pnpm build:extension` produces a production build in apps/extension/.output/
+
+**Given** the extension is built with `pnpm build:extension`
+**When** the build completes successfully
+**Then** apps/extension/.output/chrome-mv3/ contains a loadable unpacked extension
+**And** apps/extension/.output/firefox-mv3/ (or equivalent) contains the Firefox build
+
+**Given** the unpacked extension is loaded in Chrome via "Load unpacked"
+**When** the user navigates to any page
+**Then** the extension icon is visible in the browser toolbar
+**And** clicking the icon opens the popup entrypoint (action popup)
+
+---
+
+### Story 8.4: Extension Settings & Authentication UI
+
+As a BattleCRM user,
+I want to configure and authenticate the browser extension with my BattleCRM instance,
+So that the extension knows where to connect and can act on my behalf.
+
+**Acceptance Criteria:**
+
+**Given** the extension is freshly installed (no stored token in chrome.storage.local)
+**When** the user opens the extension (popup entrypoint)
+**Then** a setup/login screen is displayed with: BattleCRM URL input (placeholder: "http://localhost:3333"), email input, password input, and a "Se connecter" button
+**And** the "Se connecter" button is disabled until all 3 fields are non-empty
+**And** errors are shown inline (not as toasts) — consistent with the app's form error patterns
+
+**Given** the user enters a valid BattleCRM URL, email, and password
+**When** they click "Se connecter"
+**Then** the extension calls POST <battlecrm_url>/api/extension/auth/login with `{ email, password, name: "Mon Chrome" }` (token name auto-set from browser context)
+**And** on success: `{ token, baseUrl }` are stored in chrome.storage.local via the `lib/storage.ts` wrapper
+**And** the user email is stored for display in the "Connecté en tant que" footer
+**And** the password is NEVER stored — only the returned token
+**And** the UI transitions to the neutral state screen (see below)
+
+**Given** the user enters wrong credentials or an unreachable URL
+**When** they click "Se connecter"
+**Then** an inline error is shown: "Identifiants invalides" or "Serveur inaccessible"
+**And** no token is stored
+
+**Given** the user is authenticated and is NOT on a linkedin.com/in/* page
+**When** the popup opens
+**Then** the neutral state screen is shown: message "Naviguez vers un profil LinkedIn pour capturer un prospect", an "Ouvrir BattleCRM ↗" button (opens app in new tab), a settings icon (⚙️) in the header, and "Connecté : <email>" in the footer
+
+**Given** the user clicks the settings icon (⚙️) in the popup
+**When** the settings view is displayed
+**Then** they see "Connecté en tant que <email>" and a "Se déconnecter" button
+
+**Given** the user clicks "Se déconnecter"
+**When** the action completes
+**Then** POST <battlecrm_url>/api/extension/auth/logout is called with the current Bearer token via the service worker (message passing)
+**And** the token, baseUrl, and email are deleted from chrome.storage.local
+**And** the extension returns to the login screen
+
+**Given** any API call from the extension returns 401
+**When** the service worker receives the error response
+**Then** chrome.storage.local is cleared (token, baseUrl, email)
+**And** a message is broadcast to all extension UI contexts to show the login screen with "Session expirée, veuillez vous reconnecter"
+
+---
+
+### Story 8.5: LinkedIn Profile Detection & Badge Update
+
+As a BattleCRM user,
+I want the extension to automatically detect LinkedIn profiles I visit and indicate if they are already in my CRM,
+So that I know at a glance whether to add a new prospect without opening the extension.
+
+**Acceptance Criteria:**
+
+**Given** I am authenticated and navigate to a LinkedIn profile page (linkedin.com/in/*)
+**When** the Navigation API fires a `navigate` event (primary SPA detection method, stable since Jan 2026)
+**Then** the content script normalizes the URL (strips query params and trailing slash: `linkedin.com/in/john-doe`)
+**And** sends a message via `chrome.runtime.sendMessage({ type: 'CHECK_PROSPECT', linkedinUrl: normalizedUrl })`
+**And** the service worker (NOT the content script) reads the token from chrome.storage.local and calls GET /api/extension/prospects/check
+**And** the content script NEVER reads chrome.storage.local directly or makes fetch() API calls
+
+**Given** the Navigation API is unavailable (fallback scenario)
+**When** a MutationObserver detects DOM changes indicating a URL change on linkedin.com
+**Then** the same CHECK_PROSPECT message flow is triggered as the Navigation API path
+
+**Given** the check returns { found: false }
+**When** the badge updates
+**Then** the extension icon displays a red badge with "+" symbol
+**And** the badge tooltip reads "Ajouter ce prospect à BattleCRM"
+**And** the service worker caches `{ found: false, scrapedData: <DOM data> }` for instant panel opening
+
+**Given** the check returns { found: true, prospect: {...} }
+**When** the badge updates
+**Then** the extension icon displays a green badge with "✓" symbol
+**And** the badge tooltip reads "Prospect déjà dans BattleCRM"
+**And** the service worker caches `{ found: true, prospect: <CRM data> }` for instant panel opening
+
+**Given** the user is not authenticated (no token in chrome.storage.local)
+**When** a LinkedIn profile page is visited
+**Then** no API call is made
+**And** the badge displays a grey "?" indicator
+
+**Given** the BattleCRM server is unreachable
+**When** the check request fails with a network error
+**Then** the badge displays a grey indicator (no assertion about CRM state)
+**And** no error notification is proactively shown to the user (silent degradation)
+
+**Given** the user navigates to a LinkedIn page that is NOT a profile page (search, feed, company page, URL does NOT match linkedin.com/in/*)
+**When** the content script evaluates the URL
+**Then** no API call is made
+**And** the badge is cleared (no text, no color)
+**And** the service worker clears the cached check result
+
+---
+
+### Story 8.6: Prospect Add/Update Floating Window
+
+As a BattleCRM user,
+I want to open a floating window that adapts to whether the prospect is already in my CRM,
+So that I can add a new prospect in under 30 seconds, or consult/update an existing one without risking accidental overwrites.
+
+**Acceptance Criteria:**
+
+**Given** I click the extension icon on a LinkedIn profile page
+**When** the service worker handles the action click
+**Then** `chrome.windows.create({ type: "popup", url: "panel/index.html", width: 420, height: 640 })` is called
+**And** the `panel/` WXT entrypoint loads (NOT the `popup/` entrypoint — the popup entrypoint is only for the action icon default click outside profile pages)
+**And** the window remains open when I click on the LinkedIn page behind it (standalone window, independent from browser action popup behavior)
+
+**Given** the panel window opens
+**When** the React app initializes
+**Then** the panel sends `chrome.runtime.sendMessage({ type: 'GET_PANEL_DATA' })` to the service worker
+**And** the service worker returns the cached check result (cached during profile detection in Story 8.5) — no new API call is made
+**And** the window opens immediately with data already available (NO skeleton loaders — data was pre-fetched on profile load)
+
+**Given** the prospect is NOT in BattleCRM (found: false)
+**When** the floating window opens in ADD mode
+**Then** the form displays 7 fields pre-filled from the cached LinkedIn DOM scrape:
+  - Prénom * (from profile h1 heading — split on last space for first/last name)
+  - Nom * (from profile h1 heading)
+  - Titre / Poste (from the profile headline element)
+  - Entreprise (from current position in experience section — if extraction fails: field is LEFT EMPTY with placeholder "Vérifiez sur LinkedIn", NEVER populated with an incorrect value)
+  - Email (empty, editable — manual copy-paste from LinkedIn)
+  - Téléphone (empty, editable — manual copy-paste)
+  - URL LinkedIn (read-only — canonical normalized URL)
+**And** an "Ajouter le prospect" primary button is shown
+**And** focus is set on the Prénom field on open (first editable field — URL LinkedIn is read-only and therefore skipped)
+**And** tab order follows: Prénom → Nom → Titre → Entreprise → Email → Téléphone → "Ajouter le prospect" button
+**And** the submit button shows a discrete spinner during the API call (not a full-page overlay)
+
+**Given** the prospect IS in BattleCRM (found: true)
+**When** the floating window opens in READ mode
+**Then** the window shows:
+  - A discreet green banner: "✓ Déjà dans BattleCRM"
+  - Prospect name, title, company (from cached CRM data — NEVER LinkedIn DOM)
+  - Current funnel stage name (e.g., "Premier contact")
+  - Email and phone if present in CRM (displayed as "—" if absent)
+**And** a "Voir dans BattleCRM ↗" primary button is shown
+**And** a "Modifier" secondary button is shown below it
+
+**Given** the user clicks "Voir dans BattleCRM ↗"
+**When** the link is activated
+**Then** `chrome.tabs.create({ url: baseUrl + '/prospects/' + prospect.id })` opens the prospect detail page in a new browser tab
+**And** the extension window remains open
+
+**Given** the user clicks "Modifier" in READ mode
+**When** the edit mode activates
+**Then** the window transitions to EDIT mode with an editable form pre-filled with CRM data (NEVER LinkedIn DOM data)
+**And** an amber banner displays: "⚠️ Modification en cours"
+**And** "Annuler" and "Mettre à jour" buttons replace the previous CTAs
+**And** the URL LinkedIn field remains read-only even in edit mode
+**And** tab order follows: Prénom → Nom → Titre → Entreprise → Email → Téléphone → "Mettre à jour" button
+
+**Given** the user clicks "Annuler" in EDIT mode with no fields changed
+**When** the cancellation is triggered
+**Then** the window transitions back to READ mode immediately (no confirm dialog)
+
+**Given** the user clicks "Annuler" in EDIT mode with at least one field modified (dirty form)
+**When** the cancellation is triggered
+**Then** a native browser confirm dialog displays: "Annuler les modifications ?"
+**And** if confirmed: the window returns to READ mode with all changes discarded
+**And** if cancelled: the window remains in EDIT mode with all fields intact
+
+**Given** the user completes the ADD form and clicks "Ajouter le prospect"
+**When** the form is submitted
+**Then** client-side validation runs: firstName and lastName are required, linkedinUrl is present
+**And** the submit button enters a loading/spinner state
+**And** POST /api/extension/prospects is called via the service worker with the form data
+**And** on success: a toast "Prospect ajouté ✓" is shown, the window auto-closes after 2 seconds
+**And** the service worker updates the badge to green "✓" for the current LinkedIn profile
+
+**Given** the user edits the EDIT form and clicks "Mettre à jour"
+**When** the form is submitted
+**Then** the submit button enters a loading/spinner state
+**And** PATCH /api/extension/prospects/:id is called via the service worker with only the changed fields
+**And** on success: a toast "Prospect mis à jour ✓" is shown, the window auto-closes after 2 seconds
+
+**Given** the form submission fails (server error or validation error)
+**When** the error response is received
+**Then** the submit button returns to its normal state
+**And** the window remains open
+**And** field-level validation errors are shown inline under the relevant inputs
+**And** server-level errors (500, network) are shown as an alert banner: "Erreur serveur, veuillez réessayer"
+
+**Given** the user has modified at least one field (ADD or EDIT mode) and clicks ✕ or presses Escape
+**When** the dirty-check triggers
+**Then** a native browser confirm dialog displays: "Fermer sans sauvegarder ?"
+**And** if confirmed: window closes with no API call
+**And** if cancelled: window remains open with all fields intact
+
+**Given** the user clicks ✕ (or Escape) with no fields modified
+**When** the window is dismissed
+**Then** the window closes immediately with no confirmation and no API call
+
+**UX constraints (from UX Design Specification):**
+- Maximum 7 fields total (firstName, lastName, title, company, linkedinUrl, email, phone)
+- READ mode is always the default for existing prospects — edit requires explicit user intent
+- Company field scraping failure → empty field with placeholder, never an incorrect value
+- URL LinkedIn is permanently read-only across all modes and never sent in PATCH requests
+- See `ux-design-specification.md` → "Browser Extension UX" section for full wireframe reference

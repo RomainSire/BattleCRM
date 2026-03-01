@@ -3,9 +3,12 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-02-03'
+lastUpdated: '2026-03-01'
+lastUpdateReason: 'Added Epic 8 - Browser Extension Architecture (WXT, Adonis opaque tokens, MV3 patterns)'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
+  - _bmad-output/analysis/brainstorming-extension-linkedin-2026-02-28.md
 documentCounts:
   prdCount: 1
   uxDesignCount: 1
@@ -671,16 +674,18 @@ All technology choices work together without conflicts:
 
 ### Requirements Coverage Validation ✅
 
-**Functional Requirements:** 64/64 covered
+**Functional Requirements:** 75/75 covered
 - All 8 FR categories have corresponding frontend features and backend services
 - Complex features (Bayesian, Battles, CSV Import) have dedicated services
+- FR65-FR75: Browser extension covered (see Epic 8 section below)
 
-**Non-Functional Requirements:** 67/67 addressed
+**Non-Functional Requirements:** 74/74 addressed
 - Performance: Vite optimization, TanStack Query caching
-- Security: Session auth, RLS, CORS, httpOnly cookies
+- Security: Session auth, CORS, httpOnly cookies; Bearer tokens + message passing isolation for extension
 - Data Integrity: Soft delete, VineJS validation, Adonis transactions
 - Accessibility: shadcn/ui WCAG compliance
 - Maintainability: TypeScript strict, documented patterns
+- NFR68-NFR74: Browser extension NFRs covered (see Epic 8 section below)
 
 ### Implementation Readiness Validation ✅
 
@@ -832,3 +837,276 @@ All technology choices work together without conflicts:
 **Next Phase:** Begin implementation using the architectural decisions and patterns documented herein.
 
 **Document Maintenance:** Update this architecture when major technical decisions are made during implementation.
+
+---
+
+## Browser Extension Architecture (Epic 8)
+
+_Added: 2026-03-01 — Validated against current docs (WXT, Chrome MV3, AdonisJS 6 auth, Firefox MV3)._
+
+### Technology Stack
+
+| Layer | Choice | Validation |
+|-------|--------|------------|
+| Framework | **WXT** (Vite-based) | ✅ Leader incontesté en 2026 — bundle ~400KB (43% plus léger que Plasmo), React module v1.1.5, maintenance active |
+| UI | React + Tailwind (même config que `apps/frontend`) | ✅ Zéro nouvelle dépendance, mêmes design tokens |
+| Manifest | V3 | ✅ Supporté Chrome + Firefox via WXT |
+| Permissions | `storage`, `activeTab`, `scripting` | ✅ Minimum nécessaire |
+| Host permissions | `*://www.linkedin.com/*` | ✅ Scope réduit au strict nécessaire |
+
+### Backend : AdonisJS Opaque Access Tokens (Built-in)
+
+**Décision : Utiliser le système built-in `@adonisjs/auth` Access Tokens Guard plutôt qu'une table `extension_tokens` custom.**
+
+Le brainstorming proposait une table custom. AdonisJS 6 fournit nativement tout ce dont on a besoin :
+
+| Feature | Built-in AdonisJS |
+|---------|------------------|
+| Génération du token | ✅ Prefix + random string + CRC32 checksum |
+| Stockage | ✅ Haché en DB (jamais brut) |
+| `last_used_at` | ✅ Colonne built-in, mise à jour auto |
+| `expires_at` | ✅ Configurable à la génération |
+| Révocation | ✅ Delete from DB |
+| Nom du token | ✅ Champ `name` supporté |
+| Abilities/scopes | ✅ Supporté (pour futur découpage de permissions) |
+
+**Implémentation :**
+- Table standard : `auth_access_tokens` avec `type = 'extension_token'`
+- Pas de migration custom pour la structure du token — Adonis la génère
+- Guard séparé `extension` dans `config/auth.ts` utilisant `AccessTokensGuard`
+- Révocation : `user.related('tokens').query().where('id', tokenId).delete()`
+
+**Pourquoi c'est mieux qu'une table custom :**
+- Battle-tested, code generation et hashing éprouvés
+- Patterns Adonis standards (familier pour les futurs devs)
+- Réduction du code à maintenir
+
+### Token Hashing : bcrypt vs HMAC-SHA256
+
+Le brainstorming proposait bcrypt. **Verdict :**
+
+- bcrypt est conçu pour les mots de passe (faible entropie, choisis par des humains)
+- Les tokens API sont déjà haute entropie — le bcrypt work factor ajoute de la latence sans bénéfice sécurité
+- bcrypt a un **bug de troncature à 72 bytes** (tokens > 72 bytes silencieusement tronqués)
+- HMAC-SHA256 est plus rapide et approprié pour des tokens aléatoires
+
+**Décision :** Le système built-in Adonis utilise bcrypt-equivalent. Pour notre volume (personal tool), la performance est acceptable. **Si performance issue à l'usage, migrer vers HMAC-SHA256 avec secret key.** Ne pas sur-optimiser dès le MVP.
+
+### Stockage du Token Côté Extension : `chrome.storage.local`
+
+**Décision : `chrome.storage.local` — avec isolation via message passing.**
+
+| Storage | Persistance | Accessible content scripts |
+|---------|------------|---------------------------|
+| `chrome.storage.local` | ✅ Survive aux redémarrages | ⚠️ Oui, par défaut |
+| `chrome.storage.session` | ❌ Effacé quand le service worker s'arrête | ✅ Non, par défaut |
+
+`chrome.storage.session` garantit l'isolation mais force l'utilisateur à se reconnecter après chaque redémarrage du navigateur — incompatible avec NFR73 (persistance entre sessions).
+
+**`chrome.storage.local` est le bon choix, mais avec la règle suivante :**
+
+> **Règle critique :** Le content script ne lit JAMAIS directement `chrome.storage.local`. Tout appel API nécessitant le token passe par message passing vers le service worker.
+
+```
+Content Script  →  chrome.runtime.sendMessage()  →  Service Worker  →  API call avec Bearer token
+```
+
+**Pourquoi c'est sécurisé :** Le content script tourne dans le contexte de linkedin.com mais ne peut pas exfiltrer le token — il ne le connaît jamais. Seul le service worker (contexte trusted) accède au storage et fait les appels API.
+
+### Cycle de Vie du Service Worker (MV3)
+
+**Contrainte MV3 :** Le service worker se termine après **30 secondes d'inactivité**. Les variables globales sont perdues.
+
+**Impact sur notre archi :** Notre cas d'usage est **event-driven**, pas persistant :
+- Détection de profil → event → appel API (< 1s) → service worker peut se terminer ✅
+- Aucun état critique en mémoire — tout est dans `chrome.storage.local`
+
+**Règle :** Ne jamais stocker d'état dans les variables globales du service worker. Utiliser `chrome.storage.local` pour tout état devant survivre au redémarrage.
+
+**Pas besoin du workaround Offscreen Document** — notre use case ne nécessite pas un service worker persistant.
+
+### Détection de Navigation LinkedIn SPA
+
+**Décision : Navigation API en primaire + MutationObserver en fallback.**
+
+La Navigation API est maintenant stable sur Chrome et Firefox (Interop 2025, janvier 2026). C'est la méthode recommandée pour détecter les changements de route SPA.
+
+```typescript
+// Primaire : Navigation API (stable Jan 2026, Chrome + Firefox)
+navigation.addEventListener('navigate', (event) => {
+  const url = new URL(event.destination.url)
+  if (url.pathname.match(/^\/in\/[^/]+\/?$/)) {
+    triggerProspectCheck(normalizeLinkedInUrl(url.href))
+  }
+})
+
+// Fallback : MutationObserver (support universel)
+// Utilisé en safety net pour les edge cases où Navigation API ne fire pas
+```
+
+**Normalisation de l'URL :** Toujours normaliser avant le check (supprimer les query params, trailing slash) pour éviter les faux doublons :
+```typescript
+// linkedin.com/in/john-doe?utm_source=... → linkedin.com/in/john-doe
+function normalizeLinkedInUrl(url: string): string {
+  const parsed = new URL(url)
+  return `${parsed.origin}${parsed.pathname.replace(/\/$/, '')}`
+}
+```
+
+### CORS Configuration
+
+**Approche :** Variable d'environnement `EXTENSION_ORIGINS` dans le `.env` racine.
+
+```typescript
+// config/cors.ts
+origin: (requestOrigin) => {
+  const allowedOrigins = [
+    env.get('FRONTEND_URL'),
+    ...env.get('EXTENSION_ORIGINS', '').split(',').filter(Boolean)
+  ]
+  return allowedOrigins.includes(requestOrigin) ? requestOrigin : false
+}
+```
+
+**Points clés :**
+- Extension Bearer tokens (pas de cookies) → pas besoin de `credentials: true` pour les endpoints `/api/extension/*`
+- La config CORS existante pour la session auth frontend reste inchangée
+- En dev : fixer l'ID de l'extension via le champ `key` dans `wxt.config.ts` pour éviter de mettre à jour `EXTENSION_ORIGINS` à chaque rechargement
+
+**`.env` example :**
+```
+EXTENSION_ORIGINS=chrome-extension://abcdefghijklmnopqrstuvwxyz123456,moz-extension://uuid-here
+```
+
+### Gotcha : `activeTab` + `chrome.windows.create`
+
+**Comportement documenté :** Quand le popup est ouvert via `chrome.windows.create` (et non le standard action popup), la permission `activeTab` n'est **pas** automatiquement accordée à la nouvelle fenêtre.
+
+**Impact sur notre archi :** Aucun — notre flow n'a pas besoin d'injecter des scripts depuis la fenêtre flottante. Le content script est déclaré dans le manifest et injecté au chargement de page (pas via `scripting.executeScript()` depuis la fenêtre). La fenêtre flottante communique avec le service worker via message passing uniquement.
+
+**Garder `activeTab` dans les permissions** pour la flexibilité future, mais ne pas en dépendre depuis la fenêtre flottante.
+
+### Structure `apps/extension/`
+
+```
+apps/extension/
+├── src/
+│   ├── entrypoints/
+│   │   ├── background.ts          # Service worker — message handler, API calls, badge updates
+│   │   ├── content.ts             # Content script — détection profil LinkedIn, scraping DOM
+│   │   ├── popup/                 # Action popup (état neutre + settings)
+│   │   │   ├── index.html
+│   │   │   └── App.tsx
+│   │   └── panel/                 # Fenêtre flottante add/edit (chrome.windows.create)
+│   │       ├── index.html
+│   │       └── App.tsx
+│   ├── components/
+│   │   ├── AuthForm.tsx           # Login screen
+│   │   ├── ProspectForm.tsx       # Formulaire ajout/édition
+│   │   └── ProspectCard.tsx       # Mode lecture (prospect existant)
+│   ├── lib/
+│   │   ├── api.ts                 # Client API typé (fetch + Bearer)
+│   │   ├── storage.ts             # Wrapper chrome.storage.local
+│   │   └── linkedin.ts            # Scraping DOM LinkedIn (h1, headline, experience)
+│   └── types/
+│       └── index.ts               # Types spécifiques à l'extension
+├── public/
+│   └── icons/                     # 16, 32, 48, 128px (format WebP ou PNG)
+├── wxt.config.ts
+├── package.json
+└── tsconfig.json
+```
+
+**WXT Entrypoints :**
+- `background.ts` → compilé en service worker (`background.service_worker`)
+- `content.ts` → injecté sur `*://www.linkedin.com/in/*`
+- `popup/` → action popup par défaut (état neutre / settings)
+- `panel/` → fenêtre flottante, ouverte via `chrome.windows.create`
+
+### Routes API Extension
+
+| Méthode | Endpoint | Auth | Rôle |
+|---------|----------|------|------|
+| POST | `/api/extension/auth/login` | ∅ | Login, retourne token brut (une seule fois) |
+| POST | `/api/extension/auth/logout` | Bearer | Révoque le token |
+| GET | `/api/extension/prospects/check` | Bearer | Vérifie l'existence par `linkedin_url` |
+| POST | `/api/extension/prospects` | Bearer | Crée un prospect (auto premier funnel stage) |
+| PATCH | `/api/extension/prospects/:id` | Bearer | Met à jour un prospect existant |
+
+**Localisation dans le backend :**
+
+```
+app/
+├── controllers/
+│   └── extension/
+│       ├── auth_controller.ts
+│       └── prospects_controller.ts
+├── middleware/
+│   └── bearer_token_middleware.ts  # Valide token Adonis opaque
+└── ...
+
+start/routes.ts
+└── router.group(() => { ... }).prefix('/api/extension')
+```
+
+### Index DB
+
+```sql
+-- Lookup rapide pour le check prospect (NFR72 : < 1s)
+CREATE UNIQUE INDEX idx_prospects_user_linkedin
+  ON prospects (user_id, linkedin_url)
+  WHERE linkedin_url IS NOT NULL AND deleted_at IS NULL;
+
+-- Index pour la validation des tokens
+-- (géré par Adonis sur auth_access_tokens, déjà prévu dans le built-in)
+```
+
+### Flux de Données
+
+```
+LinkedIn Page
+    │
+    │ Navigation API 'navigate' event
+    ▼
+Content Script (content.ts)
+    │ chrome.runtime.sendMessage({ type: 'CHECK_PROSPECT', url })
+    │ chrome.runtime.sendMessage({ type: 'GET_PANEL_DATA' })
+    ▼
+Service Worker (background.ts)
+    │ chrome.storage.local.get('token', 'baseUrl')
+    │ fetch(baseUrl + '/api/extension/prospects/check?linkedin_url=...')
+    ▼
+Backend Adonis
+    │ BearerTokenMiddleware → validate token → authenticate user
+    │ ProspectsController → query with user_id + linkedin_url index
+    ▼
+Response → Service Worker → chrome.action.setBadgeText() + setBadgeBackgroundColor()
+
+// Sur clic icône :
+Service Worker → chrome.windows.create({ url: 'panel/index.html', type: 'popup' })
+Panel App (panel/App.tsx) → chrome.runtime.sendMessage('GET_PANEL_DATA')
+                         → Service Worker → retourne { found, prospect, scrapedData }
+```
+
+### Couverture des Requirements
+
+| Requirement | Couverture | Notes |
+|------------|-----------|-------|
+| FR65 (auth) | ✅ | Adonis opaque tokens |
+| FR66 (détection profil) | ✅ | Content script + host permissions manifest |
+| FR67 (check silencieux) | ✅ | Navigation API → message passing → service worker |
+| FR68 (badge) | ✅ | `chrome.action.setBadgeText()` + `setBadgeBackgroundColor()` |
+| FR69 (formulaire pré-rempli) | ✅ | `chrome.windows.create` + scraping DOM |
+| FR70 (warning prospect existant) | ✅ | Réponse `check` endpoint + panel READ mode |
+| FR71 (ajout prospect) | ✅ | `POST /api/extension/prospects` |
+| FR72 (mise à jour) | ✅ | `PATCH /api/extension/prospects/:id` |
+| FR73 (persistance token) | ✅ | `chrome.storage.local` |
+| FR74 (config URL instance) | ✅ | Settings UI dans action popup |
+| FR75 (logout + révocation) | ✅ | `POST /api/extension/auth/logout` + delete token DB |
+| NFR68 (Chrome + Firefox) | ✅ | WXT cross-browser build |
+| NFR69 (sécurité stockage) | ✅ | `chrome.storage.local` + règle message passing |
+| NFR70 (token jamais affiché) | ✅ | One-time display, jamais stocké brut |
+| NFR71 (fenêtre reste ouverte) | ✅ | `chrome.windows.create` confirmé |
+| NFR72 (check < 1s) | ✅ | Index `(user_id, linkedin_url)` |
+| NFR73 (dégradation gracieuse) | ✅ | Badge neutre si serveur inaccessible, pas de crash |
+| NFR74 (SPA navigation) | ✅ | Navigation API primary + MutationObserver fallback |

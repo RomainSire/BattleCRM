@@ -5,14 +5,17 @@ inputDocuments:
   - _bmad-output/analysis/brainstorming-session-2026-01-06.md
   - _bmad-output/analysis/brainstorming-session-2026-01-08.md
   - _bmad-output/analysis/brainstorming-session-2026-01-10.md
+  - _bmad-output/analysis/brainstorming-extension-linkedin-2026-02-28.md
 documentCounts:
   prdCount: 1
   briefCount: 0
-  brainstormingCount: 3
+  brainstormingCount: 4
   projectDocsCount: 0
 lastStep: 13
 pendingPrdUpdate: false
 prdUpdateCompletedAt: '2026-02-02'
+lastUpdated: '2026-02-28'
+lastUpdateReason: 'Added Epic 8 - Browser Extension UX specification'
 ---
 
 # UX Design Specification - BattleCRM
@@ -1487,4 +1490,248 @@ Desktop (≥1024px):
 
 - shadcn components sont accessibles by default
 - Ajouter `aria-*` uniquement quand nécessaire
+
+---
+
+## Browser Extension UX (Epic 8)
+
+### Contexte & Contraintes Spécifiques
+
+L'extension est une **surface UI distincte** de l'app web — une fenêtre flottante indépendante (420×640px) avec ses propres règles d'interaction. Contraintes spécifiques à garder en tête :
+
+- **Pas de navigation** : tout tient en une seule fenêtre avec transitions d'état internes
+- **Contexte de split attention** : l'utilisateur a LinkedIn d'un côté, la fenêtre extension de l'autre — les labels doivent être ultra-clairs, pas de place à l'ambiguïté
+- **Copier/coller fréquent** : l'utilisateur va basculer entre les deux fenêtres — l'état de la fenêtre doit être stable, les champs clairement identifiés
+- **Design tokens identiques** à l'app web : même Tailwind config, même palette shadcn/ui — l'extension doit *sentir* BattleCRM
+
+---
+
+### États du Badge Icône (Ambient Awareness)
+
+Le badge est l'élément UX le plus important — il communique **sans aucune action de l'utilisateur**.
+
+| État | Badge | Couleur | Signification |
+|------|-------|---------|---------------|
+| Profil non dans le CRM | `+` | Rouge | Call to action → invite à ajouter |
+| Profil déjà dans le CRM | `✓` | Vert | Réassurance → prospect connu |
+| Non authentifié | `?` | Gris | Setup requis |
+| Serveur inaccessible | *(neutre)* | Gris | Dégradation silencieuse |
+| Vérification en cours | *(dernier état connu)* | — | Afficher l'état précédent jusqu'à résolution (< 1s) |
+| Pas sur un profil LinkedIn | *(aucun badge)* | — | Icône seule, pas d'indicateur |
+
+**Règle critique :** le badge utilise toujours icône + couleur (jamais couleur seule) — cohérent avec les principes d'accessibilité du projet.
+
+---
+
+### Écran 1 : Setup & Authentification (First Run)
+
+Affiché uniquement si aucun token n'est stocké dans `chrome.storage.local`.
+
+```
+┌─────────────────────────────────────┐
+│  ⚔️  BattleCRM                     │
+│  Connectez votre instance           │
+├─────────────────────────────────────┤
+│                                     │
+│  URL BattleCRM                      │
+│  ┌─────────────────────────────┐   │
+│  │ http://localhost:3333        │   │
+│  └─────────────────────────────┘   │
+│  Ex: https://moncrm.exemple.com    │
+│                                     │
+│  Email                              │
+│  ┌─────────────────────────────┐   │
+│  │                              │   │
+│  └─────────────────────────────┘   │
+│                                     │
+│  Mot de passe                       │
+│  ┌─────────────────────────────┐   │
+│  │                              │   │
+│  └─────────────────────────────┘   │
+│                                     │
+│  [        Se connecter         ]   │
+│                                     │
+│  ⚠️ Identifiants invalides          │  ← inline error, pas de toast
+└─────────────────────────────────────┘
+```
+
+**Règles UX :**
+- Le champ URL a un placeholder explicite montrant les deux formats (local + prod)
+- Erreurs inline uniquement (pas de toast) — cohérent avec les patterns de l'app
+- Le bouton "Se connecter" est désactivé tant que les 3 champs ne sont pas remplis
+- Après succès : transition immédiate vers l'écran principal (pas d'interstitiel)
+
+---
+
+### Écran 2 : État Neutre (Pas sur un Profil LinkedIn)
+
+Affiché quand l'utilisateur est authentifié mais navigue en dehors de `linkedin.com/in/*`.
+
+```
+┌─────────────────────────────────────┐
+│  ⚔️  BattleCRM          [⚙️]       │
+├─────────────────────────────────────┤
+│                                     │
+│                                     │
+│      Naviguez vers un profil        │
+│      LinkedIn pour capturer         │
+│      un prospect.                   │
+│                                     │
+│                                     │
+│  [    Ouvrir BattleCRM ↗    ]      │
+│                                     │
+│  Connecté : romain@mail.com         │
+└─────────────────────────────────────┘
+```
+
+**Règles UX :**
+- Lien "Ouvrir BattleCRM" ouvre l'app dans un nouvel onglet
+- Icône ⚙️ en haut à droite → accès aux settings (logout, URL)
+- "Connecté en tant que" en bas — réassurance discrète
+
+---
+
+### Écran 3 : Fenêtre Flottante — Mode Ajout (Prospect Non Présent)
+
+Déclenché par clic sur l'icône avec badge rouge. Ouverte via `chrome.windows.create`.
+
+```
+┌─────────────────────────────────────┐
+│  ⚔️  Nouveau prospect   [✕]        │
+├─────────────────────────────────────┤
+│  Prénom *                           │
+│  ┌─────────────────────────────┐   │
+│  │ Jean                         │   │  ← pré-rempli depuis LinkedIn
+│  └─────────────────────────────┘   │
+│  Nom *                              │
+│  ┌─────────────────────────────┐   │
+│  │ Dupont                       │   │  ← pré-rempli
+│  └─────────────────────────────┘   │
+│  Titre / Poste                      │
+│  ┌─────────────────────────────┐   │
+│  │ Lead Developer               │   │  ← pré-rempli
+│  └─────────────────────────────┘   │
+│  Entreprise                         │
+│  ┌─────────────────────────────┐   │
+│  │ Capgemini                    │   │  ← pré-rempli si disponible
+│  └─────────────────────────────┘   │  ou vide (voir règle scraping)
+│  Email                              │
+│  ┌─────────────────────────────┐   │
+│  │                              │   │  ← manuel (copier/coller)
+│  └─────────────────────────────┘   │
+│  Téléphone                          │
+│  ┌─────────────────────────────┐   │
+│  │                              │   │  ← manuel (copier/coller)
+│  └─────────────────────────────┘   │
+│  URL LinkedIn                       │
+│  ┌─────────────────────────────┐   │
+│  │ linkedin.com/in/jeandupont  │   │  ← readonly, toujours présent
+│  └─────────────────────────────┘   │
+│                                     │
+│  [    Ajouter le prospect      ]   │  ← bouton primary
+└─────────────────────────────────────┘
+```
+
+**Règles UX :**
+- Champs marqués `*` sont les seuls requis (Prénom + Nom)
+- URL LinkedIn est **toujours readonly** — c'est la clé d'unicité, jamais modifiable
+- Si l'extraction de l'entreprise échoue → champ **vide** avec placeholder `"Vérifiez sur LinkedIn"` (jamais une valeur incorrecte)
+- Après succès : toast `"Prospect ajouté ✓"` (2s) → fenêtre se ferme automatiquement
+- **Dirty form** : si l'utilisateur a modifié des champs et tente de fermer via ✕ → confirmation native `"Fermer sans sauvegarder ?"` (browser `confirm()`, pas un modal custom)
+
+---
+
+### Écran 4 : Fenêtre Flottante — Mode Lecture (Prospect Déjà Présent)
+
+**État par défaut** quand le prospect est trouvé dans le CRM. Lecture seule, pas d'édition directe.
+
+```
+┌─────────────────────────────────────┐
+│  ⚔️  Prospect connu      [✕]       │
+├─────────────────────────────────────┤
+│  ┌─────────────────────────────┐   │
+│  │ ✓ Déjà dans BattleCRM      │   │  ← bannière verte, discrète
+│  └─────────────────────────────┘   │
+│                                     │
+│  Jean Dupont                        │  ← données CRM (pas LinkedIn)
+│  Lead Developer                     │
+│  Capgemini                          │
+│                                     │
+│  Stage : Premier contact            │
+│  Email : jean@mail.com              │
+│  Tél : —                            │
+│                                     │
+│  [  Voir dans BattleCRM ↗  ]       │  ← deeplink, ouvre app dans nouvel onglet
+│  [       Modifier           ]       │  ← bouton secondaire
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Règles UX :**
+- **Lecture seule par défaut** — protège contre les modifications accidentelles
+- La bannière est **verte et discrète** (pas un ⚠️ alarmiste — c'est une bonne nouvelle !)
+- "Voir dans BattleCRM" est le CTA principal : ouvre la page détail du prospect dans l'app
+- "Modifier" est secondaire : bascule vers le mode édition (voir ci-dessous)
+- Le funnel stage est affiché en lecture — information utile sans friction
+
+---
+
+### Écran 4b : Fenêtre Flottante — Mode Édition (Prospect Déjà Présent)
+
+Activé uniquement après clic explicite sur "Modifier".
+
+```
+┌─────────────────────────────────────┐
+│  ⚔️  Modifier prospect    [✕]      │
+├─────────────────────────────────────┤
+│  ┌─────────────────────────────┐   │
+│  │ ⚠️ Modification en cours   │   │  ← bannière amber, rappel contextuel
+│  └─────────────────────────────┘   │
+│                                     │
+│  Prénom *                           │
+│  ┌─────────────────────────────┐   │
+│  │ Jean                         │   │  ← données CRM pré-remplies
+│  └─────────────────────────────┘   │
+│  [... autres champs editables ...]  │
+│                                     │
+│  URL LinkedIn                       │
+│  ┌─────────────────────────────┐   │
+│  │ linkedin.com/in/jeandupont  │   │  ← readonly, toujours
+│  └─────────────────────────────┘   │
+│                                     │
+│  [  Annuler  ] [  Mettre à jour  ] │
+└─────────────────────────────────────┘
+```
+
+**Règles UX :**
+- Tous les champs pré-remplis avec données **CRM** (jamais le DOM LinkedIn en mode update)
+- URL LinkedIn reste readonly même en édition
+- Bouton "Annuler" → retour au mode lecture (Écran 4) sans confirmation si aucun changement
+- Bouton "Annuler" avec dirty form → confirmation native `"Annuler les modifications ?"`
+- Après succès : toast `"Prospect mis à jour ✓"` (2s) → fenêtre se ferme
+
+---
+
+### Règles UX Globales de l'Extension
+
+**Cohérence avec l'app principale :**
+- Même palette de couleurs Tailwind (dark foreground, white background)
+- Même composants shadcn/ui (Button, Input, Badge, Alert)
+- Mêmes patterns de feedback : toast pour succès, inline pour erreurs de validation
+- Même ton : sobre, efficace, zéro superflu
+
+**Erreurs :**
+- Erreurs de validation inline sous le champ concerné
+- Erreurs serveur (500, réseau) : alert banner en haut du formulaire
+- Token expiré/révoqué (401) : redirection automatique vers l'écran login avec message `"Session expirée"`
+
+**Performance perçue :**
+- La fenêtre s'ouvre avec les données déjà disponibles (le check a eu lieu lors du chargement du profil)
+- Pas de skeleton loader — les données sont là immédiatement
+- Le bouton de soumission affiche un état loading discret (spinner dans le bouton) pendant l'appel API
+
+**Accessibilité :**
+- Focus automatique sur le premier champ à l'ouverture de la fenêtre
+- Tab order logique : URL → Prénom → Nom → Titre → Entreprise → Email → Téléphone → Submit
+- Escape sur la fenêtre → comportement identique au bouton ✕ (avec dirty check)
 - Tester avec Tab + Enter avant merge
