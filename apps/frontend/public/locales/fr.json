@@ -138,21 +138,28 @@
       "description": "\"{{name}}\" sera déplacé dans les archives. Vous pourrez le restaurer plus tard.",
       "confirm": "Archiver"
     },
+    "stageHistory": "Historique des étapes",
+    "noStageHistory": "Aucun changement d'étape enregistré.",
+    "initialStage": "Début",
+    "stagePosition": "({{current}} sur {{total}})",
     "toast": {
       "created": "Prospect créé",
       "updated": "Prospect mis à jour",
       "archived": "Prospect archivé",
       "restored": "Prospect restauré",
+      "stageMoved": "Prospect déplacé vers une nouvelle étape",
       "createFailed": "Impossible de créer le prospect.",
       "updateFailed": "Impossible de mettre à jour le prospect.",
       "archiveFailed": "Impossible d'archiver le prospect.",
-      "restoreFailed": "Impossible de restaurer le prospect."
+      "restoreFailed": "Impossible de restaurer le prospect.",
+      "stageMoveFailed": "Impossible de déplacer le prospect vers cette étape."
     },
     "aria": {
       "editProspect": "Modifier {{name}}",
       "cancelEdit": "Annuler la modification",
       "archiveProspect": "Archiver {{name}}",
-      "restoreProspect": "Restaurer {{name}}"
+      "restoreProspect": "Restaurer {{name}}",
+      "stageSelect": "Changer l'étape du funnel pour {{name}}"
     }
   },
   "phoneInput": {

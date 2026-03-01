@@ -1,7 +1,9 @@
 import type { ApiClient } from '@japa/api-client'
 import { test } from '@japa/runner'
+import { DateTime } from 'luxon'
 import FunnelStage from '#models/funnel_stage'
 import Prospect from '#models/prospect'
+import ProspectStageTransition from '#models/prospect_stage_transition'
 import User from '#models/user'
 
 type ProspectDto = {
@@ -767,5 +769,197 @@ test.group('Prospects API', (group) => {
     const user = await registerUser(client, 'restore-bad-uuid')
     const res = await client.patch('/api/prospects/not-a-uuid/restore').loginAs(user)
     res.assertStatus(404)
+  })
+
+  // ===========================
+  // PUT /api/prospects/:id — stage transition recording (FR44)
+  // ===========================
+
+  test('PUT /api/prospects/:id records a stage transition when funnel_stage_id changes', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'stage-transition-record')
+    const stages = await FunnelStage.query()
+      .withScopes((s) => s.forUser(user.id))
+      .orderBy('position', 'asc')
+    assert.isAbove(stages.length, 1, 'Need at least 2 stages to test transition')
+    const [stage1, stage2] = stages
+
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage1.id,
+      name: 'MoveMe',
+    })
+
+    const res = await client
+      .put(`/api/prospects/${prospect.id}`)
+      .loginAs(user)
+      .json({ funnel_stage_id: stage2.id })
+
+    res.assertStatus(200)
+    assert.equal(res.body().funnelStageId, stage2.id)
+
+    const transition = await ProspectStageTransition.query()
+      .where('prospect_id', prospect.id)
+      .first()
+
+    assert.isNotNull(transition)
+    assert.equal(transition!.fromStageId, stage1.id)
+    assert.equal(transition!.toStageId, stage2.id)
+  })
+
+  test('PUT /api/prospects/:id does NOT record a transition when funnel_stage_id is unchanged', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'stage-no-transition')
+    const stage = await getFirstStage(user.id)
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'NoMove',
+    })
+
+    // Update with same stage ID — should not create a transition
+    const res = await client
+      .put(`/api/prospects/${prospect.id}`)
+      .loginAs(user)
+      .json({ funnel_stage_id: stage.id, name: 'NoMove Updated' })
+
+    res.assertStatus(200)
+
+    const count = await ProspectStageTransition.query()
+      .where('prospect_id', prospect.id)
+      .count('* as total')
+    assert.equal(Number(count[0].$extras.total), 0)
+  })
+
+  // ===========================
+  // GET /api/prospects/:id/stage-transitions (FR44)
+  // ===========================
+
+  test('GET /api/prospects/:id/stage-transitions returns empty list when no transitions', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'stage-hist-empty')
+    const stage = await getFirstStage(user.id)
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'HistEmpty',
+    })
+
+    const res = await client.get(`/api/prospects/${prospect.id}/stage-transitions`).loginAs(user)
+    res.assertStatus(200)
+    assert.deepEqual(res.body().data, [])
+  })
+
+  test('GET /api/prospects/:id/stage-transitions returns transitions in desc order', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'stage-hist-list')
+    const stages = await FunnelStage.query()
+      .withScopes((s) => s.forUser(user.id))
+      .orderBy('position', 'asc')
+    const [stage1, stage2, stage3] = stages
+
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage1.id,
+      name: 'HistList',
+    })
+
+    // Create transitions directly with explicit timestamps to guarantee deterministic ordering
+    // (avoids flakiness from DateTime.now() resolving to the same millisecond in fast CI)
+    const now = DateTime.now()
+    await ProspectStageTransition.create({
+      userId: user.id,
+      prospectId: prospect.id,
+      fromStageId: stage1.id,
+      toStageId: stage2.id,
+      transitionedAt: now.minus({ minutes: 1 }), // older
+    })
+    await ProspectStageTransition.create({
+      userId: user.id,
+      prospectId: prospect.id,
+      fromStageId: stage2.id,
+      toStageId: stage3.id,
+      transitionedAt: now, // newer
+    })
+
+    const res = await client.get(`/api/prospects/${prospect.id}/stage-transitions`).loginAs(user)
+    res.assertStatus(200)
+
+    const data = res.body().data
+    assert.lengthOf(data, 2)
+    // Most recent transition first (stage2 → stage3)
+    assert.equal(data[0].fromStageId, stage2.id)
+    assert.equal(data[0].toStageId, stage3.id)
+    // Older transition second (stage1 → stage2)
+    assert.equal(data[1].fromStageId, stage1.id)
+    assert.equal(data[1].toStageId, stage2.id)
+    // Check stage names and timestamps are present
+    assert.isString(data[0].toStageName)
+    assert.isString(data[0].transitionedAt)
+  })
+
+  test("GET /api/prospects/:id/stage-transitions returns 404 for another user's prospect", async ({
+    client,
+  }) => {
+    const user1 = await registerUser(client, 'stage-hist-404-u1')
+    const user2 = await registerUser(client, 'stage-hist-404-u2')
+    const stage = await getFirstStage(user1.id)
+    const prospect = await Prospect.create({
+      userId: user1.id,
+      funnelStageId: stage.id,
+      name: 'NotMine',
+    })
+
+    const res = await client.get(`/api/prospects/${prospect.id}/stage-transitions`).loginAs(user2)
+    res.assertStatus(404)
+  })
+
+  test('GET /api/prospects/:id/stage-transitions requires authentication', async ({ client }) => {
+    const res = await client.get(
+      '/api/prospects/00000000-0000-0000-0000-000000000001/stage-transitions',
+    )
+    res.assertStatus(401)
+  })
+
+  test('GET /api/prospects/:id/stage-transitions returns history for archived prospect', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'stage-hist-archived')
+    const stages = await FunnelStage.query()
+      .withScopes((s) => s.forUser(user.id))
+      .orderBy('position', 'asc')
+    const [stage1, stage2] = stages
+
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage1.id,
+      name: 'ArchivedWithHistory',
+    })
+
+    // Record a stage transition while prospect is active
+    await client
+      .put(`/api/prospects/${prospect.id}`)
+      .loginAs(user)
+      .json({ funnel_stage_id: stage2.id })
+
+    // Archive the prospect
+    await client.delete(`/api/prospects/${prospect.id}`).loginAs(user)
+
+    // Stage history must still be accessible for archived prospects
+    const res = await client.get(`/api/prospects/${prospect.id}/stage-transitions`).loginAs(user)
+    res.assertStatus(200)
+    const data = res.body().data
+    assert.lengthOf(data, 1)
+    assert.equal(data[0].fromStageId, stage1.id)
+    assert.equal(data[0].toStageId, stage2.id)
   })
 })

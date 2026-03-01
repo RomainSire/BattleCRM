@@ -1,6 +1,8 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import { DateTime } from 'luxon'
 import FunnelStage from '#models/funnel_stage'
 import Prospect from '#models/prospect'
+import ProspectStageTransition from '#models/prospect_stage_transition'
 import { createProspectValidator, updateProspectValidator } from '#validators/prospects'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -120,6 +122,7 @@ export default class ProspectsController {
   /**
    * PUT /api/prospects/:id
    * Updates a prospect owned by the authenticated user (partial update semantics).
+   * Records a stage transition when funnel_stage_id actually changes (FR44).
    */
   async update({ params, request, response, auth }: HttpContext) {
     const payload = await request.validateUsing(updateProspectValidator)
@@ -129,6 +132,9 @@ export default class ProspectsController {
       .withScopes((s) => s.forUser(userId))
       .where('id', params.id)
       .firstOrFail()
+
+    // Capture previous stage BEFORE any changes (for transition recording, FR44)
+    const previousStageId = prospect.funnelStageId
 
     // SECURITY (M1): if changing funnel stage, validate it belongs to the authenticated user
     if (payload.funnel_stage_id !== undefined) {
@@ -150,6 +156,18 @@ export default class ProspectsController {
       prospect.positioningId = payload.positioning_id ?? null
 
     await prospect.save()
+
+    // Record stage transition only when funnel_stage_id actually changed (FR44)
+    if (payload.funnel_stage_id !== undefined && payload.funnel_stage_id !== previousStageId) {
+      await ProspectStageTransition.create({
+        userId,
+        prospectId: prospect.id,
+        fromStageId: previousStageId,
+        toStageId: payload.funnel_stage_id,
+        transitionedAt: DateTime.now(),
+      })
+    }
+
     return response.ok(prospect)
   }
 
@@ -185,5 +203,40 @@ export default class ProspectsController {
 
     await prospect.restore()
     return response.ok(prospect)
+  }
+
+  /**
+   * GET /api/prospects/:id/stage-transitions
+   * Returns stage transition history for a prospect, ordered by transitioned_at DESC.
+   * Only returns transitions for the authenticated user's prospect (FR44).
+   */
+  async stageTransitions({ params, response, auth }: HttpContext) {
+    const userId = auth.user!.id
+
+    // Verify prospect exists and belongs to authenticated user (consistent with show() pattern)
+    // withTrashed() ensures archived prospects' stage history remains accessible (AC3)
+    const prospect = await Prospect.query()
+      .withTrashed()
+      .withScopes((s) => s.forUser(userId))
+      .where('id', params.id)
+      .firstOrFail()
+
+    const transitions = await ProspectStageTransition.query()
+      .withScopes((s) => s.forUser(userId))
+      .where('prospect_id', prospect.id)
+      .preload('fromStage')
+      .preload('toStage')
+      .orderBy('transitioned_at', 'desc')
+
+    return response.ok({
+      data: transitions.map((t) => ({
+        id: t.id,
+        fromStageId: t.fromStageId,
+        fromStageName: t.fromStage?.name ?? null,
+        toStageId: t.toStageId,
+        toStageName: t.toStage?.name ?? 'Unknown stage',
+        transitionedAt: t.transitionedAt,
+      })),
+    })
   }
 }
