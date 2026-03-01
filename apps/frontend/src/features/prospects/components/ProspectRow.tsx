@@ -1,9 +1,3 @@
-import { vineResolver } from '@hookform/resolvers/vine'
-import { ChevronDown, ChevronRight, Pencil, X } from 'lucide-react'
-import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -11,7 +5,14 @@ import { Label } from '@/components/ui/label'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Textarea } from '@/components/ui/textarea'
 import { ApiError } from '@/lib/api'
+import { cn } from '@/lib/utils'
 import { i18nMessagesProvider } from '@/lib/validation'
+import { vineResolver } from '@hookform/resolvers/vine'
+import { ChevronRight, Pencil, X } from 'lucide-react'
+import { useState } from 'react'
+import { Controller, useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { useUpdateProspect } from '../hooks/useProspectMutations'
 import type { ProspectType } from '../lib/api'
 import { updateProspectSchema } from '../schemas/prospect'
@@ -130,11 +131,7 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
         aria-expanded={isExpanded}
         aria-controls={`prospect-panel-${prospect.id}`}
       >
-        {isExpanded ? (
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-        )}
+        <ChevronRight className={cn("size-4 shrink-0 text-muted-foreground transition", isExpanded ? "rotate-90" : "")} />
         <span className="min-w-0 flex-1 truncate font-medium">{prospect.name}</span>
         <span className="w-40 shrink-0 truncate text-sm text-muted-foreground">
           {prospect.company ?? '—'}
