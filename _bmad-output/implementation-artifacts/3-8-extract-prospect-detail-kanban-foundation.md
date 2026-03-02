@@ -1,6 +1,6 @@
 # Story 3.8: Extract ProspectDetail Component & Kanban Foundation
 
-Status: ready-for-dev
+Status: review
 
 <!-- PM Analysis: 2026-03-02 -->
 <!-- Epic 3: Prospect Management — frontend-only story (no new backend) -->
@@ -25,35 +25,35 @@ So that the Kanban board in Story 3.9 can reuse the detail panel via a Drawer wi
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Install shadcn components** (AC4)
-  - [ ] 1.1 `pnpm dlx shadcn@latest add toggle-group` from `apps/frontend/`
-  - [ ] 1.2 `pnpm dlx shadcn@latest add button-group` from `apps/frontend/`
-  - [ ] 1.3 `pnpm dlx shadcn@latest add drawer` from `apps/frontend/`
-  - [ ] 1.4 `pnpm dlx shadcn@latest add badge` from `apps/frontend/`
-  - [ ] 1.5 `pnpm dlx shadcn@latest add tooltip` from `apps/frontend/`
+- [x] **Task 1: Install shadcn components** (AC4)
+  - [x] 1.1 `pnpm dlx shadcn@latest add toggle-group` from `apps/frontend/`
+  - [x] 1.2 `pnpm dlx shadcn@latest add button-group` from `apps/frontend/`
+  - [x] 1.3 `pnpm dlx shadcn@latest add drawer` from `apps/frontend/`
+  - [x] 1.4 `pnpm dlx shadcn@latest add badge` from `apps/frontend/`
+  - [x] 1.5 `pnpm dlx shadcn@latest add tooltip` from `apps/frontend/`
 
-- [ ] **Task 2: Create ProspectDetail component** (AC1)
-  - [ ] 2.1 Create `apps/frontend/src/features/prospects/components/ProspectDetail.tsx`
-  - [ ] 2.2 Move all imports, state, mutations, handlers, and JSX from the expanded panel into `ProspectDetail`
-  - [ ] 2.3 Add `onClose?: () => void` prop — called in `handleArchiveConfirm`'s `onSuccess` callback
+- [x] **Task 2: Create ProspectDetail component** (AC1)
+  - [x] 2.1 Create `apps/frontend/src/features/prospects/components/ProspectDetail.tsx`
+  - [x] 2.2 Move all imports, state, mutations, handlers, and JSX from the expanded panel into `ProspectDetail`
+  - [x] 2.3 Add `onClose?: () => void` prop — called in `handleArchiveConfirm`'s `onSuccess` callback
 
-- [ ] **Task 3: Simplify ProspectRow** (AC2)
-  - [ ] 3.1 Remove the large `{isExpanded && (...)}` block
-  - [ ] 3.2 Replace with `{isExpanded && <ProspectDetail prospect={prospect} />}` inside the existing wrapper div
-  - [ ] 3.3 Keep the `id={...}` aria attribute on the ProspectRow wrapper div
+- [x] **Task 3: Simplify ProspectRow** (AC2)
+  - [x] 3.1 Remove the large `{isExpanded && (...)}` block
+  - [x] 3.2 Replace with `{isExpanded && <ProspectDetail prospect={prospect} />}` inside the existing wrapper div
+  - [x] 3.3 Keep the `id={...}` aria attribute on the ProspectRow wrapper div
 
-- [ ] **Task 4: Add ViewToggle to ProspectsPage** (AC3)
-  - [ ] 4.1 Add `viewMode` state (`'list' | 'kanban'`, default `'list'`) to `ProspectsPage`
-  - [ ] 4.2 Import and render `ToggleGroup` + `ToggleGroupItem` in the header
-  - [ ] 4.3 Conditionally render `<ProspectsList />` or Kanban placeholder based on `viewMode`
+- [x] **Task 4: Add ViewToggle to ProspectsPage** (AC3)
+  - [x] 4.1 Add `viewMode` state (`'list' | 'kanban'`, default `'list'`) to `ProspectsPage`
+  - [x] 4.2 Import and render `ToggleGroup` + `ToggleGroupItem` in the header
+  - [x] 4.3 Conditionally render `<ProspectsList />` or Kanban placeholder based on `viewMode`
 
-- [ ] **Task 5: i18n translations** (AC3)
-  - [ ] 5.1 Add view toggle keys to `apps/frontend/public/locales/en.json`
-  - [ ] 5.2 Add view toggle keys to `apps/frontend/public/locales/fr.json`
+- [x] **Task 5: i18n translations** (AC3)
+  - [x] 5.1 Add view toggle keys to `apps/frontend/public/locales/en.json`
+  - [x] 5.2 Add view toggle keys to `apps/frontend/public/locales/fr.json`
 
-- [ ] **Task 6: Lint and type-check** (AC5)
-  - [ ] 6.1 `pnpm biome check --write .` from root — 0 errors
-  - [ ] 6.2 `pnpm --filter @battlecrm/frontend type-check` — 0 errors
+- [x] **Task 6: Lint and type-check** (AC5)
+  - [x] 6.1 `pnpm biome check --write .` from root — 0 errors
+  - [x] 6.2 `pnpm --filter @battlecrm/frontend type-check` — 0 errors
 
 ---
 
@@ -221,6 +221,7 @@ export function ProspectsPage() {
 **New files:**
 - `apps/frontend/src/features/prospects/components/ProspectDetail.tsx` — extracted detail panel
 - `apps/frontend/src/components/ui/toggle-group.tsx` — shadcn (installed)
+- `apps/frontend/src/components/ui/toggle.tsx` — shadcn (auto-installed as toggle-group dependency)
 - `apps/frontend/src/components/ui/button-group.tsx` — shadcn (installed)
 - `apps/frontend/src/components/ui/drawer.tsx` — shadcn (installed)
 - `apps/frontend/src/components/ui/badge.tsx` — shadcn (installed)
@@ -229,6 +230,7 @@ export function ProspectsPage() {
 **Modified files:**
 - `apps/frontend/src/features/prospects/components/ProspectRow.tsx` — simplified
 - `apps/frontend/src/features/prospects/ProspectsPage.tsx` — viewMode state + ToggleGroup + conditional render
+- `apps/frontend/src/App.tsx` — TooltipProvider wrapper added (required by shadcn tooltip)
 - `apps/frontend/public/locales/en.json` — viewToggle keys
 - `apps/frontend/public/locales/fr.json` — viewToggle keys
 
@@ -248,8 +250,33 @@ export function ProspectsPage() {
 
 ### Agent Model Used
 
+claude-sonnet-4-6
+
 ### Debug Log References
 
 ### Completion Notes List
 
+- All 6 tasks implemented in a single session. Frontend-only story — no backend changes.
+- 5 shadcn components installed: `toggle-group` (+`toggle.tsx`), `button-group`, `drawer`, `badge`, `tooltip`
+- `TooltipProvider` added to `App.tsx` (required by shadcn tooltip, wraps `AppRouter`)
+- `ProspectDetail.tsx` created: all detail state/mutations/JSX extracted from ProspectRow. Uses `useProspectStageTransitions(id, { enabled: true })` — lazy loading via React conditional mount (component only mounts when expanded/drawer open)
+- `ProspectRow.tsx` slimmed to ~70 lines: collapsed row button + `{isExpanded && <div id="..." className="border-t bg-muted/30"><ProspectDetail /></div>}`
+- `ProspectsPage.tsx`: `viewMode` state + `ToggleGroup` (List/Kanban icons) + Kanban placeholder text; `onValueChange` guard `(v) => v && setViewMode(...)` prevents deselecting both options
+- i18n: `viewToggle.{label,list,kanban,kanbanPlaceholder}` added to en.json + fr.json
+- Biome error in `button-group.tsx` (shadcn-generated): `lint/a11y/useSemanticElements` on `role="group"` — fixed with `biome-ignore` suppress comment
+- Biome: 0 errors. TypeScript: 0 errors.
+
 ### File List
+
+- `apps/frontend/src/features/prospects/components/ProspectDetail.tsx` — NEW: full detail panel (extracted from ProspectRow)
+- `apps/frontend/src/features/prospects/components/ProspectRow.tsx` — MODIFIED: slimmed down, uses ProspectDetail
+- `apps/frontend/src/features/prospects/ProspectsPage.tsx` — MODIFIED: viewMode state + ToggleGroup + conditional render
+- `apps/frontend/src/App.tsx` — MODIFIED: TooltipProvider wrapper added
+- `apps/frontend/src/components/ui/toggle-group.tsx` — NEW: shadcn install
+- `apps/frontend/src/components/ui/toggle.tsx` — NEW: shadcn install (dependency of toggle-group)
+- `apps/frontend/src/components/ui/button-group.tsx` — NEW: shadcn install (biome-ignore added)
+- `apps/frontend/src/components/ui/drawer.tsx` — NEW: shadcn install
+- `apps/frontend/src/components/ui/badge.tsx` — NEW: shadcn install
+- `apps/frontend/src/components/ui/tooltip.tsx` — NEW: shadcn install
+- `apps/frontend/public/locales/en.json` — MODIFIED: viewToggle keys added
+- `apps/frontend/public/locales/fr.json` — MODIFIED: viewToggle keys added
