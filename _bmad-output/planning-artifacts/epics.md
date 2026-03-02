@@ -2,8 +2,8 @@
 stepsCompleted: [1, 2, 3, 4]
 status: complete
 completedAt: '2026-02-04'
-lastUpdated: '2026-03-01'
-lastUpdateReason: 'Reprioritized epics: CSV Import (Cold Start) delayed to Epic 8; Performance Analytics promoted to Epic 6; LinkedIn Browser Extension moved to Epic 7'
+lastUpdated: '2026-03-02'
+lastUpdateReason: 'Added Stories 3.8 and 3.9: Kanban board view for prospects (extract ProspectDetail + Kanban with dnd-kit); added FR76 (Kanban view)'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
@@ -11,8 +11,8 @@ inputDocuments:
   - _bmad-output/analysis/brainstorming-extension-linkedin-2026-02-28.md
 summary:
   epics: 8
-  stories: 48
-  frs_covered: 75
+  stories: 50
+  frs_covered: 76
   nfrs_integrated: 74
 ---
 
@@ -296,6 +296,7 @@ This document provides the complete epic and story breakdown for BattleCRM, deco
 | FR7 | Epic 3 | Assign positioning variant to prospect |
 | FR8 | Epic 3 | View prospect detail with interaction history |
 | FR9 | Epic 3 | Drill down from prospects to interactions |
+| FR76 | Epic 3 | Kanban board view with drag-and-drop stage transitions |
 | FR10 | Epic 4 | Create positioning variants |
 | FR11 | Epic 4 | Specify positioning type |
 | FR12 | Epic 4 | Add description and rationale |
@@ -377,9 +378,9 @@ Permettre aux utilisateurs de configurer leur pipeline de prospection personnali
 **FRs covered:** FR38, FR39, FR40, FR41, FR42
 
 ### Epic 3: Prospect Management
-Permettre aux utilisateurs de gérer leurs contacts prospects de bout en bout. L'utilisateur peut créer, consulter, modifier, archiver et restaurer des prospects. Il peut filtrer par étape funnel et voir les informations clés en preview inline.
+Permettre aux utilisateurs de gérer leurs contacts prospects de bout en bout. L'utilisateur peut créer, consulter, modifier, archiver et restaurer des prospects. Il peut filtrer par étape funnel, voir les informations clés en preview inline, et visualiser le pipeline en vue Kanban avec drag-and-drop.
 
-**FRs covered:** FR1, FR2, FR3, FR4, FR5, FR6, FR7, FR8, FR9, FR43, FR44
+**FRs covered:** FR1, FR2, FR3, FR4, FR5, FR6, FR7, FR8, FR9, FR43, FR44, FR76
 
 ### Epic 4: Positioning Variants
 Permettre aux utilisateurs de créer et gérer leurs variantes de positionnement pour l'A/B testing. L'utilisateur peut créer des variantes (CV, pitch, messages LinkedIn), documenter leur rationale, et voir quels prospects ont reçu quelle variante.
@@ -971,6 +972,77 @@ So that I have complete context when engaging with a prospect.
 **When** I want to add an interaction
 **Then** I see a prominent "Log Interaction" button
 **And** clicking it opens the interaction form pre-filled with this prospect
+
+---
+
+### Story 3.8: Extract ProspectDetail Component & Kanban Foundation
+
+As a developer,
+I want the prospect detail panel extracted as a shared component and the view toggle scaffolded,
+So that the Kanban board in Story 3.9 can reuse the detail panel via a Drawer without code duplication.
+
+**Acceptance Criteria:**
+
+**Given** I am viewing the Prospects page
+**When** I look at the page header area
+**Then** I see a List / Kanban toggle (ToggleGroup) next to the AddProspectDialog button
+**And** the toggle defaults to List view
+
+**Given** I click List or Kanban on the toggle
+**When** the view changes
+**Then** the ProspectsList is shown in List mode, and a placeholder "Kanban coming soon" in Kanban mode
+**And** the current List view behavior is unchanged (no UX regression) (FR2, FR6)
+
+**Given** the ProspectDetail component is extracted
+**When** ProspectRow renders an expanded row
+**Then** it uses `<ProspectDetail>` internally with identical visual output to before
+**And** ProspectDetail accepts an optional `onClose` callback for use by the Drawer in Story 3.9
+
+**Given** the following shadcn components are installed: toggle-group, button-group, drawer, badge, tooltip
+**When** running `pnpm --filter @battlecrm/frontend type-check` and `pnpm biome check --write .`
+**Then** 0 errors
+
+---
+
+### Story 3.9: Build Kanban Board View
+
+As a user,
+I want to see my prospects organized as a Kanban board by funnel stage,
+So that I have a visual overview of my pipeline and can move prospects between stages with drag-and-drop. (FR76)
+
+**Acceptance Criteria:**
+
+**Given** I switch to Kanban view
+**When** the board renders
+**Then** I see one column per funnel stage (in funnel order)
+**And** each column header shows the stage name and a prospect count badge
+**And** each prospect appears as a card in its current stage column
+
+**Given** I am viewing a Kanban card
+**When** I click the card
+**Then** a Drawer opens from the right showing the full ProspectDetail for that prospect
+**And** I can edit, archive/restore, change stage, and view stage history from the Drawer
+
+**Given** I drag a prospect card from one column to another
+**When** I drop it on the target column
+**Then** the card moves immediately (optimistic update) (FR43)
+**And** `PUT /api/prospects/:id` is called with `{ funnel_stage_id: newStageId }`
+**And** if the API call fails, the card reverts to its original column with an inline error toast
+
+**Given** the search bar is active
+**When** I type in the search field in Kanban view
+**Then** cards are filtered across all columns (same search logic as list view)
+
+**Given** "show archived" is toggled on
+**When** archived prospects appear in Kanban
+**Then** they are shown with reduced opacity and are NOT draggable
+
+**Given** I am viewing the Kanban board
+**When** there are no prospects in a stage column
+**Then** the column shows an empty state (stage name + 0 count)
+
+**Given** tests pass: `pnpm biome check --write .` and `pnpm --filter @battlecrm/frontend type-check`
+**Then** 0 errors
 
 ---
 

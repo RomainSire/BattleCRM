@@ -294,7 +294,6 @@ Each funnel stage runs its own independent "Battle" (A vs B test):
 - **Search improvements** (fuzzy search, filters per view)
 
 **Phase 2 (Enhanced Analytics - 2-3 weeks):**
-- **Kanban Drag & Drop View** (if dnd-kit implementation simple)
 - **Enhanced Bayesian Display** (confidence intervals, effect size visualization)
 - **Cohort Analysis** (performance by prospect segment, if needed)
 
@@ -749,7 +748,6 @@ Post-MVP immédiat (semaines 10-12):
 **Phase 3 - Enhanced Analytics (2-3 weeks)**
 
 Semaines 13-16:
-- Kanban Drag & Drop View (si dnd-kit simple)
 - Enhanced Bayesian Display (confidence intervals, effect size)
 - Cohort Analysis (si besoin identifié)
 
@@ -845,6 +843,7 @@ Semaines 22-25:
 - **FR7:** Users can assign a positioning variant to a prospect
 - **FR8:** Users can view prospect detail with full information and interaction history
 - **FR9:** Users can drill down from prospects to related interactions inline
+- **FR76:** Users can switch between a list view and a Kanban board view for prospects, with drag-and-drop to move prospects between funnel stages
 
 ### Positioning Management
 
