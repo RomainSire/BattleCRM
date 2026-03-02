@@ -42,6 +42,16 @@ import { updateProspectSchema } from '../schemas/prospect'
 
 interface ProspectDetailProps {
   prospect: ProspectType
+  /**
+   * Called after a successful archive mutation only.
+   * NOT called on restore, edit save, or stage change.
+   *
+   * Story 3.9 Drawer usage: pass the Drawer's close handler here.
+   * ⚠️ Always mount ProspectDetail with `key={prospect.id}` when the
+   * prospect prop can change without unmounting (e.g. inside a Drawer) —
+   * internal state (isEditing, errors, form defaultValues) does NOT reset
+   * on prop change alone.
+   */
   onClose?: () => void
 }
 

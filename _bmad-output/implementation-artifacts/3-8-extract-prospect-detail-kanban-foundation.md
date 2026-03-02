@@ -221,6 +221,7 @@ export function ProspectsPage() {
 **New files:**
 - `apps/frontend/src/features/prospects/components/ProspectDetail.tsx` — extracted detail panel
 - `apps/frontend/src/components/ui/toggle-group.tsx` — shadcn (installed)
+- `apps/frontend/src/components/ui/toggle.tsx` — shadcn (auto-installed as toggle-group dependency)
 - `apps/frontend/src/components/ui/button-group.tsx` — shadcn (installed)
 - `apps/frontend/src/components/ui/drawer.tsx` — shadcn (installed)
 - `apps/frontend/src/components/ui/badge.tsx` — shadcn (installed)
@@ -229,6 +230,7 @@ export function ProspectsPage() {
 **Modified files:**
 - `apps/frontend/src/features/prospects/components/ProspectRow.tsx` — simplified
 - `apps/frontend/src/features/prospects/ProspectsPage.tsx` — viewMode state + ToggleGroup + conditional render
+- `apps/frontend/src/App.tsx` — TooltipProvider wrapper added (required by shadcn tooltip)
 - `apps/frontend/public/locales/en.json` — viewToggle keys
 - `apps/frontend/public/locales/fr.json` — viewToggle keys
 

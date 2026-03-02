@@ -38,9 +38,9 @@ export function ProspectsPage() {
         {viewMode === 'list' ? (
           <ProspectsList />
         ) : (
-          <p className="text-sm italic text-muted-foreground">
+          <div className="text-sm italic text-muted-foreground">
             {t('prospects.viewToggle.kanbanPlaceholder')}
-          </p>
+          </div>
         )}
       </section>
     </div>
