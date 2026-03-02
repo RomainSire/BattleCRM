@@ -1,5 +1,5 @@
 import { vineResolver } from '@hookform/resolvers/vine'
-import { Archive, ChevronRight, Pencil, RotateCcw, X } from 'lucide-react'
+import { Archive, ChevronRight, Pencil, Plus, RotateCcw, X } from 'lucide-react'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -108,15 +108,6 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
       notes: prospect.notes ?? '',
     },
   })
-
-  const hasDetails = !!(
-    prospect.company ||
-    prospect.linkedinUrl ||
-    prospect.email ||
-    prospect.phone ||
-    prospect.title ||
-    prospect.notes
-  )
 
   function handleEditStart() {
     reset({
@@ -346,69 +337,76 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
             /* ── READ-ONLY MODE ── */
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1">
-                {hasDetails && (
-                  <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                    {prospect.company && (
-                      <>
-                        <dt className="text-muted-foreground">{t('prospects.fields.company')}</dt>
-                        <dd>{prospect.company}</dd>
-                      </>
+                <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                  {prospect.company && (
+                    <>
+                      <dt className="text-muted-foreground">{t('prospects.fields.company')}</dt>
+                      <dd>{prospect.company}</dd>
+                    </>
+                  )}
+                  {prospect.linkedinUrl && (
+                    <>
+                      <dt className="text-muted-foreground">{t('prospects.fields.linkedinUrl')}</dt>
+                      <dd>
+                        <a
+                          href={
+                            prospect.linkedinUrl.startsWith('https://') ||
+                            prospect.linkedinUrl.startsWith('http://')
+                              ? prospect.linkedinUrl
+                              : '#'
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block truncate text-primary underline-offset-4 hover:underline"
+                        >
+                          {prospect.linkedinUrl}
+                        </a>
+                      </dd>
+                    </>
+                  )}
+                  {prospect.email && (
+                    <>
+                      <dt className="text-muted-foreground">{t('prospects.fields.email')}</dt>
+                      <dd>{prospect.email}</dd>
+                    </>
+                  )}
+                  {prospect.phone && (
+                    <>
+                      <dt className="text-muted-foreground">{t('prospects.fields.phone')}</dt>
+                      <dd>
+                        <a
+                          href={`tel:${prospect.phone}`}
+                          className="text-primary underline-offset-4 hover:underline"
+                        >
+                          {prospect.phone}
+                        </a>
+                      </dd>
+                    </>
+                  )}
+                  {prospect.title && (
+                    <>
+                      <dt className="text-muted-foreground">{t('prospects.fields.title')}</dt>
+                      <dd>{prospect.title}</dd>
+                    </>
+                  )}
+                  {prospect.notes && (
+                    <>
+                      <dt className="text-muted-foreground">{t('prospects.fields.notes')}</dt>
+                      <dd className="whitespace-pre-wrap">{prospect.notes}</dd>
+                    </>
+                  )}
+                  {/* Positioning — Epic 4 will replace with name via usePositioning hook */}
+                  <dt className="text-muted-foreground">{t('prospects.fields.positioning')}</dt>
+                  <dd>
+                    {prospect.positioningId ? (
+                      <span>{t('prospects.positioningLinked')}</span>
+                    ) : (
+                      <span className="italic text-muted-foreground">
+                        {t('prospects.notAssigned')}
+                      </span>
                     )}
-                    {prospect.linkedinUrl && (
-                      <>
-                        <dt className="text-muted-foreground">
-                          {t('prospects.fields.linkedinUrl')}
-                        </dt>
-                        <dd>
-                          <a
-                            href={
-                              prospect.linkedinUrl.startsWith('https://') ||
-                              prospect.linkedinUrl.startsWith('http://')
-                                ? prospect.linkedinUrl
-                                : '#'
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block truncate text-primary underline-offset-4 hover:underline"
-                          >
-                            {prospect.linkedinUrl}
-                          </a>
-                        </dd>
-                      </>
-                    )}
-                    {prospect.email && (
-                      <>
-                        <dt className="text-muted-foreground">{t('prospects.fields.email')}</dt>
-                        <dd>{prospect.email}</dd>
-                      </>
-                    )}
-                    {prospect.phone && (
-                      <>
-                        <dt className="text-muted-foreground">{t('prospects.fields.phone')}</dt>
-                        <dd>
-                          <a
-                            href={`tel:${prospect.phone}`}
-                            className="text-primary underline-offset-4 hover:underline"
-                          >
-                            {prospect.phone}
-                          </a>
-                        </dd>
-                      </>
-                    )}
-                    {prospect.title && (
-                      <>
-                        <dt className="text-muted-foreground">{t('prospects.fields.title')}</dt>
-                        <dd>{prospect.title}</dd>
-                      </>
-                    )}
-                    {prospect.notes && (
-                      <>
-                        <dt className="text-muted-foreground">{t('prospects.fields.notes')}</dt>
-                        <dd className="whitespace-pre-wrap">{prospect.notes}</dd>
-                      </>
-                    )}
-                  </dl>
-                )}
+                  </dd>
+                </dl>
                 {/* Stage management — active prospects only (AC1, AC4) */}
                 {!isArchived && (
                   <div className="mt-4 flex flex-col gap-1">
@@ -478,10 +476,29 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
                   )}
                 </div>
 
-                {/* Interactions — Epic 5 */}
-                <p className="mt-4 text-xs italic text-muted-foreground">
-                  {t('prospects.interactionsComingSoon')}
-                </p>
+                {/* Interactions — active prospects only; Epic 5 implements the form and timeline */}
+                {!isArchived && (
+                  <div className="mt-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {t('prospects.interactions.title')}
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled
+                        aria-label={`${t('prospects.interactions.logButton')} — ${t('prospects.interactions.comingSoon')}`}
+                      >
+                        <Plus className="mr-1 size-3" />
+                        {t('prospects.interactions.logButton')}
+                      </Button>
+                    </div>
+                    <p className="text-xs italic text-muted-foreground">
+                      {t('prospects.interactions.empty')}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Actions: Edit (active only) + Archive/Restore */}

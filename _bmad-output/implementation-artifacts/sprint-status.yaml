@@ -68,7 +68,7 @@ development_status:
   3-4-implement-prospect-create-edit: done
   3-5-add-archive-restore-functionality: done
   3-6-implement-funnel-stage-management: done
-  3-7-implement-prospect-detail-view: backlog
+  3-7-implement-prospect-detail-view: done
   epic-3-retrospective: optional
 
   # Epic 4: Positioning Variants

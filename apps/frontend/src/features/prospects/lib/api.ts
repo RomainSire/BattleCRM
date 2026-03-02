@@ -80,6 +80,10 @@ export const prospectsApi = {
     return fetchApi<ProspectsListResponseType>(`/prospects${queryString ? `?${queryString}` : ''}`)
   },
 
+  get(id: string): Promise<ProspectType> {
+    return fetchApi<ProspectType>(`/prospects/${id}`)
+  },
+
   create(payload: CreateProspectPayload): Promise<ProspectType> {
     return fetchApi<ProspectType>('/prospects', {
       method: 'POST',
