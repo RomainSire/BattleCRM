@@ -146,6 +146,12 @@
       "logButton": "Journaliser une interaction",
       "comingSoon": "Disponible dans une prochaine version"
     },
+    "viewToggle": {
+      "label": "Mode d'affichage",
+      "list": "Vue liste",
+      "kanban": "Vue Kanban",
+      "kanbanPlaceholder": "Vue Kanban — disponible en Story 3.9"
+    },
     "stageHistory": "Historique des étapes",
     "noStageHistory": "Aucun changement d'étape enregistré.",
     "initialStage": "Début",

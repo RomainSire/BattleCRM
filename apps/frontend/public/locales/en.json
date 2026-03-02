@@ -146,6 +146,12 @@
       "logButton": "Log Interaction",
       "comingSoon": "Coming in a future release"
     },
+    "viewToggle": {
+      "label": "View mode",
+      "list": "List view",
+      "kanban": "Kanban view",
+      "kanbanPlaceholder": "Kanban view — coming in Story 3.9"
+    },
     "stageHistory": "Stage History",
     "noStageHistory": "No stage changes recorded yet.",
     "initialStage": "Initial",
