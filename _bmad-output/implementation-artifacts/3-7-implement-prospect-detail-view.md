@@ -1,6 +1,6 @@
 # Story 3.7: Implement Prospect Detail View
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-03-02 -->
 <!-- Epic 3: Prospect Management — frontend-only story (no new backend) -->
@@ -362,17 +362,18 @@ claude-sonnet-4-6
 ### Completion Notes List
 
 - All 5 tasks implemented in a single session. Frontend-only story — no backend changes.
-- `prospectsApi.get(id)` added to api.ts: infrastructure for Epic 5 interaction timeline
-- `useProspect(id)` hook created: wraps `queryKeys.prospects.detail(id)` — not used in ProspectRow (list data sufficient), available for Epic 5
-- ProspectRow expanded panel: `hasDetails` removed (DL always visible), positioning row added (always shows "Not assigned" since positionings are Epic 4), interactions placeholder replaced with proper section (header + disabled "Log Interaction" button + empty state)
-- i18n: `interactionsComingSoon` removed from en.json + fr.json; new keys added: `fields.positioning`, `notAssigned`, `positioningLinked`, `interactions.{title,empty,logButton,comingSoon}`
-- Biome: 1 file auto-formatted (ProspectRow.tsx indentation), 0 errors
-- TypeScript: 0 errors
+- `prospectsApi.get(id)` added to api.ts (after `list` — logical grouping of read ops): infrastructure for Epic 5 interaction timeline
+- `useProspect(id, options?)` hook created with `{ enabled?: boolean }` option — consistent with `useProspectStageTransitions` lazy-loading pattern
+- ProspectRow expanded panel: `hasDetails` removed (DL always visible), positioning row added, interactions section (header + disabled "Log Interaction" button + empty state) guarded by `{!isArchived && ...}` — consistent with stage Select pattern
+- Disabled "Log Interaction" button: `aria-label` includes both action name and "coming soon" context for screen readers
+- i18n: `interactionsComingSoon` removed from en.json + fr.json; new keys: `fields.positioning`, `notAssigned`, `positioningLinked`, `interactions.{title,empty,logButton,comingSoon}`
+- Code review fixes applied: M1 (enabled option), M2 (isArchived guard), L1 (get ordering), L2 (resolved by M1), L3 (aria-label)
+- Biome: 0 errors. TypeScript: 0 errors.
 
 ### File List
 
-- `apps/frontend/src/features/prospects/hooks/useProspect.ts` — NEW: `useProspect(id)` hook
-- `apps/frontend/src/features/prospects/lib/api.ts` — MODIFIED: `prospectsApi.get(id)` method added
-- `apps/frontend/src/features/prospects/components/ProspectRow.tsx` — MODIFIED: removed `hasDetails`, DL always visible, positioning row, interactions section with disabled "Log Interaction" button
+- `apps/frontend/src/features/prospects/hooks/useProspect.ts` — NEW: `useProspect(id, options?)` hook with `enabled` option
+- `apps/frontend/src/features/prospects/lib/api.ts` — MODIFIED: `prospectsApi.get(id)` added (after `list`)
+- `apps/frontend/src/features/prospects/components/ProspectRow.tsx` — MODIFIED: removed `hasDetails`, DL always visible, positioning row, interactions section with `{!isArchived}` guard + accessible disabled button
 - `apps/frontend/public/locales/en.json` — MODIFIED: removed `interactionsComingSoon`, added `fields.positioning`, `notAssigned`, `positioningLinked`, `interactions.*`
 - `apps/frontend/public/locales/fr.json` — MODIFIED: same changes in French

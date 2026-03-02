@@ -80,6 +80,10 @@ export const prospectsApi = {
     return fetchApi<ProspectsListResponseType>(`/prospects${queryString ? `?${queryString}` : ''}`)
   },
 
+  get(id: string): Promise<ProspectType> {
+    return fetchApi<ProspectType>(`/prospects/${id}`)
+  },
+
   create(payload: CreateProspectPayload): Promise<ProspectType> {
     return fetchApi<ProspectType>('/prospects', {
       method: 'POST',
@@ -104,10 +108,6 @@ export const prospectsApi = {
     return fetchApi<ProspectType>(`/prospects/${id}/restore`, {
       method: 'PATCH',
     })
-  },
-
-  get(id: string): Promise<ProspectType> {
-    return fetchApi<ProspectType>(`/prospects/${id}`)
   },
 
   stageTransitions(id: string): Promise<StageTransitionsResponseType> {

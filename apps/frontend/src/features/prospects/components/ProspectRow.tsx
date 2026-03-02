@@ -476,27 +476,29 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
                   )}
                 </div>
 
-                {/* Interactions — Epic 5 will implement the Log Interaction form and timeline */}
-                <div className="mt-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      {t('prospects.interactions.title')}
+                {/* Interactions — active prospects only; Epic 5 implements the form and timeline */}
+                {!isArchived && (
+                  <div className="mt-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {t('prospects.interactions.title')}
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled
+                        aria-label={`${t('prospects.interactions.logButton')} — ${t('prospects.interactions.comingSoon')}`}
+                      >
+                        <Plus className="mr-1 size-3" />
+                        {t('prospects.interactions.logButton')}
+                      </Button>
+                    </div>
+                    <p className="text-xs italic text-muted-foreground">
+                      {t('prospects.interactions.empty')}
                     </p>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled
-                      title={t('prospects.interactions.comingSoon')}
-                    >
-                      <Plus className="mr-1 size-3" />
-                      {t('prospects.interactions.logButton')}
-                    </Button>
                   </div>
-                  <p className="text-xs italic text-muted-foreground">
-                    {t('prospects.interactions.empty')}
-                  </p>
-                </div>
+                )}
               </div>
 
               {/* Actions: Edit (active only) + Archive/Restore */}
