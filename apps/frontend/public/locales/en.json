@@ -97,7 +97,6 @@
     "emptySearch": "No prospects match your search.",
     "clearFilter": "Clear filter",
     "count": "{{count}} prospect(s)",
-    "interactionsComingSoon": "Interaction history coming soon.",
     "addProspect": "Add Prospect",
     "columns": {
       "name": "Name",
@@ -113,7 +112,8 @@
       "phone": "Phone",
       "title": "Title",
       "notes": "Notes",
-      "funnelStage": "Funnel Stage"
+      "funnelStage": "Funnel Stage",
+      "positioning": "Positioning"
     },
     "placeholders": {
       "name": "Full name",
@@ -137,6 +137,14 @@
       "title": "Archive prospect?",
       "description": "\"{{name}}\" will be moved to the archive. You can restore it later.",
       "confirm": "Archive"
+    },
+    "notAssigned": "Not assigned",
+    "positioningLinked": "Linked",
+    "interactions": {
+      "title": "Interactions",
+      "empty": "No interactions logged yet.",
+      "logButton": "Log Interaction",
+      "comingSoon": "Coming in a future release"
     },
     "stageHistory": "Stage History",
     "noStageHistory": "No stage changes recorded yet.",

@@ -97,7 +97,6 @@
     "emptySearch": "Aucun prospect ne correspond à votre recherche.",
     "clearFilter": "Effacer le filtre",
     "count": "{{count}} prospect(s)",
-    "interactionsComingSoon": "Historique des interactions à venir.",
     "addProspect": "Ajouter un prospect",
     "columns": {
       "name": "Nom",
@@ -113,7 +112,8 @@
       "phone": "Téléphone",
       "title": "Poste",
       "notes": "Notes",
-      "funnelStage": "Étape du funnel"
+      "funnelStage": "Étape du funnel",
+      "positioning": "Positionnement"
     },
     "placeholders": {
       "name": "Nom complet",
@@ -137,6 +137,14 @@
       "title": "Archiver ce prospect ?",
       "description": "\"{{name}}\" sera déplacé dans les archives. Vous pourrez le restaurer plus tard.",
       "confirm": "Archiver"
+    },
+    "notAssigned": "Non assigné",
+    "positioningLinked": "Lié",
+    "interactions": {
+      "title": "Interactions",
+      "empty": "Aucune interaction enregistrée.",
+      "logButton": "Journaliser une interaction",
+      "comingSoon": "Disponible dans une prochaine version"
     },
     "stageHistory": "Historique des étapes",
     "noStageHistory": "Aucun changement d'étape enregistré.",

@@ -106,6 +106,10 @@ export const prospectsApi = {
     })
   },
 
+  get(id: string): Promise<ProspectType> {
+    return fetchApi<ProspectType>(`/prospects/${id}`)
+  },
+
   stageTransitions(id: string): Promise<StageTransitionsResponseType> {
     return fetchApi<StageTransitionsResponseType>(`/prospects/${id}/stage-transitions`)
   },
