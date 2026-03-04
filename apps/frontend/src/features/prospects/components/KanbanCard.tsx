@@ -39,10 +39,12 @@ export function KanbanCard({ prospect, onOpenDetail, overlay = false }: KanbanCa
         {!isArchived && (
           // biome-ignore lint/a11y/noStaticElementInteractions: role="button" injected by dnd-kit ...attributes
           // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard events handled by dnd-kit ...listeners
+          // biome-ignore lint/a11y/useAriaPropsSupportedByRole: role="button" injected by dnd-kit at runtime
           <div
             ref={setNodeRef}
             {...listeners}
             {...attributes}
+            aria-label={t('prospects.aria.dragHandle', { name: prospect.name })}
             className="mt-0.5 cursor-grab touch-none"
             onClick={(e) => e.stopPropagation()}
           >

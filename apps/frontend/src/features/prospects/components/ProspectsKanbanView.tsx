@@ -44,14 +44,13 @@ export function ProspectsKanbanView() {
   const stages = stagesData?.data ?? []
   const allProspects = prospectsData?.data ?? []
 
-  // Clean up optimistic overrides that are now consistent with server data
+  // Clean up optimistic overrides that are resolved (server caught up) or orphaned (prospect archived/gone)
   useEffect(() => {
-    const toRemove = allProspects
-      .filter(
-        (p) =>
-          optimisticOverrides[p.id] !== undefined && optimisticOverrides[p.id] === p.funnelStageId,
-      )
-      .map((p) => p.id)
+    const prospectMap = new Map(allProspects.map((p) => [p.id, p]))
+    const toRemove = Object.keys(optimisticOverrides).filter((id) => {
+      const prospect = prospectMap.get(id)
+      return !prospect || prospect.funnelStageId === optimisticOverrides[id]
+    })
     if (toRemove.length === 0) return
     setOptimisticOverrides((prev) => {
       const next = { ...prev }

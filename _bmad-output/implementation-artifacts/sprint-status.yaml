@@ -70,7 +70,7 @@ development_status:
   3-6-implement-funnel-stage-management: done
   3-7-implement-prospect-detail-view: done
   3-8-extract-prospect-detail-kanban-foundation: done
-  3-9-build-kanban-board-view: review
+  3-9-build-kanban-board-view: done
   epic-3-retrospective: optional
 
   # Epic 4: Positioning Variants

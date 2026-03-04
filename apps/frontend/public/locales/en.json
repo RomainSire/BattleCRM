@@ -132,6 +132,7 @@
     "archived": "Archived",
     "showArchived": "Show archived",
     "edit": "Edit",
+    "archive": "Archive",
     "restore": "Restore",
     "searchPlaceholder": "Search prospects...",
     "archiveDialog": {
@@ -180,7 +181,8 @@
       "cancelEdit": "Cancel editing",
       "archiveProspect": "Archive {{name}}",
       "restoreProspect": "Restore {{name}}",
-      "stageSelect": "Change funnel stage for {{name}}"
+      "stageSelect": "Change funnel stage for {{name}}",
+      "dragHandle": "Drag {{name}}"
     }
   },
   "phoneInput": {

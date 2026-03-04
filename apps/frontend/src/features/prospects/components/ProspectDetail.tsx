@@ -326,7 +326,7 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
                     aria-label={t('prospects.aria.archiveProspect', { name: prospect.name })}
                   >
                     <Archive className="size-4" />
-                    {t('prospects.archiveDialog.confirm')}
+                    {t('prospects.archive')}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>

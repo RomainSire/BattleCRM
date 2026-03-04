@@ -1,6 +1,6 @@
 # Story 3.9: Build Kanban Board View
 
-Status: review
+Status: done
 
 <!-- PM Analysis: 2026-03-02 -->
 <!-- Epic 3: Prospect Management — frontend-only story (no new backend) -->
@@ -382,6 +382,7 @@ claude-sonnet-4-6
 - `apps/frontend/src/features/prospects/components/KanbanCard.tsx` — NEW: drag handle card with useDraggable
 - `apps/frontend/src/features/prospects/components/KanbanColumn.tsx` — NEW: droppable column with useDroppable
 - `apps/frontend/src/features/prospects/components/ProspectsKanbanView.tsx` — NEW: full kanban orchestration (DndContext, Drawer, search, archive toggle)
-- `apps/frontend/src/features/prospects/ProspectsPage.tsx` — MODIFIED: replaced Kanban placeholder with ProspectsKanbanView
-- `apps/frontend/public/locales/en.json` — MODIFIED: added `prospects.kanban.*` keys
-- `apps/frontend/public/locales/fr.json` — MODIFIED: added `prospects.kanban.*` keys
+- `apps/frontend/src/features/prospects/components/ProspectDetail.tsx` — MODIFIED: restructured action buttons (top action bar with text labels); uses dedicated `prospects.archive` i18n key
+- `apps/frontend/src/features/prospects/ProspectsPage.tsx` — MODIFIED: replaced Kanban placeholder with ProspectsKanbanView; added localStorage persistence for view mode (PROSPECTS_VIEW_KEY)
+- `apps/frontend/public/locales/en.json` — MODIFIED: added `prospects.kanban.*`, `prospects.archive`, `prospects.aria.dragHandle` keys
+- `apps/frontend/public/locales/fr.json` — MODIFIED: added `prospects.kanban.*`, `prospects.archive`, `prospects.aria.dragHandle` keys
