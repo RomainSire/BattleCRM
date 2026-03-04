@@ -3,11 +3,23 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { AddProspectDialog } from './components/AddProspectDialog'
+import { ProspectsKanbanView } from './components/ProspectsKanbanView'
 import { ProspectsList } from './components/ProspectsList'
+
+const PROSPECTS_VIEW_KEY = 'prospects-view-mode'
 
 export function ProspectsPage() {
   const { t } = useTranslation()
-  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>(
+    localStorage.getItem(PROSPECTS_VIEW_KEY) === 'kanban' ? 'kanban' : 'list',
+  )
+
+  function handleViewChange(v: string) {
+    if (!v) return
+    const mode = v as 'list' | 'kanban'
+    localStorage.setItem(PROSPECTS_VIEW_KEY, mode)
+    setViewMode(mode)
+  }
 
   return (
     <div className="space-y-6">
@@ -20,7 +32,7 @@ export function ProspectsPage() {
           <ToggleGroup
             type="single"
             value={viewMode}
-            onValueChange={(v) => v && setViewMode(v as 'list' | 'kanban')}
+            onValueChange={handleViewChange}
             aria-label={t('prospects.viewToggle.label')}
           >
             <ToggleGroupItem value="list" aria-label={t('prospects.viewToggle.list')}>
@@ -34,15 +46,7 @@ export function ProspectsPage() {
         </div>
       </header>
 
-      <section>
-        {viewMode === 'list' ? (
-          <ProspectsList />
-        ) : (
-          <div className="text-sm italic text-muted-foreground">
-            {t('prospects.viewToggle.kanbanPlaceholder')}
-          </div>
-        )}
-      </section>
+      <section>{viewMode === 'list' ? <ProspectsList /> : <ProspectsKanbanView />}</section>
     </div>
   )
 }

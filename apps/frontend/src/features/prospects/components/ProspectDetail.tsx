@@ -295,193 +295,24 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
         </form>
       ) : (
         /* ── READ-ONLY MODE ── */
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1">
-            <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-              {prospect.company && (
-                <>
-                  <dt className="text-muted-foreground">{t('prospects.fields.company')}</dt>
-                  <dd>{prospect.company}</dd>
-                </>
-              )}
-              {prospect.linkedinUrl && (
-                <>
-                  <dt className="text-muted-foreground">{t('prospects.fields.linkedinUrl')}</dt>
-                  <dd>
-                    <a
-                      href={
-                        prospect.linkedinUrl.startsWith('https://') ||
-                        prospect.linkedinUrl.startsWith('http://')
-                          ? prospect.linkedinUrl
-                          : '#'
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block truncate text-primary underline-offset-4 hover:underline"
-                    >
-                      {prospect.linkedinUrl}
-                    </a>
-                  </dd>
-                </>
-              )}
-              {prospect.email && (
-                <>
-                  <dt className="text-muted-foreground">{t('prospects.fields.email')}</dt>
-                  <dd>{prospect.email}</dd>
-                </>
-              )}
-              {prospect.phone && (
-                <>
-                  <dt className="text-muted-foreground">{t('prospects.fields.phone')}</dt>
-                  <dd>
-                    <a
-                      href={`tel:${prospect.phone}`}
-                      className="text-primary underline-offset-4 hover:underline"
-                    >
-                      {prospect.phone}
-                    </a>
-                  </dd>
-                </>
-              )}
-              {prospect.title && (
-                <>
-                  <dt className="text-muted-foreground">{t('prospects.fields.title')}</dt>
-                  <dd>{prospect.title}</dd>
-                </>
-              )}
-              {prospect.notes && (
-                <>
-                  <dt className="text-muted-foreground">{t('prospects.fields.notes')}</dt>
-                  <dd className="whitespace-pre-wrap">{prospect.notes}</dd>
-                </>
-              )}
-              {/* Positioning — Epic 4 will replace with name via usePositioning hook */}
-              <dt className="text-muted-foreground">{t('prospects.fields.positioning')}</dt>
-              <dd>
-                {prospect.positioningId ? (
-                  <span>{t('prospects.positioningLinked')}</span>
-                ) : (
-                  <span className="italic text-muted-foreground">{t('prospects.notAssigned')}</span>
-                )}
-              </dd>
-            </dl>
-            {/* Stage management — active prospects only */}
+        <div className="space-y-4">
+          {/* Action bar */}
+          <div className="flex flex-wrap items-center gap-2">
             {!isArchived && (
-              <div className="mt-4 flex flex-col gap-1">
-                <Label htmlFor={`stage-select-${prospect.id}`}>
-                  {t('prospects.fields.funnelStage')}
-                  {stagePosition !== null && stages.length > 0 && (
-                    <span className="ml-2 text-xs font-normal text-muted-foreground">
-                      {t('prospects.stagePosition', {
-                        current: stagePosition,
-                        total: stages.length,
-                      })}
-                    </span>
-                  )}
-                </Label>
-                <Select
-                  value={prospect.funnelStageId}
-                  onValueChange={handleStageChange}
-                  disabled={update.isPending || stages.length === 0}
-                >
-                  <SelectTrigger
-                    id={`stage-select-${prospect.id}`}
-                    className="w-full"
-                    aria-label={t('prospects.aria.stageSelect', { name: prospect.name })}
-                  >
-                    <SelectValue placeholder={t('prospects.fields.funnelStage')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stages.map((stage) => (
-                      <SelectItem key={stage.id} value={stage.id}>
-                        {stage.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {stageError && <p className="text-xs text-destructive">{stageError}</p>}
-              </div>
-            )}
-
-            {/* Stage History */}
-            <div className="mt-4">
-              <p className="mb-1 text-xs font-medium text-muted-foreground">
-                {t('prospects.stageHistory')}
-              </p>
-              {transitionsLoading ? (
-                <p className="text-xs italic text-muted-foreground">...</p>
-              ) : transitions.length === 0 ? (
-                <p className="text-xs italic text-muted-foreground">
-                  {t('prospects.noStageHistory')}
-                </p>
-              ) : (
-                <ul className="space-y-1">
-                  {transitions.map((tr) => (
-                    <li
-                      key={tr.id}
-                      className="flex items-center gap-2 text-xs text-muted-foreground"
-                    >
-                      <span>{new Date(tr.transitionedAt).toLocaleString()}</span>
-                      <span>—</span>
-                      <span>
-                        {tr.fromStageName ?? t('prospects.initialStage')}
-                        {' → '}
-                        {tr.toStageName}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {/* Interactions — active prospects only; Epic 5 implements the form and timeline */}
-            {!isArchived && (
-              <div className="mt-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    {t('prospects.interactions.title')}
-                  </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled
-                    aria-label={`${t('prospects.interactions.logButton')} — ${t('prospects.interactions.comingSoon')}`}
-                  >
-                    <Plus className="mr-1 size-3" />
-                    {t('prospects.interactions.logButton')}
-                  </Button>
-                </div>
-                <p className="text-xs italic text-muted-foreground">
-                  {t('prospects.interactions.empty')}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Actions: Edit (active only) + Archive/Restore */}
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            {!isArchived && (
-              <Button
-                type="button"
-                size="icon-sm"
-                variant="ghost"
-                onClick={handleEditStart}
-                aria-label={t('prospects.aria.editProspect', { name: prospect.name })}
-              >
-                <Pencil className="size-3" />
+              <Button type="button" size="sm" variant="outline" onClick={handleEditStart}>
+                <Pencil className="size-4" />
+                {t('prospects.edit')}
               </Button>
             )}
             {isArchived ? (
               <Button
                 type="button"
                 size="sm"
-                variant="ghost"
+                variant="outline"
                 onClick={handleRestore}
                 disabled={restore.isPending}
-                aria-label={t('prospects.aria.restoreProspect', { name: prospect.name })}
               >
-                <RotateCcw className="size-3" />
+                <RotateCcw className="size-4" />
                 {t('prospects.restore')}
               </Button>
             ) : (
@@ -489,12 +320,13 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
                 <AlertDialogTrigger asChild>
                   <Button
                     type="button"
-                    size="icon-sm"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive"
+                    size="sm"
+                    variant="outline"
+                    className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
                     aria-label={t('prospects.aria.archiveProspect', { name: prospect.name })}
                   >
-                    <Archive className="size-3" />
+                    <Archive className="size-4" />
+                    {t('prospects.archive')}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -519,6 +351,164 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
             {archiveError && <p className="text-xs text-destructive">{archiveError}</p>}
             {restoreError && <p className="text-xs text-destructive">{restoreError}</p>}
           </div>
+
+          <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+            {prospect.company && (
+              <>
+                <dt className="text-muted-foreground">{t('prospects.fields.company')}</dt>
+                <dd>{prospect.company}</dd>
+              </>
+            )}
+            {prospect.linkedinUrl && (
+              <>
+                <dt className="text-muted-foreground">{t('prospects.fields.linkedinUrl')}</dt>
+                <dd>
+                  <a
+                    href={
+                      prospect.linkedinUrl.startsWith('https://') ||
+                      prospect.linkedinUrl.startsWith('http://')
+                        ? prospect.linkedinUrl
+                        : '#'
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block truncate text-primary underline-offset-4 hover:underline"
+                  >
+                    {prospect.linkedinUrl}
+                  </a>
+                </dd>
+              </>
+            )}
+            {prospect.email && (
+              <>
+                <dt className="text-muted-foreground">{t('prospects.fields.email')}</dt>
+                <dd>{prospect.email}</dd>
+              </>
+            )}
+            {prospect.phone && (
+              <>
+                <dt className="text-muted-foreground">{t('prospects.fields.phone')}</dt>
+                <dd>
+                  <a
+                    href={`tel:${prospect.phone}`}
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    {prospect.phone}
+                  </a>
+                </dd>
+              </>
+            )}
+            {prospect.title && (
+              <>
+                <dt className="text-muted-foreground">{t('prospects.fields.title')}</dt>
+                <dd>{prospect.title}</dd>
+              </>
+            )}
+            {prospect.notes && (
+              <>
+                <dt className="text-muted-foreground">{t('prospects.fields.notes')}</dt>
+                <dd className="whitespace-pre-wrap">{prospect.notes}</dd>
+              </>
+            )}
+            {/* Positioning — Epic 4 will replace with name via usePositioning hook */}
+            <dt className="text-muted-foreground">{t('prospects.fields.positioning')}</dt>
+            <dd>
+              {prospect.positioningId ? (
+                <span>{t('prospects.positioningLinked')}</span>
+              ) : (
+                <span className="italic text-muted-foreground">{t('prospects.notAssigned')}</span>
+              )}
+            </dd>
+          </dl>
+          {/* Stage management — active prospects only */}
+          {!isArchived && (
+            <div className="mt-4 flex flex-col gap-1">
+              <Label htmlFor={`stage-select-${prospect.id}`}>
+                {t('prospects.fields.funnelStage')}
+                {stagePosition !== null && stages.length > 0 && (
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                    {t('prospects.stagePosition', {
+                      current: stagePosition,
+                      total: stages.length,
+                    })}
+                  </span>
+                )}
+              </Label>
+              <Select
+                value={prospect.funnelStageId}
+                onValueChange={handleStageChange}
+                disabled={update.isPending || stages.length === 0}
+              >
+                <SelectTrigger
+                  id={`stage-select-${prospect.id}`}
+                  className="w-full"
+                  aria-label={t('prospects.aria.stageSelect', { name: prospect.name })}
+                >
+                  <SelectValue placeholder={t('prospects.fields.funnelStage')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {stages.map((stage) => (
+                    <SelectItem key={stage.id} value={stage.id}>
+                      {stage.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {stageError && <p className="text-xs text-destructive">{stageError}</p>}
+            </div>
+          )}
+
+          {/* Stage History */}
+          <div className="mt-4">
+            <p className="mb-1 text-xs font-medium text-muted-foreground">
+              {t('prospects.stageHistory')}
+            </p>
+            {transitionsLoading ? (
+              <p className="text-xs italic text-muted-foreground">...</p>
+            ) : transitions.length === 0 ? (
+              <p className="text-xs italic text-muted-foreground">
+                {t('prospects.noStageHistory')}
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {transitions.map((tr) => (
+                  <li key={tr.id} className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{new Date(tr.transitionedAt).toLocaleString()}</span>
+                    <span>—</span>
+                    <span>
+                      {tr.fromStageName ?? t('prospects.initialStage')}
+                      {' → '}
+                      {tr.toStageName}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Interactions — active prospects only; Epic 5 implements the form and timeline */}
+          {!isArchived && (
+            <div className="mt-4">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {t('prospects.interactions.title')}
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled
+                  aria-label={`${t('prospects.interactions.logButton')} — ${t('prospects.interactions.comingSoon')}`}
+                >
+                  <Plus className="mr-1 size-3" />
+                  {t('prospects.interactions.logButton')}
+                </Button>
+              </div>
+              <p className="text-xs italic text-muted-foreground">
+                {t('prospects.interactions.empty')}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
