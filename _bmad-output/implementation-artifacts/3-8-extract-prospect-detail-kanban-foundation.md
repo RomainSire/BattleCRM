@@ -1,6 +1,6 @@
 # Story 3.8: Extract ProspectDetail Component & Kanban Foundation
 
-Status: review
+Status: done
 
 <!-- PM Analysis: 2026-03-02 -->
 <!-- Epic 3: Prospect Management — frontend-only story (no new backend) -->

@@ -1,6 +1,6 @@
 # Story 3.9: Build Kanban Board View
 
-Status: ready-for-dev
+Status: review
 
 <!-- PM Analysis: 2026-03-02 -->
 <!-- Epic 3: Prospect Management — frontend-only story (no new backend) -->
@@ -32,42 +32,42 @@ So that I have a visual overview of my pipeline and can move prospects between s
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Data layer — query and grouping** (AC1, AC3)
-  - [ ] 1.1 Create `useProspectsKanban` hook (or reuse `useProspects`) — fetch all prospects (no stage filter) grouped client-side by `funnelStageId`
-  - [ ] 1.2 Use `useFunnelStages()` for column order (already cached from list view)
+- [x] **Task 1: Data layer — query and grouping** (AC1, AC3)
+  - [x] 1.1 Reused `useProspects()` directly (no new hook needed) — grouped client-side by `funnelStageId` in `ProspectsKanbanView` via `groupBy` utility
+  - [x] 1.2 Use `useFunnelStages()` for column order (already cached from list view)
 
-- [ ] **Task 2: KanbanCard component** (AC2, AC3, AC4)
-  - [ ] 2.1 Create `apps/frontend/src/features/prospects/components/KanbanCard.tsx`
-  - [ ] 2.2 Use `@dnd-kit/core` `useDraggable` for the drag handle only
-  - [ ] 2.3 Use `Card` + optional `ButtonGroup` for card layout
-  - [ ] 2.4 `onClick` on card body → calls `onOpenDetail(prospect)` callback
+- [x] **Task 2: KanbanCard component** (AC2, AC3, AC4)
+  - [x] 2.1 Create `apps/frontend/src/features/prospects/components/KanbanCard.tsx`
+  - [x] 2.2 Use `@dnd-kit/core` `useDraggable` for the drag handle only (`setNodeRef` + `listeners` + `attributes` on handle div)
+  - [x] 2.3 Use `Card` + `CardContent` for card layout (py-0 gap-0 to override Card defaults)
+  - [x] 2.4 `onClick` on card body → calls `onOpenDetail(prospect)` callback; handle div stops propagation
 
-- [ ] **Task 3: KanbanColumn component** (AC1, AC2, AC7)
-  - [ ] 3.1 Create `apps/frontend/src/features/prospects/components/KanbanColumn.tsx`
-  - [ ] 3.2 Use `@dnd-kit/core` `useDroppable` — each column is a drop target
-  - [ ] 3.3 Column header: stage name + `Badge` with prospect count
-  - [ ] 3.4 Empty state when no cards to show
+- [x] **Task 3: KanbanColumn component** (AC1, AC2, AC7)
+  - [x] 3.1 Create `apps/frontend/src/features/prospects/components/KanbanColumn.tsx`
+  - [x] 3.2 Use `@dnd-kit/core` `useDroppable` — each column is a drop target; `isOver` adds `bg-accent/50`
+  - [x] 3.3 Column header: stage name + `Badge` with prospect count
+  - [x] 3.4 Empty state when no cards to show
 
-- [ ] **Task 4: ProspectsKanbanView component** (AC1–AC7)
-  - [ ] 4.1 Create `apps/frontend/src/features/prospects/components/ProspectsKanbanView.tsx`
-  - [ ] 4.2 Wrap columns in `DndContext` with `closestCorners` + `onDragEnd` handler
-  - [ ] 4.3 Optimistic state: `useState` for local `prospectsByStage` derived from query data
-  - [ ] 4.4 `onDragEnd`: detect column change → optimistic move → `update.mutate` → revert on error
-  - [ ] 4.5 `DragOverlay` rendering dragged card copy during drag
-  - [ ] 4.6 Drawer state: `selectedProspect: ProspectType | null`
-  - [ ] 4.7 Render `Drawer` + `ProspectDetail` with `onClose={() => setSelectedProspect(null)}`
-  - [ ] 4.8 Search input + archive toggle (local UI controls, client-side filtering)
+- [x] **Task 4: ProspectsKanbanView component** (AC1–AC7)
+  - [x] 4.1 Create `apps/frontend/src/features/prospects/components/ProspectsKanbanView.tsx`
+  - [x] 4.2 Wrap columns in `DndContext` with `closestCorners` + `onDragEnd` handler
+  - [x] 4.3 Optimistic state: `optimisticOverrides: Record<string, string>` applied via useMemo; cleanup useEffect removes resolved overrides when query data updates
+  - [x] 4.4 `onDragEnd`: detect column change → optimistic move → `update.mutate` → revert + `toast.error` on error
+  - [x] 4.5 `DragOverlay` rendering dragged card copy during drag (`overlay` prop for tilt effect)
+  - [x] 4.6 Drawer state: `selectedProspect: ProspectType | null`
+  - [x] 4.7 Render `Drawer direction="right"` + `ProspectDetail key={id}` with `onClose={() => setSelectedProspect(null)}`
+  - [x] 4.8 Search input (name + company) + archive toggle (local UI controls, client-side filtering)
 
-- [ ] **Task 5: Wire into ProspectsPage** (AC1)
-  - [ ] 5.1 Replace Kanban placeholder in `ProspectsPage.tsx` with `<ProspectsKanbanView />`
+- [x] **Task 5: Wire into ProspectsPage** (AC1)
+  - [x] 5.1 Replaced Kanban placeholder in `ProspectsPage.tsx` with `<ProspectsKanbanView />`
 
-- [ ] **Task 6: i18n translations** (AC1, AC2, AC7)
-  - [ ] 6.1 Update `apps/frontend/public/locales/en.json` — add kanban keys
-  - [ ] 6.2 Update `apps/frontend/public/locales/fr.json` — add kanban keys
+- [x] **Task 6: i18n translations** (AC1, AC2, AC7)
+  - [x] 6.1 Updated `apps/frontend/public/locales/en.json` — added `prospects.kanban.*` keys
+  - [x] 6.2 Updated `apps/frontend/public/locales/fr.json` — added `prospects.kanban.*` keys
 
-- [ ] **Task 7: Lint and type-check** (AC8)
-  - [ ] 7.1 `pnpm biome check --write .` from root — 0 errors
-  - [ ] 7.2 `pnpm --filter @battlecrm/frontend type-check` — 0 errors
+- [x] **Task 7: Lint and type-check** (AC8)
+  - [x] 7.1 `pnpm biome check --write .` from root — 0 errors (biome-ignore for drag handle a11y: dnd-kit injects role/keyboard at runtime)
+  - [x] 7.2 `pnpm --filter @battlecrm/frontend type-check` — 0 errors
 
 ---
 
@@ -210,16 +210,21 @@ function groupBy<T>(arr: T[], key: (item: T) => string): Record<string, T[]> {
 
 ### Drawer Integration
 
-The `Drawer` from shadcn (installed in Story 3.8) renders from the right by default. Use `direction="right"` if the default is bottom:
+The `Drawer` (vaul-based, installed in Story 3.8) defaults to **bottom** direction. **MUST pass `direction="right"`** on the `<Drawer>` root for the right-side panel per AC4:
 
 ```tsx
-<Drawer open={!!selectedProspect} onOpenChange={(open) => !open && setSelectedProspect(null)}>
-  <DrawerContent className="max-w-lg">
+<Drawer
+  direction="right"
+  open={!!selectedProspect}
+  onOpenChange={(open) => !open && setSelectedProspect(null)}
+>
+  <DrawerContent className="overflow-y-auto">
     <DrawerHeader>
       <DrawerTitle>{selectedProspect?.name}</DrawerTitle>
     </DrawerHeader>
     {selectedProspect && (
       <ProspectDetail
+        key={selectedProspect.id}
         prospect={selectedProspect}
         onClose={() => setSelectedProspect(null)}
       />
@@ -228,7 +233,14 @@ The `Drawer` from shadcn (installed in Story 3.8) renders from the right by defa
 </Drawer>
 ```
 
-**⚠️ Check shadcn Drawer API:** The direction prop name may differ. Read the installed `drawer.tsx` before implementing.
+**Notes from `drawer.tsx` (already installed):**
+- `direction` prop goes on `<Drawer>` root (not on `<DrawerContent>`)
+- `direction="right"` applies `data-[vaul-drawer-direction=right]` CSS: `inset-y-0 right-0 w-3/4 sm:max-w-sm border-l` — no extra `max-w-*` needed
+- `overflow-y-auto` on `DrawerContent` prevents ProspectDetail content from being clipped (it is tall)
+- `key={selectedProspect.id}` on ProspectDetail **resets internal state** (isEditing, errors, form defaultValues) when the user opens a different prospect — without this, stale form values persist between prospects (this is documented in ProspectDetail.tsx's JSDoc)
+
+**Exports available from `@/components/ui/drawer`:**
+`Drawer, DrawerTrigger, DrawerPortal, DrawerOverlay, DrawerClose, DrawerContent, DrawerHeader, DrawerFooter, DrawerTitle, DrawerDescription`
 
 ### Search + Archive Toggle in Kanban
 
@@ -335,7 +347,7 @@ const filteredProspects = useMemo(() =>
 - **`useProspects()`** hook uses TanStack Query — reuse directly, no need for a new hook
 - **`useFunnelStages()`** cross-feature import from `@/features/settings/hooks/useFunnelStages` — already used in ProspectRow (cached, zero overhead)
 - **`useUpdateProspect()`** mutation from `../hooks/useProspectMutations` — reuse for drag-and-drop stage update
-- **`toast.error()`** is acceptable for drag failures (this is an edge case error, not an inline form error)
+- **`toast.error()` for drag failures only** — `project-context.md` normally forbids `toast.error()` for mutations. This story is an intentional exception: optimistic drag-and-drop revert errors have no form field to show inline errors on. AC3 explicitly requires `toast.error`. Use **only** for the `onDragEnd` revert case — all other mutations (ProspectDetail edit/archive/restore) still use inline errors per project-context rules
 - **Biome**: always run `pnpm biome check --write .` last; it auto-sorts imports alphabetically
 - **camelCase API**: `funnelStageId` (not `funnel_stage_id`) in `ProspectType` responses; use `funnel_stage_id` for PUT request body
 
@@ -349,8 +361,27 @@ For multi-column Kanban layouts, use **`closestCorners`** collision detection (i
 
 ### Agent Model Used
 
+claude-sonnet-4-6
+
 ### Debug Log References
 
 ### Completion Notes List
 
+- Frontend-only story — no backend changes. All needed API endpoints existed from Epics 2 & 3.
+- `useProspects()` reused directly; `groupBy` utility function defined locally in `ProspectsKanbanView`.
+- **Optimistic state**: `optimisticOverrides: Record<string, string>` applied via `useMemo`. `useEffect` cleanup removes resolved overrides when TanStack Query refetch brings updated `allProspects` — avoids stale overrides without flicker.
+- **KanbanCard**: `useDraggable` with `setNodeRef`/`listeners`/`attributes` on handle `<div>` only; `onClick` on handle stops propagation. `isDragging && 'opacity-0'` hides card while DragOverlay shows clone. Two Biome a11y rules suppressed with `biome-ignore` (dnd-kit injects `role="button"` + keyboard listeners at runtime via `...attributes`/`...listeners`).
+- **KanbanColumn**: `useDroppable` with stage.id; `isOver && 'bg-accent/50'` visual feedback. Empty state for filtered-out columns.
+- **ProspectsKanbanView**: `DndContext closestCorners`, `onDragStart` stores `activeProspect` for `DragOverlay`, `onDragEnd` handles cross-column moves with optimistic + API call.
+- **Drawer**: `direction="right"` required (vaul default is bottom). `overflow-y-auto` on `DrawerContent` for tall ProspectDetail. `key={selectedProspect.id}` on ProspectDetail resets internal state between different prospects.
+- `toast.error()` used for drag revert — intentional exception to project-context "no toast.error" rule (AC3 explicit requirement; no form to show inline errors on).
+- Biome: 0 errors. TypeScript: 0 errors.
+
 ### File List
+
+- `apps/frontend/src/features/prospects/components/KanbanCard.tsx` — NEW: drag handle card with useDraggable
+- `apps/frontend/src/features/prospects/components/KanbanColumn.tsx` — NEW: droppable column with useDroppable
+- `apps/frontend/src/features/prospects/components/ProspectsKanbanView.tsx` — NEW: full kanban orchestration (DndContext, Drawer, search, archive toggle)
+- `apps/frontend/src/features/prospects/ProspectsPage.tsx` — MODIFIED: replaced Kanban placeholder with ProspectsKanbanView
+- `apps/frontend/public/locales/en.json` — MODIFIED: added `prospects.kanban.*` keys
+- `apps/frontend/public/locales/fr.json` — MODIFIED: added `prospects.kanban.*` keys

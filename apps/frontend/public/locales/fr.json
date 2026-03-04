@@ -131,6 +131,7 @@
     },
     "archived": "Archivé",
     "showArchived": "Voir archivés",
+    "edit": "Modifier",
     "restore": "Restaurer",
     "searchPlaceholder": "Rechercher un prospect...",
     "archiveDialog": {
@@ -151,6 +152,12 @@
       "list": "Vue liste",
       "kanban": "Vue Kanban",
       "kanbanPlaceholder": "Vue Kanban — disponible en Story 3.9"
+    },
+    "kanban": {
+      "moveFailed": "Impossible de déplacer le prospect. Veuillez réessayer.",
+      "noProspects": "Aucun prospect",
+      "searchPlaceholder": "Rechercher un prospect...",
+      "showArchived": "Afficher les archivés"
     },
     "stageHistory": "Historique des étapes",
     "noStageHistory": "Aucun changement d'étape enregistré.",

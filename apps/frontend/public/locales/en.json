@@ -131,6 +131,7 @@
     },
     "archived": "Archived",
     "showArchived": "Show archived",
+    "edit": "Edit",
     "restore": "Restore",
     "searchPlaceholder": "Search prospects...",
     "archiveDialog": {
@@ -151,6 +152,12 @@
       "list": "List view",
       "kanban": "Kanban view",
       "kanbanPlaceholder": "Kanban view — coming in Story 3.9"
+    },
+    "kanban": {
+      "moveFailed": "Failed to move prospect. Please try again.",
+      "noProspects": "No prospects",
+      "searchPlaceholder": "Search prospects...",
+      "showArchived": "Show archived"
     },
     "stageHistory": "Stage History",
     "noStageHistory": "No stage changes recorded yet.",
