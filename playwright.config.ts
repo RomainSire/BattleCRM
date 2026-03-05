@@ -22,10 +22,12 @@ export default defineConfig({
   // Root test directory — setup files live in tests/, specs in tests/e2e/
   // testMatch on each project filters which files each project picks up
   testDir: './tests',
-  fullyParallel: true,
+  // E2E tests share a single test user → all specs must run serially to avoid
+  // race conditions on shared DB state (funnel stages, prospects, session).
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
 
   // Standardized timeouts (TEA knowledge: action 15s, nav 30s, expect 10s, test 60s)
   timeout: 60_000,

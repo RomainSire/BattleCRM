@@ -68,3 +68,59 @@ export async function resetFunnelStages(request: APIRequestContext): Promise<voi
     await request.post(`${API_URL}/api/funnel_stages`, { data: { name } })
   }
 }
+
+/**
+ * Get all active funnel stages sorted by position.
+ * Requires an authenticated request context.
+ */
+export async function getFunnelStages(
+  request: APIRequestContext,
+): Promise<Array<{ id: string; name: string; position: number }>> {
+  const res = await request.get(`${API_URL}/api/funnel_stages`)
+  const body = await res.json()
+  return body.data ?? []
+}
+
+/**
+ * Create a prospect. Returns the created prospect object.
+ * Requires an authenticated request context.
+ */
+export async function createProspect(
+  request: APIRequestContext,
+  data: {
+    name: string
+    funnel_stage_id?: string
+    company?: string
+    email?: string
+    title?: string
+    notes?: string
+  },
+): Promise<{ id: string; name: string; funnelStageId: string; deletedAt: string | null }> {
+  const res = await request.post(`${API_URL}/api/prospects`, { data })
+  if (!res.ok()) throw new Error(`createProspect failed: ${res.status()} ${await res.text()}`)
+  return res.json()
+}
+
+/**
+ * Delete (soft-delete) all prospects, including archived ones.
+ * Archived prospects are restored first (backend destroy only works on active),
+ * then archived again — leaving a clean slate of only archived records.
+ * Requires an authenticated request context.
+ */
+export async function resetProspects(request: APIRequestContext): Promise<void> {
+  const res = await request.get(`${API_URL}/api/prospects?include_archived=true`)
+  const body = await res.json()
+  const prospects: Array<{ id: string; deletedAt: string | null }> = body.data ?? []
+
+  // Restore archived prospects so destroy can find them
+  for (const p of prospects) {
+    if (p.deletedAt !== null) {
+      await request.patch(`${API_URL}/api/prospects/${p.id}/restore`)
+    }
+  }
+
+  // Archive (soft-delete) all prospects
+  for (const p of prospects) {
+    await request.delete(`${API_URL}/api/prospects/${p.id}`)
+  }
+}
