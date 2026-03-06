@@ -1,9 +1,8 @@
+import type { FunnelStageType, ProspectType } from '@battlecrm/shared'
 import { useDroppable } from '@dnd-kit/core'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
-import type { FunnelStageType } from '@/features/settings/lib/api'
 import { cn } from '@/lib/utils'
-import type { ProspectType } from '../lib/api'
 import { KanbanCard } from './KanbanCard'
 
 interface KanbanColumnProps {

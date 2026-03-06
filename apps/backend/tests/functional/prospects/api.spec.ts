@@ -648,10 +648,10 @@ test.group('Prospects API', (group) => {
   })
 
   // ===========================
-  // prospect_count on GET /api/funnel_stages (AC9)
+  // prospectCount on GET /api/funnel_stages (AC9)
   // ===========================
 
-  test('GET /api/funnel_stages includes prospect_count for each stage', async ({
+  test('GET /api/funnel_stages includes prospectCount for each stage', async ({
     client,
     assert,
   }) => {
@@ -668,20 +668,20 @@ test.group('Prospects API', (group) => {
     response.assertStatus(200)
 
     const stagesData = response.body().data
-    // Every stage should have prospect_count
+    // Every stage should have prospectCount
     assert.isTrue(
-      stagesData.every((s: { prospect_count: unknown }) => typeof s.prospect_count === 'number'),
-      'All stages should have a numeric prospect_count',
+      stagesData.every((s: { prospectCount: unknown }) => typeof s.prospectCount === 'number'),
+      'All stages should have a numeric prospectCount',
     )
 
     const firstStageData = stagesData.find((s: { id: string }) => s.id === stages[0].id)
-    assert.equal(firstStageData.prospect_count, 2, 'First stage should have 2 prospects')
+    assert.equal(firstStageData.prospectCount, 2, 'First stage should have 2 prospects')
 
     const secondStageData = stagesData.find((s: { id: string }) => s.id === stages[1].id)
-    assert.equal(secondStageData.prospect_count, 0, 'Second stage should have 0 prospects')
+    assert.equal(secondStageData.prospectCount, 0, 'Second stage should have 0 prospects')
   })
 
-  test('prospect_count only counts active (non-archived) prospects', async ({ client, assert }) => {
+  test('prospectCount only counts active (non-archived) prospects', async ({ client, assert }) => {
     const user = await registerUser(client, 'pc-active-only')
     const stage = await getFirstStage(user.id)
 
@@ -701,7 +701,7 @@ test.group('Prospects API', (group) => {
     response.assertStatus(200)
 
     const stageData = response.body().data.find((s: { id: string }) => s.id === stage.id)
-    assert.equal(stageData.prospect_count, 1, 'Only 1 active prospect — archived should not count')
+    assert.equal(stageData.prospectCount, 1, 'Only 1 active prospect — archived should not count')
     assert.isDefined(active.id) // active is used — confirm it was created successfully
   })
 

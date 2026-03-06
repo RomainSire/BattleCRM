@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
 import FunnelStage from '#models/funnel_stage'
+import { serializeFunnelStage } from '#serializers/funnel_stage'
 import {
   createFunnelStageValidator,
   reorderFunnelStagesValidator,
@@ -28,13 +29,7 @@ export default class FunnelStagesController {
     }
 
     const stages = await query
-    return response.ok({
-      data: stages.map((stage) => ({
-        ...stage.serialize(),
-        prospect_count: Number(stage.$extras.prospects_count ?? 0),
-      })),
-      meta: { total: stages.length },
-    })
+    return response.ok({ data: stages.map(serializeFunnelStage), meta: { total: stages.length } })
   }
 
   /**
@@ -78,7 +73,7 @@ export default class FunnelStagesController {
       return newStage
     })
 
-    return response.created(stage)
+    return response.created(serializeFunnelStage(stage))
   }
 
   /**
@@ -97,7 +92,14 @@ export default class FunnelStagesController {
 
     stage.name = name
     await stage.save()
-    return response.ok(stage)
+
+    const updated = await FunnelStage.query()
+      .withScopes((s) => s.forUser(userId))
+      .where('id', stage.id)
+      .withCount('prospects', (q) => q.whereNull('deleted_at'))
+      .firstOrFail()
+
+    return response.ok(serializeFunnelStage(updated))
   }
 
   /**
@@ -195,12 +197,6 @@ export default class FunnelStagesController {
         q.whereNull('deleted_at')
       })
 
-    return response.ok({
-      data: updatedStages.map((stage) => ({
-        ...stage.serialize(),
-        prospect_count: Number(stage.$extras.prospects_count ?? 0),
-      })),
-      meta: { total: updatedStages.length },
-    })
+    return response.ok({ data: updatedStages.map(serializeFunnelStage), meta: { total: updatedStages.length } })
   }
 }

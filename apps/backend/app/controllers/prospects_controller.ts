@@ -3,6 +3,7 @@ import { DateTime } from 'luxon'
 import FunnelStage from '#models/funnel_stage'
 import Prospect from '#models/prospect'
 import ProspectStageTransition from '#models/prospect_stage_transition'
+import { serializeProspect, serializeTransition } from '#serializers/prospect'
 import { createProspectValidator, updateProspectValidator } from '#validators/prospects'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -46,7 +47,10 @@ export default class ProspectsController {
     }
 
     const prospects = await query
-    return response.ok({ data: prospects, meta: { total: prospects.length } })
+    return response.ok({
+      data: prospects.map(serializeProspect),
+      meta: { total: prospects.length },
+    })
   }
 
   /**
@@ -61,7 +65,7 @@ export default class ProspectsController {
       .where('id', params.id)
       .firstOrFail()
 
-    return response.ok(prospect)
+    return response.ok(serializeProspect(prospect))
   }
 
   /**
@@ -116,7 +120,7 @@ export default class ProspectsController {
       prospect.positioningId = payload.positioning_id ?? null
 
     await prospect.save()
-    return response.created(prospect)
+    return response.created(serializeProspect(prospect))
   }
 
   /**
@@ -168,7 +172,7 @@ export default class ProspectsController {
       })
     }
 
-    return response.ok(prospect)
+    return response.ok(serializeProspect(prospect))
   }
 
   /**
@@ -202,7 +206,7 @@ export default class ProspectsController {
       .firstOrFail()
 
     await prospect.restore()
-    return response.ok(prospect)
+    return response.ok(serializeProspect(prospect))
   }
 
   /**
@@ -228,15 +232,6 @@ export default class ProspectsController {
       .preload('toStage')
       .orderBy('transitioned_at', 'desc')
 
-    return response.ok({
-      data: transitions.map((t) => ({
-        id: t.id,
-        fromStageId: t.fromStageId,
-        fromStageName: t.fromStage?.name ?? null,
-        toStageId: t.toStageId,
-        toStageName: t.toStage?.name ?? 'Unknown stage',
-        transitionedAt: t.transitionedAt,
-      })),
-    })
+    return response.ok({ data: transitions.map(serializeTransition) })
   }
 }

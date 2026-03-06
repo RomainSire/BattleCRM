@@ -1,10 +1,10 @@
+import type { ProspectType } from '@battlecrm/shared'
 import { useDraggable } from '@dnd-kit/core'
 import { GripVertical } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import type { ProspectType } from '../lib/api'
 
 interface KanbanCardProps {
   prospect: ProspectType

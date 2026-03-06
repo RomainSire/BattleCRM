@@ -1,3 +1,4 @@
+import type { ProspectType } from '@battlecrm/shared'
 import { vineResolver } from '@hookform/resolvers/vine'
 import { Archive, Pencil, Plus, RotateCcw, X } from 'lucide-react'
 import { useState } from 'react'
@@ -37,7 +38,6 @@ import {
   useUpdateProspect,
 } from '../hooks/useProspectMutations'
 import { useProspectStageTransitions } from '../hooks/useProspectStageTransitions'
-import type { ProspectType } from '../lib/api'
 import { updateProspectSchema } from '../schemas/prospect'
 
 interface ProspectDetailProps {

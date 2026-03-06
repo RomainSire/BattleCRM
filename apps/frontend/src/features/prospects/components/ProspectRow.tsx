@@ -1,7 +1,7 @@
+import type { ProspectType } from '@battlecrm/shared'
 import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
-import type { ProspectType } from '../lib/api'
 import { ProspectDetail } from './ProspectDetail'
 
 interface ProspectRowProps {

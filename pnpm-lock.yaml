@@ -35,6 +35,9 @@ importers:
       '@adonisjs/session':
         specifier: ^7.7.1
         version: 7.7.1(@adonisjs/core@6.20.0(@adonisjs/assembler@7.8.2(typescript@5.8.3))(@vinejs/vine@3.0.1))(@adonisjs/lucid@21.8.2(@adonisjs/assembler@7.8.2(typescript@5.8.3))(@adonisjs/core@6.20.0(@adonisjs/assembler@7.8.2(typescript@5.8.3))(@vinejs/vine@3.0.1))(@vinejs/vine@3.0.1)(luxon@3.7.2)(pg@8.18.0))(@japa/api-client@3.2.1(@japa/assert@4.2.0(@japa/runner@4.5.0))(@japa/runner@4.5.0))
+      '@battlecrm/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@vinejs/vine':
         specifier: ^3.0.1
         version: 3.0.1
@@ -93,6 +96,9 @@ importers:
 
   apps/frontend:
     dependencies:
+      '@battlecrm/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -197,7 +203,11 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@24.10.12)(jiti@2.6.1)(lightningcss@1.30.2)
 
-  packages/shared: {}
+  packages/shared:
+    devDependencies:
+      typescript:
+        specifier: ~5.8
+        version: 5.8.3
 
 packages:
 

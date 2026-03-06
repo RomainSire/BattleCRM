@@ -1,6 +1,7 @@
+import type { CreateProspectPayload, UpdateProspectPayload } from '@battlecrm/shared'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queryKeys'
-import { type CreateProspectPayload, prospectsApi, type UpdateProspectPayload } from '../lib/api'
+import { prospectsApi } from '../lib/api'
 
 export function useCreateProspect() {
   const queryClient = useQueryClient()

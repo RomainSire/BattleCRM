@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Shared types and utilities for BattleCRM (post-MVP evaluation)",
-  "main": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
-    "dev": "echo '🚧 Shared package not yet implemented - deferred to post-MVP'",
-    "build": "echo '🚧 Shared package not yet implemented - deferred to post-MVP'",
-    "lint": "echo '🚧 Shared package not yet implemented - deferred to post-MVP'",
-    "format": "echo '🚧 Shared package not yet implemented - deferred to post-MVP'",
-    "test": "echo '🚧 Shared package not yet implemented - deferred to post-MVP'",
-    "type-check": "echo '🚧 Shared package not yet implemented - deferred to post-MVP'"
+    "build": "tsc --build",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~5.8"
   }
 }

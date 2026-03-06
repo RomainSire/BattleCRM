@@ -1,6 +1,7 @@
 import { errors as authErrors } from '@adonisjs/auth'
 import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
+import type { AuthResponse, UserType } from '@battlecrm/shared'
 import User from '#models/user'
 import { seedDefaultStages } from '#services/funnel_stage_service'
 import env from '#start/env'
@@ -49,7 +50,8 @@ export default class AuthController {
     // Session login happens outside the transaction (HTTP layer, not DB layer)
     await auth.use('web').login(user)
 
-    return response.created({ user: { id: user.id, email: user.email } })
+    const body: AuthResponse = { user: { id: user.id, email: user.email } }
+    return response.created(body)
   }
 
   /**
@@ -62,7 +64,8 @@ export default class AuthController {
     try {
       const user = await User.verifyCredentials(data.email, data.password)
       await auth.use('web').login(user)
-      return response.ok({ user: { id: user.id, email: user.email } })
+      const body: AuthResponse = { user: { id: user.id, email: user.email } }
+      return response.ok(body)
     } catch (error) {
       if (error instanceof authErrors.E_INVALID_CREDENTIALS) {
         return response.badRequest({
@@ -88,7 +91,8 @@ export default class AuthController {
    */
   async me({ auth, response }: HttpContext) {
     const user = auth.user!
-    return response.ok({ id: user.id, email: user.email })
+    const body: UserType = { id: user.id, email: user.email }
+    return response.ok(body)
   }
 
   /**

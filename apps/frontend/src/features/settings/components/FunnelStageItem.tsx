@@ -1,3 +1,4 @@
+import type { FunnelStageType } from '@battlecrm/shared'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { vineResolver } from '@hookform/resolvers/vine'
@@ -22,7 +23,6 @@ import { Input } from '@/components/ui/input'
 import { ApiError } from '@/lib/api'
 import { i18nMessagesProvider } from '@/lib/validation'
 import { useDeleteFunnelStage, useUpdateFunnelStage } from '../hooks/useFunnelStages'
-import type { FunnelStageType } from '../lib/api'
 import { funnelStageSchema } from '../schemas/funnelStage'
 
 type Props = {

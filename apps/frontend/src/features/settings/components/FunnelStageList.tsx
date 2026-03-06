@@ -1,3 +1,4 @@
+import type { FunnelStageType } from '@battlecrm/shared'
 import {
   closestCenter,
   DndContext,
@@ -17,7 +18,6 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/lib/api'
 import { useFunnelStages, useReorderFunnelStages } from '../hooks/useFunnelStages'
-import type { FunnelStageType } from '../lib/api'
 import { AddStageForm } from './AddStageForm'
 import { FunnelStageItem } from './FunnelStageItem'
 

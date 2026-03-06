@@ -1,19 +1,5 @@
+import type { FunnelStageListResponse, FunnelStageType } from '@battlecrm/shared'
 import { fetchApi } from '@/lib/api'
-
-export type FunnelStageType = {
-  id: string
-  userId: string
-  name: string
-  position: number
-  createdAt: string
-  updatedAt: string
-  deletedAt: string | null
-}
-
-type FunnelStageListResponse = {
-  data: FunnelStageType[]
-  meta: { total: number }
-}
 
 export const funnelStagesApi = {
   list() {
