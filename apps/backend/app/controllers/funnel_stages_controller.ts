@@ -197,6 +197,9 @@ export default class FunnelStagesController {
         q.whereNull('deleted_at')
       })
 
-    return response.ok({ data: updatedStages.map(serializeFunnelStage), meta: { total: updatedStages.length } })
+    return response.ok({
+      data: updatedStages.map(serializeFunnelStage),
+      meta: { total: updatedStages.length },
+    })
   }
 }

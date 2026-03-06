@@ -4,11 +4,10 @@ import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import { SoftDeletes } from 'adonis-lucid-soft-deletes'
 import type { DateTime } from 'luxon'
 import FunnelStage from '#models/funnel_stage'
-import Positioning from '#models/positioning'
-import ProspectStageTransition from '#models/prospect_stage_transition'
+import Prospect from '#models/prospect'
 import User from '#models/user'
 
-export default class Prospect extends compose(BaseModel, SoftDeletes) {
+export default class Positioning extends compose(BaseModel, SoftDeletes) {
   @column({ isPrimary: true })
   declare id: string
 
@@ -19,28 +18,13 @@ export default class Prospect extends compose(BaseModel, SoftDeletes) {
   declare funnelStageId: string
 
   @column()
-  declare positioningId: string | null
-
-  @column()
   declare name: string
 
   @column()
-  declare company: string | null
+  declare description: string | null
 
   @column()
-  declare linkedinUrl: string | null
-
-  @column()
-  declare email: string | null
-
-  @column()
-  declare phone: string | null
-
-  @column()
-  declare title: string | null
-
-  @column()
-  declare notes: string | null
+  declare content: string | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -51,7 +35,7 @@ export default class Prospect extends compose(BaseModel, SoftDeletes) {
   @column.dateTime()
   declare deletedAt: DateTime | null
 
-  // Primary user isolation mechanism — use in ALL prospect queries (NFR11, NFR12, FR54, FR56)
+  // Primary user isolation mechanism — use in ALL positioning queries
   static forUser = scope((query, userId: string) => {
     query.where('user_id', userId)
   })
@@ -62,9 +46,6 @@ export default class Prospect extends compose(BaseModel, SoftDeletes) {
   @belongsTo(() => FunnelStage)
   declare funnelStage: BelongsTo<typeof FunnelStage>
 
-  @belongsTo(() => Positioning)
-  declare positioning: BelongsTo<typeof Positioning>
-
-  @hasMany(() => ProspectStageTransition)
-  declare stageTransitions: HasMany<typeof ProspectStageTransition>
+  @hasMany(() => Prospect)
+  declare prospects: HasMany<typeof Prospect>
 }
