@@ -1,3 +1,5 @@
+import type { HttpContext } from '@adonisjs/core/http'
+import db from '@adonisjs/lucid/services/db'
 import FunnelStage from '#models/funnel_stage'
 import { serializeFunnelStage } from '#serializers/funnel_stage'
 import {
@@ -5,8 +7,6 @@ import {
   reorderFunnelStagesValidator,
   updateFunnelStageValidator,
 } from '#validators/funnel_stages'
-import type { HttpContext } from '@adonisjs/core/http'
-import db from '@adonisjs/lucid/services/db'
 
 export default class FunnelStagesController {
   /**

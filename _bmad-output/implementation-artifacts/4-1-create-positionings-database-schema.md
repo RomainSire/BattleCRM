@@ -288,132 +288,25 @@ After verifying, run: `pnpm --filter @battlecrm/shared build` to ensure the dist
 
 ### Task 5: Functional Tests
 
-**File: `apps/backend/tests/functional/positionings/schema.spec.ts`** (NEW FILE)
+**File: `apps/backend/tests/functional/positionings/schema.spec.ts`** — see actual implementation (10 tests).
 
-Pattern: identical to `tests/functional/funnel_stages/schema.spec.ts` — `group.setup` + `group.each.teardown` with email domain cleanup.
+Tests implemented:
+1. can create a positioning with all fields
+2. can create a positioning with only required fields
+3. forUser scope isolates positionings between users
+4. each positioning belongs to the correct user_id
+5. soft-deleted positionings excluded from default queries
+6. withTrashed includes soft-deleted positionings
+7. deleted_at is set on soft-delete and null on restore
+8. prospect.positioningId can reference a positioning
+9. prospect.positioningId remains null when no positioning assigned
+10. ON DELETE SET NULL: hard-deleting a positioning nullifies prospect.positioningId
 
-```typescript
-import { test } from '@japa/runner'
-import FunnelStage from '#models/funnel_stage'
-import Positioning from '#models/positioning'
-import User from '#models/user'
-
-const TEST_EMAIL_DOMAIN = '@test-positionings-schema.com'
-
-test.group('Positioning schema', (group) => {
-  group.setup(async () => {
-    await User.query().whereILike('email', `%${TEST_EMAIL_DOMAIN}`).delete()
-  })
-
-  group.each.teardown(async () => {
-    await User.query().whereILike('email', `%${TEST_EMAIL_DOMAIN}`).delete()
-  })
-
-  async function createUserWithStage(client: any, prefix: string) {
-    const res = await client.post('/api/auth/register').json({
-      email: `${prefix}${TEST_EMAIL_DOMAIN}`,
-      password: 'password123',
-    })
-    res.assertStatus(201)
-    const userId = res.body().user.id
-    const user = await User.findOrFail(userId)
-    const stage = await FunnelStage.query()
-      .withScopes((s) => s.forUser(userId))
-      .orderBy('position', 'asc')
-      .firstOrFail()
-    return { user, stage }
-  }
-
-  test('can create a positioning with all fields', async ({ client, assert }) => {
-    const { user, stage } = await createUserWithStage(client, 'create-full')
-
-    const positioning = await Positioning.create({
-      userId: user.id,
-      funnelStageId: stage.id,
-      name: 'CV v2 - React Focus',
-      description: 'Highlighting React experience for frontend roles',
-      content: 'Content text here',
-    })
-
-    assert.isDefined(positioning.id)
-    assert.equal(positioning.userId, user.id)
-    assert.equal(positioning.funnelStageId, stage.id)
-    assert.equal(positioning.name, 'CV v2 - React Focus')
-    assert.equal(positioning.description, 'Highlighting React experience for frontend roles')
-    assert.equal(positioning.content, 'Content text here')
-    assert.isDefined(positioning.createdAt)
-    assert.isNull(positioning.deletedAt)
-  })
-
-  test('can create a positioning with only required fields', async ({ client, assert }) => {
-    const { user, stage } = await createUserWithStage(client, 'create-minimal')
-
-    const positioning = await Positioning.create({
-      userId: user.id,
-      funnelStageId: stage.id,
-      name: 'CV minimal',
-    })
-
-    assert.isDefined(positioning.id)
-    assert.isNull(positioning.description)
-    assert.isNull(positioning.content)
-  })
-
-  test('forUser scope isolates positionings between users', async ({ client, assert }) => {
-    const { user: userA, stage: stageA } = await createUserWithStage(client, 'isolate-a')
-    const { user: userB, stage: stageB } = await createUserWithStage(client, 'isolate-b')
-
-    await Positioning.create({ userId: userA.id, funnelStageId: stageA.id, name: 'A-variant' })
-    await Positioning.create({ userId: userB.id, funnelStageId: stageB.id, name: 'B-variant' })
-
-    const positioningsA = await Positioning.query().withScopes((s) => s.forUser(userA.id))
-    const positioningsB = await Positioning.query().withScopes((s) => s.forUser(userB.id))
-
-    assert.lengthOf(positioningsA, 1)
-    assert.lengthOf(positioningsB, 1)
-    assert.isTrue(positioningsA.every((p) => p.userId === userA.id))
-    assert.isTrue(positioningsB.every((p) => p.userId === userB.id))
-  })
-
-  test('soft-deleted positionings excluded from default queries', async ({ client, assert }) => {
-    const { user, stage } = await createUserWithStage(client, 'soft-delete')
-
-    const p1 = await Positioning.create({ userId: user.id, funnelStageId: stage.id, name: 'Active' })
-    const p2 = await Positioning.create({ userId: user.id, funnelStageId: stage.id, name: 'ToDelete' })
-
-    await p2.delete() // SoftDeletes mixin — sets deleted_at
-
-    const active = await Positioning.query().withScopes((s) => s.forUser(user.id))
-    assert.lengthOf(active, 1)
-    assert.equal(active[0].id, p1.id)
-
-    const all = await Positioning.query().withTrashed().withScopes((s) => s.forUser(user.id))
-    assert.lengthOf(all, 2)
-  })
-
-  test('deleted_at is set on soft-delete and null on restore', async ({ client, assert }) => {
-    const { user, stage } = await createUserWithStage(client, 'restore')
-
-    const positioning = await Positioning.create({
-      userId: user.id,
-      funnelStageId: stage.id,
-      name: 'ToRestore',
-    })
-
-    await positioning.delete()
-    assert.isNotNull(positioning.deletedAt)
-
-    await positioning.restore()
-    assert.isNull(positioning.deletedAt)
-  })
-})
-```
-
-**Test infrastructure notes:**
-- `@japa/api-client` provides `client` — pass it to `createUserWithStage` as `any` (typed ApiClient is available via import if needed)
-- Registration auto-creates 9 default funnel stages — `getFirstStage` pattern gives stage1
-- `ON DELETE CASCADE` on `user_id` means teardown via `User.query().delete()` removes positionings automatically
-- `withTrashed()` from `adonis-lucid-soft-deletes` — chain BEFORE `withScopes()` (established pattern from Story 3.5)
+**Key patterns:**
+- `client: ApiClient` (typed, from `@japa/api-client`) — not `any`
+- Reload model from DB before asserting nullable fields not set during `.create()` (Lucid in-memory undefined vs DB null)
+- `withTrashed()` BEFORE `withScopes()` (established pattern from Story 3.5)
+- `ON DELETE SET NULL` cascade tested via `db.from('positionings').where('id', id).delete()` to bypass SoftDeletes
 
 ---
 
@@ -467,4 +360,17 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
+- Lucid nullable fields not explicitly set during `.create()` are `undefined` in-memory (not `null`). Reload from DB before asserting null fields.
+- `pnpm biome check --write .` auto-sorted imports in `funnel_stages_controller.ts` (unrelated to this story — collateral Biome fix).
+- `PositioningType.updatedAt` corrected to `string | null` to match the nullable DB column and model declaration.
+- Added `ON DELETE SET NULL` cascade test using raw `db.from('positionings').delete()` to bypass SoftDeletes mixin.
+
 ### File List
+
+- `apps/backend/database/migrations/0005_create_positionings_table.ts` — NEW: positionings table + FK backfill on prospects.positioning_id
+- `apps/backend/app/models/positioning.ts` — NEW: Positioning Lucid model with SoftDeletes, forUser scope, relations
+- `apps/backend/tests/functional/positionings/schema.spec.ts` — NEW: 10 functional tests (model, forUser, soft-delete, FK, cascade)
+- `apps/backend/app/models/prospect.ts` — MODIFIED: added `belongsTo(() => Positioning)` relation
+- `apps/backend/app/models/funnel_stage.ts` — MODIFIED: added `hasMany(() => Positioning)` relation
+- `packages/shared/src/types/positioning.ts` — MODIFIED: corrected `updatedAt: string | null`, added note on premature payload types
+- `apps/backend/app/controllers/funnel_stages_controller.ts` — MODIFIED (collateral): Biome auto-fixed import order + line formatting during `pnpm biome check --write .`

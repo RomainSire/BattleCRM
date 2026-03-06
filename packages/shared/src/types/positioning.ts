@@ -6,7 +6,7 @@ export type PositioningType = {
   description: string | null
   content: string | null
   createdAt: string
-  updatedAt: string
+  updatedAt: string | null
   deletedAt: string | null
 }
 
@@ -15,6 +15,8 @@ export type PositioningListResponse = {
   meta: { total: number }
 }
 
+// NOTE: These payload types are preemptive for Story 4.2 (CRUD API).
+// They live here so the frontend can import them without waiting for the API story.
 export type CreatePositioningPayload = {
   funnel_stage_id: string
   name: string

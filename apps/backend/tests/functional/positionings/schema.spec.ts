@@ -1,3 +1,4 @@
+import db from '@adonisjs/lucid/services/db'
 import type { ApiClient } from '@japa/api-client'
 import { test } from '@japa/runner'
 import FunnelStage from '#models/funnel_stage'
@@ -209,5 +210,31 @@ test.group('Positioning schema', (group) => {
 
     const reloadedProspect = await Prospect.findOrFail(prospect.id)
     assert.isNull(reloadedProspect.positioningId)
+  })
+
+  test('ON DELETE SET NULL: hard-deleting a positioning nullifies prospect.positioningId', async ({
+    client,
+    assert,
+  }) => {
+    const { user, stage } = await createUserWithStage(client, 'fk-cascade')
+
+    const positioning = await Positioning.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'ToHardDelete',
+    })
+
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'Linked Prospect',
+      positioningId: positioning.id,
+    })
+
+    // Hard-delete the positioning row directly (bypassing SoftDeletes) to trigger the DB ON DELETE SET NULL cascade
+    await db.from('positionings').where('id', positioning.id).delete()
+
+    const reloaded = await Prospect.findOrFail(prospect.id)
+    assert.isNull(reloaded.positioningId)
   })
 })
