@@ -246,11 +246,13 @@ BattleCRM/
 │       ├── package.json
 │       └── tsconfig.json
 └── packages/
-    └── shared/                  # Optional: DTOs, types, schemas
+    └── shared/                  # @battlecrm/shared — TypeScript types shared between backend and frontend
         ├── src/
-        │   ├── types/
-        │   └── schemas/
-        └── package.json
+        │   ├── index.ts         # Re-exports all types
+        │   └── types/           # One file per entity: auth.ts, funnel-stage.ts, prospect.ts, positioning.ts, ...
+        ├── dist/                # Compiled .d.ts files (generated, gitignored)
+        ├── tsconfig.json        # emitDeclarationOnly: true, composite: true
+        └── package.json         # exports.types → ./dist/index.d.ts
 ```
 
 **Note:** Project initialization using these commands should be the first implementation story.
@@ -270,7 +272,6 @@ BattleCRM/
 - Logging strategy (Pino backend, console.log frontend)
 
 **Deferred Decisions (Post-MVP):**
-- Shared types package (evaluate after initial development)
 - External logging service (Sentry, etc.)
 - Advanced caching strategies
 
@@ -307,7 +308,7 @@ BattleCRM/
 |----------|--------|-----------|
 | **Backend Validation** | VineJS (Adonis built-in) | Native integration, performant, TypeScript support |
 | **Frontend Validation** | VineJS (separate schemas) | Syntax consistency with backend, easy migration to shared later |
-| **Shared Types** | Deferred (not for MVP) | Evaluate after initial development if duplication becomes painful |
+| **Shared Types** | `@battlecrm/shared` workspace package | Single source of truth for TypeScript types shared between backend and frontend; implemented from Epic 3 onwards |
 
 **Implementation Notes:**
 - Backend: Standard Adonis validators in `app/validators/`
@@ -400,7 +401,9 @@ BattleCRM/
 | Constants | SCREAMING_SNAKE | `const MAX_FUNNEL_STAGES = 15` |
 
 **JSON API (request/response):**
-- snake_case for all fields (matches DB, no transformation needed)
+- **Request bodies:** snake_case fields (e.g. `funnel_stage_id`, `include_archived`) — matches URL query params convention
+- **Response bodies:** camelCase fields — Lucid v3 ORM serializes camelCase by default (e.g. `funnelStageId`, `deletedAt`, `createdAt`)
+- ⚠️ **Known divergence from original spec:** Lucid v3 does NOT do snake_case→camelCase transformation for free — it simply outputs whatever the TypeScript property name is (which is camelCase by Adonis/Lucid convention). All frontend code and `@battlecrm/shared` types must use camelCase for response fields.
 
 ### Structure Patterns
 
@@ -487,7 +490,8 @@ apps/backend/
 **Data Formats:**
 - Dates: ISO 8601 strings (`"2026-02-03T14:30:00Z"`)
 - Nulls: Explicit `null` (not absent fields)
-- JSON fields: snake_case
+- JSON response fields: camelCase (Lucid v3 default)
+- JSON request fields (body + query params): snake_case
 
 ### Process Patterns
 
@@ -526,16 +530,52 @@ apps/backend/
 **All AI Agents MUST:**
 - Follow naming conventions exactly (no variations)
 - Place files in correct feature folders
-- Use snake_case for all API/DB fields
+- Use snake_case for DB columns and API request fields; camelCase for API response fields
+- Add new entity types to `packages/shared/src/types/` FIRST, before coding backend controllers
+- Create a serializer function in `apps/backend/app/serializers/` for each entity (provides compile-time API contract verification)
+- Import all API types from `@battlecrm/shared` in frontend code (never redefine locally)
 - Suffix types with `Type`, pages with `Page`
 - Co-locate tests with source files
 - Use Adonis default error format
 - Implement soft delete (never hard delete)
 
 **Pattern Verification:**
-- ESLint rules for naming conventions
+- Biome v2 for linting/formatting (replaces ESLint + Prettier)
 - TypeScript strict mode catches type mismatches
 - PR review checklist includes pattern compliance
+
+### Shared Package Pattern (`@battlecrm/shared`)
+
+**Purpose:** Single source of truth for TypeScript types used by both `apps/backend` and `apps/frontend`. Provides compile-time verification that API responses match declared contracts.
+
+**Structure:**
+```
+packages/shared/src/types/
+├── auth.ts            # UserType, AuthResponse
+├── funnel-stage.ts    # FunnelStageType, FunnelStageListResponse
+├── prospect.ts        # ProspectType, ProspectsListResponse, CreateProspectPayload, UpdateProspectPayload, StageTransitionType, ProspectsFilterType
+├── positioning.ts     # PositioningType, PositioningListResponse, CreatePositioningPayload, UpdatePositioningPayload
+└── ...                # One file per domain entity
+```
+
+**Implementation workflow (mandatory for every new entity):**
+1. **Add type to shared first** — create `packages/shared/src/types/{entity}.ts`, export from `index.ts`
+2. **Build shared** — `pnpm --filter @battlecrm/shared build` (generates `.d.ts` files)
+3. **Create backend serializer** — `apps/backend/app/serializers/{entity}.ts` with `serialize{Entity}(model: Model): EntityType` — TypeScript enforces the shape
+4. **Use serializer in controller** — `return response.ok(serializeEntity(model))` — no raw `.toJSON()` or inline object literals
+5. **Import from shared in frontend** — `import type { EntityType } from '@battlecrm/shared'` in feature `lib/api.ts` and components
+
+**Rules:**
+- Frontend NEVER redefines types locally or re-exports from `lib/api.ts` — import directly from `@battlecrm/shared`
+- Backend NEVER returns raw Lucid model `.toJSON()` — always use the serializer
+- VineJS schemas are NOT shared (backend schemas are stricter; frontend schemas are UX-focused) — each app defines its own
+- `withCount('relation', cb)` result is in `$extras.relation_count` (string) — serializer maps it with `Number($extras.relation_count ?? 0)`
+
+**Technical details:**
+- Compiled to `.d.ts` only (`emitDeclarationOnly: true`) — no runtime code
+- TypeScript resolves types via `exports.types` in package.json (no `paths` config needed in apps)
+- `rootDir` constraint in AdonisJS backend (no `.ts` source files outside app dir) is bypassed by using compiled `.d.ts`
+- NodeNext moduleResolution requires `.js` extensions in `index.ts` re-exports
 
 ## Project Structure & Boundaries
 
@@ -560,8 +600,7 @@ BattleCRM/
 │   │   │   ├── components/          # SHARED (ui/, common/)
 │   │   │   ├── hooks/               # SHARED hooks
 │   │   │   ├── lib/                 # api.ts, queryKeys.ts, utils.ts
-│   │   │   ├── schemas/             # VineJS schemas
-│   │   │   ├── types/               # TypeScript types (*Type)
+│   │   │   ├── schemas/             # VineJS validation schemas (frontend-only, UX validation)
 │   │   │   ├── features/
 │   │   │   │   ├── auth/
 │   │   │   │   ├── dashboard/       # FunnelCard, PerformanceMatrix
@@ -579,8 +618,9 @@ BattleCRM/
 │       ├── app/
 │       │   ├── controllers/
 │       │   ├── models/
+│       │   ├── serializers/         # serialize*() functions — map Lucid instances to @battlecrm/shared types
 │       │   ├── services/            # BayesianService, CsvImportService
-│       │   ├── validators/
+│       │   ├── validators/          # VineJS validators (backend-only, strict validation)
 │       │   └── middleware/
 │       ├── config/
 │       ├── database/migrations/
@@ -589,7 +629,8 @@ BattleCRM/
 │       ├── package.json
 │       └── [config files per official docs]
 │
-└── packages/shared/                 # Optional (if needed later)
+└── packages/
+    └── shared/                      # @battlecrm/shared — single source of truth for TypeScript types
 ```
 
 **Note:** Specific config files (vite.config.ts, tailwind.config.js, etc.) to be determined during implementation based on current official documentation.

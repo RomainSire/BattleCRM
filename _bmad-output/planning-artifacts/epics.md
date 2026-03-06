@@ -2,8 +2,8 @@
 stepsCompleted: [1, 2, 3, 4]
 status: complete
 completedAt: '2026-02-04'
-lastUpdated: '2026-03-02'
-lastUpdateReason: 'Added Stories 3.8 and 3.9: Kanban board view for prospects (extract ProspectDetail + Kanban with dnd-kit); added FR76 (Kanban view)'
+lastUpdated: '2026-03-06'
+lastUpdateReason: 'Added @battlecrm/shared implementation convention to Epics 4-8; added PositioningType note to Story 4.1-4.2; corrected API response casing (camelCase)'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
@@ -1050,6 +1050,14 @@ So that I have a visual overview of my pipeline and can move prospects between s
 
 Permettre aux utilisateurs de créer et gérer leurs variantes de positionnement liées à chaque étape du funnel pour l'A/B testing.
 
+**Implementation convention (applies to all Epic 4+ stories):**
+All new entities follow the `@battlecrm/shared` pattern established in Epic 3:
+1. Shared types defined in `packages/shared/src/types/` first (already done for positioning)
+2. Backend serializers in `apps/backend/app/serializers/` provide compile-time API contract verification
+3. Frontend imports all types from `@battlecrm/shared` directly (never redefines locally)
+4. API responses are camelCase (Lucid v3 default) — `funnelStageId`, `deletedAt`, etc.
+See `architecture.md` → "Shared Package Pattern" section for full details.
+
 ### Story 4.1: Create Positionings Database Schema
 
 As a developer,
@@ -1070,6 +1078,7 @@ So that users can track different variants for each stage of their pipeline.
   - created_at, updated_at, deleted_at
 **And** user isolation is enforced via `forUser(user_id)` query scope on the Positioning model (NOT database-level RLS)
 **And** index exists on (user_id, deleted_at, funnel_stage_id)
+**And** `PositioningType` already exists in `packages/shared/src/types/positioning.ts` — use it as-is or extend if the DB schema reveals missing fields
 
 ---
 
@@ -1107,6 +1116,8 @@ So that the frontend can perform all positioning operations.
 **Given** I am authenticated
 **When** I call GET /api/positionings/:id/prospects
 **Then** I receive a list of prospects that have this positioning assigned (FR16)
+**And** all responses use camelCase field names (Lucid v3 default)
+**And** a `serializePositioning()` serializer in `apps/backend/app/serializers/positioning.ts` validates response shape against `PositioningType` from `@battlecrm/shared`
 
 ---
 
@@ -1199,6 +1210,8 @@ So that I can maintain a clean list while preserving historical data.
 ## Epic 5: Interaction Logging
 
 Permettre aux utilisateurs de capturer chaque interaction avec un prospect avec minimal friction (<1 minute, 3 clics max).
+
+**Implementation convention:** Follow the `@battlecrm/shared` pattern — add `InteractionType` to `packages/shared/src/types/interaction.ts` in Story 5.1, create `serializeInteraction()` in Story 5.2. See `architecture.md` → "Shared Package Pattern".
 
 ### Story 5.1: Create Interactions Database Schema
 
@@ -1358,6 +1371,8 @@ So that I can review my prospecting activity over time.
 ## Epic 6: Performance Analytics & Battle Management
 
 Permettre aux utilisateurs de visualiser leurs performances via la Performance Matrix et optimiser via A/B testing avec Battles indépendantes par étape funnel.
+
+**Implementation convention:** Follow the `@battlecrm/shared` pattern — add `BattleType`, `PerformanceMatrixType` etc. to `packages/shared/src/types/` in Story 6.1, create serializers in Story 6.2. See `architecture.md` → "Shared Package Pattern".
 
 ### Story 6.1: Create Battles Database Schema
 
@@ -1587,6 +1602,8 @@ So that I can quickly assess my overall prospecting performance.
 ## Epic 7: LinkedIn Browser Extension
 
 Permettre aux utilisateurs d'ajouter ou mettre à jour un prospect LinkedIn en un clic depuis leur navigateur, directement dans BattleCRM, sans quitter la page LinkedIn.
+
+**Implementation convention:** The browser extension imports types from `@battlecrm/shared` (same workspace package reused as a 3rd consumer). All `ProspectType`, `FunnelStageType` etc. are already available. Extension-specific types (token auth, badge state) go in `packages/shared/src/types/extension.ts`. See `architecture.md` → "Shared Package Pattern".
 
 ### Story 7.1: Extension Token Authentication (Backend)
 
@@ -1941,6 +1958,8 @@ So that I can add a new prospect in under 30 seconds, or consult/update an exist
 ## Epic 8: CSV Import (Cold Start)
 
 Permettre l'activation "mode guerre" en moins de 24h avec import massif de prospects depuis LinkedIn CSV.
+
+**Implementation convention:** `ProspectType` and `CreateProspectPayload` from `@battlecrm/shared` are already available for the import pipeline. Add any import-specific types (e.g. `CsvImportResultType`) to `packages/shared/src/types/csv-import.ts`. See `architecture.md` → "Shared Package Pattern".
 
 ### Story 8.1: Build CSV Upload Component
 
