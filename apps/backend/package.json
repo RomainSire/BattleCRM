@@ -22,6 +22,7 @@
     "#listeners/*": "./app/listeners/*.js",
     "#events/*": "./app/events/*.js",
     "#middleware/*": "./app/middleware/*.js",
+    "#helpers/*": "./app/helpers/*.js",
     "#serializers/*": "./app/serializers/*.js",
     "#validators/*": "./app/validators/*.js",
     "#providers/*": "./providers/*.js",

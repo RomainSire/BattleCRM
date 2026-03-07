@@ -2,6 +2,7 @@ export type PositioningType = {
   id: string
   userId: string
   funnelStageId: string
+  funnelStageName: string
   name: string
   description: string | null
   content: string | null

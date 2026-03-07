@@ -76,7 +76,7 @@ development_status:
   # Epic 4: Positioning Variants
   epic-4: in-progress
   4-1-create-positionings-database-schema: done
-  4-2-implement-positionings-crud-api: backlog
+  4-2-implement-positionings-crud-api: done
   4-3-build-positionings-list-view: backlog
   4-4-implement-positioning-create-edit: backlog
   4-5-add-positioning-archive-prospect-linking: backlog

@@ -1,12 +1,11 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
+import { UUID_REGEX } from '#helpers/regex'
 import FunnelStage from '#models/funnel_stage'
 import Prospect from '#models/prospect'
 import ProspectStageTransition from '#models/prospect_stage_transition'
 import { serializeProspect, serializeTransition } from '#serializers/prospect'
 import { createProspectValidator, updateProspectValidator } from '#validators/prospects'
-
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export default class ProspectsController {
   /**
