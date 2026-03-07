@@ -1,12 +1,11 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import { UUID_REGEX } from '#helpers/regex'
 import FunnelStage from '#models/funnel_stage'
 import Positioning from '#models/positioning'
 import Prospect from '#models/prospect'
 import { serializePositioning } from '#serializers/positioning'
 import { serializeProspect } from '#serializers/prospect'
 import { createPositioningValidator, updatePositioningValidator } from '#validators/positionings'
-
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export default class PositioningsController {
   /**
@@ -154,7 +153,9 @@ export default class PositioningsController {
   async prospects({ params, response, auth }: HttpContext) {
     const userId = auth.user!.id
 
+    // withTrashed() allows accessing prospects for archived positionings (historical data, FR16)
     const positioning = await Positioning.query()
+      .withTrashed()
       .withScopes((s) => s.forUser(userId))
       .where('id', params.id)
       .firstOrFail()

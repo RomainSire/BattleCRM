@@ -2,6 +2,11 @@ import type { PositioningType } from '@battlecrm/shared'
 import type Positioning from '#models/positioning'
 
 export function serializePositioning(positioning: Positioning): PositioningType {
+  if (!positioning.funnelStage) {
+    throw new Error(
+      'serializePositioning: funnelStage relation must be preloaded before serializing',
+    )
+  }
   return {
     id: positioning.id,
     userId: positioning.userId,

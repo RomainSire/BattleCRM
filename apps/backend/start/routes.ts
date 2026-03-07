@@ -8,9 +8,8 @@
 */
 
 import router from '@adonisjs/core/services/router'
+import { UUID_REGEX } from '#helpers/regex'
 import { middleware } from '#start/kernel'
-
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const AuthController = () => import('#controllers/auth_controller')
 const FunnelStagesController = () => import('#controllers/funnel_stages_controller')

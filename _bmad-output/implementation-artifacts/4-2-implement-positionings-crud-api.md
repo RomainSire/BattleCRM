@@ -1,6 +1,6 @@
 # Story 4.2: Implement Positionings CRUD API
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-03-07 -->
 <!-- Epic 4: Positioning Variants — Story 2 (CRUD API on top of Story 4.1 schema) -->
@@ -643,11 +643,36 @@ claude-sonnet-4-6
 - `pnpm biome check --write .` auto-fixed 2 files (style only: route chaining format in routes.ts, long line wrap in api.spec.ts).
 - `prospects()` endpoint uses `.withTrashed()` on prospects to include archived ones for historical context (FR16).
 
+### Senior Developer Review
+
+**Reviewer:** claude-sonnet-4-6
+**Review date:** 2026-03-07
+**Outcome:** All issues resolved — story approved ✅
+
+**Issues found and resolved:**
+
+| ID | Severity | Issue | Resolution |
+|----|----------|-------|------------|
+| M1 | MEDIUM | `prospects()` used active-only lookup on positioning — archived positionings returned 404 instead of their historical prospects | Added `.withTrashed()` to positioning lookup in `prospects()` controller action |
+| M2 | MEDIUM | `serializePositioning()` accessed `positioning.funnelStage.name` without guard — unpreloaded relation would throw uncaught TypeError at runtime | Added explicit guard: throws descriptive Error if `funnelStage` is not preloaded |
+| M3 | MEDIUM | No test for `GET /:id/prospects` with archived prospects or archived positioning | Added tests: "includes archived prospects", "accessible for archived positioning" |
+| M4 | MEDIUM | No test for `GET /:id` returning 404 for soft-deleted positioning | Added test: "GET /api/positionings/:id returns 404 for soft-deleted positioning" |
+| M5 | MEDIUM | No tests for PUT partial update semantics (description/content update, field preservation, explicit null clear) | Added 3 tests: "updates description and content", "preserves existing fields when omitted", "clears description to null explicitly" |
+| L1 | LOW | `UUID_REGEX` duplicated as local `const` in `positionings_controller.ts` and `prospects_controller.ts` | Extracted to `apps/backend/app/helpers/regex.ts` with `#helpers/*` alias; both controllers and routes.ts now import from `#helpers/regex` |
+| L2 | LOW | No test for combined `?include_archived=true&funnel_stage_id=:uuid` filter | Added test: "filters archived positionings by stage when include_archived=true" |
+
+**Final validation:**
+- 154/154 functional tests pass (38 new positionings tests + 116 existing)
+- `pnpm biome check --write .` — 0 errors (2 style auto-fixes)
+- `pnpm type-check` — 0 errors across all workspaces
+
 ### File List
 
 - `packages/shared/src/types/positioning.ts` — MODIFIED: added `funnelStageName: string` to `PositioningType`
-- `apps/backend/app/serializers/positioning.ts` — NEW: `serializePositioning()` function
+- `apps/backend/app/helpers/regex.ts` — NEW: shared `UUID_REGEX` constant (L1 factorisation)
+- `apps/backend/app/serializers/positioning.ts` — NEW: `serializePositioning()` function with preload guard (M2)
 - `apps/backend/app/validators/positionings.ts` — NEW: `createPositioningValidator`, `updatePositioningValidator`
-- `apps/backend/app/controllers/positionings_controller.ts` — NEW: 6 actions (index, show, store, update, destroy, prospects)
-- `apps/backend/start/routes.ts` — MODIFIED: added PositioningsController import + positionings route group
-- `apps/backend/tests/functional/positionings/api.spec.ts` — NEW: 31 functional tests (list, filter, show, create, update, delete, prospects, auth, isolation)
+- `apps/backend/app/controllers/positionings_controller.ts` — NEW: 6 actions (index, show, store, update, destroy, prospects); `prospects()` uses `.withTrashed()` on positioning (M1 fix)
+- `apps/backend/app/controllers/prospects_controller.ts` — MODIFIED: `UUID_REGEX` import replaced with `#helpers/regex` (L1)
+- `apps/backend/start/routes.ts` — MODIFIED: added PositioningsController import + positionings route group; `UUID_REGEX` import from `#helpers/regex` (L1)
+- `apps/backend/tests/functional/positionings/api.spec.ts` — NEW: 38 functional tests (list, filter, include_archived, combined filter, show, show-404-archived, create, update, partial-update, delete, prospects, prospects-archived, prospects-for-archived-positioning, auth, isolation)

@@ -146,6 +146,30 @@ test.group('Positionings API', (group) => {
     response.assertStatus(404)
   })
 
+  test('GET /api/positionings?include_archived=true&funnel_stage_id=:uuid filters archived by stage', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'get-combined-filter')
+    const stages = await FunnelStage.query()
+      .withScopes((s) => s.forUser(user.id))
+      .orderBy('position', 'asc')
+
+    const p1 = await createPositioning(user.id, stages[0].id, 'Archived Stage 1')
+    const p2 = await createPositioning(user.id, stages[1].id, 'Archived Stage 2')
+    await p1.delete()
+    await p2.delete()
+
+    const response = await client
+      .get(`/api/positionings?include_archived=true&funnel_stage_id=${stages[0].id}`)
+      .loginAs(user)
+    response.assertStatus(200)
+
+    const ids = response.body().data.map((item: { id: string }) => item.id)
+    assert.include(ids, p1.id, 'Archived positioning for stage 1 should be returned')
+    assert.notInclude(ids, p2.id, 'Archived positioning for stage 2 should not be returned')
+  })
+
   // ===========================
   // GET /api/positionings/:id
   // ===========================
@@ -174,6 +198,16 @@ test.group('Positionings API', (group) => {
   test('GET /api/positionings/not-a-uuid returns 404', async ({ client }) => {
     const user = await registerUser(client, 'get-show-bad-id')
     const response = await client.get('/api/positionings/not-a-uuid').loginAs(user)
+    response.assertStatus(404)
+  })
+
+  test('GET /api/positionings/:id returns 404 for soft-deleted positioning', async ({ client }) => {
+    const user = await registerUser(client, 'get-show-archived')
+    const stage = await getUserFirstStage(user.id)
+    const p = await createPositioning(user.id, stage.id)
+    await p.delete()
+
+    const response = await client.get(`/api/positionings/${p.id}`).loginAs(user)
     response.assertStatus(404)
   })
 
@@ -321,6 +355,77 @@ test.group('Positionings API', (group) => {
     response.assertStatus(404)
   })
 
+  test('PUT /api/positionings/:id updates description and content → 200', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'put-update-desc')
+    const stage = await getUserFirstStage(user.id)
+    const p = await createPositioning(user.id, stage.id)
+
+    const response = await client
+      .put(`/api/positionings/${p.id}`)
+      .loginAs(user)
+      .json({ description: 'New description', content: 'New content' })
+
+    response.assertStatus(200)
+    assert.equal(response.body().description, 'New description')
+    assert.equal(response.body().content, 'New content')
+  })
+
+  test('PUT /api/positionings/:id preserves existing fields when omitted (partial update)', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'put-partial')
+    const stage = await getUserFirstStage(user.id)
+
+    // Create with description and content set
+    const created = await client.post('/api/positionings').loginAs(user).json({
+      name: 'Original',
+      funnel_stage_id: stage.id,
+      description: 'Keep me',
+      content: 'Keep me too',
+    })
+    created.assertStatus(201)
+    const id = created.body().id
+
+    // Update only name — description and content should be preserved
+    const response = await client
+      .put(`/api/positionings/${id}`)
+      .loginAs(user)
+      .json({ name: 'Updated' })
+
+    response.assertStatus(200)
+    assert.equal(response.body().name, 'Updated')
+    assert.equal(response.body().description, 'Keep me', 'description should be preserved')
+    assert.equal(response.body().content, 'Keep me too', 'content should be preserved')
+  })
+
+  test('PUT /api/positionings/:id clears description to null explicitly', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'put-clear-desc')
+    const stage = await getUserFirstStage(user.id)
+
+    const created = await client.post('/api/positionings').loginAs(user).json({
+      name: 'Test',
+      funnel_stage_id: stage.id,
+      description: 'Clear me',
+    })
+    created.assertStatus(201)
+    const id = created.body().id
+
+    const response = await client
+      .put(`/api/positionings/${id}`)
+      .loginAs(user)
+      .json({ description: null })
+
+    response.assertStatus(200)
+    assert.isNull(response.body().description, 'description should be cleared to null')
+  })
+
   test('PUT /api/positionings/:id returns 404 for another user funnel_stage_id', async ({
     client,
   }) => {
@@ -428,6 +533,63 @@ test.group('Positionings API', (group) => {
     response.assertStatus(200)
     assert.equal(response.body().data.length, 0)
     assert.equal(response.body().meta.total, 0)
+  })
+
+  test('GET /api/positionings/:id/prospects includes archived (soft-deleted) prospects', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'get-prospects-archived')
+    const stage = await getUserFirstStage(user.id)
+    const p = await createPositioning(user.id, stage.id)
+
+    // Create and link a prospect via API, then archive it
+    const prospectRes = await client.post('/api/prospects').loginAs(user).json({
+      name: 'Archived Prospect',
+      funnel_stage_id: stage.id,
+      positioning_id: p.id,
+    })
+    prospectRes.assertStatus(201)
+    const prospectId = prospectRes.body().id
+
+    await client.delete(`/api/prospects/${prospectId}`).loginAs(user)
+
+    // Archived prospect should still appear in positioning's prospect list
+    const response = await client.get(`/api/positionings/${p.id}/prospects`).loginAs(user)
+    response.assertStatus(200)
+
+    const ids = response.body().data.map((item: { id: string }) => item.id)
+    assert.include(
+      ids,
+      prospectId,
+      'Archived prospect should still be listed for historical context',
+    )
+  })
+
+  test('GET /api/positionings/:id/prospects accessible for archived positioning', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'get-prospects-archived-pos')
+    const stage = await getUserFirstStage(user.id)
+    const p = await createPositioning(user.id, stage.id)
+
+    // Link a prospect
+    const prospectRes = await client.post('/api/prospects').loginAs(user).json({
+      name: 'Prospect On Archived Pos',
+      funnel_stage_id: stage.id,
+      positioning_id: p.id,
+    })
+    prospectRes.assertStatus(201)
+
+    // Archive the positioning itself
+    await client.delete(`/api/positionings/${p.id}`).loginAs(user)
+
+    // Should still be accessible for historical context (M1 fix)
+    const response = await client.get(`/api/positionings/${p.id}/prospects`).loginAs(user)
+    response.assertStatus(200)
+    assert.equal(response.body().data.length, 1)
+    assert.equal(response.body().data[0].name, 'Prospect On Archived Pos')
   })
 
   test('GET /api/positionings/:id/prospects returns 404 for non-existent positioning', async ({
