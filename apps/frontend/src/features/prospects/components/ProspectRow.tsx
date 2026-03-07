@@ -1,40 +1,26 @@
 import type { ProspectType } from '@battlecrm/shared'
-import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { cn } from '@/lib/utils'
 import { ProspectDetail } from './ProspectDetail'
 
 interface ProspectRowProps {
   prospect: ProspectType
   stageName: string | undefined
-  isExpanded: boolean
-  onToggle: () => void
 }
 
-export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: ProspectRowProps) {
+export function ProspectRow({ prospect, stageName }: ProspectRowProps) {
   const { t } = useTranslation()
   const isArchived = prospect.deletedAt !== null
 
   return (
-    <article className="border-b last:border-b-0">
-      {/* Collapsed row — always visible */}
-      <button
-        type="button"
-        onClick={onToggle}
+    <AccordionItem value={prospect.id}>
+      <AccordionTrigger
         className={cn(
-          'flex w-full items-center gap-4 px-4 py-3 text-left hover:bg-accent',
+          'items-center px-4 py-3 hover:bg-accent hover:no-underline',
           isArchived && 'opacity-60',
         )}
-        aria-expanded={isExpanded}
-        aria-controls={`prospect-panel-${prospect.id}`}
       >
-        <ChevronRight
-          className={cn(
-            'size-4 shrink-0 text-muted-foreground transition',
-            isExpanded ? 'rotate-90' : '',
-          )}
-          aria-hidden="true"
-        />
         <span
           className={cn(
             'min-w-0 flex-1 truncate font-medium',
@@ -58,14 +44,13 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
         <span className="w-48 shrink-0 truncate text-sm text-muted-foreground">
           {prospect.email ?? '—'}
         </span>
-      </button>
+      </AccordionTrigger>
 
-      {/* Expanded detail panel */}
-      {isExpanded && (
-        <div id={`prospect-panel-${prospect.id}`} className="border-t bg-muted/30">
+      <AccordionContent className="p-0">
+        <div className="border-t bg-muted/30">
           <ProspectDetail prospect={prospect} />
         </div>
-      )}
-    </article>
+      </AccordionContent>
+    </AccordionItem>
   )
 }

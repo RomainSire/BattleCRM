@@ -185,6 +185,33 @@
       "dragHandle": "Drag {{name}}"
     }
   },
+  "positionings": {
+    "title": "Positionings",
+    "description": "Manage your positioning variants per funnel stage.",
+    "loadError": "Failed to load positionings. Please try again.",
+    "empty": "No positionings yet.",
+    "emptyFiltered": "No positionings for this stage.",
+    "clearFilter": "Clear filter",
+    "count": "{{count}} positioning(s)",
+    "columns": {
+      "name": "Name",
+      "stage": "Funnel Stage",
+      "description": "Description"
+    },
+    "fields": {
+      "funnelStage": "Funnel Stage",
+      "description": "Description",
+      "content": "Content"
+    },
+    "linkedProspects": {
+      "title": "Linked Prospects",
+      "empty": "No prospects linked to this positioning yet."
+    },
+    "interactions": {
+      "title": "Interactions",
+      "comingSoon": "Coming in a future release"
+    }
+  },
   "phoneInput": {
     "searchCountry": "Search country...",
     "noCountryFound": "No country found."

@@ -185,6 +185,33 @@
       "dragHandle": "Déplacer {{name}}"
     }
   },
+  "positionings": {
+    "title": "Positionnements",
+    "description": "Gérez vos variantes de positionnement par étape du funnel.",
+    "loadError": "Impossible de charger les positionnements. Veuillez réessayer.",
+    "empty": "Aucun positionnement pour le moment.",
+    "emptyFiltered": "Aucun positionnement pour cette étape.",
+    "clearFilter": "Effacer le filtre",
+    "count": "{{count}} positionnement(s)",
+    "columns": {
+      "name": "Nom",
+      "stage": "Étape du funnel",
+      "description": "Description"
+    },
+    "fields": {
+      "funnelStage": "Étape du funnel",
+      "description": "Description",
+      "content": "Contenu"
+    },
+    "linkedProspects": {
+      "title": "Prospects liés",
+      "empty": "Aucun prospect lié à ce positionnement."
+    },
+    "interactions": {
+      "title": "Interactions",
+      "comingSoon": "Disponible dans une prochaine version"
+    }
+  },
   "phoneInput": {
     "searchCountry": "Rechercher un pays...",
     "noCountryFound": "Aucun pays trouvé."
