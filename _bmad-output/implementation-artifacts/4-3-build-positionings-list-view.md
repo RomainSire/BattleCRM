@@ -1,6 +1,6 @@
 # Story 4.3: Build Positionings List View
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-03-07 -->
 <!-- Epic 4: Positioning Variants — Story 3 (Frontend list view on top of Story 4.2 API) -->
@@ -17,7 +17,7 @@ so that I can manage my variants for each step of my pipeline.
 
 2. **AC2 (Stage filter):** Funnel stage filter pills are displayed above the list. Selecting a pill filters the list via `?funnel_stage_id=:uuid` API query param. Clicking the active filter again (or "Clear filter") removes it. Multiple quick clicks on different pills each trigger one request (no debounce needed — TanStack Query deduplicates). (FR11)
 
-3. **AC3 (Inline expand):** Clicking a positioning row expands it inline. Expanded section shows: full name, funnel stage badge, full description (or "—"), full content (or "—"), and the list of linked prospects (fetched lazily from `GET /api/positionings/:id/prospects`). Interactions section shows a placeholder "coming in a future release". (FR17)
+3. **AC3 (Inline expand):** Clicking a positioning row expands it inline. Expanded section shows: funnel stage badge, full description (or "—"), full content (or "—"), and the list of linked prospects (fetched lazily from `GET /api/positionings/:id/prospects`). Interactions section shows a placeholder "coming in a future release". Note: the positioning name is visible in the trigger header (which remains visible when the item is expanded) and is intentionally not repeated in the detail panel. (FR17)
 
 4. **AC4 (Prospects sub-list):** Inside the expanded section, linked prospects are listed with name and company. An empty state is shown if no prospects are linked. The list is fetched only when the row is first expanded (lazy load via `enabled` option).
 
@@ -727,7 +727,8 @@ claude-sonnet-4-6
 ### File List
 
 - `packages/shared/src/types/positioning.ts` — MODIFIED: added `PositioningsFilterType`
-- `apps/frontend/src/lib/queryKeys.ts` — MODIFIED: added `positionings` query keys + `PositioningsFilterType` import
+- `apps/frontend/src/lib/queryKeys.ts` — MODIFIED: added `positionings` query keys + `PositioningsFilterType` import; also typed `prospects.list()` with `ProspectsFilterType` from shared (consistency improvement)
+- `apps/frontend/src/components/ui/accordion.tsx` — NEW: shadcn Accordion installed; customized from default (chevron left-side, `justify-between` removed, `-rotate-180` on open)
 - `apps/frontend/src/features/positionings/lib/api.ts` — NEW: `positioningsApi.list()` and `positioningsApi.prospects()`
 - `apps/frontend/src/features/positionings/hooks/usePositionings.ts` — NEW: `usePositionings(filters?)` query hook
 - `apps/frontend/src/features/positionings/hooks/usePositioningProspects.ts` — NEW: `usePositioningProspects(id, { enabled })` lazy query hook
@@ -735,6 +736,8 @@ claude-sonnet-4-6
 - `apps/frontend/src/features/positionings/components/PositioningsList.tsx` — NEW: list with stage filter pills, skeleton, empty states, count
 - `apps/frontend/src/features/positionings/PositioningsPage.tsx` — NEW: page wrapper with semantic header/section
 - `apps/frontend/src/routes.tsx` — MODIFIED: added `/positionings` route + `PositioningsPage` import
-- `apps/frontend/src/components/common/AppNavbar.tsx` — MODIFIED: enabled Positionings NavLink (replaced cursor-not-allowed span)
+- `apps/frontend/src/components/common/AppNavbar.tsx` — MODIFIED: enabled Positionings NavLink (replaced cursor-not-allowed span); extracted `navLinkClass` helper to remove class repetition
+- `apps/frontend/src/features/prospects/components/ProspectRow.tsx` — MODIFIED: refactored to use shadcn `AccordionItem/Trigger/Content` (removed custom `<article>` + `<button aria-expanded>` pattern)
+- `apps/frontend/src/features/prospects/components/ProspectsList.tsx` — MODIFIED: refactored to use controlled shadcn `<Accordion>` wrapper; removed `handleToggle`; added `overflow-hidden` on container
 - `apps/frontend/public/locales/en.json` — MODIFIED: added `positionings` i18n block
 - `apps/frontend/public/locales/fr.json` — MODIFIED: added `positionings` i18n block

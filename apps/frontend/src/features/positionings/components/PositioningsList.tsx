@@ -95,7 +95,7 @@ export function PositioningsList() {
           </p>
         </div>
       ) : (
-        <div className="rounded-md border">
+        <div className="overflow-hidden rounded-md border">
           {/* Column header row */}
           <div className="flex items-center gap-4 border-b bg-muted/50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <span className="size-4 shrink-0" aria-hidden="true" />

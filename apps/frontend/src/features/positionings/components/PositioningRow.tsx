@@ -2,6 +2,7 @@ import type { PositioningType } from '@battlecrm/shared'
 import { useTranslation } from 'react-i18next'
 import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { usePositioningProspects } from '../hooks/usePositioningProspects'
 
 interface PositioningRowProps {
@@ -53,7 +54,10 @@ export function PositioningRow({ positioning }: PositioningRowProps) {
               {t('positionings.linkedProspects.title')}
             </p>
             {prospectsLoading ? (
-              <p className="text-xs italic text-muted-foreground">...</p>
+              <div className="space-y-1">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-4 w-32" />
+              </div>
             ) : linkedProspects.length === 0 ? (
               <p className="text-xs italic text-muted-foreground">
                 {t('positionings.linkedProspects.empty')}

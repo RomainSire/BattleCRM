@@ -112,9 +112,9 @@ test.describe('Prospects - Archive & Restore', () => {
   test('archived prospect has "Archived" badge in the row', async ({ page }) => {
     await page.goto('/prospects')
     await page.getByRole('switch', { name: /show archived/i }).click()
-    // The row article for "To Be Archived" should contain the badge text
+    // The accordion row for "To Be Archived" should contain the badge text
     // exact: true to avoid matching "Archived" inside the prospect name "To Be Archived"
-    const row = page.locator('article').filter({ hasText: 'To Be Archived' }).first()
+    const row = page.locator('[data-slot="accordion-item"]').filter({ hasText: 'To Be Archived' }).first()
     await expect(row.getByText('Archived', { exact: true })).toBeVisible()
   })
 
