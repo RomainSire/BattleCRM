@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Accordion } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -40,10 +41,6 @@ export function ProspectsList() {
 
   // O(1) lookup map: funnelStageId -> stage name
   const stageMap = new Map(stages.map((s) => [s.id, s.name]))
-
-  function handleToggle(id: string) {
-    setExpandedId((prev) => (prev === id ? null : id))
-  }
 
   function handleStageFilter(stageId: string) {
     if (activeStageFilter === stageId) {
@@ -148,15 +145,20 @@ export function ProspectsList() {
             <span className="w-48 shrink-0">{t('prospects.columns.email')}</span>
           </div>
 
-          {filteredProspects.map((prospect) => (
-            <ProspectRow
-              key={prospect.id}
-              prospect={prospect}
-              stageName={stageMap.get(prospect.funnelStageId)}
-              isExpanded={expandedId === prospect.id}
-              onToggle={() => handleToggle(prospect.id)}
-            />
-          ))}
+          <Accordion
+            type="single"
+            collapsible
+            value={expandedId ?? ''}
+            onValueChange={(v) => setExpandedId(v || null)}
+          >
+            {filteredProspects.map((prospect) => (
+              <ProspectRow
+                key={prospect.id}
+                prospect={prospect}
+                stageName={stageMap.get(prospect.funnelStageId)}
+              />
+            ))}
+          </Accordion>
         </div>
       )}
 

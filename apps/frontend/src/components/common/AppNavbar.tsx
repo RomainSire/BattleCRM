@@ -3,6 +3,12 @@ import { NavLink } from 'react-router'
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
 import { ThemeSwitcher } from '@/components/common/ThemeSwitcher'
 
+function navLinkClass({ isActive }: { isActive: boolean }) {
+  return isActive
+    ? 'font-medium text-foreground underline underline-offset-4'
+    : 'text-muted-foreground hover:text-foreground'
+}
+
 export function AppNavbar() {
   const { t } = useTranslation()
 
@@ -12,39 +18,18 @@ export function AppNavbar() {
         <span className="font-semibold">{t('common.appName')}</span>
 
         <div className="flex flex-1 items-center gap-4">
-          <NavLink
-            to="/"
-            className={({ isActive }) =>
-              isActive
-                ? 'font-medium text-foreground underline underline-offset-4'
-                : 'text-muted-foreground hover:text-foreground'
-            }
-          >
+          <NavLink to="/" className={navLinkClass}>
             {t('nav.dashboard')}
           </NavLink>
-          <NavLink
-            to="/settings"
-            className={({ isActive }) =>
-              isActive
-                ? 'font-medium text-foreground underline underline-offset-4'
-                : 'text-muted-foreground hover:text-foreground'
-            }
-          >
+          <NavLink to="/settings" className={navLinkClass}>
             {t('nav.settings')}
           </NavLink>
-          <NavLink
-            to="/prospects"
-            className={({ isActive }) =>
-              isActive
-                ? 'font-medium text-foreground underline underline-offset-4'
-                : 'text-muted-foreground hover:text-foreground'
-            }
-          >
+          <NavLink to="/prospects" className={navLinkClass}>
             {t('nav.prospects')}
           </NavLink>
-          <span className="cursor-not-allowed text-muted-foreground/50">
+          <NavLink to="/positionings" className={navLinkClass}>
             {t('nav.positionings')}
-          </span>
+          </NavLink>
         </div>
 
         <div className="flex items-center gap-1">

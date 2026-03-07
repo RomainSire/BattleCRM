@@ -1,3 +1,5 @@
+import type { PositioningsFilterType, ProspectsFilterType } from '@battlecrm/shared'
+
 export const queryKeys = {
   auth: {
     all: ['auth'] as const,
@@ -10,12 +12,20 @@ export const queryKeys = {
   },
   prospects: {
     all: ['prospects'] as const,
-    list: (filters?: { funnel_stage_id?: string; include_archived?: boolean }) =>
+    list: (filters?: ProspectsFilterType) =>
       filters && Object.keys(filters).length > 0
         ? ([...queryKeys.prospects.all, 'list', filters] as const)
         : ([...queryKeys.prospects.all, 'list'] as const),
     detail: (id: string) => [...queryKeys.prospects.all, 'detail', id] as const,
     stageTransitions: (id: string) =>
       [...queryKeys.prospects.all, 'stage-transitions', id] as const,
+  },
+  positionings: {
+    all: ['positionings'] as const,
+    list: (filters?: PositioningsFilterType) =>
+      filters && Object.keys(filters).length > 0
+        ? ([...queryKeys.positionings.all, 'list', filters] as const)
+        : ([...queryKeys.positionings.all, 'list'] as const),
+    prospects: (id: string) => [...queryKeys.positionings.all, 'prospects', id] as const,
   },
 }

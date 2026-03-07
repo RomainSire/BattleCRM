@@ -31,3 +31,7 @@ export type UpdatePositioningPayload = {
   description?: string | null
   content?: string | null
 }
+
+export type PositioningsFilterType = {
+  funnel_stage_id?: string
+}
