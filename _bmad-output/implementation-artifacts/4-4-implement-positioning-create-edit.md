@@ -1,6 +1,6 @@
 # Story 4.4: Implement Positioning Create & Edit
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-03-08 -->
 <!-- Epic 4: Positioning Variants — Story 4 (Frontend create/edit forms on top of Story 4.2 API) -->
@@ -964,7 +964,23 @@ claude-sonnet-4-6
 - `apps/frontend/src/features/positionings/schemas/positioning.ts` — NEW: `createPositioningSchema`, `updatePositioningSchema`
 - `apps/frontend/src/features/positionings/hooks/usePositioningMutations.ts` — NEW: `useCreatePositioning`, `useUpdatePositioning`
 - `apps/frontend/src/features/positionings/components/AddPositioningDialog.tsx` — NEW: create dialog with trigger button, form, validation
-- `apps/frontend/src/features/positionings/components/PositioningRow.tsx` — MODIFIED: added edit mode (isEditing, inline form, useUpdatePositioning, useFunnelStages)
+- `apps/frontend/src/features/positionings/components/PositioningRow.tsx` — MODIFIED: added edit mode (isEditing, inline form, useUpdatePositioning, useFunnelStages) + code review fixes (isOpen prop, lazy prospects, stages error/loading, disabled fields, placeholders)
+- `apps/frontend/src/features/positionings/components/PositioningsList.tsx` — MODIFIED: pass isOpen prop to PositioningRow
 - `apps/frontend/src/features/positionings/PositioningsPage.tsx` — MODIFIED: header flex layout + AddPositioningDialog
+- `apps/frontend/src/features/positionings/hooks/usePositioningProspects.ts` — MODIFIED: added options.enabled parameter (lazy loading)
 - `apps/frontend/public/locales/en.json` — MODIFIED: positionings block with new keys
 - `apps/frontend/public/locales/fr.json` — MODIFIED: positionings block with new keys
+
+## Senior Developer Review (AI)
+
+**Date:** 2026-03-08
+**Outcome:** Changes Requested → Fixed
+
+### Action Items
+
+- [x] [MEDIUM] `isEditing` persists when accordion is collapsed — user unexpectedly returns to edit mode on re-expand [`PositioningRow.tsx`]
+- [x] [MEDIUM] `usePositioningProspects` fires eagerly for ALL rows on page load (N+1) — no `enabled` option [`usePositioningProspects.ts`, `PositioningRow.tsx`]
+- [x] [MEDIUM] No error/loading state for `useFunnelStages()` in edit form — stage select silently disappears on error [`PositioningRow.tsx`]
+- [x] [LOW] Edit form Description/Content textareas missing placeholder text [`PositioningRow.tsx`]
+- [x] [LOW] Fields remain interactive during pending save mutation (`update.isPending`) [`PositioningRow.tsx`]
+- [x] [LOW] `AddPositioningDialog` shows blank + disabled button with no explanation while stages load [`AddPositioningDialog.tsx`]

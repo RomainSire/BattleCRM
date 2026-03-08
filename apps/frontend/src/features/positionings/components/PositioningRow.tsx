@@ -29,6 +29,7 @@ import { updatePositioningSchema } from '../schemas/positioning'
 
 interface PositioningRowProps {
   positioning: PositioningType
+  isOpen: boolean
 }
 
 interface EditFormValues {
@@ -37,18 +38,21 @@ interface EditFormValues {
   content: string
 }
 
-export function PositioningRow({ positioning }: PositioningRowProps) {
+export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
   const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [editStageId, setEditStageId] = useState<string>(positioning.funnelStageId)
 
+  // Fix #2: lazy — only fetch prospects when the row is open
   const { data: prospectsData, isLoading: prospectsLoading } = usePositioningProspects(
     positioning.id,
+    { enabled: isOpen },
   )
   const linkedProspects = prospectsData?.data ?? []
 
-  const { data: stagesData } = useFunnelStages()
+  // Fix #3: also track loading + error state for stages
+  const { data: stagesData, isLoading: stagesLoading, isError: stagesError } = useFunnelStages()
   const stages = stagesData?.data ?? []
 
   const update = useUpdatePositioning()
@@ -67,7 +71,15 @@ export function PositioningRow({ positioning }: PositioningRowProps) {
     },
   })
 
-  // Reset form if positioning prop changes after a successful update
+  // Fix #1: exit edit mode when the accordion row is collapsed
+  useEffect(() => {
+    if (!isOpen) {
+      setIsEditing(false)
+      setApiError(null)
+    }
+  }, [isOpen])
+
+  // Reset form when positioning prop updates after a successful save
   useEffect(() => {
     if (!isEditing) {
       reset({
@@ -144,12 +156,30 @@ export function PositioningRow({ positioning }: PositioningRowProps) {
                     *
                   </span>
                 </Label>
-                <Input id={`edit-name-${positioning.id}`} {...register('name')} autoFocus />
+                {/* Fix #5: disabled during pending */}
+                <Input
+                  id={`edit-name-${positioning.id}`}
+                  {...register('name')}
+                  autoFocus
+                  disabled={update.isPending}
+                />
                 <FieldError errors={[errors.name]} />
               </div>
 
-              {/* Funnel Stage — required */}
-              {stages.length > 0 && (
+              {/* Funnel Stage — required (Fix #3: loading + error states) */}
+              {stagesError ? (
+                <p className="text-xs text-destructive">{t('funnelStages.loadError')}</p>
+              ) : stagesLoading ? (
+                <div className="flex flex-col gap-1">
+                  <Label>
+                    {t('positionings.fields.funnelStage')}{' '}
+                    <span aria-hidden="true" className="text-destructive">
+                      *
+                    </span>
+                  </Label>
+                  <Skeleton className="h-9 w-full" />
+                </div>
+              ) : stages.length > 0 ? (
                 <div className="flex flex-col gap-1">
                   <Label htmlFor={`edit-stage-${positioning.id}`}>
                     {t('positionings.fields.funnelStage')}{' '}
@@ -157,7 +187,12 @@ export function PositioningRow({ positioning }: PositioningRowProps) {
                       *
                     </span>
                   </Label>
-                  <Select value={editStageId} onValueChange={setEditStageId}>
+                  {/* Fix #5: disabled during pending */}
+                  <Select
+                    value={editStageId}
+                    onValueChange={setEditStageId}
+                    disabled={update.isPending}
+                  >
                     <SelectTrigger id={`edit-stage-${positioning.id}`} className="w-full">
                       <SelectValue />
                     </SelectTrigger>
@@ -170,9 +205,9 @@ export function PositioningRow({ positioning }: PositioningRowProps) {
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+              ) : null}
 
-              {/* Description — optional */}
+              {/* Description — optional (Fix #4: placeholder, Fix #5: disabled) */}
               <div className="flex flex-col gap-1">
                 <Label htmlFor={`edit-description-${positioning.id}`}>
                   {t('positionings.fields.description')}
@@ -180,16 +215,24 @@ export function PositioningRow({ positioning }: PositioningRowProps) {
                 <Textarea
                   id={`edit-description-${positioning.id}`}
                   {...register('description')}
+                  placeholder={t('positionings.placeholders.description')}
                   rows={2}
+                  disabled={update.isPending}
                 />
               </div>
 
-              {/* Content — optional */}
+              {/* Content — optional (Fix #4: placeholder, Fix #5: disabled) */}
               <div className="flex flex-col gap-1">
                 <Label htmlFor={`edit-content-${positioning.id}`}>
                   {t('positionings.fields.content')}
                 </Label>
-                <Textarea id={`edit-content-${positioning.id}`} {...register('content')} rows={4} />
+                <Textarea
+                  id={`edit-content-${positioning.id}`}
+                  {...register('content')}
+                  placeholder={t('positionings.placeholders.content')}
+                  rows={4}
+                  disabled={update.isPending}
+                />
               </div>
 
               {/* API error */}

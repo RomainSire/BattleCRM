@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
@@ -44,7 +45,7 @@ export function AddPositioningDialog() {
   const [selectedStageId, setSelectedStageId] = useState<string>('')
 
   const create = useCreatePositioning()
-  const { data: stagesData } = useFunnelStages()
+  const { data: stagesData, isLoading: stagesLoading } = useFunnelStages()
   const stages = stagesData?.data ?? []
 
   // Initialize selected stage to first stage when data loads
@@ -131,15 +132,17 @@ export function AddPositioningDialog() {
             <FieldError errors={[errors.name]} />
           </div>
 
-          {/* Funnel Stage — required */}
-          {stages.length > 0 && (
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="positioning-stage">
-                {t('positionings.fields.funnelStage')}{' '}
-                <span aria-hidden="true" className="text-destructive">
-                  *
-                </span>
-              </Label>
+          {/* Funnel Stage — required (Fix #6: show skeleton while loading) */}
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="positioning-stage">
+              {t('positionings.fields.funnelStage')}{' '}
+              <span aria-hidden="true" className="text-destructive">
+                *
+              </span>
+            </Label>
+            {stagesLoading ? (
+              <Skeleton className="h-9 w-full" />
+            ) : (
               <Select value={selectedStageId} onValueChange={setSelectedStageId}>
                 <SelectTrigger id="positioning-stage" className="w-full">
                   <SelectValue />
@@ -152,8 +155,8 @@ export function AddPositioningDialog() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Description — optional */}
           <div className="flex flex-col gap-1">
