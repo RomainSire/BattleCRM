@@ -111,7 +111,11 @@ export function PositioningsList() {
             onValueChange={(v) => setExpandedId(v || null)}
           >
             {positionings.map((positioning) => (
-              <PositioningRow key={positioning.id} positioning={positioning} />
+              <PositioningRow
+                key={positioning.id}
+                positioning={positioning}
+                isOpen={expandedId === positioning.id}
+              />
             ))}
           </Accordion>
         </div>

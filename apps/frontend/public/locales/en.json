@@ -188,6 +188,8 @@
   "positionings": {
     "title": "Positionings",
     "description": "Manage your positioning variants per funnel stage.",
+    "addPositioning": "Add Positioning",
+    "edit": "Edit",
     "loadError": "Failed to load positionings. Please try again.",
     "empty": "No positionings yet.",
     "emptyFiltered": "No positionings for this stage.",
@@ -199,9 +201,26 @@
       "description": "Description"
     },
     "fields": {
+      "name": "Name",
       "funnelStage": "Funnel Stage",
       "description": "Description",
       "content": "Content"
+    },
+    "placeholders": {
+      "name": "e.g. CV v3 — Architecture Focus",
+      "description": "Why this variant was created...",
+      "content": "Actual content or file reference..."
+    },
+    "createForm": {
+      "title": "Add Positioning",
+      "description": "Create a new positioning variant for a funnel stage.",
+      "submit": "Create"
+    },
+    "toast": {
+      "created": "Positioning created.",
+      "createFailed": "Failed to create positioning.",
+      "updated": "Positioning updated.",
+      "updateFailed": "Failed to update positioning."
     },
     "linkedProspects": {
       "title": "Linked Prospects",
