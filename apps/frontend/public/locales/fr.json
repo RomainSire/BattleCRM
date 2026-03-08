@@ -188,6 +188,8 @@
   "positionings": {
     "title": "Positionnements",
     "description": "Gérez vos variantes de positionnement par étape du funnel.",
+    "addPositioning": "Ajouter un positionnement",
+    "edit": "Modifier",
     "loadError": "Impossible de charger les positionnements. Veuillez réessayer.",
     "empty": "Aucun positionnement pour le moment.",
     "emptyFiltered": "Aucun positionnement pour cette étape.",
@@ -199,9 +201,26 @@
       "description": "Description"
     },
     "fields": {
+      "name": "Nom",
       "funnelStage": "Étape du funnel",
       "description": "Description",
       "content": "Contenu"
+    },
+    "placeholders": {
+      "name": "ex. CV v3 — Focus Architecture",
+      "description": "Pourquoi cette variante a été créée...",
+      "content": "Contenu réel ou référence de fichier..."
+    },
+    "createForm": {
+      "title": "Ajouter un positionnement",
+      "description": "Créez une nouvelle variante de positionnement pour une étape du funnel.",
+      "submit": "Créer"
+    },
+    "toast": {
+      "created": "Positionnement créé.",
+      "createFailed": "Impossible de créer le positionnement.",
+      "updated": "Positionnement mis à jour.",
+      "updateFailed": "Impossible de mettre à jour le positionnement."
     },
     "linkedProspects": {
       "title": "Prospects liés",
