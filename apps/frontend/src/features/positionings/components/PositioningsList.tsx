@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Accordion } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { usePositionings } from '../hooks/usePositionings'
 import { PositioningRow } from './PositioningRow'
@@ -11,14 +13,18 @@ export function PositioningsList() {
   const { t } = useTranslation()
   const [activeStageFilter, setActiveStageFilter] = useState<string | undefined>(undefined)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
 
-  const activeFilters = activeStageFilter ? { funnel_stage_id: activeStageFilter } : undefined
+  const activeFilters = {
+    ...(activeStageFilter ? { funnel_stage_id: activeStageFilter } : {}),
+    ...(showArchived ? { include_archived: true as const } : {}),
+  }
 
   const {
     data: positioningsData,
     isLoading: positioningsLoading,
     isError: positioningsError,
-  } = usePositionings(activeFilters)
+  } = usePositionings(Object.keys(activeFilters).length > 0 ? activeFilters : undefined)
 
   const { data: stagesData, isLoading: stagesLoading, isError: stagesError } = useFunnelStages()
 
@@ -57,35 +63,50 @@ export function PositioningsList() {
 
   return (
     <div className="space-y-4">
-      {/* Stage filter pills */}
-      {stages.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          {stages.map((stage) => (
-            <Button
-              key={stage.id}
-              type="button"
-              size="sm"
-              variant={activeStageFilter === stage.id ? 'default' : 'outline'}
-              onClick={() => handleStageFilter(stage.id)}
-              aria-pressed={activeStageFilter === stage.id}
-              className="rounded-full"
-            >
-              {stage.name}
-            </Button>
-          ))}
-          {activeStageFilter && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={clearFilter}
-              className="rounded-full border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
-            >
-              {t('positionings.clearFilter')}
-            </Button>
-          )}
+      {/* Toolbar */}
+      <div className="space-y-2">
+        {/* Show archived switch */}
+        <div className="flex items-center gap-2">
+          <Switch
+            id="show-archived-positionings"
+            checked={showArchived}
+            onCheckedChange={setShowArchived}
+          />
+          <Label htmlFor="show-archived-positionings" className="cursor-pointer text-sm">
+            {t('positionings.showArchived')}
+          </Label>
         </div>
-      )}
+
+        {/* Stage filter pills */}
+        {stages.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {stages.map((stage) => (
+              <Button
+                key={stage.id}
+                type="button"
+                size="sm"
+                variant={activeStageFilter === stage.id ? 'default' : 'outline'}
+                onClick={() => handleStageFilter(stage.id)}
+                aria-pressed={activeStageFilter === stage.id}
+                className="rounded-full"
+              >
+                {stage.name}
+              </Button>
+            ))}
+            {activeStageFilter && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={clearFilter}
+                className="rounded-full border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                {t('positionings.clearFilter')}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Empty state */}
       {positionings.length === 0 ? (

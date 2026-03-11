@@ -1,6 +1,6 @@
 import type { PositioningType } from '@battlecrm/shared'
 import { vineResolver } from '@hookform/resolvers/vine'
-import { Archive, Pencil, X } from 'lucide-react'
+import { Archive, Pencil, RotateCcw, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -35,7 +35,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
 import { i18nMessagesProvider } from '@/lib/validation'
-import { useArchivePositioning, useUpdatePositioning } from '../hooks/usePositioningMutations'
+import {
+  useArchivePositioning,
+  useRestorePositioning,
+  useUpdatePositioning,
+} from '../hooks/usePositioningMutations'
 import { usePositioningProspects } from '../hooks/usePositioningProspects'
 import { updatePositioningSchema } from '../schemas/positioning'
 
@@ -52,9 +56,11 @@ interface EditFormValues {
 
 export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
   const { t } = useTranslation()
+  const isArchived = positioning.deletedAt !== null
   const [isEditing, setIsEditing] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [archiveError, setArchiveError] = useState<string | null>(null)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
   const [editStageId, setEditStageId] = useState<string>(positioning.funnelStageId)
 
   // Lazy — only fetch prospects when the row is open
@@ -71,6 +77,7 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
 
   const update = useUpdatePositioning()
   const archive = useArchivePositioning()
+  const restore = useRestorePositioning()
 
   const {
     register,
@@ -92,6 +99,7 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
       setIsEditing(false)
       setApiError(null)
       setArchiveError(null)
+      setRestoreError(null)
     }
   }, [isOpen])
 
@@ -138,6 +146,19 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
     })
   }
 
+  function handleRestoreConfirm() {
+    setRestoreError(null)
+    restore.mutate(positioning.id, {
+      onSuccess: () => {
+        toast.success(t('positionings.toast.restored'))
+      },
+      onError: (error) => {
+        const message = error instanceof ApiError ? error.errors[0]?.message : undefined
+        setRestoreError(message ?? t('positionings.toast.restoreFailed'))
+      },
+    })
+  }
+
   function onSubmit(values: EditFormValues) {
     setApiError(null)
     update.mutate(
@@ -162,11 +183,19 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
   }
 
   return (
-    <AccordionItem value={positioning.id}>
+    <AccordionItem value={positioning.id} className={isArchived ? 'opacity-60' : undefined}>
       <AccordionTrigger className="items-center px-4 py-3 hover:bg-accent hover:no-underline">
-        <span className="min-w-0 flex-1 truncate font-medium">{positioning.name}</span>
+        <span className={`min-w-0 flex-1 truncate font-medium${isArchived ? ' line-through' : ''}`}>
+          {positioning.name}
+        </span>
         <span className="w-40 shrink-0">
-          <Badge variant="secondary">{positioning.funnelStageName}</Badge>
+          {isArchived ? (
+            <Badge variant="outline" className="text-muted-foreground">
+              {t('positionings.archivedBadge')}
+            </Badge>
+          ) : (
+            <Badge variant="secondary">{positioning.funnelStageName}</Badge>
+          )}
         </span>
         <span className="w-64 shrink-0 truncate text-sm text-muted-foreground">
           {positioning.description ?? '—'}
@@ -280,47 +309,72 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
           ) : (
             /* ── READ-ONLY MODE ── */
             <>
-              {/* Action bar: Edit + Archive */}
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" size="sm" variant="outline" onClick={handleEditStart}>
-                  <Pencil className="size-4" />
-                  {t('positionings.edit')}
-                </Button>
-
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      disabled={archive.isPending}
-                    >
-                      <Archive className="size-4" />
-                      {t('positionings.archive')}
+              {/* Action bar: Edit + Archive (hidden for archived positionings) */}
+              {!isArchived && (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={handleEditStart}>
+                      <Pencil className="size-4" />
+                      {t('positionings.edit')}
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>{t('positionings.archiveDialog.title')}</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {t('positionings.archiveDialog.description', { name: positioning.name })}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleArchiveConfirm}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        disabled={archive.isPending}
-                      >
-                        {t('positionings.archiveDialog.confirm')}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-              {archiveError && <p className="text-xs text-destructive">{archiveError}</p>}
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          disabled={archive.isPending}
+                        >
+                          <Archive className="size-4" />
+                          {t('positionings.archive')}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            {t('positionings.archiveDialog.title')}
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t('positionings.archiveDialog.description', {
+                              name: positioning.name,
+                            })}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleArchiveConfirm}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={archive.isPending}
+                          >
+                            {t('positionings.archiveDialog.confirm')}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                  {archiveError && <p className="text-xs text-destructive">{archiveError}</p>}
+                </>
+              )}
+
+              {/* Restore action — visible only for archived positionings */}
+              {isArchived && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleRestoreConfirm}
+                    disabled={restore.isPending}
+                  >
+                    <RotateCcw className="size-4" />
+                    {t('positionings.restore')}
+                  </Button>
+                  {restoreError && <p className="text-xs text-destructive">{restoreError}</p>}
+                </div>
+              )}
 
               {/* Details */}
               <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">

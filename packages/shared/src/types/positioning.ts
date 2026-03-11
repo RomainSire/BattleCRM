@@ -34,4 +34,5 @@ export type UpdatePositioningPayload = {
 
 export type PositioningsFilterType = {
   funnel_stage_id?: string
+  include_archived?: true
 }

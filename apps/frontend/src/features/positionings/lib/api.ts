@@ -14,6 +14,9 @@ export const positioningsApi = {
     if (filters?.funnel_stage_id) {
       params.set('funnel_stage_id', filters.funnel_stage_id)
     }
+    if (filters?.include_archived) {
+      params.set('include_archived', 'true')
+    }
     const queryString = params.toString()
     return fetchApi<PositioningListResponse>(`/positionings${queryString ? `?${queryString}` : ''}`)
   },
@@ -39,6 +42,12 @@ export const positioningsApi = {
   archive(id: string): Promise<{ message: string }> {
     return fetchApi<{ message: string }>(`/positionings/${id}`, {
       method: 'DELETE',
+    })
+  },
+
+  restore(id: string): Promise<PositioningType> {
+    return fetchApi<PositioningType>(`/positionings/${id}/restore`, {
+      method: 'PATCH',
     })
   },
 }

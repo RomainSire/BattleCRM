@@ -191,11 +191,14 @@
     "addPositioning": "Add Positioning",
     "edit": "Edit",
     "archive": "Archive",
+    "restore": "Restore",
     "archiveDialog": {
       "title": "Archive positioning?",
       "description": "\"{{name}}\" will be archived. It will no longer appear in the active list, but historical data (prospects, interactions) will be preserved.",
       "confirm": "Archive"
     },
+    "showArchived": "Show archived",
+    "archivedBadge": "Archived",
     "loadError": "Failed to load positionings. Please try again.",
     "empty": "No positionings yet.",
     "emptyFiltered": "No positionings for this stage.",
@@ -228,7 +231,9 @@
       "updated": "Positioning updated.",
       "updateFailed": "Failed to update positioning.",
       "archived": "Positioning archived.",
-      "archiveFailed": "Failed to archive positioning."
+      "archiveFailed": "Failed to archive positioning.",
+      "restored": "Positioning restored.",
+      "restoreFailed": "Failed to restore positioning."
     },
     "linkedProspects": {
       "title": "Linked Prospects",

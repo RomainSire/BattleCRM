@@ -191,11 +191,14 @@
     "addPositioning": "Ajouter un positionnement",
     "edit": "Modifier",
     "archive": "Archiver",
+    "restore": "Restaurer",
     "archiveDialog": {
       "title": "Archiver ce positionnement ?",
       "description": "\"{{name}}\" sera archivé. Il n'apparaîtra plus dans la liste active, mais les données historiques (prospects, interactions) seront conservées.",
       "confirm": "Archiver"
     },
+    "showArchived": "Voir archivés",
+    "archivedBadge": "Archivé",
     "loadError": "Impossible de charger les positionnements. Veuillez réessayer.",
     "empty": "Aucun positionnement pour le moment.",
     "emptyFiltered": "Aucun positionnement pour cette étape.",
@@ -228,7 +231,9 @@
       "updated": "Positionnement mis à jour.",
       "updateFailed": "Impossible de mettre à jour le positionnement.",
       "archived": "Positionnement archivé.",
-      "archiveFailed": "Impossible d'archiver le positionnement."
+      "archiveFailed": "Impossible d'archiver le positionnement.",
+      "restored": "Positionnement restauré.",
+      "restoreFailed": "Impossible de restaurer le positionnement."
     },
     "linkedProspects": {
       "title": "Prospects liés",

@@ -147,6 +147,31 @@ export default class PositioningsController {
   }
 
   /**
+   * PATCH /api/positionings/:id/restore
+   * Restores a soft-deleted positioning (sets deleted_at to null).
+   * Must use withTrashed() to find archived positionings.
+   */
+  async restore({ params, response, auth }: HttpContext) {
+    const userId = auth.user!.id
+
+    const positioning = await Positioning.query()
+      .withTrashed()
+      .withScopes((s) => s.forUser(userId))
+      .where('id', params.id)
+      .firstOrFail()
+
+    await positioning.restore()
+
+    const restored = await Positioning.query()
+      .withScopes((s) => s.forUser(userId))
+      .where('id', positioning.id)
+      .preload('funnelStage')
+      .firstOrFail()
+
+    return response.ok(serializePositioning(restored))
+  }
+
+  /**
    * GET /api/positionings/:id/prospects
    * Returns all prospects (including archived) linked to this positioning. (FR16)
    */

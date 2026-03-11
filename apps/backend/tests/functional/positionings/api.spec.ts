@@ -603,6 +603,65 @@ test.group('Positionings API', (group) => {
   })
 
   // ===========================
+  // PATCH /api/positionings/:id/restore
+  // ===========================
+
+  test('PATCH /api/positionings/:id/restore restores a soft-deleted positioning → 200', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'restore-ok')
+    const stage = await getUserFirstStage(user.id)
+    const p = await createPositioning(user.id, stage.id, 'To Restore')
+    await p.delete()
+
+    const response = await client.patch(`/api/positionings/${p.id}/restore`).loginAs(user)
+    response.assertStatus(200)
+
+    const body = response.body()
+    assert.equal(body.id, p.id)
+    assert.equal(body.name, 'To Restore')
+    assert.equal(body.funnelStageName, stage.name)
+    assert.isNull(body.deletedAt, 'deletedAt should be null after restore')
+
+    // Appears in active list again
+    const listResponse = await client.get('/api/positionings').loginAs(user)
+    const ids = listResponse.body().data.map((item: { id: string }) => item.id)
+    assert.include(ids, p.id, 'Restored positioning should appear in active list')
+  })
+
+  test('PATCH /api/positionings/:id/restore returns 404 for non-existent positioning', async ({
+    client,
+  }) => {
+    const user = await registerUser(client, 'restore-404')
+    const fakeId = '00000000-0000-0000-0000-000000000000'
+
+    const response = await client.patch(`/api/positionings/${fakeId}/restore`).loginAs(user)
+    response.assertStatus(404)
+  })
+
+  test('PATCH /api/positionings/:id/restore returns 404 for non-UUID id format', async ({
+    client,
+  }) => {
+    const user = await registerUser(client, 'restore-bad-id')
+    const response = await client.patch('/api/positionings/not-a-uuid/restore').loginAs(user)
+    response.assertStatus(404)
+  })
+
+  test('user isolation: PATCH restore cannot restore another user positioning (404)', async ({
+    client,
+  }) => {
+    const userA = await registerUser(client, 'restore-iso-a')
+    const userB = await registerUser(client, 'restore-iso-b')
+    const stageA = await getUserFirstStage(userA.id)
+    const p = await createPositioning(userA.id, stageA.id)
+    await p.delete()
+
+    const response = await client.patch(`/api/positionings/${p.id}/restore`).loginAs(userB)
+    response.assertStatus(404)
+  })
+
+  // ===========================
   // Authentication (401)
   // ===========================
 
@@ -631,6 +690,13 @@ test.group('Positionings API', (group) => {
   test('returns 401 for unauthenticated prospects sub-resource request', async ({ client }) => {
     const response = await client.get(
       '/api/positionings/00000000-0000-0000-0000-000000000000/prospects',
+    )
+    response.assertStatus(401)
+  })
+
+  test('returns 401 for unauthenticated PATCH restore request', async ({ client }) => {
+    const response = await client.patch(
+      '/api/positionings/00000000-0000-0000-0000-000000000000/restore',
     )
     response.assertStatus(401)
   })

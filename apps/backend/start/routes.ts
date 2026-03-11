@@ -53,6 +53,7 @@ router
         router.get('/:id', [PositioningsController, 'show']).where('id', UUID_REGEX)
         router.put('/:id', [PositioningsController, 'update']).where('id', UUID_REGEX)
         router.delete('/:id', [PositioningsController, 'destroy']).where('id', UUID_REGEX)
+        router.patch('/:id/restore', [PositioningsController, 'restore']).where('id', UUID_REGEX)
         router.get('/:id/prospects', [PositioningsController, 'prospects']).where('id', UUID_REGEX)
       })
       .prefix('/positionings')
