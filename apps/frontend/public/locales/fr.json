@@ -232,7 +232,11 @@
     },
     "linkedProspects": {
       "title": "Prospects liés",
-      "empty": "Aucun prospect lié à ce positionnement."
+      "empty": "Aucun prospect lié à ce positionnement.",
+      "loadError": "Impossible de charger les prospects liés."
+    },
+    "aria": {
+      "viewProspect": "Voir {{name}} dans la liste des prospects"
     },
     "interactions": {
       "title": "Interactions",

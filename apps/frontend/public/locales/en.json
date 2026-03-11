@@ -232,7 +232,11 @@
     },
     "linkedProspects": {
       "title": "Linked Prospects",
-      "empty": "No prospects linked to this positioning yet."
+      "empty": "No prospects linked to this positioning yet.",
+      "loadError": "Failed to load linked prospects."
+    },
+    "aria": {
+      "viewProspect": "View {{name}} in prospects list"
     },
     "interactions": {
       "title": "Interactions",

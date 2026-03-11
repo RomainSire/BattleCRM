@@ -58,10 +58,11 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
   const [editStageId, setEditStageId] = useState<string>(positioning.funnelStageId)
 
   // Lazy — only fetch prospects when the row is open
-  const { data: prospectsData, isLoading: prospectsLoading } = usePositioningProspects(
-    positioning.id,
-    { enabled: isOpen },
-  )
+  const {
+    data: prospectsData,
+    isLoading: prospectsLoading,
+    isError: prospectsError,
+  } = usePositioningProspects(positioning.id, { enabled: isOpen })
   const linkedProspects = prospectsData?.data ?? []
 
   // Track loading + error state for stages
@@ -114,6 +115,7 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
     })
     setEditStageId(positioning.funnelStageId)
     setApiError(null)
+    setArchiveError(null)
     setIsEditing(true)
   }
 
@@ -292,6 +294,7 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
                       size="sm"
                       variant="outline"
                       className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      disabled={archive.isPending}
                     >
                       <Archive className="size-4" />
                       {t('positionings.archive')}
@@ -316,9 +319,8 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-
-                {archiveError && <p className="text-xs text-destructive">{archiveError}</p>}
               </div>
+              {archiveError && <p className="text-xs text-destructive">{archiveError}</p>}
 
               {/* Details */}
               <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
@@ -350,6 +352,10 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
                     <Skeleton className="h-4 w-40" />
                     <Skeleton className="h-4 w-32" />
                   </div>
+                ) : prospectsError ? (
+                  <p className="text-xs text-destructive">
+                    {t('positionings.linkedProspects.loadError')}
+                  </p>
                 ) : linkedProspects.length === 0 ? (
                   <p className="text-xs italic text-muted-foreground">
                     {t('positionings.linkedProspects.empty')}
@@ -361,6 +367,7 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
                         <Link
                           to="/prospects"
                           className="text-primary underline-offset-4 hover:underline"
+                          aria-label={t('positionings.aria.viewProspect', { name: prospect.name })}
                         >
                           <span className="font-medium">{prospect.name}</span>
                           {prospect.company && (

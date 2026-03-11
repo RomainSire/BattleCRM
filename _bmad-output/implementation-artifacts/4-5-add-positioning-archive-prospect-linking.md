@@ -1,6 +1,6 @@
 # Story 4.5: Add Positioning Archive & Prospect Linking
 
-Status: review
+Status: done
 
 <!-- Ultimate Context Engine Analysis: 2026-03-11 -->
 <!-- Epic 4: Positioning Variants — Story 5 (Archive + prospect navigation links in PositioningRow) -->
