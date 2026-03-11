@@ -23,3 +23,13 @@ export function useUpdatePositioning() {
     },
   })
 }
+
+export function useArchivePositioning() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => positioningsApi.archive(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.positionings.all })
+    },
+  })
+}

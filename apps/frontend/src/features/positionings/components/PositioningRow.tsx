@@ -1,11 +1,23 @@
 import type { PositioningType } from '@battlecrm/shared'
 import { vineResolver } from '@hookform/resolvers/vine'
-import { Pencil, X } from 'lucide-react'
+import { Archive, Pencil, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { FieldError } from '@/components/ui/field'
@@ -23,7 +35,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
 import { i18nMessagesProvider } from '@/lib/validation'
-import { useUpdatePositioning } from '../hooks/usePositioningMutations'
+import { useArchivePositioning, useUpdatePositioning } from '../hooks/usePositioningMutations'
 import { usePositioningProspects } from '../hooks/usePositioningProspects'
 import { updatePositioningSchema } from '../schemas/positioning'
 
@@ -42,20 +54,22 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
   const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
+  const [archiveError, setArchiveError] = useState<string | null>(null)
   const [editStageId, setEditStageId] = useState<string>(positioning.funnelStageId)
 
-  // Fix #2: lazy — only fetch prospects when the row is open
+  // Lazy — only fetch prospects when the row is open
   const { data: prospectsData, isLoading: prospectsLoading } = usePositioningProspects(
     positioning.id,
     { enabled: isOpen },
   )
   const linkedProspects = prospectsData?.data ?? []
 
-  // Fix #3: also track loading + error state for stages
+  // Track loading + error state for stages
   const { data: stagesData, isLoading: stagesLoading, isError: stagesError } = useFunnelStages()
   const stages = stagesData?.data ?? []
 
   const update = useUpdatePositioning()
+  const archive = useArchivePositioning()
 
   const {
     register,
@@ -71,11 +85,12 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
     },
   })
 
-  // Fix #1: exit edit mode when the accordion row is collapsed
+  // Exit edit mode and clear errors when the accordion row is collapsed
   useEffect(() => {
     if (!isOpen) {
       setIsEditing(false)
       setApiError(null)
+      setArchiveError(null)
     }
   }, [isOpen])
 
@@ -106,6 +121,19 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
     reset()
     setApiError(null)
     setIsEditing(false)
+  }
+
+  function handleArchiveConfirm() {
+    setArchiveError(null)
+    archive.mutate(positioning.id, {
+      onSuccess: () => {
+        toast.success(t('positionings.toast.archived'))
+      },
+      onError: (error) => {
+        const message = error instanceof ApiError ? error.errors[0]?.message : undefined
+        setArchiveError(message ?? t('positionings.toast.archiveFailed'))
+      },
+    })
   }
 
   function onSubmit(values: EditFormValues) {
@@ -156,7 +184,6 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
                     *
                   </span>
                 </Label>
-                {/* Fix #5: disabled during pending */}
                 <Input
                   id={`edit-name-${positioning.id}`}
                   {...register('name')}
@@ -166,7 +193,7 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
                 <FieldError errors={[errors.name]} />
               </div>
 
-              {/* Funnel Stage — required (Fix #3: loading + error states) */}
+              {/* Funnel Stage — required */}
               {stagesError ? (
                 <p className="text-xs text-destructive">{t('funnelStages.loadError')}</p>
               ) : stagesLoading ? (
@@ -187,7 +214,6 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
                       *
                     </span>
                   </Label>
-                  {/* Fix #5: disabled during pending */}
                   <Select
                     value={editStageId}
                     onValueChange={setEditStageId}
@@ -207,7 +233,7 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
                 </div>
               ) : null}
 
-              {/* Description — optional (Fix #4: placeholder, Fix #5: disabled) */}
+              {/* Description — optional */}
               <div className="flex flex-col gap-1">
                 <Label htmlFor={`edit-description-${positioning.id}`}>
                   {t('positionings.fields.description')}
@@ -221,7 +247,7 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
                 />
               </div>
 
-              {/* Content — optional (Fix #4: placeholder, Fix #5: disabled) */}
+              {/* Content — optional */}
               <div className="flex flex-col gap-1">
                 <Label htmlFor={`edit-content-${positioning.id}`}>
                   {t('positionings.fields.content')}
@@ -252,12 +278,46 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
           ) : (
             /* ── READ-ONLY MODE ── */
             <>
-              {/* Edit button */}
-              <div className="flex items-center gap-2">
+              {/* Action bar: Edit + Archive */}
+              <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" size="sm" variant="outline" onClick={handleEditStart}>
                   <Pencil className="size-4" />
                   {t('positionings.edit')}
                 </Button>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Archive className="size-4" />
+                      {t('positionings.archive')}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t('positionings.archiveDialog.title')}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t('positionings.archiveDialog.description', { name: positioning.name })}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleArchiveConfirm}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        disabled={archive.isPending}
+                      >
+                        {t('positionings.archiveDialog.confirm')}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {archiveError && <p className="text-xs text-destructive">{archiveError}</p>}
               </div>
 
               {/* Details */}
@@ -298,10 +358,15 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
                   <ul className="space-y-1">
                     {linkedProspects.map((prospect) => (
                       <li key={prospect.id} className="text-sm">
-                        <span className="font-medium">{prospect.name}</span>
-                        {prospect.company && (
-                          <span className="ml-2 text-muted-foreground">— {prospect.company}</span>
-                        )}
+                        <Link
+                          to="/prospects"
+                          className="text-primary underline-offset-4 hover:underline"
+                        >
+                          <span className="font-medium">{prospect.name}</span>
+                          {prospect.company && (
+                            <span className="ml-2 text-muted-foreground">— {prospect.company}</span>
+                          )}
+                        </Link>
                       </li>
                     ))}
                   </ul>

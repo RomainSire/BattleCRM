@@ -190,6 +190,12 @@
     "description": "Manage your positioning variants per funnel stage.",
     "addPositioning": "Add Positioning",
     "edit": "Edit",
+    "archive": "Archive",
+    "archiveDialog": {
+      "title": "Archive positioning?",
+      "description": "\"{{name}}\" will be archived. It will no longer appear in the active list, but historical data (prospects, interactions) will be preserved.",
+      "confirm": "Archive"
+    },
     "loadError": "Failed to load positionings. Please try again.",
     "empty": "No positionings yet.",
     "emptyFiltered": "No positionings for this stage.",
@@ -220,7 +226,9 @@
       "created": "Positioning created.",
       "createFailed": "Failed to create positioning.",
       "updated": "Positioning updated.",
-      "updateFailed": "Failed to update positioning."
+      "updateFailed": "Failed to update positioning.",
+      "archived": "Positioning archived.",
+      "archiveFailed": "Failed to archive positioning."
     },
     "linkedProspects": {
       "title": "Linked Prospects",
