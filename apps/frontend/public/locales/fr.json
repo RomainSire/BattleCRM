@@ -190,6 +190,12 @@
     "description": "Gérez vos variantes de positionnement par étape du funnel.",
     "addPositioning": "Ajouter un positionnement",
     "edit": "Modifier",
+    "archive": "Archiver",
+    "archiveDialog": {
+      "title": "Archiver ce positionnement ?",
+      "description": "\"{{name}}\" sera archivé. Il n'apparaîtra plus dans la liste active, mais les données historiques (prospects, interactions) seront conservées.",
+      "confirm": "Archiver"
+    },
     "loadError": "Impossible de charger les positionnements. Veuillez réessayer.",
     "empty": "Aucun positionnement pour le moment.",
     "emptyFiltered": "Aucun positionnement pour cette étape.",
@@ -220,11 +226,17 @@
       "created": "Positionnement créé.",
       "createFailed": "Impossible de créer le positionnement.",
       "updated": "Positionnement mis à jour.",
-      "updateFailed": "Impossible de mettre à jour le positionnement."
+      "updateFailed": "Impossible de mettre à jour le positionnement.",
+      "archived": "Positionnement archivé.",
+      "archiveFailed": "Impossible d'archiver le positionnement."
     },
     "linkedProspects": {
       "title": "Prospects liés",
-      "empty": "Aucun prospect lié à ce positionnement."
+      "empty": "Aucun prospect lié à ce positionnement.",
+      "loadError": "Impossible de charger les prospects liés."
+    },
+    "aria": {
+      "viewProspect": "Voir {{name}} dans la liste des prospects"
     },
     "interactions": {
       "title": "Interactions",

@@ -35,4 +35,10 @@ export const positioningsApi = {
       body: JSON.stringify(payload),
     })
   },
+
+  archive(id: string): Promise<{ message: string }> {
+    return fetchApi<{ message: string }>(`/positionings/${id}`, {
+      method: 'DELETE',
+    })
+  },
 }
