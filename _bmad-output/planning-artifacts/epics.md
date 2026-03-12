@@ -388,9 +388,14 @@ Permettre aux utilisateurs de créer et gérer leurs variantes de positionnement
 **FRs covered:** FR10, FR11, FR12, FR13, FR14, FR15, FR16, FR17
 
 ### Epic 5: Interaction Logging
-Permettre aux utilisateurs de capturer chaque interaction avec un prospect avec minimal friction. L'utilisateur peut logger une interaction en < 1 minute avec pré-remplissage intelligent, catégoriser par type/statut, lier à un prospect et positionnement, et consulter la timeline chronologique.
+Permettre aux utilisateurs de capturer chaque interaction avec un prospect avec minimal friction. L'utilisateur peut logger une interaction en < 1 minute avec pré-remplissage intelligent, lier à un prospect et positionnement, consulter la timeline chronologique unifiée (stage transitions + interactions).
 
-**FRs covered:** FR18, FR19, FR20, FR21, FR22, FR23, FR24, FR25, FR26, FR27, FR28
+**FRs covered:** FR18, FR19, FR20, FR22, FR23, FR24, FR25, FR26, FR27, FR28
+
+> ⚠️ **Décision produit (rétro Epic 4, 2026-03-12) :**
+> - **FR21 retiré du scope** — le type/subtype d'interaction est supprimé. Le positioning définit déjà la nature de l'interaction (ex: "Message LinkedIn v3" = type LinkedIn implicite). Ajouter un champ type/subtype violerait le principe "minimal friction".
+> - **Schéma `interactions` simplifié** : `prospect_id`, `positioning_id` (nullable FK), `status` (FR22 : positif/en attente/négatif), `notes` (FR20 : texte libre), `occurred_at`. Pas de colonnes type/subtype.
+> - **Timeline unifiée** (FR25) : la timeline d'un prospect mélange les stage transitions ET les interactions dans une vue chronologique unique. Les transitions = jalons (lecture seule), les interactions = actions (cliquables → détail). Distinction visuelle obligatoire (icônes/couleurs différentes).
 
 ### Epic 6: Performance Analytics & Battle Management
 Permettre aux utilisateurs de visualiser leurs performances et optimiser via A/B testing indépendant par étape. L'utilisateur peut voir la Performance Matrix (Dashboard Funnel Cards), comprendre quel positionnement gagne à chaque étape via indicateurs 🟢🟡🟢, et gérer des Battles indépendantes par étape funnel.

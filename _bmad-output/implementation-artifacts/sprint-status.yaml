@@ -74,13 +74,13 @@ development_status:
   epic-3-retrospective: done
 
   # Epic 4: Positioning Variants
-  epic-4: in-progress
+  epic-4: done
   4-1-create-positionings-database-schema: done
   4-2-implement-positionings-crud-api: done
   4-3-build-positionings-list-view: done
   4-4-implement-positioning-create-edit: done
   4-5-add-positioning-archive-prospect-linking: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: done
 
   # Epic 5: Interaction Logging
   epic-5: backlog

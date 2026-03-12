@@ -441,6 +441,11 @@ apps/frontend/src/
 - Used by **1 feature only** → inside feature folder
 - Used by **2+ features** → in shared `src/components/`, `src/hooks/`, etc.
 
+**UI Coherence Principle (established Epic 3-4):**
+- **shadcn/ui first** — always prefer an existing shadcn component over a raw HTML element or custom implementation. Install via `npx shadcn@latest add <component>` if not yet present.
+- **Reuse before reinventing** — before building a new component, check if an existing one (even in a different feature) can be extracted to `src/components/common/` and shared. Example: `ProspectsPage` and `PositioningsPage` share the same Accordion pattern — a user navigating between pages should not experience a visual or behavioral break.
+- **Consistent interaction patterns** — expand/collapse, archive/restore, inline-edit — these behaviors must look and work identically across all entities. Once a pattern is established (e.g. AccordionItem with aria-expanded, AlertDialog for destructive actions), apply it everywhere, not just where it was first introduced.
+
 **Backend (Adonis Standard):**
 
 ```

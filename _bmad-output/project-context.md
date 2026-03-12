@@ -55,6 +55,7 @@ _Critical rules and patterns for implementing BattleCRM. Read this before writin
 - **Soft delete only** - never hard delete, use `deleted_at`
 - Soft delete implemented via `adonis-lucid-soft-deletes` package; `.delete()` on a model instance performs a soft delete
 - `withTrashed()` is not declared in the default Lucid types — use `apps/backend/types/soft_deletes.d.ts` module augmentation (already exists)
+- ⚠️ **SoftDeletes + sub-resource endpoints checklist** — any endpoint that looks up a **parent model** to serve a sub-resource (e.g. `GET /api/prospects/:id/interactions`) MUST add `.withTrashed()` on the parent query, otherwise archived parents return 404 and silently break access to their child data. This has caused bugs in Stories 3.6, 4.2 — check this every time a sub-resource endpoint is implemented.
 - API lists: wrapped `{ data: [...], meta: {...} }`
 - API single: direct object `{ id, name, ... }`
 - Dates: ISO 8601 strings

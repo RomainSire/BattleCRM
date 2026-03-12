@@ -1146,6 +1146,25 @@ src/components/
 
 ## UX Consistency Patterns
 
+### Timeline Unifiée par Prospect (décision Epic 4 rétro, 2026-03-12)
+
+La timeline d'un prospect (FR25) est une **vue chronologique unifiée** qui mélange deux types d'événements :
+
+| Type d'événement | Source | Interactivité | Style visuel |
+|-----------------|--------|---------------|--------------|
+| Stage transition | `prospect_stage_transitions` | Lecture seule — non cliquable | Icône jalons, couleur neutre |
+| Interaction | `interactions` | Cliquable → ouvre le détail | Icône action, couleur distinctive |
+
+**Règles de design :**
+- Tri chronologique décroissant (le plus récent en haut)
+- Distinction visuelle obligatoire entre les deux types — l'utilisateur doit identifier instantanément si un event est "ce qui s'est passé" (transition) ou "ce qu'on a fait" (interaction)
+- Chaque interaction est cliquable et ouvre une vue détail (FR28) — un seul clic, pas de hover actions
+- Les transitions de stage restent lisibles mais visuellement secondaires (elles décrivent le parcours, pas les actions)
+
+**Composant recommandé :** liste verticale avec indicateur de type (icône + couleur), pas de table.
+
+---
+
 ### Button Hierarchy
 
 **Primary Actions:**
