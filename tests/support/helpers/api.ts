@@ -102,6 +102,56 @@ export async function createProspect(
 }
 
 /**
+ * Create a positioning. Returns the created positioning object.
+ * Requires an authenticated request context.
+ */
+export async function createPositioning(
+  request: APIRequestContext,
+  data: {
+    name: string
+    funnel_stage_id?: string
+    description?: string
+    content?: string
+  },
+): Promise<{ id: string; name: string; funnelStageId: string; deletedAt: string | null }> {
+  // If no stage provided, use the first available stage
+  let stageId = data.funnel_stage_id
+  if (!stageId) {
+    const stages = await getFunnelStages(request)
+    stageId = stages[0]?.id
+    if (!stageId) throw new Error('createPositioning: no funnel stages available')
+  }
+  const res = await request.post(`${API_URL}/api/positionings`, {
+    data: { ...data, funnel_stage_id: stageId },
+  })
+  if (!res.ok()) throw new Error(`createPositioning failed: ${res.status()} ${await res.text()}`)
+  return res.json()
+}
+
+/**
+ * Reset positionings to a clean slate (including archived ones).
+ * Restores archived positionings first so destroy can find them, then soft-deletes all.
+ * Requires an authenticated request context.
+ */
+export async function resetPositionings(request: APIRequestContext): Promise<void> {
+  const res = await request.get(`${API_URL}/api/positionings?include_archived=true`)
+  const body = await res.json()
+  const positionings: Array<{ id: string; deletedAt: string | null }> = body.data ?? []
+
+  // Restore archived positionings so destroy can find them
+  for (const p of positionings) {
+    if (p.deletedAt !== null) {
+      await request.patch(`${API_URL}/api/positionings/${p.id}/restore`)
+    }
+  }
+
+  // Archive (soft-delete) all positionings
+  for (const p of positionings) {
+    await request.delete(`${API_URL}/api/positionings/${p.id}`)
+  }
+}
+
+/**
  * Delete (soft-delete) all prospects, including archived ones.
  * Archived prospects are restored first (backend destroy only works on active),
  * then archived again — leaving a clean slate of only archived records.

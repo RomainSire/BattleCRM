@@ -21,7 +21,7 @@ export default class PositioningsController {
 
     const query = Positioning.query()
       .withScopes((s) => s.forUser(userId))
-      .preload('funnelStage')
+      .preload('funnelStage', (q) => q.withTrashed())
       .orderBy('created_at', 'desc')
 
     if (includeArchived) {
@@ -61,7 +61,7 @@ export default class PositioningsController {
     const positioning = await Positioning.query()
       .withScopes((s) => s.forUser(userId))
       .where('id', params.id)
-      .preload('funnelStage')
+      .preload('funnelStage', (q) => q.withTrashed())
       .firstOrFail()
 
     return response.ok(serializePositioning(positioning))
@@ -89,7 +89,7 @@ export default class PositioningsController {
     positioning.content = payload.content ?? null
     await positioning.save()
 
-    await positioning.load('funnelStage')
+    await positioning.load('funnelStage', (q) => q.withTrashed())
 
     return response.created(serializePositioning(positioning))
   }
@@ -124,7 +124,7 @@ export default class PositioningsController {
     const updated = await Positioning.query()
       .withScopes((s) => s.forUser(userId))
       .where('id', positioning.id)
-      .preload('funnelStage')
+      .preload('funnelStage', (q) => q.withTrashed())
       .firstOrFail()
 
     return response.ok(serializePositioning(updated))
@@ -165,7 +165,7 @@ export default class PositioningsController {
     const restored = await Positioning.query()
       .withScopes((s) => s.forUser(userId))
       .where('id', positioning.id)
-      .preload('funnelStage')
+      .preload('funnelStage', (q) => q.withTrashed())
       .firstOrFail()
 
     return response.ok(serializePositioning(restored))
