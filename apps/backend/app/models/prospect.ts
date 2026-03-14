@@ -4,6 +4,7 @@ import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import { SoftDeletes } from 'adonis-lucid-soft-deletes'
 import type { DateTime } from 'luxon'
 import FunnelStage from '#models/funnel_stage'
+import Interaction from '#models/interaction'
 import Positioning from '#models/positioning'
 import ProspectStageTransition from '#models/prospect_stage_transition'
 import User from '#models/user'
@@ -67,4 +68,7 @@ export default class Prospect extends compose(BaseModel, SoftDeletes) {
 
   @hasMany(() => ProspectStageTransition)
   declare stageTransitions: HasMany<typeof ProspectStageTransition>
+
+  @hasMany(() => Interaction)
+  declare interactions: HasMany<typeof Interaction>
 }
