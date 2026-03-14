@@ -1,4 +1,8 @@
-import type { PositioningsFilterType, ProspectsFilterType } from '@battlecrm/shared'
+import type {
+  InteractionsFilterType,
+  PositioningsFilterType,
+  ProspectsFilterType,
+} from '@battlecrm/shared'
 
 export const queryKeys = {
   auth: {
@@ -27,5 +31,12 @@ export const queryKeys = {
         ? ([...queryKeys.positionings.all, 'list', filters] as const)
         : ([...queryKeys.positionings.all, 'list'] as const),
     prospects: (id: string) => [...queryKeys.positionings.all, 'prospects', id] as const,
+  },
+  interactions: {
+    all: ['interactions'] as const,
+    list: (filters?: InteractionsFilterType) =>
+      filters && Object.keys(filters).length > 0
+        ? ([...queryKeys.interactions.all, 'list', filters] as const)
+        : ([...queryKeys.interactions.all, 'list'] as const),
   },
 }

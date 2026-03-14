@@ -10,7 +10,8 @@
     "dashboard": "Tableau de bord",
     "settings": "Paramètres",
     "prospects": "Prospects",
-    "positionings": "Positionnements"
+    "positionings": "Positionnements",
+    "interactions": "Interactions"
   },
   "auth": {
     "login": {
@@ -247,6 +248,38 @@
       "title": "Interactions",
       "comingSoon": "Disponible dans une prochaine version"
     }
+  },
+  "interactions": {
+    "title": "Interactions",
+    "addInteraction": "Journaliser une interaction",
+    "noPositioning": "Sans positionnement",
+    "fields": {
+      "prospect": "Prospect",
+      "status": "Statut",
+      "positioning": "Positionnement",
+      "notes": "Notes"
+    },
+    "status": {
+      "positive": "Positif",
+      "pending": "En attente",
+      "negative": "Négatif"
+    },
+    "placeholders": {
+      "selectProspect": "Sélectionner un prospect...",
+      "selectPositioning": "Sélectionner un positionnement...",
+      "notes": "Notes sur cette interaction..."
+    },
+    "createForm": {
+      "title": "Journaliser une interaction",
+      "description": "Capturez une interaction avec un prospect.",
+      "submit": "Enregistrer"
+    },
+    "toast": {
+      "created": "Interaction enregistrée.",
+      "createFailed": "Impossible d'enregistrer l'interaction."
+    },
+    "loadError": "Impossible de charger les interactions.",
+    "empty": "Aucune interaction enregistrée."
   },
   "phoneInput": {
     "searchCountry": "Rechercher un pays...",
