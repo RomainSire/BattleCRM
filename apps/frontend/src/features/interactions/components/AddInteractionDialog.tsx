@@ -55,7 +55,7 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
   const [statusError, setStatusError] = useState<string | null>(null)
 
   const create = useCreateInteraction()
-  const { data: prospectsData } = useProspects()
+  const { data: prospectsData, isLoading: prospectsLoading } = useProspects()
   const prospects = prospectsData?.data ?? []
   const selectedProspect = prospects.find((p) => p.id === selectedProspectId)
 
@@ -67,6 +67,7 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
     selectedProspect?.funnelStageId
       ? { funnel_stage_id: selectedProspect.funnelStageId }
       : undefined,
+    { enabled: !!selectedProspect?.funnelStageId },
   )
   const positionings = positioningsData?.data ?? []
 
@@ -102,7 +103,7 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
         prospect_id: selectedProspectId,
         status: selectedStatus as InteractionStatus,
         positioning_id: selectedPositioningId === 'none' ? null : selectedPositioningId,
-        notes: values.notes.trim() || null,
+        notes: values.notes || null,
       },
       {
         onSuccess: () => {
@@ -160,18 +161,22 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
                 *
               </span>
             </Label>
-            <Select value={selectedProspectId} onValueChange={handleProspectChange}>
-              <SelectTrigger id="interaction-prospect" className="w-full">
-                <SelectValue placeholder={t('interactions.placeholders.selectProspect')} />
-              </SelectTrigger>
-              <SelectContent>
-                {prospects.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {prospectsLoading ? (
+              <Skeleton className="h-9 w-full" />
+            ) : (
+              <Select value={selectedProspectId} onValueChange={handleProspectChange}>
+                <SelectTrigger id="interaction-prospect" className="w-full">
+                  <SelectValue placeholder={t('interactions.placeholders.selectProspect')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {prospects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             {currentStage && <p className="text-xs text-muted-foreground">{currentStage.name}</p>}
             <FieldError>{prospectError}</FieldError>
           </div>
