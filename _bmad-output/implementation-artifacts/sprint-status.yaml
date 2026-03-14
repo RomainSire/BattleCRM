@@ -85,7 +85,7 @@ development_status:
   # Epic 5: Interaction Logging
   epic-5: in-progress
   5-1-create-interactions-database-schema: done
-  5-2-implement-interactions-crud-api: review
+  5-2-implement-interactions-crud-api: done
   5-3-build-interaction-logging-form: backlog
   5-4-implement-pre-fill-quick-actions: backlog
   5-5-build-interactions-timeline-view: backlog

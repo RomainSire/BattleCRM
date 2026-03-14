@@ -1,6 +1,6 @@
 # Story 5.2: Implement Interactions CRUD API
 
-Status: review
+Status: done
 
 ## Story
 
