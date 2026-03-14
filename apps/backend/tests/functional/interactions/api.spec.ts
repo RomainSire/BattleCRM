@@ -205,6 +205,22 @@ test.group('Interactions API', (group) => {
     response.assertStatus(422)
   })
 
+  test('GET /api/interactions?positioning_id (another user) returns 404', async ({ client }) => {
+    const userA = await registerUser(client, 'filter-positioning-iso-a')
+    const userB = await registerUser(client, 'filter-positioning-iso-b')
+    const stageA = await getUserFirstStage(userA.id)
+    const positioningA = await Positioning.create({
+      userId: userA.id,
+      funnelStageId: stageA.id,
+      name: 'PA Positioning',
+    })
+
+    const response = await client
+      .get(`/api/interactions?positioning_id=${positioningA.id}`)
+      .loginAs(userB)
+    response.assertStatus(404)
+  })
+
   test('GET /api/interactions?status=positive filters by status', async ({ client, assert }) => {
     const user = await registerUser(client, 'filter-status')
     const stage = await getUserFirstStage(user.id)
@@ -249,6 +265,26 @@ test.group('Interactions API', (group) => {
     const ids = response.body().data.map((i: { id: string }) => i.id)
     assert.include(ids, i1.id)
     assert.lengthOf(ids, 1)
+  })
+
+  test('GET /api/interactions?funnel_stage_id includes interactions for archived prospects', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'filter-stage-archived')
+    const stage = await getUserFirstStage(user.id)
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'ArchivedP',
+    })
+    const interaction = await createInteraction(user.id, prospect.id)
+    await prospect.delete() // archive the prospect
+
+    const response = await client.get(`/api/interactions?funnel_stage_id=${stage.id}`).loginAs(user)
+    response.assertStatus(200)
+    const ids = response.body().data.map((i: { id: string }) => i.id)
+    assert.include(ids, interaction.id)
   })
 
   test('GET /api/interactions?funnel_stage_id=invalid returns 422', async ({ client }) => {
@@ -424,6 +460,32 @@ test.group('Interactions API', (group) => {
       .json({ notes: null })
     response.assertStatus(200)
     assert.isNull(response.body().notes)
+  })
+
+  test('PUT /api/interactions/:id with another user positioning_id returns 404', async ({
+    client,
+  }) => {
+    const userA = await registerUser(client, 'put-pos-iso-a')
+    const userB = await registerUser(client, 'put-pos-iso-b')
+    const stageA = await getUserFirstStage(userA.id)
+    const stageB = await getUserFirstStage(userB.id)
+    const positioningA = await Positioning.create({
+      userId: userA.id,
+      funnelStageId: stageA.id,
+      name: 'Positioning A',
+    })
+    const prospectB = await Prospect.create({
+      userId: userB.id,
+      funnelStageId: stageB.id,
+      name: 'PB',
+    })
+    const interaction = await createInteraction(userB.id, prospectB.id)
+
+    const response = await client
+      .put(`/api/interactions/${interaction.id}`)
+      .loginAs(userB)
+      .json({ positioning_id: positioningA.id })
+    response.assertStatus(404)
   })
 
   test('PUT /api/interactions/:id non-existent returns 404', async ({ client }) => {

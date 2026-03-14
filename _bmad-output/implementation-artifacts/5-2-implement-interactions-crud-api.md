@@ -70,7 +70,7 @@ so that the frontend can log and query interactions.
   - [x] 5.7 Tests DELETE: soft-delete → 200 + excluded from default list, 404
   - [x] 5.8 Tests Auth: unauthenticated → 401 (GET list + POST)
   - [x] 5.9 Tests Isolation: user B cannot access user A's interactions (404 on show/update/delete)
-  - [x] 5.10 Run `ENV_PATH=../../ node ace test functional` — 202/202 passent (31 nouveaux, 0 régressions)
+  - [x] 5.10 Run `ENV_PATH=../../ node ace test functional` — 205/205 passent (34 nouveaux, 0 régressions)
 
 - [x] **Task 6: Lint + type-check** (AC13)
   - [x] 6.1 `pnpm biome check --write .` from root — 0 errors (3 auto-fixes style)
@@ -700,14 +700,16 @@ claude-sonnet-4-6
 - `store()` : reload complet via `.query().where('id', ...)` plutôt que `.load()` pour éviter les problèmes de typing du callback avec `withTrashed`.
 - Filtre `?funnel_stage_id` implémenté via `.whereHas('prospect', q => q.where('funnel_stage_id', ...))` — le champ n'existe pas sur `interactions`.
 - Filtres `?prospect_id` et `?positioning_id` utilisent `.withTrashed()` sur la validation de ownership — permet de filtrer les interactions d'entités archivées.
-- 31 tests fonctionnels couvrant tous les ACs (list shape, ordering, filtres x4, GET single, POST full/minimal/default-date, PUT, DELETE, auth 401, isolation cross-user).
-- 202/202 tests passent (171 existants + 31 nouveaux) — zéro régressions.
+- 34 tests fonctionnels couvrant tous les ACs (list shape, ordering, filtres x4, GET single, POST full/minimal/default-date, PUT, DELETE, auth 401, isolation cross-user, tests sécurité positioning_id cross-user).
+- 205/205 tests passent (171 existants + 34 nouveaux) — zéro régressions.
 - Biome auto-fixé 3 fichiers (style uniquement), 0 erreurs TypeScript.
 
 ### File List
 
+- `apps/backend/app/helpers/regex.ts` (modified — added ISO_DATE_REGEX)
 - `apps/backend/app/serializers/interaction.ts` (created)
 - `apps/backend/app/validators/interactions.ts` (created)
 - `apps/backend/app/controllers/interactions_controller.ts` (created)
 - `apps/backend/start/routes.ts` (modified — added InteractionsController import + route group)
 - `apps/backend/tests/functional/interactions/api.spec.ts` (created)
+- `apps/backend/tests/functional/interactions/schema.spec.ts` (modified — 2 FK tests added during Story 5.1 code review, committed in Story 5.2 branch)

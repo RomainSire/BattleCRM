@@ -1,4 +1,5 @@
 import vine from '@vinejs/vine'
+import { ISO_DATE_REGEX } from '#helpers/regex'
 
 export const createInteractionValidator = vine.compile(
   vine.object({
@@ -6,7 +7,7 @@ export const createInteractionValidator = vine.compile(
     positioning_id: vine.string().uuid().nullable().optional(),
     status: vine.enum(['positive', 'pending', 'negative']),
     notes: vine.string().trim().nullable().optional(),
-    interaction_date: vine.string().optional(), // ISO 8601 — used as-is in DateTime.fromISO()
+    interaction_date: vine.string().regex(ISO_DATE_REGEX).optional(),
   }),
 )
 
@@ -15,6 +16,6 @@ export const updateInteractionValidator = vine.compile(
     status: vine.enum(['positive', 'pending', 'negative']).optional(),
     notes: vine.string().trim().nullable().optional(),
     positioning_id: vine.string().uuid().nullable().optional(),
-    interaction_date: vine.string().optional(),
+    interaction_date: vine.string().regex(ISO_DATE_REGEX).optional(),
   }),
 )

@@ -86,7 +86,7 @@ export default class InteractionsController {
         .first()
       if (!stage) return response.notFound()
       // funnel_stage_id is on prospects, not interactions — filter via relation
-      query.whereHas('prospect', (q) => q.where('funnel_stage_id', funnelStageId))
+      query.whereHas('prospect', (q) => q.withTrashed().where('funnel_stage_id', funnelStageId))
     }
 
     const interactions = await query
@@ -146,6 +146,7 @@ export default class InteractionsController {
 
     // Reload with full preloads for serializer
     const created = await Interaction.query()
+      .withScopes((s) => s.forUser(userId))
       .where('id', interaction.id)
       .preload('prospect', (q) => q.withTrashed().preload('funnelStage'))
       .preload('positioning')
@@ -168,8 +169,17 @@ export default class InteractionsController {
 
     if (payload.status !== undefined) interaction.status = payload.status
     if (payload.notes !== undefined) interaction.notes = payload.notes ?? null
-    if (payload.positioning_id !== undefined)
+    if (payload.positioning_id !== undefined) {
+      // Validate positioning ownership — withTrashed to allow archived positionings
+      if (payload.positioning_id) {
+        await Positioning.query()
+          .withTrashed()
+          .withScopes((s) => s.forUser(userId))
+          .where('id', payload.positioning_id)
+          .firstOrFail()
+      }
       interaction.positioningId = payload.positioning_id ?? null
+    }
     if (payload.interaction_date !== undefined) {
       interaction.interactionDate = DateTime.fromISO(payload.interaction_date)
     }
