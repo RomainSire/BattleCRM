@@ -251,7 +251,10 @@ test.group('Interaction schema', (group) => {
     assert.isNull(reloaded.positioningId)
   })
 
-  test('cannot create an interaction with a non-existent prospect_id', async ({ client, assert }) => {
+  test('cannot create an interaction with a non-existent prospect_id', async ({
+    client,
+    assert,
+  }) => {
     const { user } = await createUserWithContext(client, 'fk-invalid-prospect')
 
     await assert.rejects(async () => {
