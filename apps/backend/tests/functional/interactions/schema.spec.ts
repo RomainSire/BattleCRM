@@ -251,6 +251,40 @@ test.group('Interaction schema', (group) => {
     assert.isNull(reloaded.positioningId)
   })
 
+  test('cannot create an interaction with a non-existent prospect_id', async ({ client, assert }) => {
+    const { user } = await createUserWithContext(client, 'fk-invalid-prospect')
+
+    await assert.rejects(async () => {
+      await Interaction.create({
+        userId: user.id,
+        prospectId: '00000000-0000-0000-0000-000000000000',
+        status: 'positive',
+        interactionDate: DateTime.now(),
+      })
+    })
+  })
+
+  test('ON DELETE CASCADE: hard-deleting a user removes their interactions', async ({
+    client,
+    assert,
+  }) => {
+    const { user, prospect } = await createUserWithContext(client, 'cascade-user')
+
+    const interaction = await Interaction.create({
+      userId: user.id,
+      prospectId: prospect.id,
+      status: 'positive',
+      interactionDate: DateTime.now(),
+    })
+    const interactionId = interaction.id
+
+    // Bypass SoftDeletes — hard delete pour déclencher la contrainte CASCADE
+    await db.from('users').where('id', user.id).delete()
+
+    const found = await Interaction.query().withTrashed().where('id', interactionId).first()
+    assert.isNull(found)
+  })
+
   test('ON DELETE SET NULL: hard-deleting a positioning nullifies interaction.positioningId', async ({
     client,
     assert,

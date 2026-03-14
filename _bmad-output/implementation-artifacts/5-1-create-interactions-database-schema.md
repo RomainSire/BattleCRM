@@ -1,6 +1,6 @@
 # Story 5.1: Create Interactions Database Schema
 
-Status: review
+Status: done
 
 ## Story
 
@@ -32,9 +32,9 @@ so that the Interaction Logging feature has a solid, tested data layer before an
 
 4. **AC4 (Shared types):** Le fichier `packages/shared/src/types/interaction.ts` est créé avec `InteractionType`, `InteractionListResponse`, `CreateInteractionPayload`, `UpdateInteractionPayload`, `InteractionsFilterType`. Les types sont exportés depuis `packages/shared/src/index.ts`.
 
-5. **AC5 (Model relations):** Les models `Prospect`, `User`, et `Positioning` sont mis à jour avec la relation `@hasMany(() => Interaction)`.
+5. **AC5 (Model relations):** Les models `Prospect` et `Positioning` sont mis à jour avec la relation `@hasMany(() => Interaction)`. Le model `User` est intentionnellement exclu — `Interaction` n'est jamais requêtée depuis `User` directement.
 
-6. **AC6 (Tests):** 10 tests fonctionnels dans `tests/functional/interactions/schema.spec.ts` couvrant : création, isolation forUser, soft-delete, withTrashed, FK nullables, cascade `ON DELETE SET NULL`.
+6. **AC6 (Tests):** 12 tests fonctionnels dans `tests/functional/interactions/schema.spec.ts` couvrant : création, isolation forUser, soft-delete, withTrashed, FK nullables, cascade `ON DELETE SET NULL`, violation FK `prospect_id`, cascade `ON DELETE CASCADE` sur `user_id`.
 
 7. **AC7 (Qualité):** `pnpm biome check --write .` → 0 erreurs ; `pnpm type-check` → 0 erreurs.
 
@@ -60,7 +60,7 @@ so that the Interaction Logging feature has a solid, tested data layer before an
   - [x] `static forUser = scope(...)` isolant par `user_id`
   - [x] Relations : `@belongsTo(() => User)`, `@belongsTo(() => Prospect)`, `@belongsTo(() => Positioning)`
   - [x] Mise à jour `apps/backend/app/models/prospect.ts` — ajouter `@hasMany(() => Interaction)`
-  - [x] Mise à jour `apps/backend/app/models/user.ts` — ajouter `@hasMany(() => Interaction)`
+  - [ ] ~~Mise à jour `apps/backend/app/models/user.ts`~~ — exclu intentionnellement (pas de requête Interaction depuis User)
   - [x] Mise à jour `apps/backend/app/models/positioning.ts` — ajouter `@hasMany(() => Interaction)`
 
 - [x] Task 3: Types partagés (AC4)
@@ -70,7 +70,7 @@ so that the Interaction Logging feature has a solid, tested data layer before an
 
 - [x] Task 4: Tests fonctionnels (AC6)
   - [x] Créer `apps/backend/tests/functional/interactions/schema.spec.ts`
-  - [x] 10 tests (voir liste détaillée en Dev Notes)
+  - [x] 12 tests (voir liste détaillée en Dev Notes)
   - [x] `ENV_PATH=../../ node ace test functional` — tous passent
 
 - [x] Task 5: Qualité (AC7)
@@ -325,7 +325,7 @@ Puis : `pnpm --filter @battlecrm/shared build`
 
 **Fichier : `apps/backend/tests/functional/interactions/schema.spec.ts`** (NOUVEAU)
 
-**10 tests à implémenter :**
+**12 tests à implémenter :**
 
 1. `can create an interaction with all fields` — vérifie id, status, notes, interactionDate, positioningId
 2. `can create an interaction with minimal fields (no positioning, no notes)` — positioningId et notes nullable
@@ -336,7 +336,9 @@ Puis : `pnpm --filter @battlecrm/shared build`
 7. `deleted_at is set on soft-delete and null after restore`
 8. `interaction.prospectId references an existing prospect`
 9. `interaction.positioningId is nullable (can be null)`
-10. `ON DELETE SET NULL: hard-deleting a positioning nullifies interaction.positioningId`
+10. `cannot create an interaction with a non-existent prospect_id` — FK enforcement
+11. `ON DELETE CASCADE: hard-deleting a user removes their interactions` — via `db.from('users')` pour bypass SoftDeletes
+12. `ON DELETE SET NULL: hard-deleting a positioning nullifies interaction.positioningId`
 
 **Pattern de setup (reprendre exactement depuis positionings/schema.spec.ts) :**
 ```typescript
@@ -435,17 +437,16 @@ claude-sonnet-4-6
 
 - Migration `0006_create_interactions_table.ts` créée et appliquée avec succès — table `interactions` avec toutes les colonnes, FKs, et 3 index composites
 - Model `Interaction` créé avec `compose(BaseModel, SoftDeletes)`, `forUser` scope, et relations `belongsTo` (User, Prospect, Positioning)
-- Models `Prospect`, `User`, `Positioning` mis à jour avec `@hasMany(() => Interaction)` (sans circular import issues grâce aux lazy arrow functions Lucid)
+- Models `Prospect` et `Positioning` mis à jour avec `@hasMany(() => Interaction)` — `User` exclu intentionnellement (pas de requête Interaction depuis User)
 - Types partagés créés dans `packages/shared/src/types/interaction.ts` et exportés dans `index.ts` — build réussi
-- 10 tests fonctionnels couvrant tous les ACs (création, isolation forUser, soft-delete, withTrashed, FK nullables, ON DELETE SET NULL)
-- 169/169 tests passent (159 existants + 10 nouveaux), 0 erreurs Biome, 0 erreurs TypeScript
+- 12 tests fonctionnels couvrant tous les ACs (création, isolation forUser, soft-delete, withTrashed, FK nullables, ON DELETE SET NULL, violation FK prospect_id, ON DELETE CASCADE user_id)
+- 171/171 tests passent (159 existants + 12 nouveaux), 0 erreurs Biome, 0 erreurs TypeScript
 
 ### File List
 
 - `apps/backend/database/migrations/0006_create_interactions_table.ts` (created)
 - `apps/backend/app/models/interaction.ts` (created)
 - `apps/backend/app/models/prospect.ts` (modified)
-- `apps/backend/app/models/user.ts` (modified)
 - `apps/backend/app/models/positioning.ts` (modified)
 - `apps/backend/tests/functional/interactions/schema.spec.ts` (created)
 - `packages/shared/src/types/interaction.ts` (created)
