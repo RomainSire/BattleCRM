@@ -10,7 +10,8 @@
     "dashboard": "Dashboard",
     "settings": "Settings",
     "prospects": "Prospects",
-    "positionings": "Positionings"
+    "positionings": "Positionings",
+    "interactions": "Interactions"
   },
   "auth": {
     "login": {
@@ -247,6 +248,38 @@
       "title": "Interactions",
       "comingSoon": "Coming in a future release"
     }
+  },
+  "interactions": {
+    "title": "Interactions",
+    "addInteraction": "Log Interaction",
+    "noPositioning": "No positioning",
+    "fields": {
+      "prospect": "Prospect",
+      "status": "Status",
+      "positioning": "Positioning",
+      "notes": "Notes"
+    },
+    "status": {
+      "positive": "Positive",
+      "pending": "Pending",
+      "negative": "Negative"
+    },
+    "placeholders": {
+      "selectProspect": "Select a prospect...",
+      "selectPositioning": "Select a positioning...",
+      "notes": "Notes on this interaction..."
+    },
+    "createForm": {
+      "title": "Log Interaction",
+      "description": "Capture an interaction with a prospect.",
+      "submit": "Save"
+    },
+    "toast": {
+      "created": "Interaction logged.",
+      "createFailed": "Failed to log interaction."
+    },
+    "loadError": "Failed to load interactions.",
+    "empty": "No interactions logged yet."
   },
   "phoneInput": {
     "searchCountry": "Search country...",

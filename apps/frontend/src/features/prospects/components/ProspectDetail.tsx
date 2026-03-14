@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { AddInteractionDialog } from '@/features/interactions/components/AddInteractionDialog'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
 import { i18nMessagesProvider } from '@/lib/validation'
@@ -486,23 +487,22 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
             )}
           </div>
 
-          {/* Interactions — active prospects only; Epic 5 implements the form and timeline */}
+          {/* Interactions — active prospects only */}
           {!isArchived && (
             <div className="mt-4">
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-xs font-medium text-muted-foreground">
                   {t('prospects.interactions.title')}
                 </p>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled
-                  aria-label={`${t('prospects.interactions.logButton')} — ${t('prospects.interactions.comingSoon')}`}
-                >
-                  <Plus className="mr-1 size-3" />
-                  {t('prospects.interactions.logButton')}
-                </Button>
+                <AddInteractionDialog
+                  initialProspectId={prospect.id}
+                  trigger={
+                    <Button type="button" size="sm" variant="outline">
+                      <Plus className="mr-1 size-3" />
+                      {t('prospects.interactions.logButton')}
+                    </Button>
+                  }
+                />
               </div>
               <p className="text-xs italic text-muted-foreground">
                 {t('prospects.interactions.empty')}
