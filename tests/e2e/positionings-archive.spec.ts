@@ -31,7 +31,7 @@ test.describe('Positionings - Archive & Restore', () => {
   test('expanded active positioning shows Archive button', async ({ page }) => {
     await page.goto('/positionings')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .first()
       .click()
@@ -41,7 +41,7 @@ test.describe('Positionings - Archive & Restore', () => {
   test('clicking Archive opens a confirmation dialog', async ({ page }) => {
     await page.goto('/positionings')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .first()
       .click()
@@ -53,7 +53,7 @@ test.describe('Positionings - Archive & Restore', () => {
   test('cancelling the archive dialog keeps the positioning in the list', async ({ page }) => {
     await page.goto('/positionings')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .first()
       .click()
@@ -69,7 +69,7 @@ test.describe('Positionings - Archive & Restore', () => {
   }) => {
     await page.goto('/positionings')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .first()
       .click()
@@ -114,7 +114,7 @@ test.describe('Positionings - Archive & Restore', () => {
     await page.goto('/positionings')
     await page.getByRole('switch', { name: /show archived/i }).click()
     const row = page
-      .locator('[data-slot="accordion-item"]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .first()
     await expect(row.getByText('Archived', { exact: true })).toBeVisible()
@@ -126,7 +126,7 @@ test.describe('Positionings - Archive & Restore', () => {
     await page.goto('/positionings')
     await page.getByRole('switch', { name: /show archived/i }).click()
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .first()
       .click()
@@ -139,7 +139,7 @@ test.describe('Positionings - Archive & Restore', () => {
     await page.goto('/positionings')
     await page.getByRole('switch', { name: /show archived/i }).click()
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .first()
       .click()

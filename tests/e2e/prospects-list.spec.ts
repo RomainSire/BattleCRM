@@ -141,7 +141,7 @@ test.describe('Prospects - List View', () => {
   test('clicking a row expands the detail panel', async ({ page }) => {
     await page.goto('/prospects')
     const rowBtn = page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'Alice Martin' })
       .first()
     await expect(rowBtn).toHaveAttribute('aria-expanded', 'false')
@@ -152,7 +152,7 @@ test.describe('Prospects - List View', () => {
   test('clicking an expanded row collapses it', async ({ page }) => {
     await page.goto('/prospects')
     const rowBtn = page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'Alice Martin' })
       .first()
     await rowBtn.click()
@@ -164,11 +164,11 @@ test.describe('Prospects - List View', () => {
   test('only one row can be expanded at a time', async ({ page }) => {
     await page.goto('/prospects')
     const aliceRow = page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'Alice Martin' })
       .first()
     const bobRow = page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'Bob Dupont' })
       .first()
 

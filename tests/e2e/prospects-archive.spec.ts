@@ -30,7 +30,7 @@ test.describe('Prospects - Archive & Restore', () => {
   test('expanded active prospect shows Archive button', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .first()
       .click()
@@ -41,7 +41,7 @@ test.describe('Prospects - Archive & Restore', () => {
   test('clicking Archive opens a confirmation dialog', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .first()
       .click()
@@ -53,7 +53,7 @@ test.describe('Prospects - Archive & Restore', () => {
   test('cancelling the archive dialog keeps the prospect in the list', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .first()
       .click()
@@ -67,7 +67,7 @@ test.describe('Prospects - Archive & Restore', () => {
   test('confirming archive removes prospect from active list — toast success', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .first()
       .click()
@@ -114,7 +114,10 @@ test.describe('Prospects - Archive & Restore', () => {
     await page.getByRole('switch', { name: /show archived/i }).click()
     // The accordion row for "To Be Archived" should contain the badge text
     // exact: true to avoid matching "Archived" inside the prospect name "To Be Archived"
-    const row = page.locator('[data-slot="accordion-item"]').filter({ hasText: 'To Be Archived' }).first()
+    const row = page
+      .locator('tr[aria-expanded]')
+      .filter({ hasText: 'To Be Archived' })
+      .first()
     await expect(row.getByText('Archived', { exact: true })).toBeVisible()
   })
 
@@ -124,7 +127,7 @@ test.describe('Prospects - Archive & Restore', () => {
     await page.goto('/prospects')
     await page.getByRole('switch', { name: /show archived/i }).click()
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .first()
       .click()
@@ -137,7 +140,7 @@ test.describe('Prospects - Archive & Restore', () => {
     await page.goto('/prospects')
     await page.getByRole('switch', { name: /show archived/i }).click()
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .first()
       .click()
