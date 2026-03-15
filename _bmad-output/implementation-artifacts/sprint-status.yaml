@@ -87,7 +87,7 @@ development_status:
   5-1-create-interactions-database-schema: done
   5-2-implement-interactions-crud-api: done
   5-3-build-interaction-logging-form: done
-  5-4-implement-pre-fill-quick-actions: review
+  5-4-implement-pre-fill-quick-actions: done
   5-5-build-interactions-timeline-view: backlog
   epic-5-retrospective: optional
 

@@ -76,10 +76,10 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
   )
   const positionings = positioningsData?.data ?? []
 
-  // Pre-fill last used positioning for this funnel stage once positionings load
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — only run when positionings load, not on every selectedPositioningId change
+  // Pre-fill last used positioning for this funnel stage once positionings load or dialog re-opens
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — only run when positionings load or open changes, not on every selectedPositioningId change
   useEffect(() => {
-    if (positioningsLoading || selectedPositioningId !== 'none' || !selectedProspect?.funnelStageId)
+    if (!open || positioningsLoading || selectedPositioningId !== 'none' || !selectedProspect?.funnelStageId)
       return
     const lastId = getLastPositioningForStage(selectedProspect.funnelStageId)
     if (!lastId) return
@@ -87,7 +87,7 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
     if (found) {
       setSelectedPositioningId(lastId)
     }
-  }, [positioningsLoading, positionings, selectedProspect?.funnelStageId])
+  }, [positioningsLoading, positionings, selectedProspect?.funnelStageId, open])
 
   const {
     register,

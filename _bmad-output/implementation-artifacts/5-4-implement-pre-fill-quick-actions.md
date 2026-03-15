@@ -1,6 +1,6 @@
 # Story 5.4: Implement Pre-fill & Quick Actions
 
-Status: review
+Status: done
 
 ## Story
 
@@ -20,7 +20,7 @@ So that I can log interactions with minimal typing.
 
 5. **AC5 (3 clicks max from Prospects list):** From the Prospects list view, a user can log an interaction in 3 clicks: (1) click the quick-action button on a row → prospect pre-filled, (2) click a status toggle (Positive/Pending/Negative), (3) click Save.
 
-6. **AC6 (ProspectRow valid HTML structure):** The quick-action button must be a sibling to the `AccordionTrigger` button, NOT nested inside it. Use `@radix-ui/react-accordion` primitives (`AccordionPrimitive.Header`, `AccordionPrimitive.Trigger`) directly to control the layout. The accordion expand/collapse animation (ChevronDown rotate) must be preserved.
+6. **AC6 (ProspectRow valid HTML structure):** The quick-action button must not be nested inside the expand trigger. Implementation: ProspectRow was refactored from Accordion to shadcn Table (`Table/TableRow/TableCell`). The expand toggle is a `<tr aria-expanded>` with `onClick`, the quick-action `<Button>` is a sibling `<TableCell onClick={e.stopPropagation()}>`. No nested interactive elements. PositioningRow and PositioningsList were also migrated to Table (bonus, out of scope).
 
 7. **AC7 (No regressions):** ProspectRow accordion expand/collapse, ProspectDetail "Log Interaction" button, and all existing interaction logging behavior from Story 5.3 continue to work unchanged.
 
@@ -39,13 +39,12 @@ So that I can log interactions with minimal typing.
   - [x] 2.4 In `onSuccess` callback: call `saveContext(selectedProspectId, selectedProspect?.funnelStageId, selectedPositioningId)` BEFORE calling `resetAll()`
   - [x] 2.5 Reset must NOT save to localStorage — `resetAll()` remains as-is (no localStorage write on reset)
 
-- [x] **Task 3: Restructure ProspectRow for quick-action button** (AC4, AC5, AC6, AC7)
-  - [x] 3.1 Import `{ Accordion as AccordionPrimitive } from 'radix-ui'` (unified package used by this project) and `ChevronDown, Plus from 'lucide-react'`
-  - [x] 3.2 Import `AddInteractionDialog` from `@/features/interactions/components/AddInteractionDialog`
-  - [x] 3.3 Replaced `<AccordionTrigger>` with `<AccordionPrimitive.Header className="flex items-center">` containing:
-    - `<AccordionPrimitive.Trigger className="group ...">` with the same row content + ChevronDown (`group-data-[state=open]:rotate-180`)
-    - `<div className="flex items-center pr-4">` sibling with `AddInteractionDialog` quick-action button (only for non-archived prospects)
-  - [x] 3.4 Accordion expand/collapse works — Radix manages state via AccordionItem value, no regression
+- [x] **Task 3: Add quick-action button + Table refactor** (AC4, AC5, AC6, AC7)
+  - [x] 3.1 ProspectsList + ProspectRow migrated from `Accordion` to shadcn `Table` (avoids nested-button HTML issue entirely, better responsive layout)
+  - [x] 3.2 `ProspectRow` returns a React fragment of two `<TableRow>`: main row with `aria-expanded` + `onClick={onToggle}`, and a conditional expanded row with `colSpan={6}`
+  - [x] 3.3 Quick-action `AddInteractionDialog` is in a dedicated last `<TableCell onClick={e.stopPropagation()}>` — valid HTML, no nesting inside trigger
+  - [x] 3.4 `ProspectsList` manages `expandedId` state, passes `isExpanded/onToggle` to each `ProspectRow` — expand/collapse works, only one row open at a time
+  - [x] 3.5 **Bonus (hors scope, demande utilisateur):** PositioningsList + PositioningRow migrated to same Table pattern; KanbanCard quick-action button added with Tooltip; AppNavbar logo added; AddInteractionDialog `DialogContent onClick stopPropagation` bug fixed; 6 E2E test files updated (accordion → table selectors)
 
 - [x] **Task 4: Lint + type-check** (AC8)
   - [x] 4.1 `pnpm biome check --write .` from monorepo root — 0 errors (170 files checked)
@@ -53,83 +52,38 @@ So that I can log interactions with minimal typing.
 
 ## Dev Notes
 
-### CRITICAL: Valid HTML — No Nested Buttons
+### CRITICAL: Valid HTML — No Nested Buttons (resolved via Table refactor)
 
-`AccordionTrigger` from shadcn renders as a `<button>`. You CANNOT nest another `<button>` inside it. The quick-action "Log Interaction" button MUST be a **sibling** to the trigger, not a child.
+The original plan was to use `AccordionPrimitive.Header/Trigger` to place the quick-action button as a sibling. **The implemented solution is better:** ProspectRow/ProspectsList were fully migrated to shadcn `Table`, eliminating the Accordion entirely. This avoids the nested-button problem at the HTML structure level.
 
-**Use `@radix-ui/react-accordion` primitives directly in ProspectRow:**
+**Final ProspectRow structure:**
 
 ```tsx
-import * as AccordionPrimitive from '@radix-ui/react-accordion'
-import { ChevronDown } from 'lucide-react'
-import { AddInteractionDialog } from '@/features/interactions/components/AddInteractionDialog'
-
-export function ProspectRow({ prospect, stageName }: ProspectRowProps) {
-  const { t } = useTranslation()
-  const isArchived = prospect.deletedAt !== null
-
-  return (
-    <AccordionItem value={prospect.id}>
-      <AccordionPrimitive.Header className="flex items-center">
-        {/* Expand trigger — full row width minus quick-action area */}
-        <AccordionPrimitive.Trigger
-          className={cn(
-            'group flex flex-1 items-center px-4 py-3 hover:bg-accent',
-            isArchived && 'opacity-60',
-          )}
-        >
-          <span className={cn('min-w-0 flex-1 truncate font-medium', isArchived && 'line-through text-muted-foreground')}>
-            {prospect.name}
-          </span>
-          <span className="w-40 shrink-0 truncate text-sm text-muted-foreground">
-            {prospect.company ?? '—'}
-          </span>
-          <span className="w-40 shrink-0 truncate text-sm">
-            {isArchived ? (
-              <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                {t('prospects.archived')}
-              </span>
-            ) : (
-              stageName ?? '—'
-            )}
-          </span>
-          <span className="w-48 shrink-0 truncate text-sm text-muted-foreground">
-            {prospect.email ?? '—'}
-          </span>
-          <ChevronDown className="ml-2 size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-        </AccordionPrimitive.Trigger>
-
-        {/* Quick-action: sibling button outside trigger (valid HTML) */}
-        {!isArchived && (
-          <div className="flex items-center pr-4">
-            <AddInteractionDialog
-              initialProspectId={prospect.id}
-              trigger={
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  aria-label={t('interactions.addInteraction')}
-                >
-                  <Plus className="size-4" />
-                </Button>
-              }
-            />
-          </div>
-        )}
-      </AccordionPrimitive.Header>
-
-      <AccordionContent className="p-0">
-        <div className="border-t bg-muted/30">
-          <ProspectDetail prospect={prospect} />
-        </div>
-      </AccordionContent>
-    </AccordionItem>
-  )
-}
+// Two <TableRow> fragments per prospect
+<>
+  <TableRow onClick={onToggle} aria-expanded={isExpanded} className="cursor-pointer">
+    <TableCell className="w-8 pr-0"><ChevronDown className={cn('...', isExpanded && 'rotate-180')} /></TableCell>
+    <TableCell className="font-medium">{prospect.name}</TableCell>
+    <TableCell>{prospect.company ?? '—'}</TableCell>
+    <TableCell>{stageName ?? '—'}</TableCell>
+    <TableCell>{prospect.email ?? '—'}</TableCell>
+    <TableCell onClick={(e) => e.stopPropagation()}>
+      {!isArchived && <AddInteractionDialog initialProspectId={prospect.id} trigger={<Button ...><Plus /></Button>} />}
+    </TableCell>
+  </TableRow>
+  {isExpanded && (
+    <TableRow className="hover:bg-transparent">
+      <TableCell colSpan={6} className="p-0">
+        <div className="bg-muted/30"><ProspectDetail prospect={prospect} /></div>
+      </TableCell>
+    </TableRow>
+  )}
+</>
 ```
 
-**ChevronDown animation replication:** The original `AccordionTrigger` from shadcn uses `data-[state=open]:rotate-180`. When using `AccordionPrimitive.Trigger` directly, add `className="group"` on the trigger and `group-data-[state=open]:rotate-180` on the ChevronDown. Radix automatically sets `data-state="open"` on the trigger when the item is expanded.
+**`expandedId` managed in ProspectsList** — `toggleExpanded(id)` sets `expandedId` to `id` or `null` (only one row open at a time). Passed as `isExpanded/onToggle` props to ProspectRow.
+
+**E2E test selectors updated:** `button[aria-expanded]` → `tr[aria-expanded]` across 6 test files (accordion → table migration).
 
 ---
 
@@ -240,51 +194,46 @@ onSuccess: () => {
 
 ---
 
-### Task 3: ProspectRow Refactor
+### Task 3: ProspectRow + ProspectsList Table Refactor
 
 **`apps/frontend/src/features/prospects/components/ProspectRow.tsx`** (MODIFIED):
 
-Import additions needed:
+Imports:
 ```typescript
-import * as AccordionPrimitive from '@radix-ui/react-accordion'
+import type { ProspectType } from '@battlecrm/shared'
 import { ChevronDown, Plus } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { TableCell, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AddInteractionDialog } from '@/features/interactions/components/AddInteractionDialog'
+import { cn } from '@/lib/utils'
+import { ProspectDetail } from './ProspectDetail'
 ```
 
-Remove import of `AccordionTrigger` (replaced by `AccordionPrimitive.Trigger`). Keep `AccordionContent`, `AccordionItem` from `@/components/ui/accordion`.
+Props interface: `{ prospect, stageName, isExpanded: boolean, onToggle: () => void }`
 
-**Biome import order for ProspectRow:**
-1. `@battlecrm/shared` (scoped `@` packages)
-2. External packages (`@radix-ui/react-accordion`, `lucide-react`, `react-i18next`)
-3. `@/components/ui/*` (alphabetical: `accordion`, `button`)
-4. `@/features/*` (alphabetical: `interactions/...`)
-5. `@/lib/*`
-6. Relative `./ProspectDetail`
+**`apps/frontend/src/features/prospects/components/ProspectsList.tsx`** (MODIFIED):
+
+Uses `Table/TableHeader/TableBody/TableRow/TableHead` from shadcn. Manages `expandedId` state with `toggleExpanded(id)` function.
 
 ---
 
 ### Known Gotchas and Traps
 
-1. **`@radix-ui/react-accordion` is already installed** — shadcn accordion uses it as a peer dependency. No `pnpm add` needed. Import directly: `import * as AccordionPrimitive from '@radix-ui/react-accordion'`
+1. **`selectedProspectId` initial value from localStorage:** The stored ID may reference a prospect that was archived or deleted. `prospects.find((p) => p.id === selectedProspectId)` returning `undefined` is the correct graceful degradation — the dropdown shows nothing selected, the user must pick manually.
 
-2. **ChevronDown animation with raw primitive:** The shadcn `AccordionTrigger` adds `data-[state=open]:rotate-180` on the SVG. When using `AccordionPrimitive.Trigger`, add `className="group"` to the trigger and `group-data-[state=open]:rotate-180` to the ChevronDown. The `data-state` attribute is automatically set by Radix on the trigger element.
+2. **useEffect dependency warning:** The linter/Biome may warn about missing dependencies in the positioning pre-fill `useEffect`. The intentional omission of `selectedPositioningId` and `getLastPositioningForStage` from deps prevents re-running when the user manually changes the positioning (which would reset it). `biome-ignore lint/correctness/useExhaustiveDependencies` comment added.
 
-3. **`selectedProspectId` initial value from localStorage:** The stored ID may reference a prospect that was archived or deleted. `prospects.find((p) => p.id === selectedProspectId)` returning `undefined` is the correct graceful degradation — the dropdown shows nothing selected, the user must pick manually.
+3. **`'none'` sentinel value in positioning Select:** Uses `'none'` as the shadcn Select value for "No positioning" (not `''`). The `useEffect` guards on `selectedPositioningId !== 'none'` correctly.
 
-4. **useEffect dependency warning:** The linter/Biome may warn about missing dependencies in the positioning pre-fill `useEffect`. The intentional omission of `selectedPositioningId` and `getLastPositioningForStage` from deps prevents re-running when the user manually changes the positioning (which would reset it). Add a biome-ignore comment if needed: `// biome-ignore lint/correctness/useExhaustiveDependencies: intentional`
+4. **React portal event bubbling (Dialog inside Card):** Radix Dialog content is rendered in a portal but React synthetic events bubble through the React tree, not the DOM tree. When `AddInteractionDialog` is used inside a clickable container (KanbanCard, ProspectRow), clicks inside the dialog (Cancel, Save, etc.) bubble up to the parent's `onClick`. Fix: `<DialogContent onClick={(e) => e.stopPropagation()}>`.
 
-5. **`'none'` sentinel value in positioning Select:** The current code uses `'none'` as the shadcn Select value for "No positioning" (changed from `''` in Story 5.3 to avoid shadcn Select issues with empty string). The `useEffect` guards on `selectedPositioningId !== 'none'` correctly.
+5. **Tooltip + Dialog nested Radix `asChild`:** `TooltipTrigger asChild` wrapping a button that is itself the `DialogTrigger asChild` child works correctly — Radix Slot merges props (dialog onClick + tooltip mouse events) onto the final button element.
 
-6. **Quick-action button click does NOT expand accordion:** Since the `<div>` containing the quick-action is a sibling to `AccordionPrimitive.Trigger` (not inside it), clicking the quick-action button does NOT trigger the accordion expand. This is the desired behavior.
+6. **shadcn Table cannot combine with Accordion** — incompatible HTML structures (`<table><tr><td>` vs `<div>`). The Table approach eliminates Accordion entirely.
 
-7. **Archived prospects:** Quick-action button is hidden for archived prospects (`{!isArchived && ...}`). This mirrors the behavior in `ProspectDetail` where the interactions section is hidden for archived prospects.
-
-8. **ProspectDetail "Log Interaction" button unchanged:** The existing `AddInteractionDialog` in `ProspectDetail.tsx` passes `initialProspectId={prospect.id}` which takes priority over `lastProspectId`. No change needed there.
-
-9. **Biome will auto-fix import ordering** — run `pnpm biome check --write .` after all changes. Known order issues to watch: `@radix-ui` starts with `@` (same group as `@battlecrm/shared`, sorted alphabetically, `@battlecrm` before `@radix-ui` and `@hookform`).
-
-10. **No new shadcn components** — `Plus`, `ChevronDown` from `lucide-react` (already used). No new packages.
+7. **`useLastInteractionContext` is a real React hook** — uses `useCallback` for stable function references. Don't call it conditionally or outside component render.
 
 ---
 
@@ -358,15 +307,35 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
-- `useLastInteractionContext` hook reads localStorage synchronously at call-time (no state/effect needed for reads). `saveContext` writes both `lastProspectId` and a per-stage positioning map. Parse errors on the positioning map JSON are caught silently.
-- `AddInteractionDialog`: `useState(initialProspectId ?? lastProspectId ?? '')` — `initialProspectId` takes priority (opens from ProspectDetail). `lastProspectId` is the fallback for generic "Log Interaction" triggers. If the stored ID doesn't exist in prospects list, `selectedProspect` stays `undefined` and graceful degradation applies (user must select manually).
+- `useLastInteractionContext` is a proper React hook using `useCallback` for stable function references. Reads localStorage synchronously at call-time. `saveContext` wraps ALL localStorage writes in a single try-catch (including `LAST_PROSPECT_KEY`) to prevent QuotaExceededError from breaking the `onSuccess` handler.
+- `AddInteractionDialog`: `useState(initialProspectId ?? lastProspectId ?? '')` — `initialProspectId` takes priority. `lastProspectId` is the fallback. If the stored ID doesn't exist in prospects list, graceful degradation (user must select manually).
 - Positioning pre-fill via `useEffect` with intentional dep omission (`biome-ignore` comment added) — only fires when positionings load and positioning is still at default `'none'`. Does NOT re-fire when user manually changes positioning.
 - `saveContext` called BEFORE `resetAll()` in onSuccess — captures the values before they're cleared.
-- `ProspectRow` uses `{ Accordion as AccordionPrimitive } from 'radix-ui'` (not `@radix-ui/react-accordion`). `AccordionPrimitive.Header` is a div — sibling buttons are valid HTML. ChevronDown animation replicated via `className="group"` on trigger + `group-data-[state=open]:rotate-180` on the icon.
-- 209/209 backend tests pass — 0 regressions. Biome 0 errors, TypeScript 0 errors.
+- **ProspectRow/ProspectsList fully migrated to shadcn Table** (Accordion removed). `ProspectRow` is a React fragment of two `<TableRow>`. `isExpanded/onToggle` props replace accordion's `value/onValueChange`. Expand state managed by `expandedId` in `ProspectsList`.
+- **PositioningRow/PositioningsList also migrated to Table** (hors scope, demande utilisateur). Same pattern: `isExpanded/onToggle` props, two-row fragment.
+- **`AddInteractionDialog` `DialogContent` bug fixed:** `onClick={(e) => e.stopPropagation()}` added to prevent React portal event bubbling from triggering parent card/row `onClick` (notably KanbanCard drawer).
+- **KanbanCard** quick-action button added with Tooltip (hors scope). `!overlay` guard prevents dialog appearing during drag.
+- **AppNavbar** logo SVG added (hors scope).
+- 6 E2E test files updated: `button[aria-expanded]` → `tr[aria-expanded]`, accordion slot selectors removed.
+- 106/106 E2E tests pass. Biome 0 errors, TypeScript 0 errors.
 
 ### File List
 
-- `apps/frontend/src/features/interactions/hooks/useLastInteractionContext.ts` (created)
-- `apps/frontend/src/features/interactions/components/AddInteractionDialog.tsx` (modified — pre-fill logic, useEffect, saveContext on success)
-- `apps/frontend/src/features/prospects/components/ProspectRow.tsx` (modified — quick-action button via AccordionPrimitive restructure)
+**In-scope (Story 5.4):**
+- `apps/frontend/src/features/interactions/hooks/useLastInteractionContext.ts` (created — `useCallback`, unified try-catch for all localStorage writes)
+- `apps/frontend/src/features/interactions/components/AddInteractionDialog.tsx` (modified — pre-fill logic, useEffect for positioning, saveContext on success, `DialogContent onClick stopPropagation` bug fix)
+- `apps/frontend/src/features/prospects/components/ProspectsList.tsx` (modified — Accordion removed, shadcn Table, `expandedId` state, passes `isExpanded/onToggle` to rows)
+- `apps/frontend/src/features/prospects/components/ProspectRow.tsx` (modified — Accordion removed, two-`TableRow` fragment, quick-action button in dedicated `TableCell`, Tooltip added)
+
+**Bonus / hors scope (demande utilisateur):**
+- `apps/frontend/src/features/positionings/components/PositioningsList.tsx` (modified — same Table migration as ProspectsList)
+- `apps/frontend/src/features/positionings/components/PositioningRow.tsx` (modified — same Table migration as ProspectRow, Accordion removed)
+- `apps/frontend/src/features/prospects/components/KanbanCard.tsx` (modified — quick-action "Log Interaction" button with Tooltip, `!overlay` guard)
+- `apps/frontend/src/components/common/AppNavbar.tsx` (modified — BattleCRM_logo.svg added before app name)
+- `tests/e2e/interactions-prefill.spec.ts` (created — AC2/AC3/AC4/AC5 E2E coverage)
+- `tests/e2e/prospects-list.spec.ts` (modified — `button[aria-expanded]` → `tr[aria-expanded]`)
+- `tests/e2e/prospects-archive.spec.ts` (modified — `button[aria-expanded]` → `tr[aria-expanded]`)
+- `tests/e2e/prospects-crud.spec.ts` (modified — `button[aria-expanded]` → `tr[aria-expanded]`)
+- `tests/e2e/positionings-list.spec.ts` (modified — `button[aria-expanded]` → `tr[aria-expanded]`, accordion slot selectors → `td[colspan]`)
+- `tests/e2e/positionings-archive.spec.ts` (modified — `button[aria-expanded]` → `tr[aria-expanded]`)
+- `tests/e2e/positionings-crud.spec.ts` (modified — `button[aria-expanded]` → `tr[aria-expanded]`)
