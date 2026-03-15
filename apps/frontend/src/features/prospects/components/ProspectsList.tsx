@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Accordion } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { useProspects } from '../hooks/useProspects'
 import { ProspectRow } from './ProspectRow'
@@ -34,12 +34,10 @@ export function ProspectsList() {
   const stages = stagesData?.data ?? []
   const prospects = prospectsData?.data ?? []
 
-  // Client-side name filter
   const filteredProspects = searchQuery.trim()
     ? prospects.filter((p) => p.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))
     : prospects
 
-  // O(1) lookup map: funnelStageId -> stage name
   const stageMap = new Map(stages.map((s) => [s.id, s.name]))
 
   function handleStageFilter(stageId: string) {
@@ -54,6 +52,10 @@ export function ProspectsList() {
   function clearFilter() {
     setActiveStageFilter(undefined)
     setExpandedId(null)
+  }
+
+  function toggleExpanded(id: string) {
+    setExpandedId((prev) => (prev === id ? null : id))
   }
 
   if (isLoading) {
@@ -72,9 +74,8 @@ export function ProspectsList() {
 
   return (
     <div className="space-y-4">
-      {/* Toolbar: two rows */}
+      {/* Toolbar */}
       <div className="space-y-2">
-        {/* Row 1: Search + Show archived switch */}
         <div className="flex items-center gap-4">
           <Input
             type="search"
@@ -92,7 +93,6 @@ export function ProspectsList() {
           </div>
         </div>
 
-        {/* Row 2: Funnel stage filters + clear */}
         {stages.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
             {stages.map((stage) => (
@@ -135,34 +135,33 @@ export function ProspectsList() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-md border">
-          {/* Column header row */}
-          <div className="flex items-center gap-4 border-b bg-muted/50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            <span className="size-4 shrink-0" aria-hidden="true" />
-            <span className="min-w-0 flex-1">{t('prospects.columns.name')}</span>
-            <span className="w-40 shrink-0">{t('prospects.columns.company')}</span>
-            <span className="w-40 shrink-0">{t('prospects.columns.stage')}</span>
-            <span className="w-48 shrink-0">{t('prospects.columns.email')}</span>
-          </div>
-
-          <Accordion
-            type="single"
-            collapsible
-            value={expandedId ?? ''}
-            onValueChange={(v) => setExpandedId(v || null)}
-          >
-            {filteredProspects.map((prospect) => (
-              <ProspectRow
-                key={prospect.id}
-                prospect={prospect}
-                stageName={stageMap.get(prospect.funnelStageId)}
-              />
-            ))}
-          </Accordion>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-8 pr-0" />
+                <TableHead>{t('prospects.columns.name')}</TableHead>
+                <TableHead>{t('prospects.columns.company')}</TableHead>
+                <TableHead>{t('prospects.columns.stage')}</TableHead>
+                <TableHead>{t('prospects.columns.email')}</TableHead>
+                <TableHead className="w-10" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredProspects.map((prospect) => (
+                <ProspectRow
+                  key={prospect.id}
+                  prospect={prospect}
+                  stageName={stageMap.get(prospect.funnelStageId)}
+                  isExpanded={expandedId === prospect.id}
+                  onToggle={() => toggleExpanded(prospect.id)}
+                />
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 
-      {/* Total count */}
       {prospectsData && (
         <p className="text-right text-xs text-muted-foreground">
           {t('prospects.count', { count: prospectsData.meta.total })}

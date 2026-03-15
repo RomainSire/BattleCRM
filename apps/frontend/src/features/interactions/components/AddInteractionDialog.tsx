@@ -1,7 +1,7 @@
 import type { InteractionStatus } from '@battlecrm/shared'
 import { vineResolver } from '@hookform/resolvers/vine'
 import type { ReactNode } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -33,6 +33,7 @@ import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
 import { i18nMessagesProvider } from '@/lib/validation'
 import { useCreateInteraction } from '../hooks/useInteractionMutations'
+import { useLastInteractionContext } from '../hooks/useLastInteractionContext'
 import { createInteractionSchema } from '../schemas/interaction'
 
 interface AddInteractionDialogProps {
@@ -46,9 +47,13 @@ interface FormValues {
 
 export function AddInteractionDialog({ initialProspectId, trigger }: AddInteractionDialogProps) {
   const { t } = useTranslation()
+  const { lastProspectId, getLastPositioningForStage, saveContext } = useLastInteractionContext()
+
   const [open, setOpen] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
-  const [selectedProspectId, setSelectedProspectId] = useState(initialProspectId ?? '')
+  const [selectedProspectId, setSelectedProspectId] = useState(
+    initialProspectId ?? lastProspectId ?? '',
+  )
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [selectedPositioningId, setSelectedPositioningId] = useState<string>('none')
   const [prospectError, setProspectError] = useState<string | null>(null)
@@ -70,6 +75,19 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
     { enabled: !!selectedProspect?.funnelStageId },
   )
   const positionings = positioningsData?.data ?? []
+
+  // Pre-fill last used positioning for this funnel stage once positionings load
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — only run when positionings load, not on every selectedPositioningId change
+  useEffect(() => {
+    if (positioningsLoading || selectedPositioningId !== 'none' || !selectedProspect?.funnelStageId)
+      return
+    const lastId = getLastPositioningForStage(selectedProspect.funnelStageId)
+    if (!lastId) return
+    const found = positionings.find((p) => p.id === lastId)
+    if (found) {
+      setSelectedPositioningId(lastId)
+    }
+  }, [positioningsLoading, positionings, selectedProspect?.funnelStageId])
 
   const {
     register,
@@ -107,6 +125,7 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
       },
       {
         onSuccess: () => {
+          saveContext(selectedProspectId, selectedProspect?.funnelStageId, selectedPositioningId)
           resetAll()
           setOpen(false)
           toast.success(t('interactions.toast.created'))
