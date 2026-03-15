@@ -1,7 +1,7 @@
-import { useTranslation } from 'react-i18next'
-import { NavLink } from 'react-router'
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
 import { ThemeSwitcher } from '@/components/common/ThemeSwitcher'
+import { useTranslation } from 'react-i18next'
+import { NavLink } from 'react-router'
 
 function navLinkClass({ isActive }: { isActive: boolean }) {
   return isActive
@@ -15,7 +15,10 @@ export function AppNavbar() {
   return (
     <nav className="border-b bg-background" aria-label="Main navigation">
       <div className="container mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
-        <span className="font-semibold">{t('common.appName')}</span>
+        <div className='flex gap-1 items-center'>
+          <img src="/images/BattleCRM_logo.svg" alt="" aria-hidden="true" className="size-10 shrink-0" />
+          <span className="font-semibold text-xl">{t('common.appName')}</span>
+        </div>
 
         <div className="flex flex-1 items-center gap-4">
           <NavLink to="/" className={navLinkClass}>
