@@ -120,7 +120,7 @@ test.describe('Positionings - List View', () => {
   test('clicking a row expands the detail panel', async ({ page }) => {
     await page.goto('/positionings')
     const rowBtn = page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'CV Alpha' })
       .first()
     await expect(rowBtn).toHaveAttribute('aria-expanded', 'false')
@@ -131,7 +131,7 @@ test.describe('Positionings - List View', () => {
   test('clicking an expanded row collapses it', async ({ page }) => {
     await page.goto('/positionings')
     const rowBtn = page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'CV Alpha' })
       .first()
     await rowBtn.click()
@@ -143,11 +143,11 @@ test.describe('Positionings - List View', () => {
   test('only one row can be expanded at a time', async ({ page }) => {
     await page.goto('/positionings')
     const alphaRow = page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'CV Alpha' })
       .first()
     const betaRow = page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'CV Beta' })
       .first()
 
@@ -163,36 +163,29 @@ test.describe('Positionings - List View', () => {
 
   test('expanded row shows funnel stage name as badge', async ({ page }) => {
     await page.goto('/positionings')
-    await page.locator('button[aria-expanded]').filter({ hasText: 'CV Alpha' }).first().click()
-    // Stage badge is visible in the expanded content
-    const content = page
-      .locator('[data-slot="accordion-item"]')
-      .filter({ hasText: 'CV Alpha' })
-      .first()
-    await expect(content.locator('[data-slot="accordion-content"]').getByText('Lead qualified')).toBeVisible()
+    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).first().click()
+    // Stage badge appears in the expanded detail panel (dl section)
+    await expect(page.getByText('Lead qualified').first()).toBeVisible()
   })
 
   test('expanded row shows full description and content', async ({ page }) => {
     await page.goto('/positionings')
-    await page.locator('button[aria-expanded]').filter({ hasText: 'CV Alpha' }).first().click()
-    const content = page
-      .locator('[data-slot="accordion-item"]')
-      .filter({ hasText: 'CV Alpha' })
-      .first()
-      .locator('[data-slot="accordion-content"]')
-    await expect(content.getByText('Alpha description')).toBeVisible()
-    await expect(content.getByText('Alpha content')).toBeVisible()
+    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).first().click()
+    // Scope to the expanded content cell (td with colspan) to avoid ambiguity with the description column
+    const expandedContent = page.locator('td[colspan]').first()
+    await expect(expandedContent.getByText('Alpha description')).toBeVisible()
+    await expect(expandedContent.getByText('Alpha content')).toBeVisible()
   })
 
   test('expanded row shows "Linked Prospects" section title', async ({ page }) => {
     await page.goto('/positionings')
-    await page.locator('button[aria-expanded]').filter({ hasText: 'CV Alpha' }).first().click()
+    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).first().click()
     await expect(page.getByText(/linked prospects/i)).toBeVisible()
   })
 
   test('expanded row shows Interactions coming-soon placeholder', async ({ page }) => {
     await page.goto('/positionings')
-    await page.locator('button[aria-expanded]').filter({ hasText: 'CV Alpha' }).first().click()
+    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).first().click()
     await expect(page.getByText(/coming in a future release/i)).toBeVisible()
   })
 

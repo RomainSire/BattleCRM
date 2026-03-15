@@ -83,7 +83,7 @@ test.describe('Positionings - Create & Edit', () => {
   test('created positioning is assigned to a funnel stage by default', async ({ page }) => {
     await page.goto('/positionings')
     const row = page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'New Positioning E2E' })
       .first()
     await expect(row).toContainText('Lead qualified')
@@ -94,7 +94,7 @@ test.describe('Positionings - Create & Edit', () => {
   test('expanded active positioning shows "Edit" button', async ({ page }) => {
     await page.goto('/positionings')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Positioning' })
       .first()
       .click()
@@ -104,7 +104,7 @@ test.describe('Positionings - Create & Edit', () => {
   test('clicking Edit opens inline form pre-filled with current values', async ({ page }) => {
     await page.goto('/positionings')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Positioning' })
       .first()
       .click()
@@ -120,7 +120,7 @@ test.describe('Positionings - Create & Edit', () => {
   test('cancel edit returns to read-only without saving changes', async ({ page }) => {
     await page.goto('/positionings')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Positioning' })
       .first()
       .click()
@@ -141,7 +141,7 @@ test.describe('Positionings - Create & Edit', () => {
   test('saving edit updates the positioning name — toast success', async ({ page }) => {
     await page.goto('/positionings')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Positioning' })
       .first()
       .click()

@@ -82,7 +82,7 @@ test.describe('Prospects - Create & Edit', () => {
   test('created prospect is assigned to a funnel stage by default', async ({ page }) => {
     await page.goto('/prospects')
     // "New Prospect E2E" was created in previous test — it should show a stage name (not "—")
-    const row = page.locator('button[aria-expanded]').filter({ hasText: 'New Prospect E2E' }).first()
+    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'New Prospect E2E' }).first()
     // The row should show a stage name — beforeAll seeds "Lead qualified" as the first stage
     await expect(row).toContainText('Lead qualified')
   })
@@ -92,7 +92,7 @@ test.describe('Prospects - Create & Edit', () => {
   test('expanded active prospect shows "Edit" button', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Prospect' })
       .first()
       .click()
@@ -102,7 +102,7 @@ test.describe('Prospects - Create & Edit', () => {
   test('clicking Edit opens inline form pre-filled with current values', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Prospect' })
       .first()
       .click()
@@ -118,7 +118,7 @@ test.describe('Prospects - Create & Edit', () => {
   test('cancel edit returns to read-only without saving changes', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Prospect' })
       .first()
       .click()
@@ -139,7 +139,7 @@ test.describe('Prospects - Create & Edit', () => {
   test('saving edit updates the prospect name — toast success', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('button[aria-expanded]')
+      .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Prospect' })
       .first()
       .click()
