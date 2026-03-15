@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Accordion } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { usePositionings } from '../hooks/usePositionings'
 import { PositioningRow } from './PositioningRow'
@@ -34,8 +34,7 @@ export function PositioningsList() {
 
   function handleStageFilter(stageId: string) {
     if (activeStageFilter === stageId) {
-      setActiveStageFilter(undefined)
-      setExpandedId(null)
+      clearFilter()
       return
     }
     setActiveStageFilter(stageId)
@@ -45,6 +44,10 @@ export function PositioningsList() {
   function clearFilter() {
     setActiveStageFilter(undefined)
     setExpandedId(null)
+  }
+
+  function toggleExpanded(id: string) {
+    setExpandedId((prev) => (prev === id ? null : id))
   }
 
   if (isLoading) {
@@ -65,7 +68,6 @@ export function PositioningsList() {
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="space-y-2">
-        {/* Show archived switch */}
         <div className="flex items-center gap-2">
           <Switch
             id="show-archived-positionings"
@@ -77,7 +79,6 @@ export function PositioningsList() {
           </Label>
         </div>
 
-        {/* Stage filter pills */}
         {stages.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
             {stages.map((stage) => (
@@ -116,33 +117,30 @@ export function PositioningsList() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-md border">
-          {/* Column header row */}
-          <div className="flex items-center gap-4 border-b bg-muted/50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            <span className="size-4 shrink-0" aria-hidden="true" />
-            <span className="min-w-0 flex-1">{t('positionings.columns.name')}</span>
-            <span className="w-40 shrink-0">{t('positionings.columns.stage')}</span>
-            <span className="w-64 shrink-0">{t('positionings.columns.description')}</span>
-          </div>
-
-          <Accordion
-            type="single"
-            collapsible
-            value={expandedId ?? ''}
-            onValueChange={(v) => setExpandedId(v || null)}
-          >
-            {positionings.map((positioning) => (
-              <PositioningRow
-                key={positioning.id}
-                positioning={positioning}
-                isOpen={expandedId === positioning.id}
-              />
-            ))}
-          </Accordion>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-8 pr-0" />
+                <TableHead>{t('positionings.columns.name')}</TableHead>
+                <TableHead className="w-40">{t('positionings.columns.stage')}</TableHead>
+                <TableHead className="w-64">{t('positionings.columns.description')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {positionings.map((positioning) => (
+                <PositioningRow
+                  key={positioning.id}
+                  positioning={positioning}
+                  isExpanded={expandedId === positioning.id}
+                  onToggle={() => toggleExpanded(positioning.id)}
+                />
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 
-      {/* Total count */}
       {positioningsData && (
         <p className="text-right text-xs text-muted-foreground">
           {t('positionings.count', { count: positioningsData.meta.total })}

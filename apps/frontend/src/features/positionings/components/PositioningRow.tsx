@@ -1,12 +1,11 @@
 import type { PositioningType } from '@battlecrm/shared'
 import { vineResolver } from '@hookform/resolvers/vine'
-import { Archive, Pencil, RotateCcw, X } from 'lucide-react'
+import { Archive, ChevronDown, Pencil, RotateCcw, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
-import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,9 +30,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { TableCell, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
+import { cn } from '@/lib/utils'
 import { i18nMessagesProvider } from '@/lib/validation'
 import {
   useArchivePositioning,
@@ -45,7 +46,8 @@ import { updatePositioningSchema } from '../schemas/positioning'
 
 interface PositioningRowProps {
   positioning: PositioningType
-  isOpen: boolean
+  isExpanded: boolean
+  onToggle: () => void
 }
 
 interface EditFormValues {
@@ -54,7 +56,7 @@ interface EditFormValues {
   content: string
 }
 
-export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
+export function PositioningRow({ positioning, isExpanded, onToggle }: PositioningRowProps) {
   const { t } = useTranslation()
   const isArchived = positioning.deletedAt !== null
   const [isEditing, setIsEditing] = useState(false)
@@ -63,15 +65,14 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
   const [restoreError, setRestoreError] = useState<string | null>(null)
   const [editStageId, setEditStageId] = useState<string>(positioning.funnelStageId)
 
-  // Lazy — only fetch prospects when the row is open
+  // Lazy — only fetch prospects when the row is expanded
   const {
     data: prospectsData,
     isLoading: prospectsLoading,
     isError: prospectsError,
-  } = usePositioningProspects(positioning.id, { enabled: isOpen })
+  } = usePositioningProspects(positioning.id, { enabled: isExpanded })
   const linkedProspects = prospectsData?.data ?? []
 
-  // Track loading + error state for stages
   const { data: stagesData, isLoading: stagesLoading, isError: stagesError } = useFunnelStages()
   const stages = stagesData?.data ?? []
 
@@ -93,15 +94,15 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
     },
   })
 
-  // Exit edit mode and clear errors when the accordion row is collapsed
+  // Exit edit mode and clear errors when the row is collapsed
   useEffect(() => {
-    if (!isOpen) {
+    if (!isExpanded) {
       setIsEditing(false)
       setApiError(null)
       setArchiveError(null)
       setRestoreError(null)
     }
-  }, [isOpen])
+  }, [isExpanded])
 
   // Reset form when positioning prop updates after a successful save
   useEffect(() => {
@@ -183,12 +184,28 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
   }
 
   return (
-    <AccordionItem value={positioning.id} className={isArchived ? 'opacity-60' : undefined}>
-      <AccordionTrigger className="items-center px-4 py-3 hover:bg-accent hover:no-underline">
-        <span className={`min-w-0 flex-1 truncate font-medium${isArchived ? ' line-through' : ''}`}>
+    <>
+      <TableRow
+        onClick={onToggle}
+        className={cn('cursor-pointer', isArchived && 'opacity-60')}
+        aria-expanded={isExpanded}
+      >
+        <TableCell className="w-8 pr-0">
+          <ChevronDown
+            className={cn(
+              'size-4 text-muted-foreground transition-transform duration-200',
+              isExpanded && 'rotate-180',
+            )}
+          />
+        </TableCell>
+
+        <TableCell
+          className={cn('font-medium', isArchived && 'line-through text-muted-foreground')}
+        >
           {positioning.name}
-        </span>
-        <span className="w-40 shrink-0">
+        </TableCell>
+
+        <TableCell className="w-40">
           {isArchived ? (
             <Badge variant="outline" className="text-muted-foreground">
               {t('positionings.archivedBadge')}
@@ -196,257 +213,272 @@ export function PositioningRow({ positioning, isOpen }: PositioningRowProps) {
           ) : (
             <Badge variant="secondary">{positioning.funnelStageName}</Badge>
           )}
-        </span>
-        <span className="w-64 shrink-0 truncate text-sm text-muted-foreground">
+        </TableCell>
+
+        <TableCell className="w-64 max-w-64 truncate text-sm text-muted-foreground">
           {positioning.description ?? '—'}
-        </span>
-      </AccordionTrigger>
+        </TableCell>
+      </TableRow>
 
-      <AccordionContent className="p-0">
-        <div className="space-y-4 border-t bg-muted/30 px-4 py-4">
-          {isEditing ? (
-            /* ── EDIT MODE ── */
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-              {/* Name — required */}
-              <div className="flex flex-col gap-1">
-                <Label htmlFor={`edit-name-${positioning.id}`}>
-                  {t('positionings.fields.name')}{' '}
-                  <span aria-hidden="true" className="text-destructive">
-                    *
-                  </span>
-                </Label>
-                <Input
-                  id={`edit-name-${positioning.id}`}
-                  {...register('name')}
-                  autoFocus
-                  disabled={update.isPending}
-                />
-                <FieldError errors={[errors.name]} />
-              </div>
-
-              {/* Funnel Stage — required */}
-              {stagesError ? (
-                <p className="text-xs text-destructive">{t('funnelStages.loadError')}</p>
-              ) : stagesLoading ? (
-                <div className="flex flex-col gap-1">
-                  <Label>
-                    {t('positionings.fields.funnelStage')}{' '}
-                    <span aria-hidden="true" className="text-destructive">
-                      *
-                    </span>
-                  </Label>
-                  <Skeleton className="h-9 w-full" />
-                </div>
-              ) : stages.length > 0 ? (
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor={`edit-stage-${positioning.id}`}>
-                    {t('positionings.fields.funnelStage')}{' '}
-                    <span aria-hidden="true" className="text-destructive">
-                      *
-                    </span>
-                  </Label>
-                  <Select
-                    value={editStageId}
-                    onValueChange={setEditStageId}
-                    disabled={update.isPending}
-                  >
-                    <SelectTrigger id={`edit-stage-${positioning.id}`} className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {stages.map((stage) => (
-                        <SelectItem key={stage.id} value={stage.id}>
-                          {stage.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
-
-              {/* Description — optional */}
-              <div className="flex flex-col gap-1">
-                <Label htmlFor={`edit-description-${positioning.id}`}>
-                  {t('positionings.fields.description')}
-                </Label>
-                <Textarea
-                  id={`edit-description-${positioning.id}`}
-                  {...register('description')}
-                  placeholder={t('positionings.placeholders.description')}
-                  rows={2}
-                  disabled={update.isPending}
-                />
-              </div>
-
-              {/* Content — optional */}
-              <div className="flex flex-col gap-1">
-                <Label htmlFor={`edit-content-${positioning.id}`}>
-                  {t('positionings.fields.content')}
-                </Label>
-                <Textarea
-                  id={`edit-content-${positioning.id}`}
-                  {...register('content')}
-                  placeholder={t('positionings.placeholders.content')}
-                  rows={4}
-                  disabled={update.isPending}
-                />
-              </div>
-
-              {/* API error */}
-              <FieldError>{apiError}</FieldError>
-
-              {/* Action buttons */}
-              <div className="flex gap-2">
-                <Button type="submit" size="sm" disabled={update.isPending}>
-                  {update.isPending ? '...' : t('common.save')}
-                </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={handleCancel}>
-                  <X className="size-4" />
-                  {t('common.cancel')}
-                </Button>
-              </div>
-            </form>
-          ) : (
-            /* ── READ-ONLY MODE ── */
-            <>
-              {/* Action bar: Edit + Archive (hidden for archived positionings) */}
-              {!isArchived && (
-                <>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button type="button" size="sm" variant="outline" onClick={handleEditStart}>
-                      <Pencil className="size-4" />
-                      {t('positionings.edit')}
-                    </Button>
-
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          disabled={archive.isPending}
-                        >
-                          <Archive className="size-4" />
-                          {t('positionings.archive')}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            {t('positionings.archiveDialog.title')}
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {t('positionings.archiveDialog.description', {
-                              name: positioning.name,
-                            })}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={handleArchiveConfirm}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            disabled={archive.isPending}
-                          >
-                            {t('positionings.archiveDialog.confirm')}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+      {isExpanded && (
+        <TableRow className="hover:bg-transparent">
+          <TableCell colSpan={4} className="p-0">
+            <div className="space-y-4 border-t bg-muted/30 px-4 py-4">
+              {isEditing ? (
+                /* ── EDIT MODE ── */
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+                  {/* Name — required */}
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor={`edit-name-${positioning.id}`}>
+                      {t('positionings.fields.name')}{' '}
+                      <span aria-hidden="true" className="text-destructive">
+                        *
+                      </span>
+                    </Label>
+                    <Input
+                      id={`edit-name-${positioning.id}`}
+                      {...register('name')}
+                      autoFocus
+                      disabled={update.isPending}
+                    />
+                    <FieldError errors={[errors.name]} />
                   </div>
-                  {archiveError && <p className="text-xs text-destructive">{archiveError}</p>}
+
+                  {/* Funnel Stage — required */}
+                  {stagesError ? (
+                    <p className="text-xs text-destructive">{t('funnelStages.loadError')}</p>
+                  ) : stagesLoading ? (
+                    <div className="flex flex-col gap-1">
+                      <Label>
+                        {t('positionings.fields.funnelStage')}{' '}
+                        <span aria-hidden="true" className="text-destructive">
+                          *
+                        </span>
+                      </Label>
+                      <Skeleton className="h-9 w-full" />
+                    </div>
+                  ) : stages.length > 0 ? (
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor={`edit-stage-${positioning.id}`}>
+                        {t('positionings.fields.funnelStage')}{' '}
+                        <span aria-hidden="true" className="text-destructive">
+                          *
+                        </span>
+                      </Label>
+                      <Select
+                        value={editStageId}
+                        onValueChange={setEditStageId}
+                        disabled={update.isPending}
+                      >
+                        <SelectTrigger id={`edit-stage-${positioning.id}`} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {stages.map((stage) => (
+                            <SelectItem key={stage.id} value={stage.id}>
+                              {stage.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+
+                  {/* Description — optional */}
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor={`edit-description-${positioning.id}`}>
+                      {t('positionings.fields.description')}
+                    </Label>
+                    <Textarea
+                      id={`edit-description-${positioning.id}`}
+                      {...register('description')}
+                      placeholder={t('positionings.placeholders.description')}
+                      rows={2}
+                      disabled={update.isPending}
+                    />
+                  </div>
+
+                  {/* Content — optional */}
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor={`edit-content-${positioning.id}`}>
+                      {t('positionings.fields.content')}
+                    </Label>
+                    <Textarea
+                      id={`edit-content-${positioning.id}`}
+                      {...register('content')}
+                      placeholder={t('positionings.placeholders.content')}
+                      rows={4}
+                      disabled={update.isPending}
+                    />
+                  </div>
+
+                  {/* API error */}
+                  <FieldError>{apiError}</FieldError>
+
+                  {/* Action buttons */}
+                  <div className="flex gap-2">
+                    <Button type="submit" size="sm" disabled={update.isPending}>
+                      {update.isPending ? '...' : t('common.save')}
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={handleCancel}>
+                      <X className="size-4" />
+                      {t('common.cancel')}
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                /* ── READ-ONLY MODE ── */
+                <>
+                  {/* Action bar: Edit + Archive (hidden for archived positionings) */}
+                  {!isArchived && (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button type="button" size="sm" variant="outline" onClick={handleEditStart}>
+                          <Pencil className="size-4" />
+                          {t('positionings.edit')}
+                        </Button>
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              disabled={archive.isPending}
+                            >
+                              <Archive className="size-4" />
+                              {t('positionings.archive')}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                {t('positionings.archiveDialog.title')}
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {t('positionings.archiveDialog.description', {
+                                  name: positioning.name,
+                                })}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={handleArchiveConfirm}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                disabled={archive.isPending}
+                              >
+                                {t('positionings.archiveDialog.confirm')}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                      {archiveError && <p className="text-xs text-destructive">{archiveError}</p>}
+                    </>
+                  )}
+
+                  {/* Restore action — visible only for archived positionings */}
+                  {isArchived && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleRestoreConfirm}
+                        disabled={restore.isPending}
+                      >
+                        <RotateCcw className="size-4" />
+                        {t('positionings.restore')}
+                      </Button>
+                      {restoreError && <p className="text-xs text-destructive">{restoreError}</p>}
+                    </div>
+                  )}
+
+                  {/* Details */}
+                  <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                    <dt className="text-muted-foreground">
+                      {t('positionings.fields.funnelStage')}
+                    </dt>
+                    <dd>
+                      <Badge variant="secondary">{positioning.funnelStageName}</Badge>
+                    </dd>
+
+                    <dt className="text-muted-foreground">
+                      {t('positionings.fields.description')}
+                    </dt>
+                    <dd className="whitespace-pre-wrap">
+                      {positioning.description ?? (
+                        <span className="italic text-muted-foreground">—</span>
+                      )}
+                    </dd>
+
+                    <dt className="text-muted-foreground">{t('positionings.fields.content')}</dt>
+                    <dd className="whitespace-pre-wrap">
+                      {positioning.content ?? (
+                        <span className="italic text-muted-foreground">—</span>
+                      )}
+                    </dd>
+                  </dl>
+
+                  {/* Linked prospects */}
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">
+                      {t('positionings.linkedProspects.title')}
+                    </p>
+                    {prospectsLoading ? (
+                      <div className="space-y-1">
+                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-4 w-32" />
+                      </div>
+                    ) : prospectsError ? (
+                      <p className="text-xs text-destructive">
+                        {t('positionings.linkedProspects.loadError')}
+                      </p>
+                    ) : linkedProspects.length === 0 ? (
+                      <p className="text-xs italic text-muted-foreground">
+                        {t('positionings.linkedProspects.empty')}
+                      </p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {linkedProspects.map((prospect) => (
+                          <li key={prospect.id} className="text-sm">
+                            <Link
+                              to="/prospects"
+                              className="text-primary underline-offset-4 hover:underline"
+                              aria-label={t('positionings.aria.viewProspect', {
+                                name: prospect.name,
+                              })}
+                            >
+                              <span className="font-medium">{prospect.name}</span>
+                              {prospect.company && (
+                                <span className="ml-2 text-muted-foreground">
+                                  — {prospect.company}
+                                </span>
+                              )}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Interactions — placeholder for Epic 5 */}
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">
+                      {t('positionings.interactions.title')}
+                    </p>
+                    <p className="text-xs italic text-muted-foreground">
+                      {t('positionings.interactions.comingSoon')}
+                    </p>
+                  </div>
                 </>
               )}
-
-              {/* Restore action — visible only for archived positionings */}
-              {isArchived && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={handleRestoreConfirm}
-                    disabled={restore.isPending}
-                  >
-                    <RotateCcw className="size-4" />
-                    {t('positionings.restore')}
-                  </Button>
-                  {restoreError && <p className="text-xs text-destructive">{restoreError}</p>}
-                </div>
-              )}
-
-              {/* Details */}
-              <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                <dt className="text-muted-foreground">{t('positionings.fields.funnelStage')}</dt>
-                <dd>
-                  <Badge variant="secondary">{positioning.funnelStageName}</Badge>
-                </dd>
-
-                <dt className="text-muted-foreground">{t('positionings.fields.description')}</dt>
-                <dd className="whitespace-pre-wrap">
-                  {positioning.description ?? (
-                    <span className="italic text-muted-foreground">—</span>
-                  )}
-                </dd>
-
-                <dt className="text-muted-foreground">{t('positionings.fields.content')}</dt>
-                <dd className="whitespace-pre-wrap">
-                  {positioning.content ?? <span className="italic text-muted-foreground">—</span>}
-                </dd>
-              </dl>
-
-              {/* Linked prospects */}
-              <div>
-                <p className="mb-2 text-xs font-medium text-muted-foreground">
-                  {t('positionings.linkedProspects.title')}
-                </p>
-                {prospectsLoading ? (
-                  <div className="space-y-1">
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-4 w-32" />
-                  </div>
-                ) : prospectsError ? (
-                  <p className="text-xs text-destructive">
-                    {t('positionings.linkedProspects.loadError')}
-                  </p>
-                ) : linkedProspects.length === 0 ? (
-                  <p className="text-xs italic text-muted-foreground">
-                    {t('positionings.linkedProspects.empty')}
-                  </p>
-                ) : (
-                  <ul className="space-y-1">
-                    {linkedProspects.map((prospect) => (
-                      <li key={prospect.id} className="text-sm">
-                        <Link
-                          to="/prospects"
-                          className="text-primary underline-offset-4 hover:underline"
-                          aria-label={t('positionings.aria.viewProspect', { name: prospect.name })}
-                        >
-                          <span className="font-medium">{prospect.name}</span>
-                          {prospect.company && (
-                            <span className="ml-2 text-muted-foreground">— {prospect.company}</span>
-                          )}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              {/* Interactions — placeholder for Epic 5 */}
-              <div>
-                <p className="mb-1 text-xs font-medium text-muted-foreground">
-                  {t('positionings.interactions.title')}
-                </p>
-                <p className="text-xs italic text-muted-foreground">
-                  {t('positionings.interactions.comingSoon')}
-                </p>
-              </div>
-            </>
-          )}
-        </div>
-      </AccordionContent>
-    </AccordionItem>
+            </div>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
   )
 }
