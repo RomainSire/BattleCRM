@@ -165,7 +165,7 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
         {trigger ?? <Button size="sm">{t('interactions.addInteraction')}</Button>}
       </DialogTrigger>
 
-      <DialogContent>
+      <DialogContent onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
           <DialogTitle>{t('interactions.createForm.title')}</DialogTitle>
           <DialogDescription>{t('interactions.createForm.description')}</DialogDescription>

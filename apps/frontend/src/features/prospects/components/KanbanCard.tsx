@@ -1,9 +1,11 @@
 import type { ProspectType } from '@battlecrm/shared'
 import { useDraggable } from '@dnd-kit/core'
-import { GripVertical } from 'lucide-react'
+import { GripVertical, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { AddInteractionDialog } from '@/features/interactions/components/AddInteractionDialog'
 import { cn } from '@/lib/utils'
 
 interface KanbanCardProps {
@@ -67,6 +69,25 @@ export function KanbanCard({ prospect, onOpenDetail, overlay = false }: KanbanCa
             </Badge>
           )}
         </div>
+
+        {/* Quick-add interaction — hidden for archived prospects and drag overlay */}
+        {!isArchived && !overlay && (
+          <AddInteractionDialog
+            initialProspectId={prospect.id}
+            trigger={
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="size-7 shrink-0"
+                aria-label={t('interactions.addInteraction')}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Plus className="size-3.5" />
+              </Button>
+            }
+          />
+        )}
       </CardContent>
     </Card>
   )
