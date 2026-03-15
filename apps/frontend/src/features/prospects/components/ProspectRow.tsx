@@ -3,6 +3,7 @@ import { ChevronDown, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AddInteractionDialog } from '@/features/interactions/components/AddInteractionDialog'
 import { cn } from '@/lib/utils'
 import { ProspectDetail } from './ProspectDetail'
@@ -56,20 +57,27 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
 
         <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
           {!isArchived && (
-            <AddInteractionDialog
-              initialProspectId={prospect.id}
-              trigger={
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="size-8"
-                  aria-label={t('interactions.addInteraction')}
-                >
-                  <Plus className="size-4" />
-                </Button>
-              }
-            />
+            <TooltipProvider>
+              <Tooltip>
+                <AddInteractionDialog
+                  initialProspectId={prospect.id}
+                  trigger={
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="size-8"
+                        aria-label={t('interactions.addInteraction')}
+                      >
+                        <Plus className="size-4" />
+                      </Button>
+                    </TooltipTrigger>
+                  }
+                />
+                <TooltipContent>{t('interactions.addInteraction')}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </TableCell>
       </TableRow>

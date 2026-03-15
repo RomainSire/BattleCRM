@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AddInteractionDialog } from '@/features/interactions/components/AddInteractionDialog'
 import { cn } from '@/lib/utils'
 
@@ -72,21 +73,28 @@ export function KanbanCard({ prospect, onOpenDetail, overlay = false }: KanbanCa
 
         {/* Quick-add interaction — hidden for archived prospects and drag overlay */}
         {!isArchived && !overlay && (
-          <AddInteractionDialog
-            initialProspectId={prospect.id}
-            trigger={
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="size-7 shrink-0"
-                aria-label={t('interactions.addInteraction')}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Plus className="size-3.5" />
-              </Button>
-            }
-          />
+          <TooltipProvider>
+            <Tooltip>
+              <AddInteractionDialog
+                initialProspectId={prospect.id}
+                trigger={
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="size-7 shrink-0"
+                      aria-label={t('interactions.addInteraction')}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Plus className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                }
+              />
+              <TooltipContent>{t('interactions.addInteraction')}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </CardContent>
     </Card>
