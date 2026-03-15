@@ -15,9 +15,9 @@ export function AppNavbar() {
   return (
     <nav className="border-b bg-background" aria-label="Main navigation">
       <div className="container mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
-        <div className='flex gap-1 items-center'>
+        <div className='flex gap-2 items-center'>
           <img src="/images/BattleCRM_logo.svg" alt="" aria-hidden="true" className="size-10 shrink-0" />
-          <span className="font-semibold text-xl">{t('common.appName')}</span>
+          <span className="font-semibold text-2xl">{t('common.appName')}</span>
         </div>
 
         <div className="flex flex-1 items-center gap-4">
