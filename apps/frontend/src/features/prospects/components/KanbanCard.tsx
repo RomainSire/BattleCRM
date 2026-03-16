@@ -29,8 +29,8 @@ export function KanbanCard({ prospect, onOpenDetail, overlay = false }: KanbanCa
   return (
     <Card
       className={cn(
-        'cursor-pointer gap-0 py-0 transition-shadow hover:shadow-md',
-        isArchived && 'opacity-50',
+        'cursor-pointer gap-0 border-l-[3px] border-l-primary py-0 transition-shadow hover:shadow-md',
+        isArchived && 'opacity-50 border-l-muted-foreground',
         isDragging && 'opacity-0',
         overlay && 'rotate-2 shadow-lg',
       )}
