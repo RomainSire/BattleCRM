@@ -54,6 +54,7 @@ router
         router.get('/:id', [InteractionsController, 'show']).where('id', UUID_REGEX)
         router.put('/:id', [InteractionsController, 'update']).where('id', UUID_REGEX)
         router.delete('/:id', [InteractionsController, 'destroy']).where('id', UUID_REGEX)
+        router.patch('/:id/restore', [InteractionsController, 'restore']).where('id', UUID_REGEX)
       })
       .prefix('/interactions')
       .use(middleware.auth())

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -30,14 +31,19 @@ export function InteractionsList() {
 
   // Server-side filters (sent to backend)
   const [filters, setFilters] = useState<InteractionsFilterType>({})
+  const [showArchived, setShowArchived] = useState(false)
   // Client-side date range (applied after fetch)
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
   // Expand state — only one row open at a time
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
+  const activeFilters: InteractionsFilterType = {
+    ...filters,
+    ...(showArchived && { include_archived: true }),
+  }
   const { data, isLoading, isError } = useInteractions(
-    Object.keys(filters).length > 0 ? filters : undefined,
+    Object.keys(activeFilters).length > 0 ? activeFilters : undefined,
   )
   const { data: stagesData } = useFunnelStages()
   const { data: prospectsData } = useProspects()
@@ -56,7 +62,8 @@ export function InteractionsList() {
     return true
   })
 
-  const hasActiveFilters = Object.keys(filters).length > 0 || dateFrom !== '' || dateTo !== ''
+  const hasActiveFilters =
+    Object.keys(filters).length > 0 || dateFrom !== '' || dateTo !== '' || showArchived
 
   function toggleExpanded(id: string) {
     setExpandedId((prev) => (prev === id ? null : id))
@@ -104,6 +111,7 @@ export function InteractionsList() {
 
   function clearAllFilters() {
     setFilters({})
+    setShowArchived(false)
     setDateFrom('')
     setDateTo('')
     setExpandedId(null)
@@ -226,6 +234,21 @@ export function InteractionsList() {
             }}
             className="h-8 rounded-md border border-input bg-background px-3 text-sm"
           />
+        </div>
+
+        {/* Show archived toggle */}
+        <div className="flex items-center gap-2 self-end pb-1">
+          <Switch
+            id="show-archived-interactions"
+            checked={showArchived}
+            onCheckedChange={(checked) => {
+              setShowArchived(checked)
+              setExpandedId(null)
+            }}
+          />
+          <Label htmlFor="show-archived-interactions" className="cursor-pointer text-sm">
+            {t('interactions.showArchived')}
+          </Label>
         </div>
 
         {/* Clear filters */}

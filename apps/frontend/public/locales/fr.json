@@ -274,9 +274,25 @@
       "description": "Capturez une interaction avec un prospect.",
       "submit": "Enregistrer"
     },
+    "edit": "Modifier",
+    "archive": "Archiver",
+    "restore": "Restaurer",
+    "archivedBadge": "Archivée",
+    "showArchived": "Afficher les archivées",
+    "archiveDialog": {
+      "title": "Archiver l'interaction ?",
+      "description": "Cette interaction sera archivée et retirée de la liste.",
+      "confirm": "Archiver"
+    },
     "toast": {
       "created": "Interaction enregistrée.",
-      "createFailed": "Impossible d'enregistrer l'interaction."
+      "createFailed": "Impossible d'enregistrer l'interaction.",
+      "updated": "Interaction mise à jour.",
+      "updateFailed": "Impossible de mettre à jour l'interaction.",
+      "archived": "Interaction archivée.",
+      "archiveFailed": "Impossible d'archiver l'interaction.",
+      "restored": "Interaction restaurée.",
+      "restoreFailed": "Impossible de restaurer l'interaction."
     },
     "loadError": "Impossible de charger les interactions.",
     "empty": "Aucune interaction enregistrée.",

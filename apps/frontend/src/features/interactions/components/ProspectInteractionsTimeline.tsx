@@ -1,10 +1,10 @@
-import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
+import { Switch } from '@/components/ui/switch'
 import { useInteractions } from '../hooks/useInteractions'
-import { StatusIcon } from './StatusIcon'
+import { TimelineItem } from './TimelineItem'
 
 interface ProspectInteractionsTimelineProps {
   prospectId: string
@@ -12,8 +12,13 @@ interface ProspectInteractionsTimelineProps {
 
 export function ProspectInteractionsTimeline({ prospectId }: ProspectInteractionsTimelineProps) {
   const { t } = useTranslation()
-  const { data, isLoading, isError } = useInteractions({ prospect_id: prospectId })
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
+
+  const { data, isLoading, isError } = useInteractions({
+    prospect_id: prospectId,
+    ...(showArchived && { include_archived: true }),
+  })
 
   const interactions = data?.data ?? []
 
@@ -37,69 +42,37 @@ export function ProspectInteractionsTimeline({ prospectId }: ProspectInteraction
     return <p className="text-xs text-destructive">{t('interactions.loadError')}</p>
   }
 
-  if (interactions.length === 0) {
-    return (
-      <p className="text-xs italic text-muted-foreground">{t('prospects.interactions.empty')}</p>
-    )
-  }
-
   return (
-    <ul className="space-y-1">
-      {interactions.map((interaction) => {
-        const isExpanded = expandedId === interaction.id
-        return (
-          <li key={interaction.id}>
-            <button
-              type="button"
-              onClick={() => setExpandedId(isExpanded ? null : interaction.id)}
-              aria-expanded={isExpanded}
-              className="flex w-full items-start gap-3 rounded px-1 py-1 text-left text-sm hover:bg-muted/50"
-            >
-              <ChevronDown
-                aria-hidden="true"
-                className={cn(
-                  'mt-0.5 size-3 shrink-0 text-muted-foreground transition-transform duration-200',
-                  isExpanded && 'rotate-180',
-                )}
-              />
-              <StatusIcon status={interaction.status} className="mt-0.5 size-4 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <span className="text-muted-foreground text-xs">
-                  {new Date(interaction.interactionDate).toLocaleDateString()}
-                  {interaction.positioningName && <> · {interaction.positioningName}</>}
-                </span>
-                {interaction.notes && (
-                  <p className={cn('text-sm', !isExpanded && 'line-clamp-2')}>
-                    {interaction.notes}
-                  </p>
-                )}
-              </div>
-            </button>
-
-            {isExpanded && (
-              <div className="ml-7 mt-1 mb-2 space-y-1 rounded bg-muted/30 px-3 py-2 text-xs">
-                <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-                  <span className="text-muted-foreground">{t('interactions.detail.date')}</span>
-                  <span>{new Date(interaction.interactionDate).toLocaleString()}</span>
-
-                  <span className="text-muted-foreground">
-                    {t('interactions.detail.positioning')}
-                  </span>
-                  <span>{interaction.positioningName ?? t('interactions.noPositioning')}</span>
-                </div>
-
-                {interaction.notes && (
-                  <div className="pt-1">
-                    <p className="text-muted-foreground mb-0.5">{t('interactions.fields.notes')}</p>
-                    <p className="whitespace-pre-wrap">{interaction.notes}</p>
-                  </div>
-                )}
-                {!interaction.notes && <p className="text-muted-foreground italic">—</p>}
-              </div>
-            )}
-          </li>
-        )
-      })}
-    </ul>
+    <div className="space-y-2">
+      <div className="flex items-center justify-end gap-2">
+        <Switch
+          id="show-archived-timeline"
+          checked={showArchived}
+          onCheckedChange={(checked) => {
+            setShowArchived(checked)
+            setExpandedId(null)
+          }}
+        />
+        <Label htmlFor="show-archived-timeline" className="cursor-pointer text-xs">
+          {t('interactions.showArchived')}
+        </Label>
+      </div>
+      {interactions.length === 0 ? (
+        <p className="text-xs italic text-muted-foreground">{t('prospects.interactions.empty')}</p>
+      ) : (
+        <ul className="space-y-1">
+          {interactions.map((interaction) => (
+            <TimelineItem
+              key={interaction.id}
+              interaction={interaction}
+              isExpanded={expandedId === interaction.id}
+              onToggle={() =>
+                setExpandedId((prev) => (prev === interaction.id ? null : interaction.id))
+              }
+            />
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }

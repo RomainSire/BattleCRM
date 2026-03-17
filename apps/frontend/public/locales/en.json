@@ -274,9 +274,25 @@
       "description": "Capture an interaction with a prospect.",
       "submit": "Save"
     },
+    "edit": "Edit",
+    "archive": "Archive",
+    "restore": "Restore",
+    "archivedBadge": "Archived",
+    "showArchived": "Show archived",
+    "archiveDialog": {
+      "title": "Archive interaction?",
+      "description": "This interaction will be archived and removed from the list.",
+      "confirm": "Archive"
+    },
     "toast": {
       "created": "Interaction logged.",
-      "createFailed": "Failed to log interaction."
+      "createFailed": "Failed to log interaction.",
+      "updated": "Interaction updated.",
+      "updateFailed": "Failed to update interaction.",
+      "archived": "Interaction archived.",
+      "archiveFailed": "Failed to archive interaction.",
+      "restored": "Interaction restored.",
+      "restoreFailed": "Failed to restore interaction."
     },
     "loadError": "Failed to load interactions.",
     "empty": "No interactions logged yet.",

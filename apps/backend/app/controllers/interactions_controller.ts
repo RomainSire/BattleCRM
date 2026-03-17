@@ -209,4 +209,29 @@ export default class InteractionsController {
     await interaction.delete()
     return response.ok({ message: 'Interaction archived' })
   }
+
+  /**
+   * PATCH /api/interactions/:id/restore
+   * Restores a soft-deleted interaction (sets deleted_at to null).
+   */
+  async restore({ params, response, auth }: HttpContext) {
+    const userId = auth.user!.id
+
+    const interaction = await Interaction.query()
+      .withTrashed()
+      .withScopes((s) => s.forUser(userId))
+      .where('id', params.id)
+      .firstOrFail()
+
+    await interaction.restore()
+
+    const restored = await Interaction.query()
+      .withScopes((s) => s.forUser(userId))
+      .where('id', interaction.id)
+      .preload('prospect', (q) => q.withTrashed().preload('funnelStage'))
+      .preload('positioning')
+      .firstOrFail()
+
+    return response.ok(serializeInteraction(restored))
+  }
 }
