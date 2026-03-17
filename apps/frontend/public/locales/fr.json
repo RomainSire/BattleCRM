@@ -279,7 +279,20 @@
       "createFailed": "Impossible d'enregistrer l'interaction."
     },
     "loadError": "Impossible de charger les interactions.",
-    "empty": "Aucune interaction enregistrée."
+    "empty": "Aucune interaction enregistrée.",
+    "filters": {
+      "allStatuses": "Tous les statuts",
+      "allProspects": "Tous les prospects",
+      "allPositionings": "Tous les positionnements",
+      "allStages": "Toutes les étapes",
+      "dateFrom": "Du",
+      "dateTo": "Au",
+      "clearFilters": "Effacer les filtres"
+    },
+    "detail": {
+      "positioning": "Positionnement",
+      "date": "Date"
+    }
   },
   "phoneInput": {
     "searchCountry": "Rechercher un pays...",

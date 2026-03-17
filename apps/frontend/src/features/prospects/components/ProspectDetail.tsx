@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { AddInteractionDialog } from '@/features/interactions/components/AddInteractionDialog'
+import { ProspectInteractionsTimeline } from '@/features/interactions/components/ProspectInteractionsTimeline'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
 import { i18nMessagesProvider } from '@/lib/validation'
@@ -504,9 +505,7 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
                   }
                 />
               </div>
-              <p className="text-xs italic text-muted-foreground">
-                {t('prospects.interactions.empty')}
-              </p>
+              <ProspectInteractionsTimeline prospectId={prospect.id} />
             </div>
           )}
         </div>

@@ -1,7 +1,7 @@
-import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
-import { ThemeSwitcher } from '@/components/common/ThemeSwitcher'
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
+import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
+import { ThemeSwitcher } from '@/components/common/ThemeSwitcher'
 
 function navLinkClass({ isActive }: { isActive: boolean }) {
   return isActive
@@ -15,8 +15,13 @@ export function AppNavbar() {
   return (
     <nav className="border-b bg-background shadow-sm" aria-label="Main navigation">
       <div className="container mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
-        <div className='flex gap-2 items-center'>
-          <img src="/images/BattleCRM_logo.svg" alt="" aria-hidden="true" className="size-10 shrink-0" />
+        <div className="flex gap-2 items-center">
+          <img
+            src="/images/BattleCRM_logo.svg"
+            alt=""
+            aria-hidden="true"
+            className="size-10 shrink-0"
+          />
           <span className="font-bold text-2xl text-brand-gradient">{t('common.appName')}</span>
         </div>
 
@@ -32,6 +37,9 @@ export function AppNavbar() {
           </NavLink>
           <NavLink to="/positionings" className={navLinkClass}>
             {t('nav.positionings')}
+          </NavLink>
+          <NavLink to="/interactions" className={navLinkClass}>
+            {t('nav.interactions')}
           </NavLink>
         </div>
 

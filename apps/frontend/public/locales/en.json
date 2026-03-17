@@ -279,7 +279,20 @@
       "createFailed": "Failed to log interaction."
     },
     "loadError": "Failed to load interactions.",
-    "empty": "No interactions logged yet."
+    "empty": "No interactions logged yet.",
+    "filters": {
+      "allStatuses": "All statuses",
+      "allProspects": "All prospects",
+      "allPositionings": "All positionings",
+      "allStages": "All stages",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "clearFilters": "Clear filters"
+    },
+    "detail": {
+      "positioning": "Positioning",
+      "date": "Date"
+    }
   },
   "phoneInput": {
     "searchCountry": "Search country...",
