@@ -1,11 +1,3 @@
-import type { PositioningType } from '@battlecrm/shared'
-import { vineResolver } from '@hookform/resolvers/vine'
-import { Archive, ChevronDown, Pencil, RotateCcw, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
-import { toast } from 'sonner'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,10 +24,20 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { TimelineItem } from '@/features/interactions/components/TimelineItem'
+import { useInteractions } from '@/features/interactions/hooks/useInteractions'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { i18nMessagesProvider } from '@/lib/validation'
+import type { PositioningType } from '@battlecrm/shared'
+import { vineResolver } from '@hookform/resolvers/vine'
+import { Archive, ChevronDown, Pencil, RotateCcw, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
+import { toast } from 'sonner'
 import {
   useArchivePositioning,
   useRestorePositioning,
@@ -65,12 +67,19 @@ export function PositioningRow({ positioning, isExpanded, onToggle }: Positionin
   const [restoreError, setRestoreError] = useState<string | null>(null)
   const [editStageId, setEditStageId] = useState<string>(positioning.funnelStageId)
 
-  // Lazy — only fetch prospects when the row is expanded
+  // Lazy — only fetch when the row is expanded
   const {
     data: prospectsData,
     isLoading: prospectsLoading,
     isError: prospectsError,
   } = usePositioningProspects(positioning.id, { enabled: isExpanded })
+
+  const [expandedInteractionId, setExpandedInteractionId] = useState<string | null>(null)
+  const {
+    data: interactionsData,
+    isLoading: interactionsLoading,
+    isError: interactionsError,
+  } = useInteractions({ positioning_id: positioning.id }, { enabled: isExpanded })
   const linkedProspects = prospectsData?.data ?? []
 
   const { data: stagesData, isLoading: stagesLoading, isError: stagesError } = useFunnelStages()
@@ -453,8 +462,8 @@ export function PositioningRow({ positioning, isExpanded, onToggle }: Positionin
                             >
                               <span className="font-medium">{prospect.name}</span>
                               {prospect.company && (
-                                <span className="ml-2 text-muted-foreground">
-                                  — {prospect.company}
+                                <span className="text-muted-foreground">
+                                  {' '}- {prospect.company}
                                 </span>
                               )}
                             </Link>
@@ -464,14 +473,40 @@ export function PositioningRow({ positioning, isExpanded, onToggle }: Positionin
                     )}
                   </div>
 
-                  {/* Interactions — placeholder for Epic 5 */}
+                  {/* Interactions */}
                   <div>
-                    <p className="mb-1 text-xs font-medium text-muted-foreground">
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">
                       {t('positionings.interactions.title')}
                     </p>
-                    <p className="text-xs italic text-muted-foreground">
-                      {t('positionings.interactions.comingSoon')}
-                    </p>
+                    {interactionsLoading ? (
+                      <div className="space-y-1">
+                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-4 w-32" />
+                      </div>
+                    ) : interactionsError ? (
+                      <p className="text-xs text-destructive">
+                        {t('positionings.interactions.loadError')}
+                      </p>
+                    ) : (interactionsData?.data ?? []).length === 0 ? (
+                      <p className="text-xs italic text-muted-foreground">
+                        {t('positionings.interactions.empty')}
+                      </p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {(interactionsData?.data ?? []).map((interaction) => (
+                          <TimelineItem
+                            key={interaction.id}
+                            interaction={interaction}
+                            isExpanded={expandedInteractionId === interaction.id}
+                            onToggle={() =>
+                              setExpandedInteractionId((prev) =>
+                                prev === interaction.id ? null : interaction.id,
+                              )
+                            }
+                          />
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </>
               )}

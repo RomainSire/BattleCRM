@@ -183,10 +183,10 @@ test.describe('Positionings - List View', () => {
     await expect(page.getByText(/linked prospects/i)).toBeVisible()
   })
 
-  test('expanded row shows Interactions coming-soon placeholder', async ({ page }) => {
+  test('expanded row shows Interactions section with empty state', async ({ page }) => {
     await page.goto('/positionings')
     await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).first().click()
-    await expect(page.getByText(/coming in a future release/i)).toBeVisible()
+    await expect(page.getByText(/no interactions linked to this positioning/i)).toBeVisible()
   })
 
   // ── Empty states ────────────────────────────────────────────────────────────

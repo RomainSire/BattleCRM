@@ -5,7 +5,6 @@ import { SoftDeletes } from 'adonis-lucid-soft-deletes'
 import type { DateTime } from 'luxon'
 import FunnelStage from '#models/funnel_stage'
 import Interaction from '#models/interaction'
-import Positioning from '#models/positioning'
 import ProspectStageTransition from '#models/prospect_stage_transition'
 import User from '#models/user'
 
@@ -18,9 +17,6 @@ export default class Prospect extends compose(BaseModel, SoftDeletes) {
 
   @column()
   declare funnelStageId: string
-
-  @column()
-  declare positioningId: string | null
 
   @column()
   declare name: string
@@ -62,9 +58,6 @@ export default class Prospect extends compose(BaseModel, SoftDeletes) {
 
   @belongsTo(() => FunnelStage)
   declare funnelStage: BelongsTo<typeof FunnelStage>
-
-  @belongsTo(() => Positioning)
-  declare positioning: BelongsTo<typeof Positioning>
 
   @hasMany(() => ProspectStageTransition)
   declare stageTransitions: HasMany<typeof ProspectStageTransition>

@@ -412,15 +412,6 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
                 <dd className="whitespace-pre-wrap">{prospect.notes}</dd>
               </>
             )}
-            {/* Positioning — Epic 4 will replace with name via usePositioning hook */}
-            <dt className="text-muted-foreground">{t('prospects.fields.positioning')}</dt>
-            <dd>
-              {prospect.positioningId ? (
-                <span>{t('prospects.positioningLinked')}</span>
-              ) : (
-                <span className="italic text-muted-foreground">{t('prospects.notAssigned')}</span>
-              )}
-            </dd>
           </dl>
           {/* Stage management — active prospects only */}
           {!isArchived && (

@@ -1,9 +1,7 @@
-import db from '@adonisjs/lucid/services/db'
 import type { ApiClient } from '@japa/api-client'
 import { test } from '@japa/runner'
 import FunnelStage from '#models/funnel_stage'
 import Positioning from '#models/positioning'
-import Prospect from '#models/prospect'
 import User from '#models/user'
 
 const TEST_EMAIL_DOMAIN = '@test-positionings-schema.com'
@@ -169,72 +167,4 @@ test.group('Positioning schema', (group) => {
     assert.isNull(positioning.deletedAt)
   })
 
-  // ===========================
-  // FK constraint: prospects.positioning_id
-  // ===========================
-
-  test('prospect.positioningId can reference a positioning', async ({ client, assert }) => {
-    const { user, stage } = await createUserWithStage(client, 'fk-link')
-
-    const positioning = await Positioning.create({
-      userId: user.id,
-      funnelStageId: stage.id,
-      name: 'CV v1',
-    })
-
-    const prospect = await Prospect.create({
-      userId: user.id,
-      funnelStageId: stage.id,
-      name: 'Jean Dupont',
-      positioningId: positioning.id,
-    })
-
-    assert.equal(prospect.positioningId, positioning.id)
-
-    // Verify FK is correctly stored in DB
-    const reloaded = await Prospect.findOrFail(prospect.id)
-    assert.equal(reloaded.positioningId, positioning.id)
-  })
-
-  test('prospect.positioningId remains null when no positioning assigned', async ({
-    client,
-    assert,
-  }) => {
-    const { user, stage } = await createUserWithStage(client, 'fk-null')
-
-    const prospect = await Prospect.create({
-      userId: user.id,
-      funnelStageId: stage.id,
-      name: 'No Positioning',
-    })
-
-    const reloadedProspect = await Prospect.findOrFail(prospect.id)
-    assert.isNull(reloadedProspect.positioningId)
-  })
-
-  test('ON DELETE SET NULL: hard-deleting a positioning nullifies prospect.positioningId', async ({
-    client,
-    assert,
-  }) => {
-    const { user, stage } = await createUserWithStage(client, 'fk-cascade')
-
-    const positioning = await Positioning.create({
-      userId: user.id,
-      funnelStageId: stage.id,
-      name: 'ToHardDelete',
-    })
-
-    const prospect = await Prospect.create({
-      userId: user.id,
-      funnelStageId: stage.id,
-      name: 'Linked Prospect',
-      positioningId: positioning.id,
-    })
-
-    // Hard-delete the positioning row directly (bypassing SoftDeletes) to trigger the DB ON DELETE SET NULL cascade
-    await db.from('positionings').where('id', positioning.id).delete()
-
-    const reloaded = await Prospect.findOrFail(prospect.id)
-    assert.isNull(reloaded.positioningId)
-  })
 })

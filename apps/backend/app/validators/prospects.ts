@@ -10,8 +10,6 @@ export const createProspectValidator = vine.compile(
     title: vine.string().trim().maxLength(255).nullable().optional(),
     notes: vine.string().trim().nullable().optional(),
     funnel_stage_id: vine.string().uuid().optional(),
-    // positioning_id: stored as raw UUID — no FK constraint until Epic 4 Story 4.1
-    positioning_id: vine.string().uuid().nullable().optional(),
   }),
 )
 
@@ -25,6 +23,5 @@ export const updateProspectValidator = vine.compile(
     title: vine.string().trim().maxLength(255).nullable().optional(),
     notes: vine.string().trim().nullable().optional(),
     funnel_stage_id: vine.string().uuid().optional(),
-    positioning_id: vine.string().uuid().nullable().optional(),
   }),
 )

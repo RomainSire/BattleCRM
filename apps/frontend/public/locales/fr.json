@@ -246,7 +246,8 @@
     },
     "interactions": {
       "title": "Interactions",
-      "comingSoon": "Disponible dans une prochaine version"
+      "empty": "Aucune interaction liée à ce positionnement.",
+      "loadError": "Impossible de charger les interactions."
     }
   },
   "interactions": {

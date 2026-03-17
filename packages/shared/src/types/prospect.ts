@@ -9,7 +9,6 @@ export type ProspectType = {
   title: string | null
   notes: string | null
   funnelStageId: string
-  positioningId: string | null
   createdAt: string
   updatedAt: string
   deletedAt: string | null
