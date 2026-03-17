@@ -164,6 +164,12 @@
     "stageHistory": "Stage History",
     "noStageHistory": "No stage changes recorded yet.",
     "initialStage": "Initial",
+    "timeline": {
+      "title": "History",
+      "empty": "No activity recorded yet.",
+      "loadError": "Failed to load history.",
+      "showAll": "Show {{count}} more"
+    },
     "stagePosition": "({{current}} of {{total}})",
     "toast": {
       "created": "Prospect created",

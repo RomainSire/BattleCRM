@@ -164,6 +164,12 @@
     "stageHistory": "Historique des étapes",
     "noStageHistory": "Aucun changement d'étape enregistré.",
     "initialStage": "Début",
+    "timeline": {
+      "title": "Historique",
+      "empty": "Aucune activité enregistrée.",
+      "loadError": "Impossible de charger l'historique.",
+      "showAll": "Afficher {{count}} de plus"
+    },
     "stagePosition": "({{current}} sur {{total}})",
     "toast": {
       "created": "Prospect créé",

@@ -1,6 +1,6 @@
 import type { ProspectType } from '@battlecrm/shared'
 import { vineResolver } from '@hookform/resolvers/vine'
-import { Archive, Pencil, Plus, RotateCcw, X } from 'lucide-react'
+import { Archive, Pencil, RotateCcw, X } from 'lucide-react'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -29,8 +29,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { AddInteractionDialog } from '@/features/interactions/components/AddInteractionDialog'
-import { ProspectInteractionsTimeline } from '@/features/interactions/components/ProspectInteractionsTimeline'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
 import { i18nMessagesProvider } from '@/lib/validation'
@@ -39,8 +37,8 @@ import {
   useRestoreProspect,
   useUpdateProspect,
 } from '../hooks/useProspectMutations'
-import { useProspectStageTransitions } from '../hooks/useProspectStageTransitions'
 import { updateProspectSchema } from '../schemas/prospect'
+import { ProspectTimeline } from './ProspectTimeline'
 
 interface ProspectDetailProps {
   prospect: ProspectType
@@ -87,13 +85,6 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
 
   const { data: stagesData } = useFunnelStages()
   const stages = stagesData?.data ?? []
-
-  // Always enabled: component only mounts when visible (expanded row or open Drawer)
-  const { data: transitionsData, isLoading: transitionsLoading } = useProspectStageTransitions(
-    prospect.id,
-    { enabled: true },
-  )
-  const transitions = transitionsData?.data ?? []
 
   const currentStageIndex = stages.findIndex((s) => s.id === prospect.funnelStageId)
   const stagePosition = currentStageIndex >= 0 ? currentStageIndex + 1 : null
@@ -451,54 +442,10 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
             </div>
           )}
 
-          {/* Stage History */}
+          {/* Unified timeline: interactions + stage transitions */}
           <div className="mt-4">
-            <p className="mb-1 text-xs font-medium text-muted-foreground">
-              {t('prospects.stageHistory')}
-            </p>
-            {transitionsLoading ? (
-              <p className="text-xs italic text-muted-foreground">...</p>
-            ) : transitions.length === 0 ? (
-              <p className="text-xs italic text-muted-foreground">
-                {t('prospects.noStageHistory')}
-              </p>
-            ) : (
-              <ul className="space-y-1">
-                {transitions.map((tr) => (
-                  <li key={tr.id} className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{new Date(tr.transitionedAt).toLocaleString()}</span>
-                    <span>—</span>
-                    <span>
-                      {tr.fromStageName ?? t('prospects.initialStage')}
-                      {' → '}
-                      {tr.toStageName}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ProspectTimeline prospectId={prospect.id} isArchived={isArchived} />
           </div>
-
-          {/* Interactions — active prospects only */}
-          {!isArchived && (
-            <div className="mt-4">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs font-medium text-muted-foreground">
-                  {t('prospects.interactions.title')}
-                </p>
-                <AddInteractionDialog
-                  initialProspectId={prospect.id}
-                  trigger={
-                    <Button type="button" size="sm" variant="outline">
-                      <Plus className="mr-1 size-3" />
-                      {t('prospects.interactions.logButton')}
-                    </Button>
-                  }
-                />
-              </div>
-              <ProspectInteractionsTimeline prospectId={prospect.id} />
-            </div>
-          )}
         </div>
       )}
     </div>
