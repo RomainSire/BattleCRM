@@ -1,6 +1,6 @@
 import type { InteractionStatus, InteractionType } from '@battlecrm/shared'
 import { vineResolver } from '@hookform/resolvers/vine'
-import { Archive, ChevronDown, Pencil, RotateCcw, X } from 'lucide-react'
+import { Archive, ChevronRight, Pencil, RotateCcw, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -155,11 +155,11 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
           isArchived && 'opacity-60',
         )}
       >
-        <ChevronDown
+        <ChevronRight
           aria-hidden="true"
           className={cn(
             'mt-0.5 size-3 shrink-0 text-muted-foreground transition-transform duration-200',
-            isExpanded && 'rotate-180',
+            isExpanded && 'rotate-90',
           )}
         />
         <StatusIcon status={interaction.status} className="mt-0.5 size-4 shrink-0" />

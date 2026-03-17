@@ -1,6 +1,6 @@
 import type { InteractionStatus, InteractionType } from '@battlecrm/shared'
 import { vineResolver } from '@hookform/resolvers/vine'
-import { Archive, ChevronDown, Pencil, RotateCcw, X } from 'lucide-react'
+import { Archive, ChevronRight, Pencil, RotateCcw, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -160,10 +160,10 @@ export function InteractionRow({ interaction, isExpanded, onToggle }: Interactio
         aria-expanded={isExpanded}
       >
         <TableCell className="w-8 pr-0">
-          <ChevronDown
+          <ChevronRight
             className={cn(
               'size-4 text-muted-foreground transition-transform duration-200',
-              isExpanded && 'rotate-180',
+              isExpanded && 'rotate-90',
             )}
           />
         </TableCell>
