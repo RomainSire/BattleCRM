@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -12,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
 import {
   Table,
   TableBody,
@@ -29,13 +29,10 @@ import { InteractionRow } from './InteractionRow'
 export function InteractionsList() {
   const { t } = useTranslation()
 
-  // Server-side filters (sent to backend)
   const [filters, setFilters] = useState<InteractionsFilterType>({})
   const [showArchived, setShowArchived] = useState(false)
-  // Client-side date range (applied after fetch)
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
-  // Expand state — only one row open at a time
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const activeFilters: InteractionsFilterType = {
@@ -53,7 +50,6 @@ export function InteractionsList() {
   const prospects = prospectsData?.data ?? []
   const positionings = positioningsData?.data ?? []
 
-  // Client-side date range filter applied after fetch
   const allInteractions = data?.data ?? []
   const filtered = allInteractions.filter((i) => {
     const d = new Date(i.interactionDate)
@@ -121,123 +117,15 @@ export function InteractionsList() {
     return <p className="text-sm text-destructive">{t('interactions.loadError')}</p>
   }
 
+  // Shared style for compact header selects
+  const headerSelectTrigger =
+    'h-7 w-full border-input/60 bg-background/60 px-2 text-xs shadow-none focus:ring-0'
+
   return (
-    <div className="space-y-4">
-      {/* Filter bar */}
-      <div className="flex flex-wrap items-end gap-3">
-        {/* Status */}
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="filter-status" className="text-xs text-muted-foreground">
-            {t('interactions.fields.status')}
-          </Label>
-          <Select value={filters.status ?? 'all'} onValueChange={handleStatusFilter}>
-            <SelectTrigger id="filter-status" className="h-8 w-36 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('interactions.filters.allStatuses')}</SelectItem>
-              <SelectItem value="positive">{t('interactions.status.positive')}</SelectItem>
-              <SelectItem value="pending">{t('interactions.status.pending')}</SelectItem>
-              <SelectItem value="negative">{t('interactions.status.negative')}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Prospect */}
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="filter-prospect" className="text-xs text-muted-foreground">
-            {t('interactions.fields.prospect')}
-          </Label>
-          <Select value={filters.prospect_id ?? 'all'} onValueChange={handleProspectFilter}>
-            <SelectTrigger id="filter-prospect" className="h-8 w-44 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('interactions.filters.allProspects')}</SelectItem>
-              {prospects.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Positioning */}
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="filter-positioning" className="text-xs text-muted-foreground">
-            {t('interactions.fields.positioning')}
-          </Label>
-          <Select value={filters.positioning_id ?? 'all'} onValueChange={handlePositioningFilter}>
-            <SelectTrigger id="filter-positioning" className="h-8 w-44 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('interactions.filters.allPositionings')}</SelectItem>
-              {positionings.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Funnel Stage */}
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="filter-stage" className="text-xs text-muted-foreground">
-            {t('prospects.columns.stage')}
-          </Label>
-          <Select value={filters.funnel_stage_id ?? 'all'} onValueChange={handleStageFilter}>
-            <SelectTrigger id="filter-stage" className="h-8 w-36 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('interactions.filters.allStages')}</SelectItem>
-              {stages.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Date range (client-side) */}
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="filter-date-from" className="text-xs text-muted-foreground">
-            {t('interactions.filters.dateFrom')}
-          </Label>
-          <input
-            id="filter-date-from"
-            type="date"
-            value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value)
-              setExpandedId(null)
-            }}
-            className="h-8 rounded-md border border-input bg-background px-3 text-sm"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="filter-date-to" className="text-xs text-muted-foreground">
-            {t('interactions.filters.dateTo')}
-          </Label>
-          <input
-            id="filter-date-to"
-            type="date"
-            value={dateTo}
-            onChange={(e) => {
-              setDateTo(e.target.value)
-              setExpandedId(null)
-            }}
-            className="h-8 rounded-md border border-input bg-background px-3 text-sm"
-          />
-        </div>
-
-        {/* Show archived toggle */}
-        <div className="flex items-center gap-2 self-end pb-1">
+    <div className="space-y-3">
+      {/* Slim top bar: Show Archived + Positioning filter + Clear */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
           <Switch
             id="show-archived-interactions"
             checked={showArchived}
@@ -251,86 +139,179 @@ export function InteractionsList() {
           </Label>
         </div>
 
-        {/* Clear filters */}
+        {/* Positioning — secondary filter, no dedicated column */}
+        <Select value={filters.positioning_id ?? 'all'} onValueChange={handlePositioningFilter}>
+          <SelectTrigger className="h-8 w-44 text-sm">
+            <SelectValue placeholder={t('interactions.filters.allPositionings')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('interactions.filters.allPositionings')}</SelectItem>
+            {positionings.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         {hasActiveFilters && (
           <Button
             type="button"
             size="sm"
             variant="outline"
             onClick={clearAllFilters}
-            className="h-8 self-end"
+            className="h-8"
           >
             {t('interactions.filters.clearFilters')}
           </Button>
         )}
       </div>
 
-      {/* Loading state */}
-      {isLoading && (
-        <div className="rounded-md border">
-          <Table>
-            <TableBody>
-              {['s0', 's1', 's2', 's3', 's4'].map((key) => (
-                <TableRow key={key}>
-                  <TableCell>
-                    <Skeleton className="h-4 w-4" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-32" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-4" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-48" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+      {/* Table — always rendered, skeleton during loading */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent align-top">
+              <TableHead className="w-8 pr-0" />
 
-      {/* Empty state */}
-      {!isLoading && filtered.length === 0 && (
-        <div className="rounded-md border py-12 text-center">
-          <p className="text-muted-foreground">{t('interactions.empty')}</p>
-        </div>
-      )}
+              {/* Date + date range filter */}
+              <TableHead className="min-w-[210px]">
+                <div className="flex flex-col gap-1 py-0.5">
+                  <span className="text-xs font-medium">{t('interactions.detail.date')}</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => {
+                        setDateFrom(e.target.value)
+                        setExpandedId(null)
+                      }}
+                      className="h-7 w-[96px] rounded-md border border-input/60 bg-background/60 px-2 text-xs"
+                    />
+                    <span className="text-xs text-muted-foreground">→</span>
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => {
+                        setDateTo(e.target.value)
+                        setExpandedId(null)
+                      }}
+                      className="h-7 w-[96px] rounded-md border border-input/60 bg-background/60 px-2 text-xs"
+                    />
+                  </div>
+                </div>
+              </TableHead>
 
-      {/* Table */}
-      {!isLoading && filtered.length > 0 && (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="w-8 pr-0" />
-                <TableHead>{t('interactions.detail.date')}</TableHead>
-                <TableHead>{t('interactions.fields.prospect')}</TableHead>
-                <TableHead>{t('prospects.columns.stage')}</TableHead>
-                <TableHead>{t('interactions.fields.status')}</TableHead>
-                <TableHead>{t('interactions.fields.notes')}</TableHead>
+              {/* Prospect filter */}
+              <TableHead>
+                <div className="flex flex-col gap-1 py-0.5">
+                  <span className="text-xs font-medium">{t('interactions.fields.prospect')}</span>
+                  <Select value={filters.prospect_id ?? 'all'} onValueChange={handleProspectFilter}>
+                    <SelectTrigger className={headerSelectTrigger}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('interactions.filters.allProspects')}</SelectItem>
+                      {prospects.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </TableHead>
+
+              {/* Stage filter */}
+              <TableHead>
+                <div className="flex flex-col gap-1 py-0.5">
+                  <span className="text-xs font-medium">{t('prospects.columns.stage')}</span>
+                  <Select
+                    value={filters.funnel_stage_id ?? 'all'}
+                    onValueChange={handleStageFilter}
+                  >
+                    <SelectTrigger className={headerSelectTrigger}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('interactions.filters.allStages')}</SelectItem>
+                      {stages.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </TableHead>
+
+              {/* Status filter */}
+              <TableHead className="w-28">
+                <div className="flex flex-col gap-1 py-0.5">
+                  <span className="text-xs font-medium">{t('interactions.fields.status')}</span>
+                  <Select value={filters.status ?? 'all'} onValueChange={handleStatusFilter}>
+                    <SelectTrigger className={headerSelectTrigger}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('interactions.filters.allStatuses')}</SelectItem>
+                      <SelectItem value="positive">{t('interactions.status.positive')}</SelectItem>
+                      <SelectItem value="pending">{t('interactions.status.pending')}</SelectItem>
+                      <SelectItem value="negative">{t('interactions.status.negative')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </TableHead>
+
+              <TableHead>{t('interactions.fields.notes')}</TableHead>
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            {isLoading ? (
+              <>
+                {['s0', 's1', 's2', 's3', 's4'].map((key) => (
+                  <TableRow key={key}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-4" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-32" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-4" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-48" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </>
+            ) : filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                  {t('interactions.empty')}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((interaction) => (
+            ) : (
+              filtered.map((interaction) => (
                 <InteractionRow
                   key={interaction.id}
                   interaction={interaction}
                   isExpanded={expandedId === interaction.id}
                   onToggle={() => toggleExpanded(interaction.id)}
                 />
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       {data && !isLoading && (
         <p className="text-right text-xs text-muted-foreground">
