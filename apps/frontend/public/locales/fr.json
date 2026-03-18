@@ -181,7 +181,7 @@
       "moveFailed": "Impossible de déplacer le prospect. Veuillez réessayer.",
       "noProspects": "Aucun prospect",
       "searchPlaceholder": "Rechercher un prospect...",
-      "showArchived": "Afficher les archivés"
+      "showArchived": "Voir archivés"
     },
     "stageHistory": "Historique des étapes",
     "noStageHistory": "Aucun changement d'étape enregistré.",
@@ -310,7 +310,7 @@
     "archive": "Archiver",
     "restore": "Restaurer",
     "archivedBadge": "Archivée",
-    "showArchived": "Afficher les archivées",
+    "showArchived": "Voir archivés",
     "archiveDialog": {
       "title": "Archiver l'interaction ?",
       "description": "Cette interaction sera archivée et retirée de la liste.",

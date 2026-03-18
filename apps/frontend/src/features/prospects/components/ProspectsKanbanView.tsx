@@ -1,15 +1,15 @@
-import type { ProspectType } from '@battlecrm/shared'
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
-import { closestCorners, DndContext, DragOverlay } from '@dnd-kit/core'
-import { useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
+import type { ProspectType } from '@battlecrm/shared'
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import { closestCorners, DndContext, DragOverlay } from '@dnd-kit/core'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { useUpdateProspect } from '../hooks/useProspectMutations'
 import { useProspects } from '../hooks/useProspects'
 import { KanbanCard } from './KanbanCard'
@@ -132,7 +132,7 @@ export function ProspectsKanbanView() {
   return (
     <div className="space-y-4">
       {/* Toolbar: search + archived toggle */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <Input
           type="search"
           placeholder={t('prospects.kanban.searchPlaceholder')}
