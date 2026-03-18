@@ -55,6 +55,19 @@
   "settings": {
     "title": "Settings",
     "description": "Configure your prospecting pipeline.",
+    "appearance": {
+      "title": "Appearance",
+      "description": "Choose the interface theme.",
+      "themes": {
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
+      }
+    },
+    "language": {
+      "title": "Language",
+      "description": "Choose the interface language."
+    },
     "funnelConfig": {
       "title": "Funnel Configuration"
     }

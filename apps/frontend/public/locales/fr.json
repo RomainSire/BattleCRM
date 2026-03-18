@@ -55,6 +55,19 @@
   "settings": {
     "title": "Paramètres",
     "description": "Configurez votre pipeline de prospection.",
+    "appearance": {
+      "title": "Apparence",
+      "description": "Choisissez le thème de l'interface.",
+      "themes": {
+        "system": "Système",
+        "light": "Clair",
+        "dark": "Sombre"
+      }
+    },
+    "language": {
+      "title": "Langue",
+      "description": "Choisissez la langue de l'interface."
+    },
     "funnelConfig": {
       "title": "Configuration du tunnel de vente"
     }

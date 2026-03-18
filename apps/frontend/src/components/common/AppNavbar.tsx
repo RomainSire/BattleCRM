@@ -1,7 +1,5 @@
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
-import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
-import { ThemeSwitcher } from '@/components/common/ThemeSwitcher'
 
 function navLinkClass({ isActive }: { isActive: boolean }) {
   return isActive
@@ -41,11 +39,6 @@ export function AppNavbar() {
           <NavLink to="/interactions" className={navLinkClass}>
             {t('nav.interactions')}
           </NavLink>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <ThemeSwitcher />
-          <LanguageSwitcher />
         </div>
       </div>
     </nav>
