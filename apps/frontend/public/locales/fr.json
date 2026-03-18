@@ -97,6 +97,9 @@
     "emptyFiltered": "Aucun prospect dans cette étape.",
     "emptySearch": "Aucun prospect ne correspond à votre recherche.",
     "clearFilter": "Effacer le filtre",
+    "filters": {
+      "allStages": "Toutes les étapes"
+    },
     "count": "{{count}} prospect(s)",
     "addProspect": "Ajouter un prospect",
     "columns": {
@@ -210,6 +213,9 @@
     "empty": "Aucun positionnement pour le moment.",
     "emptyFiltered": "Aucun positionnement pour cette étape.",
     "clearFilter": "Effacer le filtre",
+    "filters": {
+      "allStages": "Toutes les étapes"
+    },
     "count": "{{count}} positionnement(s)",
     "columns": {
       "name": "Nom",

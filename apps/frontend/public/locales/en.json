@@ -97,6 +97,9 @@
     "emptyFiltered": "No prospects in this stage.",
     "emptySearch": "No prospects match your search.",
     "clearFilter": "Clear filter",
+    "filters": {
+      "allStages": "All stages"
+    },
     "count": "{{count}} prospect(s)",
     "addProspect": "Add Prospect",
     "columns": {
@@ -210,6 +213,9 @@
     "empty": "No positionings yet.",
     "emptyFiltered": "No positionings for this stage.",
     "clearFilter": "Clear filter",
+    "filters": {
+      "allStages": "All stages"
+    },
     "count": "{{count}} positioning(s)",
     "columns": {
       "name": "Name",
