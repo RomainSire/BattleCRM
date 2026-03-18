@@ -283,6 +283,7 @@
   },
   "interactions": {
     "title": "Interactions",
+    "description": "Gérez vos interactions avec vos prospects.",
     "addInteraction": "Journaliser une interaction",
     "noPositioning": "Sans positionnement",
     "fields": {

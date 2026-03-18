@@ -283,6 +283,7 @@
   },
   "interactions": {
     "title": "Interactions",
+    "description": "Manage your interactions with your prospects.",
     "addInteraction": "Log Interaction",
     "noPositioning": "No positioning",
     "fields": {
