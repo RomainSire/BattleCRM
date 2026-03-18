@@ -173,8 +173,8 @@
     },
     "viewToggle": {
       "label": "Mode d'affichage",
-      "list": "Vue liste",
-      "kanban": "Vue Kanban",
+      "list": "Liste",
+      "kanban": "Kanban",
       "kanbanPlaceholder": "Vue Kanban — disponible en Story 3.9"
     },
     "kanban": {
