@@ -14,6 +14,9 @@
     "interactions": "Interactions",
     "userMenu": {
       "label": "User menu"
+    },
+    "mobileMenu": {
+      "label": "Open menu"
     }
   },
   "auth": {
