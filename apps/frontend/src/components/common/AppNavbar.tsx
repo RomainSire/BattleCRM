@@ -1,3 +1,13 @@
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { useLogout } from '@/features/auth/hooks/useAuth'
+import { CircleUser, LogOut, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
 
@@ -9,6 +19,7 @@ function navLinkClass({ isActive }: { isActive: boolean }) {
 
 export function AppNavbar() {
   const { t } = useTranslation()
+  const logout = useLogout()
 
   return (
     <nav className="border-b bg-background shadow-sm" aria-label="Main navigation">
@@ -27,9 +38,6 @@ export function AppNavbar() {
           <NavLink to="/" className={navLinkClass}>
             {t('nav.dashboard')}
           </NavLink>
-          <NavLink to="/settings" className={navLinkClass}>
-            {t('nav.settings')}
-          </NavLink>
           <NavLink to="/prospects" className={navLinkClass}>
             {t('nav.prospects')}
           </NavLink>
@@ -40,6 +48,31 @@ export function AppNavbar() {
             {t('nav.interactions')}
           </NavLink>
         </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label={t('nav.userMenu.label')}>
+              <CircleUser className="size-5 text-muted-foreground " />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem asChild>
+              <NavLink to="/settings" className="flex items-center gap-2 cursor-pointer">
+                <Settings className="size-4" />
+                {t('nav.settings')}
+              </NavLink>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="flex items-center gap-2 text-destructive focus:text-destructive cursor-pointer"
+              disabled={logout.isPending}
+              onClick={() => logout.mutate()}
+            >
+              <LogOut className="size-4" />
+              {logout.isPending ? t('dashboard.loggingOut') : t('dashboard.logout')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </nav>
   )

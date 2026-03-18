@@ -11,7 +11,10 @@
     "settings": "Paramètres",
     "prospects": "Prospects",
     "positionings": "Positionnements",
-    "interactions": "Interactions"
+    "interactions": "Interactions",
+    "userMenu": {
+      "label": "Menu utilisateur"
+    }
   },
   "auth": {
     "login": {
