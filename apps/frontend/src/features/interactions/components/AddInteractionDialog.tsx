@@ -74,7 +74,7 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
     selectedProspect?.funnelStageId
       ? { funnel_stage_id: selectedProspect.funnelStageId }
       : undefined,
-    { enabled: !!selectedProspect?.funnelStageId },
+    { enabled: open && !!selectedProspect?.funnelStageId },
   )
   const positionings = positioningsData?.data ?? []
 
