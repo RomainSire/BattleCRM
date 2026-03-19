@@ -21,13 +21,15 @@ import {
 import { useLogout } from '@/features/auth/hooks/useAuth'
 
 function navLinkClass({ isActive }: { isActive: boolean }) {
-  return isActive
-    ? 'font-semibold text-brand-gradient'
-    : 'text-muted-foreground hover:text-foreground transition-colors'
+  return `outline-none rounded-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] ${
+    isActive
+      ? 'font-semibold text-brand-gradient'
+      : 'text-muted-foreground hover:text-foreground transition-colors'
+  }`
 }
 
 function mobileNavLinkClass({ isActive }: { isActive: boolean }) {
-  return `flex items-center gap-3 rounded-md px-3 py-2 text-base transition-colors ${
+  return `flex items-center gap-3 rounded-md px-3 py-2 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] ${
     isActive
       ? 'bg-muted font-semibold text-brand-gradient'
       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
