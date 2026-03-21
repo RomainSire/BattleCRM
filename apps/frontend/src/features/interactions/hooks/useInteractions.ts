@@ -3,10 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queryKeys'
 import { interactionsApi } from '../lib/api'
 
-export function useInteractions(
-  filters?: InteractionsFilterType,
-  options?: { enabled?: boolean },
-) {
+export function useInteractions(filters?: InteractionsFilterType, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.interactions.list(filters),
     queryFn: () => interactionsApi.list(filters),

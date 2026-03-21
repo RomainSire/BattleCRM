@@ -1,3 +1,11 @@
+import type { PositioningType } from '@battlecrm/shared'
+import { vineResolver } from '@hookform/resolvers/vine'
+import { Archive, ChevronRight, Pencil, RotateCcw, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
+import { toast } from 'sonner'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,14 +38,6 @@ import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { i18nMessagesProvider } from '@/lib/validation'
-import type { PositioningType } from '@battlecrm/shared'
-import { vineResolver } from '@hookform/resolvers/vine'
-import { Archive, ChevronRight, Pencil, RotateCcw, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
-import { toast } from 'sonner'
 import {
   useArchivePositioning,
   useRestorePositioning,
@@ -462,9 +462,7 @@ export function PositioningRow({ positioning, isExpanded, onToggle }: Positionin
                             >
                               <span className="font-medium">{prospect.name}</span>
                               {prospect.company && (
-                                <span className="text-muted-foreground">
-                                  {' '}- {prospect.company}
-                                </span>
+                                <span className="text-muted-foreground"> - {prospect.company}</span>
                               )}
                             </Link>
                           </li>

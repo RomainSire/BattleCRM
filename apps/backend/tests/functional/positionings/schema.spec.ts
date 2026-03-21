@@ -166,5 +166,4 @@ test.group('Positioning schema', (group) => {
     await positioning.restore()
     assert.isNull(positioning.deletedAt)
   })
-
 })

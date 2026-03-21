@@ -1,10 +1,6 @@
-import type { InteractionStatus, InteractionType } from '@battlecrm/shared'
-import { vineResolver } from '@hookform/resolvers/vine'
+import type { InteractionType } from '@battlecrm/shared'
 import { Archive, ChevronRight, Pencil, RotateCcw, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,16 +27,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { usePositionings } from '@/features/positionings/hooks/usePositionings'
-import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { i18nMessagesProvider } from '@/lib/validation'
-import {
-  useArchiveInteraction,
-  useRestoreInteraction,
-  useUpdateInteraction,
-} from '../hooks/useInteractionMutations'
-import { updateInteractionSchema } from '../schemas/interaction'
+import { useInteractionEdit } from '../hooks/useInteractionEdit'
 import { StatusIcon } from './StatusIcon'
 
 interface InteractionRowProps {
@@ -49,102 +37,32 @@ interface InteractionRowProps {
   onToggle: () => void
 }
 
-interface EditFormValues {
-  notes: string
-}
-
 export function InteractionRow({ interaction, isExpanded, onToggle }: InteractionRowProps) {
   const { t } = useTranslation()
-  const [isEditing, setIsEditing] = useState(false)
-  const [apiError, setApiError] = useState<string | null>(null)
-  const [archiveError, setArchiveError] = useState<string | null>(null)
-  const [restoreError, setRestoreError] = useState<string | null>(null)
-  const [editStatus, setEditStatus] = useState<InteractionStatus>(interaction.status)
-  const [editPositioningId, setEditPositioningId] = useState<string>(
-    interaction.positioningId ?? 'none',
-  )
-  const [editDate, setEditDate] = useState<string>(interaction.interactionDate.slice(0, 10))
-
-  const isArchived = interaction.deletedAt !== null
-  const update = useUpdateInteraction()
-  const archive = useArchiveInteraction()
-  const restore = useRestoreInteraction()
-
-  const { data: positioningsData, isLoading: positioningsLoading } = usePositionings(
-    { funnel_stage_id: interaction.prospectFunnelStageId },
-    { enabled: isEditing },
-  )
-  const positionings = positioningsData?.data ?? []
-
   const {
+    isEditing,
+    isArchived,
+    apiError,
+    archiveError,
+    restoreError,
+    editStatus,
+    setEditStatus,
+    editPositioningId,
+    setEditPositioningId,
+    editDate,
+    setEditDate,
+    update,
+    archive,
+    positionings,
+    positioningsLoading,
     register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<EditFormValues>({
-    resolver: vineResolver(updateInteractionSchema, { messagesProvider: i18nMessagesProvider }),
-    defaultValues: { notes: interaction.notes ?? '' },
-  })
-
-  // Exit edit mode when row collapses
-  useEffect(() => {
-    if (!isExpanded) {
-      setIsEditing(false)
-      setApiError(null)
-      setArchiveError(null)
-      setRestoreError(null)
-    }
-  }, [isExpanded])
-
-  // Sync form values when interaction data refreshes after a save
-  useEffect(() => {
-    if (!isEditing) {
-      reset({ notes: interaction.notes ?? '' })
-      setEditStatus(interaction.status)
-      setEditPositioningId(interaction.positioningId ?? 'none')
-      setEditDate(interaction.interactionDate.slice(0, 10))
-    }
-  }, [interaction, isEditing, reset])
-
-  function handleEditStart() {
-    reset({ notes: interaction.notes ?? '' })
-    setEditStatus(interaction.status)
-    setEditPositioningId(interaction.positioningId ?? 'none')
-    setEditDate(interaction.interactionDate.slice(0, 10))
-    setApiError(null)
-    setIsEditing(true)
-  }
-
-  function handleCancel() {
-    reset()
-    setApiError(null)
-    setIsEditing(false)
-  }
-
-  function onSubmit(values: EditFormValues) {
-    setApiError(null)
-    update.mutate(
-      {
-        id: interaction.id,
-        payload: {
-          status: editStatus,
-          positioning_id: editPositioningId === 'none' ? null : editPositioningId,
-          notes: values.notes.trim() || null,
-          interaction_date: editDate || undefined,
-        },
-      },
-      {
-        onSuccess: () => {
-          setIsEditing(false)
-          toast.success(t('interactions.toast.updated'))
-        },
-        onError: (error) => {
-          const message = error instanceof ApiError ? error.errors[0]?.message : undefined
-          setApiError(message ?? t('interactions.toast.updateFailed'))
-        },
-      },
-    )
-  }
+    formErrors,
+    onFormSubmit,
+    handleEditStart,
+    handleCancel,
+    handleArchive,
+    handleRestore,
+  } = useInteractionEdit(interaction, isExpanded)
 
   const notesPreview = interaction.notes
     ? interaction.notes.length > 80
@@ -172,7 +90,9 @@ export function InteractionRow({ interaction, isExpanded, onToggle }: Interactio
           {new Date(interaction.interactionDate).toLocaleDateString()}
         </TableCell>
 
-        <TableCell className={cn('font-medium', isArchived && 'line-through text-muted-foreground')}>
+        <TableCell
+          className={cn('font-medium', isArchived && 'line-through text-muted-foreground')}
+        >
           {interaction.prospectName}
         </TableCell>
 
@@ -196,10 +116,10 @@ export function InteractionRow({ interaction, isExpanded, onToggle }: Interactio
       {isExpanded && (
         <TableRow className="hover:bg-transparent">
           <TableCell colSpan={6} className="p-0">
-            <div className="border-t bg-muted/30 px-4 py-3 space-y-3 text-sm">
+            <div className="space-y-3 border-t bg-muted/30 px-4 py-3 text-sm">
               {isEditing ? (
                 /* ── EDIT MODE ── */
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+                <form onSubmit={onFormSubmit} className="space-y-3">
                   {/* Status */}
                   <div className="flex flex-col gap-1">
                     <Label>
@@ -212,7 +132,7 @@ export function InteractionRow({ interaction, isExpanded, onToggle }: Interactio
                       type="single"
                       value={editStatus}
                       onValueChange={(v) => {
-                        if (v) setEditStatus(v as InteractionStatus)
+                        if (v) setEditStatus(v as typeof editStatus)
                       }}
                       className="justify-start"
                     >
@@ -289,7 +209,7 @@ export function InteractionRow({ interaction, isExpanded, onToggle }: Interactio
                       rows={3}
                       disabled={update.isPending}
                     />
-                    <FieldError errors={[errors.notes]} />
+                    <FieldError errors={[formErrors.notes]} />
                   </div>
 
                   <FieldError>{apiError}</FieldError>
@@ -314,18 +234,10 @@ export function InteractionRow({ interaction, isExpanded, onToggle }: Interactio
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={restore.isPending}
+                        disabled={archive.isPending}
                         onClick={(e) => {
                           e.stopPropagation()
-                          setRestoreError(null)
-                          restore.mutate(interaction.id, {
-                            onSuccess: () => toast.success(t('interactions.toast.restored')),
-                            onError: (error) => {
-                              const message =
-                                error instanceof ApiError ? error.errors[0]?.message : undefined
-                              setRestoreError(message ?? t('interactions.toast.restoreFailed'))
-                            },
-                          })
+                          handleRestore()
                         }}
                       >
                         <RotateCcw className="size-4" />
@@ -375,21 +287,7 @@ export function InteractionRow({ interaction, isExpanded, onToggle }: Interactio
                           <AlertDialogFooter>
                             <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => {
-                                setArchiveError(null)
-                                archive.mutate(interaction.id, {
-                                  onSuccess: () => toast.success(t('interactions.toast.archived')),
-                                  onError: (error) => {
-                                    const message =
-                                      error instanceof ApiError
-                                        ? error.errors[0]?.message
-                                        : undefined
-                                    setArchiveError(
-                                      message ?? t('interactions.toast.archiveFailed'),
-                                    )
-                                  },
-                                })
-                              }}
+                              onClick={handleArchive}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               disabled={archive.isPending}
                             >
@@ -420,7 +318,7 @@ export function InteractionRow({ interaction, isExpanded, onToggle }: Interactio
 
                   {interaction.notes && (
                     <div className="pt-1">
-                      <p className="text-muted-foreground text-xs mb-1">
+                      <p className="mb-1 text-xs text-muted-foreground">
                         {t('interactions.fields.notes')}
                       </p>
                       <p className="whitespace-pre-wrap">{interaction.notes}</p>

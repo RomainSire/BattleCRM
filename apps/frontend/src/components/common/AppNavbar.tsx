@@ -1,4 +1,4 @@
-import { Menu, CircleUser, LogOut, Settings } from 'lucide-react'
+import { CircleUser, LogOut, Menu, Settings } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
@@ -11,13 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { useLogout } from '@/features/auth/hooks/useAuth'
 
 function navLinkClass({ isActive }: { isActive: boolean }) {
@@ -122,7 +116,10 @@ export function AppNavbar() {
                 </SheetTitle>
               </SheetHeader>
 
-              <nav className="flex flex-col gap-1 px-3 py-4 flex-1 overflow-y-auto" aria-label="Mobile navigation">
+              <nav
+                className="flex flex-col gap-1 px-3 py-4 flex-1 overflow-y-auto"
+                aria-label="Mobile navigation"
+              >
                 {navLinks.map(({ to, label }) => (
                   <NavLink
                     key={to}

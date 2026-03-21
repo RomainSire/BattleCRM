@@ -1,3 +1,11 @@
+import type { InteractionStatus } from '@battlecrm/shared'
+import { vineResolver } from '@hookform/resolvers/vine'
+import { Plus } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -25,14 +33,6 @@ import { useProspects } from '@/features/prospects/hooks/useProspects'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
 import { i18nMessagesProvider } from '@/lib/validation'
-import type { InteractionStatus } from '@battlecrm/shared'
-import { vineResolver } from '@hookform/resolvers/vine'
-import { Plus } from 'lucide-react'
-import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 import { useCreateInteraction } from '../hooks/useInteractionMutations'
 import { useLastInteractionContext } from '../hooks/useLastInteractionContext'
 import { createInteractionSchema } from '../schemas/interaction'
@@ -169,7 +169,11 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        {trigger ?? <Button size="sm"><Plus className="size-4" /> {t('interactions.addInteraction')}</Button>}
+        {trigger ?? (
+          <Button size="sm">
+            <Plus className="size-4" /> {t('interactions.addInteraction')}
+          </Button>
+        )}
       </DialogTrigger>
 
       <DialogContent onClick={(e) => e.stopPropagation()}>

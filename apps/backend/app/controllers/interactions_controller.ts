@@ -223,6 +223,8 @@ export default class InteractionsController {
       .where('id', params.id)
       .firstOrFail()
 
+    if (!interaction.deletedAt) return response.notFound()
+
     await interaction.restore()
 
     const restored = await Interaction.query()

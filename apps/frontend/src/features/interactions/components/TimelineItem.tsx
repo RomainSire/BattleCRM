@@ -1,10 +1,6 @@
-import type { InteractionStatus, InteractionType } from '@battlecrm/shared'
-import { vineResolver } from '@hookform/resolvers/vine'
+import type { InteractionType } from '@battlecrm/shared'
 import { Archive, ChevronRight, Pencil, RotateCcw, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,16 +25,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { usePositionings } from '@/features/positionings/hooks/usePositionings'
-import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { i18nMessagesProvider } from '@/lib/validation'
-import {
-  useArchiveInteraction,
-  useRestoreInteraction,
-  useUpdateInteraction,
-} from '../hooks/useInteractionMutations'
-import { updateInteractionSchema } from '../schemas/interaction'
+import { useInteractionEdit } from '../hooks/useInteractionEdit'
 import { StatusIcon } from './StatusIcon'
 
 export interface TimelineItemProps {
@@ -47,102 +35,32 @@ export interface TimelineItemProps {
   onToggle: () => void
 }
 
-interface EditFormValues {
-  notes: string
-}
-
 export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItemProps) {
   const { t } = useTranslation()
-  const isArchived = interaction.deletedAt !== null
-  const [isEditing, setIsEditing] = useState(false)
-  const [apiError, setApiError] = useState<string | null>(null)
-  const [archiveError, setArchiveError] = useState<string | null>(null)
-  const [restoreError, setRestoreError] = useState<string | null>(null)
-  const [editStatus, setEditStatus] = useState<InteractionStatus>(interaction.status)
-  const [editPositioningId, setEditPositioningId] = useState<string>(
-    interaction.positioningId ?? 'none',
-  )
-  const [editDate, setEditDate] = useState<string>(interaction.interactionDate.slice(0, 10))
-
-  const update = useUpdateInteraction()
-  const archive = useArchiveInteraction()
-  const restore = useRestoreInteraction()
-
-  const { data: positioningsData, isLoading: positioningsLoading } = usePositionings(
-    { funnel_stage_id: interaction.prospectFunnelStageId },
-    { enabled: isEditing },
-  )
-  const positionings = positioningsData?.data ?? []
-
   const {
+    isEditing,
+    isArchived,
+    apiError,
+    archiveError,
+    restoreError,
+    editStatus,
+    setEditStatus,
+    editPositioningId,
+    setEditPositioningId,
+    editDate,
+    setEditDate,
+    update,
+    archive,
+    positionings,
+    positioningsLoading,
     register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<EditFormValues>({
-    resolver: vineResolver(updateInteractionSchema, { messagesProvider: i18nMessagesProvider }),
-    defaultValues: { notes: interaction.notes ?? '' },
-  })
-
-  // Exit edit mode when item collapses
-  useEffect(() => {
-    if (!isExpanded) {
-      setIsEditing(false)
-      setApiError(null)
-      setArchiveError(null)
-      setRestoreError(null)
-    }
-  }, [isExpanded])
-
-  // Sync form values when interaction data refreshes after a save
-  useEffect(() => {
-    if (!isEditing) {
-      reset({ notes: interaction.notes ?? '' })
-      setEditStatus(interaction.status)
-      setEditPositioningId(interaction.positioningId ?? 'none')
-      setEditDate(interaction.interactionDate.slice(0, 10))
-    }
-  }, [interaction, isEditing, reset])
-
-  function handleEditStart() {
-    reset({ notes: interaction.notes ?? '' })
-    setEditStatus(interaction.status)
-    setEditPositioningId(interaction.positioningId ?? 'none')
-    setEditDate(interaction.interactionDate.slice(0, 10))
-    setApiError(null)
-    setIsEditing(true)
-  }
-
-  function handleCancel() {
-    reset()
-    setApiError(null)
-    setIsEditing(false)
-  }
-
-  function onSubmit(values: EditFormValues) {
-    setApiError(null)
-    update.mutate(
-      {
-        id: interaction.id,
-        payload: {
-          status: editStatus,
-          positioning_id: editPositioningId === 'none' ? null : editPositioningId,
-          notes: values.notes.trim() || null,
-          interaction_date: editDate || undefined,
-        },
-      },
-      {
-        onSuccess: () => {
-          setIsEditing(false)
-          toast.success(t('interactions.toast.updated'))
-        },
-        onError: (error) => {
-          const message = error instanceof ApiError ? error.errors[0]?.message : undefined
-          setApiError(message ?? t('interactions.toast.updateFailed'))
-        },
-      },
-    )
-  }
+    formErrors,
+    onFormSubmit,
+    handleEditStart,
+    handleCancel,
+    handleArchive,
+    handleRestore,
+  } = useInteractionEdit(interaction, isExpanded)
 
   return (
     <li>
@@ -175,10 +93,10 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
       </button>
 
       {isExpanded && (
-        <div className="ml-7 mt-1 mb-2 rounded bg-muted/30 px-3 py-2 text-xs space-y-3">
+        <div className="mb-2 ml-7 mt-1 space-y-3 rounded bg-muted/30 px-3 py-2 text-xs">
           {isEditing ? (
             /* ── EDIT MODE ── */
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+            <form onSubmit={onFormSubmit} className="space-y-3">
               {/* Status */}
               <div className="flex flex-col gap-1">
                 <Label className="text-xs">
@@ -191,7 +109,7 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
                   type="single"
                   value={editStatus}
                   onValueChange={(v) => {
-                    if (v) setEditStatus(v as InteractionStatus)
+                    if (v) setEditStatus(v as typeof editStatus)
                   }}
                   className="justify-start"
                 >
@@ -259,7 +177,7 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
                   rows={3}
                   disabled={update.isPending}
                 />
-                <FieldError errors={[errors.notes]} />
+                <FieldError errors={[formErrors.notes]} />
               </div>
 
               <FieldError>{apiError}</FieldError>
@@ -284,18 +202,8 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={restore.isPending}
-                    onClick={() => {
-                      setRestoreError(null)
-                      restore.mutate(interaction.id, {
-                        onSuccess: () => toast.success(t('interactions.toast.restored')),
-                        onError: (error) => {
-                          const message =
-                            error instanceof ApiError ? error.errors[0]?.message : undefined
-                          setRestoreError(message ?? t('interactions.toast.restoreFailed'))
-                        },
-                      })
-                    }}
+                    disabled={archive.isPending}
+                    onClick={handleRestore}
                   >
                     <RotateCcw className="size-4" />
                     {t('interactions.restore')}
@@ -333,17 +241,7 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
                       <AlertDialogFooter>
                         <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={() => {
-                            setArchiveError(null)
-                            archive.mutate(interaction.id, {
-                              onSuccess: () => toast.success(t('interactions.toast.archived')),
-                              onError: (error) => {
-                                const message =
-                                  error instanceof ApiError ? error.errors[0]?.message : undefined
-                                setArchiveError(message ?? t('interactions.toast.archiveFailed'))
-                              },
-                            })
-                          }}
+                          onClick={handleArchive}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           disabled={archive.isPending}
                         >
@@ -368,11 +266,11 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
 
               {interaction.notes ? (
                 <div className="pt-1">
-                  <p className="text-muted-foreground mb-0.5">{t('interactions.fields.notes')}</p>
+                  <p className="mb-0.5 text-muted-foreground">{t('interactions.fields.notes')}</p>
                   <p className="whitespace-pre-wrap">{interaction.notes}</p>
                 </div>
               ) : (
-                <p className="text-muted-foreground italic">—</p>
+                <p className="italic text-muted-foreground">—</p>
               )}
             </>
           )}

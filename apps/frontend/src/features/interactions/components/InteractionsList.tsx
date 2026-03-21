@@ -52,9 +52,10 @@ export function InteractionsList() {
 
   const allInteractions = data?.data ?? []
   const filtered = allInteractions.filter((i) => {
-    const d = new Date(i.interactionDate)
-    if (dateFrom && d < new Date(dateFrom)) return false
-    if (dateTo && d > new Date(dateTo)) return false
+    // Compare date strings directly (YYYY-MM-DD) to avoid UTC/local timezone ambiguity
+    const dateStr = i.interactionDate.slice(0, 10)
+    if (dateFrom && dateStr < dateFrom) return false
+    if (dateTo && dateStr > dateTo) return false
     return true
   })
 
@@ -269,30 +270,28 @@ export function InteractionsList() {
 
           <TableBody>
             {isLoading ? (
-              <>
-                {['s0', 's1', 's2', 's3', 's4'].map((key) => (
-                  <TableRow key={key}>
-                    <TableCell>
-                      <Skeleton className="h-4 w-4" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-32" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-20" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-4" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-48" />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </>
+              ['s0', 's1', 's2', 's3', 's4'].map((key) => (
+                <TableRow key={key}>
+                  <TableCell>
+                    <Skeleton className="h-4 w-4" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-32" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-4" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-48" />
+                  </TableCell>
+                </TableRow>
+              ))
             ) : filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
