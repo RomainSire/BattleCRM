@@ -12,8 +12,8 @@ import { expect, test } from '../support/fixtures'
 import {
   createProspect,
   getFunnelStages,
+  hardResetTestData,
   resetFunnelStages,
-  resetProspects,
 } from '../support/helpers/api'
 import { STORAGE_STATE } from '../../playwright.config'
 
@@ -22,8 +22,8 @@ test.describe('Prospects - List View', () => {
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: STORAGE_STATE })
+    await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
-    await resetProspects(context.request)
     const stages = await getFunnelStages(context.request)
     // Alice in stage 0 (Lead qualified), Bob in stage 1 (Linkedin connection)
     await createProspect(context.request, {
@@ -140,10 +140,7 @@ test.describe('Prospects - List View', () => {
 
   test('clicking a row expands the detail panel', async ({ page }) => {
     await page.goto('/prospects')
-    const rowBtn = page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'Alice Martin' })
-      .first()
+    const rowBtn = page.locator('tr[aria-expanded]').filter({ hasText: 'Alice Martin' })
     await expect(rowBtn).toHaveAttribute('aria-expanded', 'false')
     await rowBtn.click()
     await expect(rowBtn).toHaveAttribute('aria-expanded', 'true')
@@ -151,10 +148,7 @@ test.describe('Prospects - List View', () => {
 
   test('clicking an expanded row collapses it', async ({ page }) => {
     await page.goto('/prospects')
-    const rowBtn = page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'Alice Martin' })
-      .first()
+    const rowBtn = page.locator('tr[aria-expanded]').filter({ hasText: 'Alice Martin' })
     await rowBtn.click()
     await expect(rowBtn).toHaveAttribute('aria-expanded', 'true')
     await rowBtn.click()
@@ -163,14 +157,8 @@ test.describe('Prospects - List View', () => {
 
   test('only one row can be expanded at a time', async ({ page }) => {
     await page.goto('/prospects')
-    const aliceRow = page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'Alice Martin' })
-      .first()
-    const bobRow = page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'Bob Dupont' })
-      .first()
+    const aliceRow = page.locator('tr[aria-expanded]').filter({ hasText: 'Alice Martin' })
+    const bobRow = page.locator('tr[aria-expanded]').filter({ hasText: 'Bob Dupont' })
 
     await aliceRow.click()
     await expect(aliceRow).toHaveAttribute('aria-expanded', 'true')
@@ -186,7 +174,7 @@ test.describe('Prospects - List View', () => {
   test('shows "No prospects yet" when no active prospects exist', async ({ browser }) => {
     // Use an isolated context to avoid affecting serial test state
     const context = await browser.newContext({ storageState: STORAGE_STATE })
-    await resetProspects(context.request)
+    await hardResetTestData(context.request)
     const page = await context.newPage()
     await page.goto('/prospects')
     await expect(page.getByText(/no prospects yet/i)).toBeVisible()

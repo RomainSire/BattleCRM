@@ -11,7 +11,7 @@
  */
 
 import { expect, test } from '../support/fixtures'
-import { createPositioning, resetFunnelStages, resetPositionings } from '../support/helpers/api'
+import { createPositioning, hardResetTestData, resetFunnelStages } from '../support/helpers/api'
 import { STORAGE_STATE } from '../../playwright.config'
 
 test.describe('Positionings - Archive & Restore', () => {
@@ -19,7 +19,7 @@ test.describe('Positionings - Archive & Restore', () => {
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: STORAGE_STATE })
-    await resetPositionings(context.request)
+    await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
     await createPositioning(context.request, { name: 'To Be Archived' })
     await createPositioning(context.request, { name: 'Active Positioning' })
@@ -33,7 +33,6 @@ test.describe('Positionings - Archive & Restore', () => {
     await page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
-      .first()
       .click()
     await expect(page.getByRole('button', { name: /^archive$/i })).toBeVisible()
   })
@@ -43,7 +42,6 @@ test.describe('Positionings - Archive & Restore', () => {
     await page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
-      .first()
       .click()
     await page.getByRole('button', { name: /^archive$/i }).click()
     await expect(page.getByRole('alertdialog')).toBeVisible()
@@ -55,7 +53,6 @@ test.describe('Positionings - Archive & Restore', () => {
     await page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
-      .first()
       .click()
     await page.getByRole('button', { name: /^archive$/i }).click()
     await expect(page.getByRole('alertdialog')).toBeVisible()
@@ -71,7 +68,6 @@ test.describe('Positionings - Archive & Restore', () => {
     await page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
-      .first()
       .click()
     await page.getByRole('button', { name: /^archive$/i }).click()
     await expect(page.getByRole('alertdialog')).toBeVisible()
@@ -103,9 +99,9 @@ test.describe('Positionings - Archive & Restore', () => {
 
   test('toggling "Show archived" ON reveals archived positioning', async ({ page }) => {
     await page.goto('/positionings')
-    await expect(page.getByText('To Be Archived').first()).not.toBeVisible()
+    await expect(page.getByText('To Be Archived')).not.toBeVisible()
     await page.getByRole('switch', { name: /show archived/i }).click()
-    await expect(page.getByText('To Be Archived').first()).toBeVisible()
+    await expect(page.getByText('To Be Archived')).toBeVisible()
   })
 
   // ── Archived visual indicator ───────────────────────────────────────────────
@@ -113,10 +109,7 @@ test.describe('Positionings - Archive & Restore', () => {
   test('archived positioning has "Archived" badge in the row', async ({ page }) => {
     await page.goto('/positionings')
     await page.getByRole('switch', { name: /show archived/i }).click()
-    const row = page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'To Be Archived' })
-      .first()
+    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'To Be Archived' })
     await expect(row.getByText('Archived', { exact: true })).toBeVisible()
   })
 
@@ -128,7 +121,6 @@ test.describe('Positionings - Archive & Restore', () => {
     await page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
-      .first()
       .click()
     // Restore visible, Archive not rendered for archived positionings
     await expect(page.getByRole('button', { name: /^restore$/i })).toBeVisible()
@@ -141,7 +133,6 @@ test.describe('Positionings - Archive & Restore', () => {
     await page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
-      .first()
       .click()
 
     const restoreResponse = page.waitForResponse(

@@ -14,8 +14,8 @@ import { expect, test } from '../support/fixtures'
 import {
   createPositioning,
   getFunnelStages,
+  hardResetTestData,
   resetFunnelStages,
-  resetPositionings,
 } from '../support/helpers/api'
 import { STORAGE_STATE } from '../../playwright.config'
 
@@ -24,7 +24,7 @@ test.describe('Positionings - List View', () => {
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: STORAGE_STATE })
-    await resetPositionings(context.request)
+    await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
     const stages = await getFunnelStages(context.request)
     // CV Alpha in stage 0, CV Beta in stage 1
@@ -119,10 +119,7 @@ test.describe('Positionings - List View', () => {
 
   test('clicking a row expands the detail panel', async ({ page }) => {
     await page.goto('/positionings')
-    const rowBtn = page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'CV Alpha' })
-      .first()
+    const rowBtn = page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' })
     await expect(rowBtn).toHaveAttribute('aria-expanded', 'false')
     await rowBtn.click()
     await expect(rowBtn).toHaveAttribute('aria-expanded', 'true')
@@ -130,10 +127,7 @@ test.describe('Positionings - List View', () => {
 
   test('clicking an expanded row collapses it', async ({ page }) => {
     await page.goto('/positionings')
-    const rowBtn = page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'CV Alpha' })
-      .first()
+    const rowBtn = page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' })
     await rowBtn.click()
     await expect(rowBtn).toHaveAttribute('aria-expanded', 'true')
     await rowBtn.click()
@@ -142,14 +136,8 @@ test.describe('Positionings - List View', () => {
 
   test('only one row can be expanded at a time', async ({ page }) => {
     await page.goto('/positionings')
-    const alphaRow = page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'CV Alpha' })
-      .first()
-    const betaRow = page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'CV Beta' })
-      .first()
+    const alphaRow = page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' })
+    const betaRow = page.locator('tr[aria-expanded]').filter({ hasText: 'CV Beta' })
 
     await alphaRow.click()
     await expect(alphaRow).toHaveAttribute('aria-expanded', 'true')
@@ -163,14 +151,14 @@ test.describe('Positionings - List View', () => {
 
   test('expanded row shows funnel stage name as badge', async ({ page }) => {
     await page.goto('/positionings')
-    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).first().click()
+    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).click()
     // Stage badge appears in the expanded detail panel (dl section)
     await expect(page.getByText('Lead qualified').first()).toBeVisible()
   })
 
   test('expanded row shows full description and content', async ({ page }) => {
     await page.goto('/positionings')
-    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).first().click()
+    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).click()
     // Scope to the expanded content cell (td with colspan) to avoid ambiguity with the description column
     const expandedContent = page.locator('td[colspan]').first()
     await expect(expandedContent.getByText('Alpha description')).toBeVisible()
@@ -179,26 +167,17 @@ test.describe('Positionings - List View', () => {
 
   test('expanded row shows "Linked Prospects" section title', async ({ page }) => {
     await page.goto('/positionings')
-    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).first().click()
+    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).click()
     await expect(page.getByText(/linked prospects/i)).toBeVisible()
   })
 
   test('expanded row shows Interactions section with empty state', async ({ page }) => {
     await page.goto('/positionings')
-    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).first().click()
+    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).click()
     await expect(page.getByText(/no interactions linked to this positioning/i)).toBeVisible()
   })
 
   // ── Empty states ────────────────────────────────────────────────────────────
-
-  test('shows "No positionings yet" when no active positionings exist', async ({ browser }) => {
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
-    await resetPositionings(context.request)
-    const page = await context.newPage()
-    await page.goto('/positionings')
-    await expect(page.getByText(/no positionings yet/i)).toBeVisible()
-    await context.close()
-  })
 
   test('shows "No positionings for this stage" when filter matches nothing', async ({ page }) => {
     await page.goto('/positionings')
@@ -206,5 +185,16 @@ test.describe('Positionings - List View', () => {
     await page.getByRole('combobox').click()
     await page.getByRole('option', { name: 'First contact' }).click()
     await expect(page.getByText(/no positionings for this stage/i)).toBeVisible()
+  })
+
+  // ── Destructive: isolated context (must run LAST — wipes beforeAll data) ──────
+
+  test('shows "No positionings yet" when no active positionings exist', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: STORAGE_STATE })
+    await hardResetTestData(context.request)
+    const page = await context.newPage()
+    await page.goto('/positionings')
+    await expect(page.getByText(/no positionings yet/i)).toBeVisible()
+    await context.close()
   })
 })

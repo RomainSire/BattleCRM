@@ -181,7 +181,7 @@ test.describe('Interactions - List View', () => {
   }) => {
     await page.goto('/interactions')
     await page.getByRole('switch', { name: /show archived/i }).click()
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' }).first()
+    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' })
     await expect(row).toBeVisible()
     await expect(row.getByText('Archived')).toBeVisible()
   })
@@ -189,7 +189,7 @@ test.describe('Interactions - List View', () => {
   test('archived interaction shows "Restore" button, not Edit or Archive', async ({ page }) => {
     await page.goto('/interactions')
     await page.getByRole('switch', { name: /show archived/i }).click()
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' }).first()
+    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' })
     await row.click()
     await expect(page.getByRole('button', { name: /restore/i })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Edit', exact: true })).not.toBeVisible()
@@ -198,7 +198,7 @@ test.describe('Interactions - List View', () => {
   test('clicking "Restore" restores the interaction', async ({ page }) => {
     await page.goto('/interactions')
     await page.getByRole('switch', { name: /show archived/i }).click()
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' }).first()
+    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' })
     await row.click()
     await page.getByRole('button', { name: /restore/i }).click()
     await expect(page.getByText('Interaction restored.')).toBeVisible()

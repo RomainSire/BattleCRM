@@ -13,7 +13,7 @@
  */
 
 import { expect, test } from '../support/fixtures'
-import { createProspect, resetFunnelStages, resetProspects } from '../support/helpers/api'
+import { createProspect, hardResetTestData, resetFunnelStages } from '../support/helpers/api'
 import { STORAGE_STATE } from '../../playwright.config'
 
 test.describe('Prospects - Kanban Board View', () => {
@@ -21,8 +21,8 @@ test.describe('Prospects - Kanban Board View', () => {
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: STORAGE_STATE })
+    await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
-    await resetProspects(context.request)
     await createProspect(context.request, {
       name: 'Kanban Prospect A',
       company: 'Alpha Corp',

@@ -17,9 +17,8 @@ import {
   createPositioning,
   createProspect,
   getFunnelStages,
+  hardResetTestData,
   resetFunnelStages,
-  resetPositionings,
-  resetProspects,
 } from '../support/helpers/api'
 import { STORAGE_STATE } from '../../playwright.config'
 
@@ -28,9 +27,8 @@ test.describe('Interactions - Pre-fill & Quick Actions', () => {
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: STORAGE_STATE })
+    await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
-    await resetPositionings(context.request)
-    await resetProspects(context.request)
     const stages = await getFunnelStages(context.request)
     // Prospect in first stage (Lead qualified)
     await createProspect(context.request, {
@@ -64,7 +62,7 @@ test.describe('Interactions - Pre-fill & Quick Actions', () => {
 
   test('"+" button does NOT expand the prospect row', async ({ page }) => {
     await page.goto('/prospects')
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'Pre-fill Prospect' }).first()
+    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'Pre-fill Prospect' })
     await expect(row).toHaveAttribute('aria-expanded', 'false')
     await page.getByRole('button', { name: 'Log Interaction' }).first().click()
     await expect(page.getByRole('dialog')).toBeVisible()
@@ -141,8 +139,8 @@ test.describe('Interactions - Pre-fill & Quick Actions', () => {
 
   test('archived prospect row does not show the quick-action button', async ({ browser }) => {
     const context = await browser.newContext({ storageState: STORAGE_STATE })
+    await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
-    await resetProspects(context.request)
     const stages = await getFunnelStages(context.request)
     const archived = await createProspect(context.request, {
       name: 'Archived Quick Action',
@@ -158,7 +156,6 @@ test.describe('Interactions - Pre-fill & Quick Actions', () => {
     const archivedRow = page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'Archived Quick Action' })
-      .first()
     await expect(archivedRow).toBeVisible()
     await expect(
       archivedRow.getByRole('button', { name: 'Log Interaction' }),

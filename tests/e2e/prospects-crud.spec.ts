@@ -10,7 +10,7 @@
  */
 
 import { expect, test } from '../support/fixtures'
-import { createProspect, resetFunnelStages, resetProspects } from '../support/helpers/api'
+import { createProspect, hardResetTestData, resetFunnelStages } from '../support/helpers/api'
 import { STORAGE_STATE } from '../../playwright.config'
 
 test.describe('Prospects - Create & Edit', () => {
@@ -18,8 +18,8 @@ test.describe('Prospects - Create & Edit', () => {
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: STORAGE_STATE })
+    await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
-    await resetProspects(context.request)
     // Seed one prospect for edit tests
     await createProspect(context.request, {
       name: 'Initial Prospect',
@@ -82,7 +82,7 @@ test.describe('Prospects - Create & Edit', () => {
   test('created prospect is assigned to a funnel stage by default', async ({ page }) => {
     await page.goto('/prospects')
     // "New Prospect E2E" was created in previous test — it should show a stage name (not "—")
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'New Prospect E2E' }).first()
+    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'New Prospect E2E' })
     // The row should show a stage name — beforeAll seeds "Lead qualified" as the first stage
     await expect(row).toContainText('Lead qualified')
   })
@@ -94,7 +94,6 @@ test.describe('Prospects - Create & Edit', () => {
     await page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Prospect' })
-      .first()
       .click()
     await expect(page.getByRole('button', { name: /^edit$/i })).toBeVisible()
   })
@@ -104,14 +103,13 @@ test.describe('Prospects - Create & Edit', () => {
     await page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Prospect' })
-      .first()
       .click()
     await page.getByRole('button', { name: /^edit$/i }).click()
 
     // Save button appears (edit mode active)
     await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible()
     // Name field is pre-filled
-    const nameInput = page.getByRole('textbox', { name: /^name/i }).first()
+    const nameInput = page.getByRole('textbox', { name: /^name/i })
     await expect(nameInput).toHaveValue('Initial Prospect')
   })
 
@@ -120,11 +118,10 @@ test.describe('Prospects - Create & Edit', () => {
     await page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Prospect' })
-      .first()
       .click()
     await page.getByRole('button', { name: /^edit$/i }).click()
 
-    const nameInput = page.getByRole('textbox', { name: /^name/i }).first()
+    const nameInput = page.getByRole('textbox', { name: /^name/i })
     await nameInput.clear()
     await nameInput.fill('Should Not Be Saved')
 
@@ -141,11 +138,10 @@ test.describe('Prospects - Create & Edit', () => {
     await page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Prospect' })
-      .first()
       .click()
     await page.getByRole('button', { name: /^edit$/i }).click()
 
-    const nameInput = page.getByRole('textbox', { name: /^name/i }).first()
+    const nameInput = page.getByRole('textbox', { name: /^name/i })
     await nameInput.clear()
     await nameInput.fill('Updated Prospect Name')
 
