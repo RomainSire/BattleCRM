@@ -17,13 +17,11 @@ import {
   hardResetTestData,
   resetFunnelStages,
 } from '../support/helpers/api'
-import { STORAGE_STATE } from '../../playwright.config'
-
 test.describe('Positionings - List View', () => {
   test.describe.configure({ mode: 'serial' })
 
-  test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
+  test.beforeAll(async ({ browser, workerStorageState }) => {
+    const context = await browser.newContext({ storageState: workerStorageState })
     await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
     const stages = await getFunnelStages(context.request)
@@ -189,8 +187,8 @@ test.describe('Positionings - List View', () => {
 
   // ── Destructive: isolated context (must run LAST — wipes beforeAll data) ──────
 
-  test('shows "No positionings yet" when no active positionings exist', async ({ browser }) => {
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
+  test('shows "No positionings yet" when no active positionings exist', async ({ browser, workerStorageState }) => {
+    const context = await browser.newContext({ storageState: workerStorageState })
     await hardResetTestData(context.request)
     const page = await context.newPage()
     await page.goto('/positionings')

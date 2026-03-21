@@ -11,14 +11,13 @@
 
 import { expect, test } from '../support/fixtures'
 import { resetFunnelStages } from '../support/helpers/api'
-import { STORAGE_STATE } from '../../playwright.config'
 
 test.describe('Settings - Funnel Configuration', () => {
   test.describe.configure({ mode: 'serial' })
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeAll(async ({ browser, workerStorageState }) => {
     // Use a fresh browser context with the E2E auth session to reset stages via API
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
+    const context = await browser.newContext({ storageState: workerStorageState })
     await resetFunnelStages(context.request)
     await context.close()
   })

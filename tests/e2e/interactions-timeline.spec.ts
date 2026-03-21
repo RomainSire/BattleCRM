@@ -22,15 +22,14 @@ import {
   hardResetTestData,
   resetFunnelStages,
 } from '../support/helpers/api'
-import { STORAGE_STATE } from '../../playwright.config'
 
 const API_URL = process.env.E2E_API_URL || 'http://localhost:3333'
 
 test.describe('Interactions - Prospect Timeline', () => {
   test.describe.configure({ mode: 'serial' })
 
-  test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
+  test.beforeAll(async ({ browser, workerStorageState }) => {
+    const context = await browser.newContext({ storageState: workerStorageState })
     // Hard-delete all test data to prevent stale archived records from accumulating
     // across runs (soft-delete reset helpers leave archived rows in the DB).
     await hardResetTestData(context.request)
@@ -277,8 +276,8 @@ test.describe('Interactions - Prospect Timeline', () => {
 
   // ── Destructive: isolated context (must run LAST — wipes beforeAll data) ──────
 
-  test('archived prospect has no "Log Interaction" button in timeline', async ({ browser }) => {
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
+  test('archived prospect has no "Log Interaction" button in timeline', async ({ browser, workerStorageState }) => {
+    const context = await browser.newContext({ storageState: workerStorageState })
     await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
     const stages = await getFunnelStages(context.request)

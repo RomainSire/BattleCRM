@@ -18,13 +18,11 @@ import {
   hardResetTestData,
   resetFunnelStages,
 } from '../support/helpers/api'
-import { STORAGE_STATE } from '../../playwright.config'
-
 test.describe('Interactions - List View', () => {
   test.describe.configure({ mode: 'serial' })
 
-  test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
+  test.beforeAll(async ({ browser, workerStorageState }) => {
+    const context = await browser.newContext({ storageState: workerStorageState })
     // Hard-delete all test data to prevent stale archived records from accumulating
     // across runs (soft-delete reset helpers leave archived rows in the DB).
     await hardResetTestData(context.request)
@@ -288,8 +286,8 @@ test.describe('Interactions - List View', () => {
 
   // ── Empty state ───────────────────────────────────────────────────────────────
 
-  test('shows "No interactions logged yet." when list is empty', async ({ browser }) => {
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
+  test('shows "No interactions logged yet." when list is empty', async ({ browser, workerStorageState }) => {
+    const context = await browser.newContext({ storageState: workerStorageState })
     await hardResetTestData(context.request)
     const page = await context.newPage()
     await page.goto('/interactions')

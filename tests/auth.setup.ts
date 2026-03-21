@@ -1,55 +1,54 @@
 /**
  * Authentication Setup — runs once before all E2E tests.
  *
- * Creates the E2E test user (idempotent — ignores 409 if already exists),
- * logs in, and saves the session cookie to tests/.auth/user.json.
+ * Creates one test user per Playwright worker (idempotent — handles existing users),
+ * logs each in, and saves the session cookie to tests/.auth/worker-{n}.json.
  *
- * All tests that use storageState will start as this authenticated user.
+ * Each worker gets its own isolated user account to prevent cross-worker DB conflicts
+ * when specs run in parallel.
  */
 
 import { test as setup } from '@playwright/test'
-
-// ESM-compatible path resolution (no __dirname in ES modules)
-const AUTH_FILE = new URL('.auth/user.json', import.meta.url).pathname
+import { getStorageStatePath, WORKER_COUNT } from '../playwright.config'
 
 // Backend URL (direct — Vite does NOT proxy /api in dev)
 const API_URL = process.env.E2E_API_URL || 'http://localhost:3333'
-const TEST_EMAIL = process.env.E2E_TEST_EMAIL || 'e2e-test@battlecrm.test'
 const TEST_PASSWORD = process.env.E2E_TEST_PASSWORD || 'E2eTestPwd123!'
 
-setup('create authenticated session', async ({ page }) => {
-  // Use the browser context's request so that session cookies are shared
-  // with the browser context and captured by storageState().
-  //
-  // IMPORTANT: The register endpoint (AuthController.register) auto-logs the
-  // user in on success (auth.use('web').login(user)). So:
-  //   - 201 Created → user is already authenticated in this request context
-  //   - 422 Unprocessable Entity → email already exists, must login separately
-  //   - Any other status → unexpected failure, throw
-  const ctx = page.context()
-  const registerResponse = await ctx.request.post(`${API_URL}/api/auth/register`, {
-    data: {
-      email: TEST_EMAIL,
-      password: TEST_PASSWORD,
-      password_confirmation: TEST_PASSWORD,
-    },
-  })
+function workerEmail(n: number) {
+  return `e2e-worker-${n}@battlecrm.test`
+}
 
-  if (registerResponse.status() === 422) {
-    // User already exists — log in to get a fresh session
-    const loginResponse = await ctx.request.post(`${API_URL}/api/auth/login`, {
-      data: { email: TEST_EMAIL, password: TEST_PASSWORD },
+setup('create authenticated sessions', async ({ browser }) => {
+  for (let n = 0; n < WORKER_COUNT; n++) {
+    const email = workerEmail(n)
+    const authFile = getStorageStatePath(n)
+
+    // Create a fresh browser context for each worker's auth session.
+    // context.request shares cookies with the browser context, so
+    // storageState() captures the session cookie set by register/login.
+    const context = await browser.newContext()
+
+    const registerResponse = await context.request.post(`${API_URL}/api/auth/register`, {
+      data: { email, password: TEST_PASSWORD, password_confirmation: TEST_PASSWORD },
     })
-    if (!loginResponse.ok()) {
-      const body = await loginResponse.text()
-      throw new Error(`E2E test user login failed (${loginResponse.status()}): ${body}`)
-    }
-  } else if (!registerResponse.ok()) {
-    const body = await registerResponse.text()
-    throw new Error(`E2E test user registration failed (${registerResponse.status()}): ${body}`)
-  }
-  // else: 201 → register auto-logged us in, session cookie is already set
 
-  // Cookies from ctx.request are shared with the browser context.
-  await ctx.storageState({ path: AUTH_FILE })
+    if (registerResponse.status() === 422) {
+      // User already exists — log in to get a fresh session
+      const loginResponse = await context.request.post(`${API_URL}/api/auth/login`, {
+        data: { email, password: TEST_PASSWORD },
+      })
+      if (!loginResponse.ok()) {
+        const body = await loginResponse.text()
+        throw new Error(`Worker ${n} login failed (${loginResponse.status()}): ${body}`)
+      }
+    } else if (!registerResponse.ok()) {
+      const body = await registerResponse.text()
+      throw new Error(`Worker ${n} registration failed (${registerResponse.status()}): ${body}`)
+    }
+    // else: 201 → register auto-logged in, session cookie already set
+
+    await context.storageState({ path: authFile })
+    await context.close()
+  }
 })

@@ -20,13 +20,11 @@ import {
   hardResetTestData,
   resetFunnelStages,
 } from '../support/helpers/api'
-import { STORAGE_STATE } from '../../playwright.config'
-
 test.describe('Interactions - Pre-fill & Quick Actions', () => {
   test.describe.configure({ mode: 'serial' })
 
-  test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
+  test.beforeAll(async ({ browser, workerStorageState }) => {
+    const context = await browser.newContext({ storageState: workerStorageState })
     await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
     const stages = await getFunnelStages(context.request)
@@ -137,8 +135,8 @@ test.describe('Interactions - Pre-fill & Quick Actions', () => {
 
   // ── AC4: archived prospects have no quick-action button ───────────────────
 
-  test('archived prospect row does not show the quick-action button', async ({ browser }) => {
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
+  test('archived prospect row does not show the quick-action button', async ({ browser, workerStorageState }) => {
+    const context = await browser.newContext({ storageState: workerStorageState })
     await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
     const stages = await getFunnelStages(context.request)

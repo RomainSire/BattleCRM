@@ -14,13 +14,12 @@
 
 import { expect, test } from '../support/fixtures'
 import { createProspect, hardResetTestData, resetFunnelStages } from '../support/helpers/api'
-import { STORAGE_STATE } from '../../playwright.config'
 
 test.describe('Prospects - Kanban Board View', () => {
   test.describe.configure({ mode: 'serial' })
 
-  test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
+  test.beforeAll(async ({ browser, workerStorageState }) => {
+    const context = await browser.newContext({ storageState: workerStorageState })
     await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
     await createProspect(context.request, {

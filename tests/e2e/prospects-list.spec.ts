@@ -15,13 +15,11 @@ import {
   hardResetTestData,
   resetFunnelStages,
 } from '../support/helpers/api'
-import { STORAGE_STATE } from '../../playwright.config'
-
 test.describe('Prospects - List View', () => {
   test.describe.configure({ mode: 'serial' })
 
-  test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
+  test.beforeAll(async ({ browser, workerStorageState }) => {
+    const context = await browser.newContext({ storageState: workerStorageState })
     await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
     const stages = await getFunnelStages(context.request)
@@ -171,9 +169,9 @@ test.describe('Prospects - List View', () => {
 
   // ── Empty state ─────────────────────────────────────────────────────────────
 
-  test('shows "No prospects yet" when no active prospects exist', async ({ browser }) => {
+  test('shows "No prospects yet" when no active prospects exist', async ({ browser, workerStorageState }) => {
     // Use an isolated context to avoid affecting serial test state
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
+    const context = await browser.newContext({ storageState: workerStorageState })
     await hardResetTestData(context.request)
     const page = await context.newPage()
     await page.goto('/prospects')
