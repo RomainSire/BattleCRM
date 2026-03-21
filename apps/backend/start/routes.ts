@@ -16,6 +16,7 @@ const FunnelStagesController = () => import('#controllers/funnel_stages_controll
 const InteractionsController = () => import('#controllers/interactions_controller')
 const PositioningsController = () => import('#controllers/positionings_controller')
 const ProspectsController = () => import('#controllers/prospects_controller')
+const TestController = () => import('#controllers/test_controller')
 
 router
   .group(() => {
@@ -88,3 +89,11 @@ router
       .use(middleware.auth())
   })
   .prefix('/api')
+
+// Test-only routes — hard-delete helpers for E2E test teardown.
+// NOT registered in production.
+if (process.env.NODE_ENV !== 'production') {
+  router
+    .delete('/api/test/reset', [TestController, 'reset'])
+    .use(middleware.auth())
+}

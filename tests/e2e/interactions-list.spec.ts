@@ -15,10 +15,8 @@ import {
   createPositioning,
   createProspect,
   getFunnelStages,
+  hardResetTestData,
   resetFunnelStages,
-  resetInteractions,
-  resetPositionings,
-  resetProspects,
 } from '../support/helpers/api'
 import { STORAGE_STATE } from '../../playwright.config'
 
@@ -27,10 +25,10 @@ test.describe('Interactions - List View', () => {
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: STORAGE_STATE })
+    // Hard-delete all test data to prevent stale archived records from accumulating
+    // across runs (soft-delete reset helpers leave archived rows in the DB).
+    await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
-    await resetPositionings(context.request)
-    await resetProspects(context.request)
-    await resetInteractions(context.request)
     const stages = await getFunnelStages(context.request)
 
     // Prospect A: Lead qualified (stage 0) — positive interaction + positioning
@@ -183,7 +181,7 @@ test.describe('Interactions - List View', () => {
   }) => {
     await page.goto('/interactions')
     await page.getByRole('switch', { name: /show archived/i }).click()
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' })
+    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' }).first()
     await expect(row).toBeVisible()
     await expect(row.getByText('Archived')).toBeVisible()
   })
@@ -191,7 +189,7 @@ test.describe('Interactions - List View', () => {
   test('archived interaction shows "Restore" button, not Edit or Archive', async ({ page }) => {
     await page.goto('/interactions')
     await page.getByRole('switch', { name: /show archived/i }).click()
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' })
+    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' }).first()
     await row.click()
     await expect(page.getByRole('button', { name: /restore/i })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Edit', exact: true })).not.toBeVisible()
@@ -200,7 +198,7 @@ test.describe('Interactions - List View', () => {
   test('clicking "Restore" restores the interaction', async ({ page }) => {
     await page.goto('/interactions')
     await page.getByRole('switch', { name: /show archived/i }).click()
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' })
+    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' }).first()
     await row.click()
     await page.getByRole('button', { name: /restore/i }).click()
     await expect(page.getByText('Interaction restored.')).toBeVisible()
@@ -225,8 +223,9 @@ test.describe('Interactions - List View', () => {
     await page.goto('/interactions')
     await page.getByRole('combobox').filter({ hasText: 'All prospects' }).click()
     await page.getByRole('option', { name: 'TL Prospect B' }).click()
-    await expect(page.getByText('TL Prospect B')).toBeVisible()
-    await expect(page.getByText('TL Prospect A')).not.toBeVisible()
+    // Scope to tbody: the combobox also shows "TL Prospect B" as its selected value
+    await expect(page.locator('tbody').getByText('TL Prospect B')).toBeVisible()
+    await expect(page.locator('tbody').getByText('TL Prospect A')).not.toBeVisible()
   })
 
   test('stage filter shows only matching interactions', async ({ page }) => {
@@ -291,7 +290,7 @@ test.describe('Interactions - List View', () => {
 
   test('shows "No interactions logged yet." when list is empty', async ({ browser }) => {
     const context = await browser.newContext({ storageState: STORAGE_STATE })
-    await resetInteractions(context.request)
+    await hardResetTestData(context.request)
     const page = await context.newPage()
     await page.goto('/interactions')
     await expect(page.getByText(/no interactions logged yet/i)).toBeVisible()

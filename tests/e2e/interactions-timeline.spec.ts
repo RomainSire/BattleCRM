@@ -19,10 +19,8 @@ import {
   createInteraction,
   createProspect,
   getFunnelStages,
+  hardResetTestData,
   resetFunnelStages,
-  resetInteractions,
-  resetPositionings,
-  resetProspects,
 } from '../support/helpers/api'
 import { STORAGE_STATE } from '../../playwright.config'
 
@@ -33,10 +31,10 @@ test.describe('Interactions - Prospect Timeline', () => {
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: STORAGE_STATE })
+    // Hard-delete all test data to prevent stale archived records from accumulating
+    // across runs (soft-delete reset helpers leave archived rows in the DB).
+    await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
-    await resetPositionings(context.request)
-    await resetProspects(context.request)
-    await resetInteractions(context.request)
     const stages = await getFunnelStages(context.request)
 
     // Main prospect: 2 interactions (one will be archived later) + stage transition
@@ -120,18 +118,18 @@ test.describe('Interactions - Prospect Timeline', () => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
     // The first timeline item is an expandable button
-    const item = page.locator('ul button[aria-expanded]').first()
+    const item = page.locator('ul > li > button[aria-expanded]').first()
     await expect(item).toHaveAttribute('aria-expanded', 'false')
     await item.click()
     await expect(item).toHaveAttribute('aria-expanded', 'true')
-    // Edit button now visible
-    await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
+    // Edit button now visible (scoped to timeline list to avoid matching prospect's Edit button)
+    await expect(page.locator('ul').getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
   })
 
   test('clicking an expanded timeline item collapses it', async ({ page }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
-    const item = page.locator('ul button[aria-expanded]').first()
+    const item = page.locator('ul > li > button[aria-expanded]').first()
     await item.click()
     await expect(item).toHaveAttribute('aria-expanded', 'true')
     await item.click()
@@ -141,7 +139,7 @@ test.describe('Interactions - Prospect Timeline', () => {
   test('only one timeline item can be expanded at a time', async ({ page }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
-    const items = page.locator('ul button[aria-expanded]')
+    const items = page.locator('ul > li > button[aria-expanded]')
     await items.first().click()
     await expect(items.first()).toHaveAttribute('aria-expanded', 'true')
     await items.nth(1).click()
@@ -154,8 +152,8 @@ test.describe('Interactions - Prospect Timeline', () => {
   test('clicking "Edit" on a timeline item enters edit mode', async ({ page }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
-    await page.locator('ul button[aria-expanded]').first().click()
-    await page.getByRole('button', { name: 'Edit', exact: true }).click()
+    await page.locator('ul > li > button[aria-expanded]').first().click()
+    await page.locator('ul').getByRole('button', { name: 'Edit', exact: true }).click()
     await expect(page.getByRole('button', { name: /save/i })).toBeVisible()
     await expect(page.getByRole('button', { name: /cancel/i })).toBeVisible()
   })
@@ -163,8 +161,8 @@ test.describe('Interactions - Prospect Timeline', () => {
   test('can update notes from the timeline and save', async ({ page }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
-    await page.locator('ul button[aria-expanded]').first().click()
-    await page.getByRole('button', { name: 'Edit', exact: true }).click()
+    await page.locator('ul > li > button[aria-expanded]').first().click()
+    await page.locator('ul').getByRole('button', { name: 'Edit', exact: true }).click()
     await page.locator('textarea').fill('Updated from timeline')
     await page.getByRole('button', { name: /save/i }).click()
     await expect(page.getByText('Interaction updated.')).toBeVisible()
@@ -173,11 +171,11 @@ test.describe('Interactions - Prospect Timeline', () => {
   test('can cancel timeline edit without saving', async ({ page }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
-    await page.locator('ul button[aria-expanded]').first().click()
-    await page.getByRole('button', { name: 'Edit', exact: true }).click()
+    await page.locator('ul > li > button[aria-expanded]').first().click()
+    await page.locator('ul').getByRole('button', { name: 'Edit', exact: true }).click()
     await page.locator('textarea').fill('Unsaved change')
     await page.getByRole('button', { name: /cancel/i }).click()
-    await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
+    await expect(page.locator('ul').getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: /save/i })).not.toBeVisible()
   })
 
@@ -186,8 +184,8 @@ test.describe('Interactions - Prospect Timeline', () => {
   test('clicking "Archive" on a timeline item shows confirmation dialog', async ({ page }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
-    await page.locator('ul button[aria-expanded]').first().click()
-    await page.getByRole('button', { name: 'Archive', exact: true }).click()
+    await page.locator('ul > li > button[aria-expanded]').first().click()
+    await page.locator('ul').getByRole('button', { name: 'Archive', exact: true }).click()
     await expect(page.getByRole('alertdialog')).toBeVisible()
     await expect(page.getByText(/archive interaction\?/i)).toBeVisible()
   })
@@ -196,33 +194,33 @@ test.describe('Interactions - Prospect Timeline', () => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
     // Archive the first item
-    const firstItem = page.locator('ul button[aria-expanded]').first()
+    const firstItem = page.locator('ul > li > button[aria-expanded]').first()
     await firstItem.click()
-    await page.getByRole('button', { name: 'Archive', exact: true }).click()
+    await page.locator('ul').getByRole('button', { name: 'Archive', exact: true }).click()
     await page.getByRole('alertdialog').getByRole('button', { name: 'Archive' }).click()
     await expect(page.getByText('Interaction archived.')).toBeVisible()
     // The item still visible but archived (show archived is default off, it disappears)
     // Re-open: archived item gone from default timeline
-    await expect(page.getByRole('button', { name: 'Edit', exact: true })).not.toBeVisible()
+    await expect(page.locator('ul').getByRole('button', { name: 'Edit', exact: true })).not.toBeVisible()
   })
 
   test('"Show archived" switch in timeline reveals archived item', async ({ page }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
     // Turn on show archived for the timeline
-    await page.getByRole('switch', { name: /show archived/i }).click()
+    await page.locator('#show-archived-timeline').click()
     // Archived item should now appear (at least one expandable button in the timeline)
-    await expect(page.locator('ul button[aria-expanded]').first()).toBeVisible()
+    await expect(page.locator('ul > li > button[aria-expanded]').first()).toBeVisible()
     // Expand and verify Restore button
-    await page.locator('ul button[aria-expanded]').first().click()
+    await page.locator('ul > li > button[aria-expanded]').first().click()
     await expect(page.getByRole('button', { name: /restore/i })).toBeVisible()
   })
 
   test('clicking "Restore" on a timeline item restores it', async ({ page }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
-    await page.getByRole('switch', { name: /show archived/i }).click()
-    await page.locator('ul button[aria-expanded]').first().click()
+    await page.locator('#show-archived-timeline').click()
+    await page.locator('ul > li > button[aria-expanded]').first().click()
     await page.getByRole('button', { name: /restore/i }).click()
     await expect(page.getByText('Interaction restored.')).toBeVisible()
   })
@@ -232,8 +230,10 @@ test.describe('Interactions - Prospect Timeline', () => {
   test('active prospect shows "Log Interaction" button in timeline header', async ({ page }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
-    // The timeline header contains a "Log Interaction" button (prospects.interactions.logButton)
-    await expect(page.getByRole('button', { name: /log interaction/i })).toBeVisible()
+    // The timeline header contains a "Log Interaction" text button.
+    // Quick-action row buttons are icon-only (aria-label only, no visible text) — getByText
+    // matches visible text content only, so it uniquely identifies the timeline button.
+    await expect(page.getByText('Log Interaction')).toBeVisible()
   })
 
   test('clicking "Log Interaction" in timeline opens dialog with prospect pre-selected', async ({
@@ -241,32 +241,9 @@ test.describe('Interactions - Prospect Timeline', () => {
   }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
-    await page.getByRole('button', { name: /log interaction/i }).click()
+    await page.getByText('Log Interaction').click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await expect(page.getByRole('dialog')).toContainText('TL Timeline Prospect')
-  })
-
-  test('archived prospect has no "Log Interaction" button in timeline', async ({ browser }) => {
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
-    await resetFunnelStages(context.request)
-    await resetProspects(context.request)
-    await resetInteractions(context.request)
-    const stages = await getFunnelStages(context.request)
-    const prospect = await createProspect(context.request, {
-      name: 'TL Archived Prospect',
-      funnel_stage_id: stages[0]?.id,
-    })
-    // Archive the prospect
-    await context.request.delete(`${API_URL}/api/prospects/${prospect.id}`)
-
-    const page = await context.newPage()
-    await page.goto('/prospects')
-    // Show archived to make the prospect visible
-    await page.getByRole('switch', { name: /show archived/i }).click()
-    await page.locator('tr[aria-expanded]').filter({ hasText: 'TL Archived Prospect' }).click()
-    // "Log Interaction" button must NOT be present in the timeline section
-    await expect(page.getByRole('button', { name: /log interaction/i })).not.toBeVisible()
-    await context.close()
   })
 
   // ── Empty state ────────────────────────────────────────────────────────────────
@@ -296,5 +273,29 @@ test.describe('Interactions - Prospect Timeline', () => {
     await expect(page.getByRole('button', { name: /show \d+ more/i })).not.toBeVisible()
     // All 6 notes visible
     await expect(page.getByText('Bulk note 6')).toBeVisible()
+  })
+
+  // ── Destructive: isolated context (must run LAST — wipes beforeAll data) ──────
+
+  test('archived prospect has no "Log Interaction" button in timeline', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: STORAGE_STATE })
+    await hardResetTestData(context.request)
+    await resetFunnelStages(context.request)
+    const stages = await getFunnelStages(context.request)
+    const prospect = await createProspect(context.request, {
+      name: 'TL Archived Prospect',
+      funnel_stage_id: stages[0]?.id,
+    })
+    // Archive the prospect
+    await context.request.delete(`${API_URL}/api/prospects/${prospect.id}`)
+
+    const page = await context.newPage()
+    await page.goto('/prospects')
+    // Show archived to make the prospect visible
+    await page.getByRole('switch', { name: /show archived/i }).click()
+    await page.locator('tr[aria-expanded]').filter({ hasText: 'TL Archived Prospect' }).click()
+    // "Log Interaction" button must NOT be present in the timeline section
+    await expect(page.getByRole('button', { name: /log interaction/i })).not.toBeVisible()
+    await context.close()
   })
 })

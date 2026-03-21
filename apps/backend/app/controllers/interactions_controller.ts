@@ -25,7 +25,7 @@ export default class InteractionsController {
 
     const query = Interaction.query()
       .withScopes((s) => s.forUser(userId))
-      .preload('prospect', (q) => q.withTrashed().preload('funnelStage'))
+      .preload('prospect', (q) => q.withTrashed().preload('funnelStage', (sq) => sq.withTrashed()))
       .preload('positioning')
       .orderBy('interaction_date', 'desc')
 
@@ -104,7 +104,7 @@ export default class InteractionsController {
     const interaction = await Interaction.query()
       .withScopes((s) => s.forUser(userId))
       .where('id', params.id)
-      .preload('prospect', (q) => q.withTrashed().preload('funnelStage'))
+      .preload('prospect', (q) => q.withTrashed().preload('funnelStage', (sq) => sq.withTrashed()))
       .preload('positioning')
       .firstOrFail()
     return response.ok(serializeInteraction(interaction))
@@ -148,7 +148,7 @@ export default class InteractionsController {
     const created = await Interaction.query()
       .withScopes((s) => s.forUser(userId))
       .where('id', interaction.id)
-      .preload('prospect', (q) => q.withTrashed().preload('funnelStage'))
+      .preload('prospect', (q) => q.withTrashed().preload('funnelStage', (sq) => sq.withTrashed()))
       .preload('positioning')
       .firstOrFail()
 
@@ -189,7 +189,7 @@ export default class InteractionsController {
     const updated = await Interaction.query()
       .withScopes((s) => s.forUser(userId))
       .where('id', interaction.id)
-      .preload('prospect', (q) => q.withTrashed().preload('funnelStage'))
+      .preload('prospect', (q) => q.withTrashed().preload('funnelStage', (sq) => sq.withTrashed()))
       .preload('positioning')
       .firstOrFail()
 
@@ -230,7 +230,7 @@ export default class InteractionsController {
     const restored = await Interaction.query()
       .withScopes((s) => s.forUser(userId))
       .where('id', interaction.id)
-      .preload('prospect', (q) => q.withTrashed().preload('funnelStage'))
+      .preload('prospect', (q) => q.withTrashed().preload('funnelStage', (sq) => sq.withTrashed()))
       .preload('positioning')
       .firstOrFail()
 

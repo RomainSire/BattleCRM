@@ -54,6 +54,19 @@ export async function checkHealth(request: APIRequestContext): Promise<boolean> 
 }
 
 /**
+ * Hard-delete ALL data for the authenticated user (interactions, stage transitions,
+ * prospects, positionings, funnel stages) bypassing soft-deletes.
+ *
+ * Use this at the start of each E2E `beforeAll` instead of the individual soft-delete
+ * reset helpers to prevent stale archived records from accumulating across test runs.
+ * The test route is only registered when NODE_ENV !== 'production'.
+ */
+export async function hardResetTestData(request: APIRequestContext): Promise<void> {
+  const res = await request.delete(`${API_URL}/api/test/reset`)
+  if (!res.ok()) throw new Error(`hardResetTestData failed: ${res.status()} ${await res.text()}`)
+}
+
+/**
  * Reset funnel stages to a known set of defaults.
  * Deletes all active stages then recreates a minimal set.
  * Requires an authenticated request context (session cookie).
