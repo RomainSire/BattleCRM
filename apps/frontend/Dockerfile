@@ -1,6 +1,6 @@
 # Build context: monorepo root (.) — needed for pnpm workspace and root .env
 FROM node:20-alpine AS base
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
 # Install dependencies
 FROM base AS deps

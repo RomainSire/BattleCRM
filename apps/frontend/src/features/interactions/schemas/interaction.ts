@@ -7,3 +7,9 @@ export const createInteractionSchema = vine.compile(
     notes: vine.string().trim().optional(),
   }),
 )
+
+export const updateInteractionSchema = vine.compile(
+  vine.object({
+    notes: vine.string().trim().optional(),
+  }),
+)

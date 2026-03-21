@@ -10,15 +10,14 @@
  */
 
 import { expect, test } from '../support/fixtures'
-import { createPositioning, resetFunnelStages, resetPositionings } from '../support/helpers/api'
-import { STORAGE_STATE } from '../../playwright.config'
+import { createPositioning, hardResetTestData, resetFunnelStages } from '../support/helpers/api'
 
 test.describe('Positionings - Create & Edit', () => {
   test.describe.configure({ mode: 'serial' })
 
-  test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
-    await resetPositionings(context.request)
+  test.beforeAll(async ({ browser, workerStorageState }) => {
+    const context = await browser.newContext({ storageState: workerStorageState })
+    await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
     // Seed one positioning for edit tests
     await createPositioning(context.request, {
@@ -82,10 +81,7 @@ test.describe('Positionings - Create & Edit', () => {
 
   test('created positioning is assigned to a funnel stage by default', async ({ page }) => {
     await page.goto('/positionings')
-    const row = page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'New Positioning E2E' })
-      .first()
+    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'New Positioning E2E' })
     await expect(row).toContainText('Lead qualified')
   })
 
@@ -96,7 +92,6 @@ test.describe('Positionings - Create & Edit', () => {
     await page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Positioning' })
-      .first()
       .click()
     await expect(page.getByRole('button', { name: /^edit$/i })).toBeVisible()
   })
@@ -106,14 +101,13 @@ test.describe('Positionings - Create & Edit', () => {
     await page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Positioning' })
-      .first()
       .click()
     await page.getByRole('button', { name: /^edit$/i }).click()
 
     // Save button appears (edit mode active)
     await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible()
     // Name field is pre-filled
-    const nameInput = page.locator('input[id^="edit-name-"]').first()
+    const nameInput = page.locator('input[id^="edit-name-"]')
     await expect(nameInput).toHaveValue('Initial Positioning')
   })
 
@@ -122,11 +116,10 @@ test.describe('Positionings - Create & Edit', () => {
     await page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Positioning' })
-      .first()
       .click()
     await page.getByRole('button', { name: /^edit$/i }).click()
 
-    const nameInput = page.locator('input[id^="edit-name-"]').first()
+    const nameInput = page.locator('input[id^="edit-name-"]')
     await nameInput.clear()
     await nameInput.fill('Should Not Be Saved')
 
@@ -143,11 +136,10 @@ test.describe('Positionings - Create & Edit', () => {
     await page
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Positioning' })
-      .first()
       .click()
     await page.getByRole('button', { name: /^edit$/i }).click()
 
-    const nameInput = page.locator('input[id^="edit-name-"]').first()
+    const nameInput = page.locator('input[id^="edit-name-"]')
     await nameInput.clear()
     await nameInput.fill('Updated Positioning Name')
 

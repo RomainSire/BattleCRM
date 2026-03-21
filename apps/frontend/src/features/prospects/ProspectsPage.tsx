@@ -23,23 +23,25 @@ export function ProspectsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-start justify-between gap-4">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">{t('prospects.title')}</h1>
           <p className="text-muted-foreground">{t('prospects.description')}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <ToggleGroup
             type="single"
             value={viewMode}
             onValueChange={handleViewChange}
             aria-label={t('prospects.viewToggle.label')}
           >
-            <ToggleGroupItem value="list" aria-label={t('prospects.viewToggle.list')}>
+            <ToggleGroupItem value="list" className="gap-2">
               <List className="size-4" />
+              {t('prospects.viewToggle.list')}
             </ToggleGroupItem>
-            <ToggleGroupItem value="kanban" aria-label={t('prospects.viewToggle.kanban')}>
+            <ToggleGroupItem value="kanban" className="gap-2">
               <LayoutGrid className="size-4" />
+              {t('prospects.viewToggle.kanban')}
             </ToggleGroupItem>
           </ToggleGroup>
           <AddProspectDialog />

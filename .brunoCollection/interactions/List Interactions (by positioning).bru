@@ -1,0 +1,16 @@
+meta {
+  name: List Interactions (by positioning)
+  type: http
+  seq: 4
+}
+
+get {
+  url: http://localhost:3333/api/interactions?positioning_id=:positioning_id
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

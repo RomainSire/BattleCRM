@@ -1,5 +1,5 @@
 import type { ProspectType } from '@battlecrm/shared'
-import { ChevronDown, Plus } from 'lucide-react'
+import { ChevronRight, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableRow } from '@/components/ui/table'
@@ -27,10 +27,10 @@ export function ProspectRow({ prospect, stageName, isExpanded, onToggle }: Prosp
         aria-expanded={isExpanded}
       >
         <TableCell className="w-8 pr-0">
-          <ChevronDown
+          <ChevronRight
             className={cn(
               'size-4 text-muted-foreground transition-transform duration-200',
-              isExpanded && 'rotate-180',
+              isExpanded && 'rotate-90',
             )}
           />
         </TableCell>

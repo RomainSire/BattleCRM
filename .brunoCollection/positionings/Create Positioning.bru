@@ -1,0 +1,29 @@
+meta {
+  name: Create Positioning
+  type: http
+  seq: 5
+}
+
+post {
+  url: http://localhost:3333/api/positionings
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Pitch ROI direction financière",
+    "funnel_stage_id": "",
+    "description": "Positionnement axé retour sur investissement pour décideurs financiers",
+    "content": "Notre solution réduit les coûts opérationnels de 30% dès la première année..."
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

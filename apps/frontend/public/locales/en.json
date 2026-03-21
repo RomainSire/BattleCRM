@@ -11,7 +11,13 @@
     "settings": "Settings",
     "prospects": "Prospects",
     "positionings": "Positionings",
-    "interactions": "Interactions"
+    "interactions": "Interactions",
+    "userMenu": {
+      "label": "User menu"
+    },
+    "mobileMenu": {
+      "label": "Open menu"
+    }
   },
   "auth": {
     "login": {
@@ -55,6 +61,19 @@
   "settings": {
     "title": "Settings",
     "description": "Configure your prospecting pipeline.",
+    "appearance": {
+      "title": "Appearance",
+      "description": "Choose the interface theme.",
+      "themes": {
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
+      }
+    },
+    "language": {
+      "title": "Language",
+      "description": "Choose the interface language."
+    },
     "funnelConfig": {
       "title": "Funnel Configuration"
     }
@@ -97,6 +116,9 @@
     "emptyFiltered": "No prospects in this stage.",
     "emptySearch": "No prospects match your search.",
     "clearFilter": "Clear filter",
+    "filters": {
+      "allStages": "All stages"
+    },
     "count": "{{count}} prospect(s)",
     "addProspect": "Add Prospect",
     "columns": {
@@ -151,8 +173,8 @@
     },
     "viewToggle": {
       "label": "View mode",
-      "list": "List view",
-      "kanban": "Kanban view",
+      "list": "List",
+      "kanban": "Kanban",
       "kanbanPlaceholder": "Kanban view — coming in Story 3.9"
     },
     "kanban": {
@@ -164,6 +186,12 @@
     "stageHistory": "Stage History",
     "noStageHistory": "No stage changes recorded yet.",
     "initialStage": "Initial",
+    "timeline": {
+      "title": "History",
+      "empty": "No activity recorded yet.",
+      "loadError": "Failed to load history.",
+      "showAll": "Show {{count}} more"
+    },
     "stagePosition": "({{current}} of {{total}})",
     "toast": {
       "created": "Prospect created",
@@ -204,6 +232,9 @@
     "empty": "No positionings yet.",
     "emptyFiltered": "No positionings for this stage.",
     "clearFilter": "Clear filter",
+    "filters": {
+      "allStages": "All stages"
+    },
     "count": "{{count}} positioning(s)",
     "columns": {
       "name": "Name",
@@ -246,11 +277,13 @@
     },
     "interactions": {
       "title": "Interactions",
-      "comingSoon": "Coming in a future release"
+      "empty": "No interactions linked to this positioning.",
+      "loadError": "Failed to load interactions."
     }
   },
   "interactions": {
     "title": "Interactions",
+    "description": "Manage your interactions with your prospects.",
     "addInteraction": "Log Interaction",
     "noPositioning": "No positioning",
     "fields": {
@@ -274,12 +307,41 @@
       "description": "Capture an interaction with a prospect.",
       "submit": "Save"
     },
+    "edit": "Edit",
+    "archive": "Archive",
+    "restore": "Restore",
+    "archivedBadge": "Archived",
+    "showArchived": "Show archived",
+    "archiveDialog": {
+      "title": "Archive interaction?",
+      "description": "This interaction will be archived and removed from the list.",
+      "confirm": "Archive"
+    },
     "toast": {
       "created": "Interaction logged.",
-      "createFailed": "Failed to log interaction."
+      "createFailed": "Failed to log interaction.",
+      "updated": "Interaction updated.",
+      "updateFailed": "Failed to update interaction.",
+      "archived": "Interaction archived.",
+      "archiveFailed": "Failed to archive interaction.",
+      "restored": "Interaction restored.",
+      "restoreFailed": "Failed to restore interaction."
     },
     "loadError": "Failed to load interactions.",
-    "empty": "No interactions logged yet."
+    "empty": "No interactions logged yet.",
+    "filters": {
+      "allStatuses": "All statuses",
+      "allProspects": "All prospects",
+      "allPositionings": "All positionings",
+      "allStages": "All stages",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "clearFilters": "Clear filters"
+    },
+    "detail": {
+      "positioning": "Positioning",
+      "date": "Date"
+    }
   },
   "phoneInput": {
     "searchCountry": "Search country...",

@@ -11,7 +11,13 @@
     "settings": "Paramètres",
     "prospects": "Prospects",
     "positionings": "Positionnements",
-    "interactions": "Interactions"
+    "interactions": "Interactions",
+    "userMenu": {
+      "label": "Menu utilisateur"
+    },
+    "mobileMenu": {
+      "label": "Ouvrir le menu"
+    }
   },
   "auth": {
     "login": {
@@ -55,6 +61,19 @@
   "settings": {
     "title": "Paramètres",
     "description": "Configurez votre pipeline de prospection.",
+    "appearance": {
+      "title": "Apparence",
+      "description": "Choisissez le thème de l'interface.",
+      "themes": {
+        "system": "Système",
+        "light": "Clair",
+        "dark": "Sombre"
+      }
+    },
+    "language": {
+      "title": "Langue",
+      "description": "Choisissez la langue de l'interface."
+    },
     "funnelConfig": {
       "title": "Configuration du tunnel de vente"
     }
@@ -97,6 +116,9 @@
     "emptyFiltered": "Aucun prospect dans cette étape.",
     "emptySearch": "Aucun prospect ne correspond à votre recherche.",
     "clearFilter": "Effacer le filtre",
+    "filters": {
+      "allStages": "Toutes les étapes"
+    },
     "count": "{{count}} prospect(s)",
     "addProspect": "Ajouter un prospect",
     "columns": {
@@ -151,19 +173,25 @@
     },
     "viewToggle": {
       "label": "Mode d'affichage",
-      "list": "Vue liste",
-      "kanban": "Vue Kanban",
+      "list": "Liste",
+      "kanban": "Kanban",
       "kanbanPlaceholder": "Vue Kanban — disponible en Story 3.9"
     },
     "kanban": {
       "moveFailed": "Impossible de déplacer le prospect. Veuillez réessayer.",
       "noProspects": "Aucun prospect",
       "searchPlaceholder": "Rechercher un prospect...",
-      "showArchived": "Afficher les archivés"
+      "showArchived": "Voir archivés"
     },
     "stageHistory": "Historique des étapes",
     "noStageHistory": "Aucun changement d'étape enregistré.",
     "initialStage": "Début",
+    "timeline": {
+      "title": "Historique",
+      "empty": "Aucune activité enregistrée.",
+      "loadError": "Impossible de charger l'historique.",
+      "showAll": "Afficher {{count}} de plus"
+    },
     "stagePosition": "({{current}} sur {{total}})",
     "toast": {
       "created": "Prospect créé",
@@ -204,6 +232,9 @@
     "empty": "Aucun positionnement pour le moment.",
     "emptyFiltered": "Aucun positionnement pour cette étape.",
     "clearFilter": "Effacer le filtre",
+    "filters": {
+      "allStages": "Toutes les étapes"
+    },
     "count": "{{count}} positionnement(s)",
     "columns": {
       "name": "Nom",
@@ -246,11 +277,13 @@
     },
     "interactions": {
       "title": "Interactions",
-      "comingSoon": "Disponible dans une prochaine version"
+      "empty": "Aucune interaction liée à ce positionnement.",
+      "loadError": "Impossible de charger les interactions."
     }
   },
   "interactions": {
     "title": "Interactions",
+    "description": "Gérez vos interactions avec vos prospects.",
     "addInteraction": "Journaliser une interaction",
     "noPositioning": "Sans positionnement",
     "fields": {
@@ -274,12 +307,41 @@
       "description": "Capturez une interaction avec un prospect.",
       "submit": "Enregistrer"
     },
+    "edit": "Modifier",
+    "archive": "Archiver",
+    "restore": "Restaurer",
+    "archivedBadge": "Archivée",
+    "showArchived": "Voir archivés",
+    "archiveDialog": {
+      "title": "Archiver l'interaction ?",
+      "description": "Cette interaction sera archivée et retirée de la liste.",
+      "confirm": "Archiver"
+    },
     "toast": {
       "created": "Interaction enregistrée.",
-      "createFailed": "Impossible d'enregistrer l'interaction."
+      "createFailed": "Impossible d'enregistrer l'interaction.",
+      "updated": "Interaction mise à jour.",
+      "updateFailed": "Impossible de mettre à jour l'interaction.",
+      "archived": "Interaction archivée.",
+      "archiveFailed": "Impossible d'archiver l'interaction.",
+      "restored": "Interaction restaurée.",
+      "restoreFailed": "Impossible de restaurer l'interaction."
     },
     "loadError": "Impossible de charger les interactions.",
-    "empty": "Aucune interaction enregistrée."
+    "empty": "Aucune interaction enregistrée.",
+    "filters": {
+      "allStatuses": "Tous les statuts",
+      "allProspects": "Tous les prospects",
+      "allPositionings": "Tous les positionnements",
+      "allStages": "Toutes les étapes",
+      "dateFrom": "Du",
+      "dateTo": "Au",
+      "clearFilters": "Effacer les filtres"
+    },
+    "detail": {
+      "positioning": "Positionnement",
+      "date": "Date"
+    }
   },
   "phoneInput": {
     "searchCountry": "Rechercher un pays...",

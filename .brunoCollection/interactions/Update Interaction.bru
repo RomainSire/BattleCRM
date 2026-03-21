@@ -1,0 +1,29 @@
+meta {
+  name: Update Interaction
+  type: http
+  seq: 7
+}
+
+put {
+  url: http://localhost:3333/api/interactions/:id
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "status": "positive",
+    "notes": "Très intéressé, envoi devis la semaine prochaine",
+    "positioning_id": null,
+    "interaction_date": "2026-03-21"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

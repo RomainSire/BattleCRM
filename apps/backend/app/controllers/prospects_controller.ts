@@ -115,8 +115,6 @@ export default class ProspectsController {
     if (payload.phone !== undefined) prospect.phone = payload.phone ?? null
     if (payload.title !== undefined) prospect.title = payload.title ?? null
     if (payload.notes !== undefined) prospect.notes = payload.notes ?? null
-    if (payload.positioning_id !== undefined)
-      prospect.positioningId = payload.positioning_id ?? null
 
     await prospect.save()
     return response.created(serializeProspect(prospect))
@@ -155,8 +153,6 @@ export default class ProspectsController {
     if (payload.phone !== undefined) prospect.phone = payload.phone ?? null
     if (payload.title !== undefined) prospect.title = payload.title ?? null
     if (payload.notes !== undefined) prospect.notes = payload.notes ?? null
-    if (payload.positioning_id !== undefined)
-      prospect.positioningId = payload.positioning_id ?? null
 
     await prospect.save()
 

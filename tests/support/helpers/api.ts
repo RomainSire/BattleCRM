@@ -54,6 +54,19 @@ export async function checkHealth(request: APIRequestContext): Promise<boolean> 
 }
 
 /**
+ * Hard-delete ALL data for the authenticated user (interactions, stage transitions,
+ * prospects, positionings, funnel stages) bypassing soft-deletes.
+ *
+ * Use this at the start of each E2E `beforeAll` instead of the individual soft-delete
+ * reset helpers to prevent stale archived records from accumulating across test runs.
+ * The test route is only registered when NODE_ENV !== 'production'.
+ */
+export async function hardResetTestData(request: APIRequestContext): Promise<void> {
+  const res = await request.delete(`${API_URL}/api/test/reset`)
+  if (!res.ok()) throw new Error(`hardResetTestData failed: ${res.status()} ${await res.text()}`)
+}
+
+/**
  * Reset funnel stages to a known set of defaults.
  * Deletes all active stages then recreates a minimal set.
  * Requires an authenticated request context (session cookie).
@@ -148,6 +161,45 @@ export async function resetPositionings(request: APIRequestContext): Promise<voi
   // Archive (soft-delete) all positionings
   for (const p of positionings) {
     await request.delete(`${API_URL}/api/positionings/${p.id}`)
+  }
+}
+
+/**
+ * Create an interaction. Returns the created interaction object.
+ * Requires an authenticated request context.
+ */
+export async function createInteraction(
+  request: APIRequestContext,
+  data: {
+    prospect_id: string
+    status: 'positive' | 'pending' | 'negative'
+    notes?: string
+    positioning_id?: string
+    interaction_date?: string // ISO date string YYYY-MM-DD
+  },
+): Promise<{ id: string; prospectId: string; status: string; deletedAt: string | null }> {
+  const res = await request.post(`${API_URL}/api/interactions`, { data })
+  if (!res.ok()) throw new Error(`createInteraction failed: ${res.status()} ${await res.text()}`)
+  return res.json()
+}
+
+/**
+ * Reset interactions to a clean slate (including archived).
+ * Restores archived ones first (so DELETE can find them), then soft-deletes all.
+ * Requires an authenticated request context.
+ */
+export async function resetInteractions(request: APIRequestContext): Promise<void> {
+  const res = await request.get(`${API_URL}/api/interactions?include_archived=true`)
+  const body = await res.json()
+  const interactions: Array<{ id: string; deletedAt: string | null }> = body.data ?? []
+
+  for (const i of interactions) {
+    if (i.deletedAt !== null) {
+      await request.patch(`${API_URL}/api/interactions/${i.id}/restore`)
+    }
+  }
+  for (const i of interactions) {
+    await request.delete(`${API_URL}/api/interactions/${i.id}`)
   }
 }
 

@@ -1,8 +1,8 @@
-import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
 import type { FunnelStageType, ProspectType } from '@battlecrm/shared'
 import { useDroppable } from '@dnd-kit/core'
 import { useTranslation } from 'react-i18next'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 import { KanbanCard } from './KanbanCard'
 
 interface KanbanColumnProps {
@@ -20,7 +20,10 @@ export function KanbanColumn({ stage, prospects, onOpenDetail }: KanbanColumnPro
       {/* Column header */}
       <div className="flex items-center gap-2 px-1">
         <span className="truncate text-sm font-medium">{stage.name}</span>
-        <Badge variant="default" className="shrink-0 bg-brand-gradient text-xs text-white shadow-none">
+        <Badge
+          variant="default"
+          className="shrink-0 bg-brand-gradient text-xs text-white shadow-none"
+        >
           {prospects.length}
         </Badge>
       </div>

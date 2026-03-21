@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { UUID_REGEX } from '#helpers/regex'
 import FunnelStage from '#models/funnel_stage'
+import Interaction from '#models/interaction'
 import Positioning from '#models/positioning'
 import Prospect from '#models/prospect'
 import { serializePositioning } from '#serializers/positioning'
@@ -173,22 +174,36 @@ export default class PositioningsController {
 
   /**
    * GET /api/positionings/:id/prospects
-   * Returns all prospects (including archived) linked to this positioning. (FR16)
+   * Returns distinct prospects (including archived) that have at least one interaction
+   * linked to this positioning. Ordered by most recently updated prospect.
    */
   async prospects({ params, response, auth }: HttpContext) {
     const userId = auth.user!.id
 
-    // withTrashed() allows accessing prospects for archived positionings (historical data, FR16)
+    // withTrashed() allows accessing prospects for archived positionings (historical data)
     const positioning = await Positioning.query()
       .withTrashed()
       .withScopes((s) => s.forUser(userId))
       .where('id', params.id)
       .firstOrFail()
 
-    const linkedProspects = await Prospect.query()
+    // Collect distinct prospect IDs from interactions linked to this positioning
+    const interactions = await Interaction.query()
       .withTrashed()
       .withScopes((s) => s.forUser(userId))
       .where('positioning_id', positioning.id)
+      .select('prospect_id')
+
+    const prospectIds = [...new Set(interactions.map((i) => i.prospectId))]
+
+    if (prospectIds.length === 0) {
+      return response.ok({ data: [], meta: { total: 0 } })
+    }
+
+    const linkedProspects = await Prospect.query()
+      .withTrashed()
+      .withScopes((s) => s.forUser(userId))
+      .whereIn('id', prospectIds)
       .orderBy('updated_at', 'desc')
 
     return response.ok({

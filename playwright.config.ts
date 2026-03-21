@@ -15,19 +15,23 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
  * Then run: pnpm test:e2e
  */
 
-// Auth state file produced by auth.setup.ts
-export const STORAGE_STATE = path.join(__dirname, 'tests/.auth/user.json')
+// Number of parallel workers — each gets its own test user to avoid DB conflicts.
+export const WORKER_COUNT = 8
+
+/** Returns the auth state file path for worker n. */
+export const getStorageStatePath = (n: number) =>
+  path.join(__dirname, 'tests/.auth', `worker-${n}.json`)
 
 export default defineConfig({
   // Root test directory — setup files live in tests/, specs in tests/e2e/
   // testMatch on each project filters which files each project picks up
   testDir: './tests',
-  // E2E tests share a single test user → all specs must run serially to avoid
-  // race conditions on shared DB state (funnel stages, prospects, session).
-  fullyParallel: false,
+  // Each spec file runs in its own worker; tests within a spec run serially
+  // (test.describe.configure({ mode: 'serial' }) inside each describe block).
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,
+  workers: WORKER_COUNT,
 
   // Standardized timeouts (TEA knowledge: action 15s, nav 30s, expect 10s, test 60s)
   timeout: 60_000,
@@ -58,12 +62,13 @@ export default defineConfig({
     },
 
     // ── Chromium: runs only spec files in tests/e2e/ ────────────────────────
+    // storageState is NOT set here — provided dynamically by the worker fixture
+    // (each worker uses its own auth file: tests/.auth/worker-{n}.json).
     {
       name: 'chromium',
       testMatch: /e2e\/.*\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
-        storageState: STORAGE_STATE,
         locale: 'en',
       },
       dependencies: ['setup'],

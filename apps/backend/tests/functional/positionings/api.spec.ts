@@ -1,7 +1,10 @@
 import type { ApiClient } from '@japa/api-client'
 import { test } from '@japa/runner'
+import { DateTime } from 'luxon'
 import FunnelStage from '#models/funnel_stage'
+import Interaction from '#models/interaction'
 import Positioning from '#models/positioning'
+import Prospect from '#models/prospect'
 import User from '#models/user'
 
 const TEST_EMAIL_DOMAIN = '@test-positionings-api.com'
@@ -502,13 +505,19 @@ test.group('Positionings API', (group) => {
     const stage = await getUserFirstStage(user.id)
     const p = await createPositioning(user.id, stage.id)
 
-    // Link a prospect to this positioning via API
-    const prospectRes = await client.post('/api/prospects').loginAs(user).json({
+    // Link a prospect via an interaction that references this positioning
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
       name: 'Jane Doe',
-      funnel_stage_id: stage.id,
-      positioning_id: p.id,
     })
-    prospectRes.assertStatus(201)
+    await Interaction.create({
+      userId: user.id,
+      prospectId: prospect.id,
+      positioningId: p.id,
+      status: 'pending',
+      interactionDate: DateTime.now(),
+    })
 
     const response = await client.get(`/api/positionings/${p.id}/prospects`).loginAs(user)
     response.assertStatus(200)
@@ -518,7 +527,6 @@ test.group('Positionings API', (group) => {
     assert.property(body, 'meta')
     assert.equal(body.data.length, 1)
     assert.equal(body.data[0].name, 'Jane Doe')
-    assert.equal(body.data[0].positioningId, p.id)
   })
 
   test('GET /api/positionings/:id/prospects returns empty list when no prospects linked', async ({
@@ -543,16 +551,21 @@ test.group('Positionings API', (group) => {
     const stage = await getUserFirstStage(user.id)
     const p = await createPositioning(user.id, stage.id)
 
-    // Create and link a prospect via API, then archive it
-    const prospectRes = await client.post('/api/prospects').loginAs(user).json({
+    // Create and link a prospect via an interaction, then archive the prospect
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
       name: 'Archived Prospect',
-      funnel_stage_id: stage.id,
-      positioning_id: p.id,
     })
-    prospectRes.assertStatus(201)
-    const prospectId = prospectRes.body().id
+    await Interaction.create({
+      userId: user.id,
+      prospectId: prospect.id,
+      positioningId: p.id,
+      status: 'pending',
+      interactionDate: DateTime.now(),
+    })
 
-    await client.delete(`/api/prospects/${prospectId}`).loginAs(user)
+    await client.delete(`/api/prospects/${prospect.id}`).loginAs(user)
 
     // Archived prospect should still appear in positioning's prospect list
     const response = await client.get(`/api/positionings/${p.id}/prospects`).loginAs(user)
@@ -561,7 +574,7 @@ test.group('Positionings API', (group) => {
     const ids = response.body().data.map((item: { id: string }) => item.id)
     assert.include(
       ids,
-      prospectId,
+      prospect.id,
       'Archived prospect should still be listed for historical context',
     )
   })
@@ -574,13 +587,19 @@ test.group('Positionings API', (group) => {
     const stage = await getUserFirstStage(user.id)
     const p = await createPositioning(user.id, stage.id)
 
-    // Link a prospect
-    const prospectRes = await client.post('/api/prospects').loginAs(user).json({
+    // Link a prospect via an interaction
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
       name: 'Prospect On Archived Pos',
-      funnel_stage_id: stage.id,
-      positioning_id: p.id,
     })
-    prospectRes.assertStatus(201)
+    await Interaction.create({
+      userId: user.id,
+      prospectId: prospect.id,
+      positioningId: p.id,
+      status: 'pending',
+      interactionDate: DateTime.now(),
+    })
 
     // Archive the positioning itself
     await client.delete(`/api/positionings/${p.id}`).loginAs(user)

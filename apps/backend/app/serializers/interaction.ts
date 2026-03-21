@@ -8,9 +8,6 @@ export function serializeInteraction(interaction: Interaction): InteractionType 
       'serializeInteraction: prospect relation must be preloaded (use withTrashed if prospect may be archived)',
     )
   }
-  if (!interaction.prospect.funnelStage) {
-    throw new Error('serializeInteraction: prospect.funnelStage must be preloaded')
-  }
   const positioning = interaction.positioning as Positioning | undefined
   return {
     id: interaction.id,
@@ -18,7 +15,7 @@ export function serializeInteraction(interaction: Interaction): InteractionType 
     prospectId: interaction.prospectId,
     prospectName: interaction.prospect.name,
     prospectFunnelStageId: interaction.prospect.funnelStageId,
-    prospectFunnelStageName: interaction.prospect.funnelStage.name,
+    prospectFunnelStageName: interaction.prospect.funnelStage?.name ?? '',
     positioningId: interaction.positioningId,
     positioningName: positioning?.name ?? null,
     status: interaction.status,

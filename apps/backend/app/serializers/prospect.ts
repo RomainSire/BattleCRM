@@ -14,7 +14,6 @@ export function serializeProspect(prospect: Prospect): ProspectType {
     title: prospect.title,
     notes: prospect.notes,
     funnelStageId: prospect.funnelStageId,
-    positioningId: prospect.positioningId,
     createdAt: prospect.createdAt.toISO()!,
     updatedAt: prospect.updatedAt?.toISO() ?? prospect.createdAt.toISO()!,
     deletedAt: prospect.deletedAt?.toISO() ?? null,

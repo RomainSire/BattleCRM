@@ -1,5 +1,6 @@
 import type { InteractionStatus } from '@battlecrm/shared'
 import { vineResolver } from '@hookform/resolvers/vine'
+import { Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -35,6 +36,7 @@ import { i18nMessagesProvider } from '@/lib/validation'
 import { useCreateInteraction } from '../hooks/useInteractionMutations'
 import { useLastInteractionContext } from '../hooks/useLastInteractionContext'
 import { createInteractionSchema } from '../schemas/interaction'
+import { StatusIcon } from './StatusIcon'
 
 interface AddInteractionDialogProps {
   initialProspectId?: string
@@ -72,14 +74,19 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
     selectedProspect?.funnelStageId
       ? { funnel_stage_id: selectedProspect.funnelStageId }
       : undefined,
-    { enabled: !!selectedProspect?.funnelStageId },
+    { enabled: open && !!selectedProspect?.funnelStageId },
   )
   const positionings = positioningsData?.data ?? []
 
   // Pre-fill last used positioning for this funnel stage once positionings load or dialog re-opens
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — only run when positionings load or open changes, not on every selectedPositioningId change
   useEffect(() => {
-    if (!open || positioningsLoading || selectedPositioningId !== 'none' || !selectedProspect?.funnelStageId)
+    if (
+      !open ||
+      positioningsLoading ||
+      selectedPositioningId !== 'none' ||
+      !selectedProspect?.funnelStageId
+    )
       return
     const lastId = getLastPositioningForStage(selectedProspect.funnelStageId)
     if (!lastId) return
@@ -162,7 +169,11 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        {trigger ?? <Button size="sm">{t('interactions.addInteraction')}</Button>}
+        {trigger ?? (
+          <Button size="sm">
+            <Plus className="size-4" /> {t('interactions.addInteraction')}
+          </Button>
+        )}
       </DialogTrigger>
 
       <DialogContent onClick={(e) => e.stopPropagation()}>
@@ -220,13 +231,13 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
               className="justify-start"
             >
               <ToggleGroupItem value="positive" aria-label={t('interactions.status.positive')}>
-                ✅ {t('interactions.status.positive')}
+                <StatusIcon status="positive" className="size-4" withLabel />
               </ToggleGroupItem>
               <ToggleGroupItem value="pending" aria-label={t('interactions.status.pending')}>
-                ⏳ {t('interactions.status.pending')}
+                <StatusIcon status="pending" className="size-4" withLabel />
               </ToggleGroupItem>
               <ToggleGroupItem value="negative" aria-label={t('interactions.status.negative')}>
-                ❌ {t('interactions.status.negative')}
+                <StatusIcon status="negative" className="size-4" withLabel />
               </ToggleGroupItem>
             </ToggleGroup>
             <FieldError>{statusError}</FieldError>

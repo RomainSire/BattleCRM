@@ -596,4 +596,89 @@ test.group('Interactions API', (group) => {
     const response = await client.delete(`/api/interactions/${interaction.id}`).loginAs(userB)
     response.assertStatus(404)
   })
+
+  // ===========================
+  // PATCH /api/interactions/:id/restore
+  // ===========================
+
+  test('PATCH /api/interactions/:id/restore restores archived interaction → 200', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'restore-ok')
+    const stage = await getUserFirstStage(user.id)
+    const prospect = await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'P' })
+    const interaction = await createInteraction(user.id, prospect.id)
+    await interaction.delete()
+
+    const response = await client.patch(`/api/interactions/${interaction.id}/restore`).loginAs(user)
+    response.assertStatus(200)
+    assert.isNull(response.body().deletedAt)
+    assert.equal(response.body().id, interaction.id)
+    assert.equal(response.body().prospectName, 'P')
+  })
+
+  test('PATCH /api/interactions/:id/restore restored interaction appears in default list', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'restore-list')
+    const stage = await getUserFirstStage(user.id)
+    const prospect = await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'P' })
+    const interaction = await createInteraction(user.id, prospect.id)
+    await interaction.delete()
+
+    await client.patch(`/api/interactions/${interaction.id}/restore`).loginAs(user)
+
+    const listResponse = await client.get('/api/interactions').loginAs(user)
+    const ids = listResponse.body().data.map((i: { id: string }) => i.id)
+    assert.include(ids, interaction.id)
+  })
+
+  test('PATCH /api/interactions/:id/restore on non-archived interaction → 404', async ({
+    client,
+  }) => {
+    const user = await registerUser(client, 'restore-not-archived')
+    const stage = await getUserFirstStage(user.id)
+    const prospect = await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'P' })
+    const interaction = await createInteraction(user.id, prospect.id)
+
+    const response = await client.patch(`/api/interactions/${interaction.id}/restore`).loginAs(user)
+    response.assertStatus(404)
+  })
+
+  test('PATCH /api/interactions/:id/restore non-existent → 404', async ({ client }) => {
+    const user = await registerUser(client, 'restore-404')
+    const response = await client
+      .patch('/api/interactions/00000000-0000-0000-0000-000000000000/restore')
+      .loginAs(user)
+    response.assertStatus(404)
+  })
+
+  test('PATCH /api/interactions/:id/restore without auth → 401', async ({ client }) => {
+    const response = await client.patch(
+      '/api/interactions/00000000-0000-0000-0000-000000000000/restore',
+    )
+    response.assertStatus(401)
+  })
+
+  test('user isolation: PATCH /:id/restore returns 404 for another user interaction', async ({
+    client,
+  }) => {
+    const userA = await registerUser(client, 'restore-iso-a')
+    const userB = await registerUser(client, 'restore-iso-b')
+    const stageA = await getUserFirstStage(userA.id)
+    const prospectA = await Prospect.create({
+      userId: userA.id,
+      funnelStageId: stageA.id,
+      name: 'PA',
+    })
+    const interaction = await createInteraction(userA.id, prospectA.id)
+    await interaction.delete()
+
+    const response = await client
+      .patch(`/api/interactions/${interaction.id}/restore`)
+      .loginAs(userB)
+    response.assertStatus(404)
+  })
 })

@@ -16,6 +16,7 @@ const FunnelStagesController = () => import('#controllers/funnel_stages_controll
 const InteractionsController = () => import('#controllers/interactions_controller')
 const PositioningsController = () => import('#controllers/positionings_controller')
 const ProspectsController = () => import('#controllers/prospects_controller')
+const TestController = () => import('#controllers/test_controller')
 
 router
   .group(() => {
@@ -54,6 +55,7 @@ router
         router.get('/:id', [InteractionsController, 'show']).where('id', UUID_REGEX)
         router.put('/:id', [InteractionsController, 'update']).where('id', UUID_REGEX)
         router.delete('/:id', [InteractionsController, 'destroy']).where('id', UUID_REGEX)
+        router.patch('/:id/restore', [InteractionsController, 'restore']).where('id', UUID_REGEX)
       })
       .prefix('/interactions')
       .use(middleware.auth())
@@ -87,3 +89,11 @@ router
       .use(middleware.auth())
   })
   .prefix('/api')
+
+// Test-only routes — hard-delete helpers for E2E test teardown.
+// NOT registered in production.
+if (process.env.E2E_TEST_ROUTES_ENABLED === 'true') {
+  router
+    .delete('/api/test/reset', [TestController, 'reset'])
+    .use(middleware.auth())
+}

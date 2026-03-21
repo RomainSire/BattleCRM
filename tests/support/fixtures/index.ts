@@ -7,7 +7,8 @@
 
 import { mergeTests } from '@playwright/test'
 import { test as authFixture } from './auth-fixture'
+import { test as workerFixture } from './worker-fixture'
 
 // Compose all fixtures
-export const test = mergeTests(authFixture)
+export const test = mergeTests(authFixture, workerFixture)
 export { expect } from '@playwright/test'

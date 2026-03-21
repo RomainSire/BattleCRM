@@ -6,6 +6,7 @@ export function useFunnelStages() {
   return useQuery({
     queryKey: queryKeys.funnelStages.list(),
     queryFn: () => funnelStagesApi.list(),
+    staleTime: 10 * 60 * 1000,
   })
 }
 

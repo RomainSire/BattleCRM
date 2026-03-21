@@ -132,7 +132,7 @@ export function ProspectsKanbanView() {
   return (
     <div className="space-y-4">
       {/* Toolbar: search + archived toggle */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <Input
           type="search"
           placeholder={t('prospects.kanban.searchPlaceholder')}

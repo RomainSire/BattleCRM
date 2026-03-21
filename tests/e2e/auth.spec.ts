@@ -102,6 +102,23 @@ test.describe('Authenticated user', () => {
     await expect(page).toHaveURL(/^http:\/\/localhost:\d+\/$/)
   })
 
+})
+
+// ── Logout flows ─────────────────────────────────────────────────────────────
+// These tests use an ISOLATED session (empty storageState + fresh login) so
+// that logging out does NOT invalidate the shared STORAGE_STATE session used
+// by all other test files.
+
+test.describe('Logout flows', () => {
+  const email = process.env.E2E_TEST_EMAIL || 'e2e-test@battlecrm.test'
+  const password = process.env.E2E_TEST_PASSWORD || 'E2eTestPwd123!'
+
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test.beforeEach(async ({ loginAs }) => {
+    await loginAs(email, password)
+  })
+
   test('logout redirects to /login', async ({ page }) => {
     await page.goto('/')
 
@@ -109,8 +126,9 @@ test.describe('Authenticated user', () => {
     const logoutResponse = page.waitForResponse(
       (resp) => resp.url().includes('/api/auth/logout') && resp.status() === 200,
     )
-    // i18n-safe: en="Log out", fr="Se déconnecter"
-    await page.getByRole('button', { name: /log out|se déconnecter/i }).click()
+    // i18n-safe: en="Log out", fr="Se déconnecter" — logout is inside the user dropdown menu
+    await page.getByRole('button', { name: /user menu/i }).click()
+    await page.getByRole('menuitem', { name: /log out|se déconnecter/i }).click()
     await logoutResponse
 
     await expect(page).toHaveURL(/\/login/)

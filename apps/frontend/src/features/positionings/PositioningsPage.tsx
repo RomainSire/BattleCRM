@@ -7,7 +7,7 @@ export function PositioningsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-start justify-between gap-4">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">{t('positionings.title')}</h1>
           <p className="text-muted-foreground">{t('positionings.description')}</p>

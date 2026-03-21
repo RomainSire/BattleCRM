@@ -11,21 +11,21 @@
 
 import { expect, test } from '../support/fixtures'
 import { resetFunnelStages } from '../support/helpers/api'
-import { STORAGE_STATE } from '../../playwright.config'
 
 test.describe('Settings - Funnel Configuration', () => {
   test.describe.configure({ mode: 'serial' })
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeAll(async ({ browser, workerStorageState }) => {
     // Use a fresh browser context with the E2E auth session to reset stages via API
-    const context = await browser.newContext({ storageState: STORAGE_STATE })
+    const context = await browser.newContext({ storageState: workerStorageState })
     await resetFunnelStages(context.request)
     await context.close()
   })
 
   test('navigates to settings page via navbar', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await page.getByRole('button', { name: /user menu/i }).click()
+    await page.getByRole('menuitem', { name: /settings/i }).click()
     await expect(page).toHaveURL(/\/settings/)
     await expect(page.getByRole('heading', { name: /settings/i })).toBeVisible()
   })
