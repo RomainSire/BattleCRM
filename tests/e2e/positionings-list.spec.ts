@@ -67,12 +67,10 @@ test.describe('Positionings - List View', () => {
     await expect(page.getByRole('button', { name: /add positioning/i })).toBeVisible()
   })
 
-  test('shows funnel stage filter pills', async ({ page }) => {
+  test('shows funnel stage filter select', async ({ page }) => {
     await page.goto('/positionings')
-    await expect(page.getByRole('button', { name: 'Lead qualified', exact: true })).toBeVisible()
-    await expect(
-      page.getByRole('button', { name: 'Linkedin connection', exact: true }),
-    ).toBeVisible()
+    // Stage filter is a combobox (Select) in the table header
+    await expect(page.getByRole('combobox')).toBeVisible()
   })
 
   test('shows "Show archived" switch', async ({ page }) => {
@@ -82,36 +80,38 @@ test.describe('Positionings - List View', () => {
 
   // ── Stage filter ────────────────────────────────────────────────────────────
 
-  test('clicking a stage filter marks it active (aria-pressed)', async ({ page }) => {
+  test('selecting a stage filter updates the select value', async ({ page }) => {
     await page.goto('/positionings')
-    const filterBtn = page.getByRole('button', { name: 'Lead qualified', exact: true })
-    await filterBtn.click()
-    await expect(filterBtn).toHaveAttribute('aria-pressed', 'true')
+    await page.getByRole('combobox').click()
+    await page.getByRole('option', { name: 'Lead qualified' }).click()
+    await expect(page.getByRole('combobox')).toContainText('Lead qualified')
   })
 
   test('stage filter shows only matching positionings', async ({ page }) => {
     await page.goto('/positionings')
-    await page.getByRole('button', { name: 'Lead qualified', exact: true }).click()
+    await page.getByRole('combobox').click()
+    await page.getByRole('option', { name: 'Lead qualified' }).click()
     await expect(page.getByText('CV Alpha')).toBeVisible()
     await expect(page.getByText('CV Beta')).not.toBeVisible()
   })
 
   test('"Clear filter" button resets the stage filter', async ({ page }) => {
     await page.goto('/positionings')
-    await page.getByRole('button', { name: 'Lead qualified', exact: true }).click()
+    await page.getByRole('combobox').click()
+    await page.getByRole('option', { name: 'Lead qualified' }).click()
     await expect(page.getByRole('button', { name: /clear filter/i })).toBeVisible()
     await page.getByRole('button', { name: /clear filter/i }).click()
     await expect(page.getByText('CV Alpha')).toBeVisible()
     await expect(page.getByText('CV Beta')).toBeVisible()
   })
 
-  test('clicking the active stage filter again deactivates it', async ({ page }) => {
+  test('selecting "All stages" in the select resets the filter', async ({ page }) => {
     await page.goto('/positionings')
-    const filterBtn = page.getByRole('button', { name: 'Lead qualified', exact: true })
-    await filterBtn.click()
-    await expect(filterBtn).toHaveAttribute('aria-pressed', 'true')
-    await filterBtn.click()
-    await expect(filterBtn).toHaveAttribute('aria-pressed', 'false')
+    await page.getByRole('combobox').click()
+    await page.getByRole('option', { name: 'Lead qualified' }).click()
+    await expect(page.getByText('CV Beta')).not.toBeVisible()
+    await page.getByRole('combobox').click()
+    await page.getByRole('option', { name: /all stages/i }).click()
     await expect(page.getByText('CV Beta')).toBeVisible()
   })
 
@@ -203,7 +203,8 @@ test.describe('Positionings - List View', () => {
   test('shows "No positionings for this stage" when filter matches nothing', async ({ page }) => {
     await page.goto('/positionings')
     // Filter by "First contact" stage — no positionings seeded there
-    await page.getByRole('button', { name: 'First contact', exact: true }).click()
+    await page.getByRole('combobox').click()
+    await page.getByRole('option', { name: 'First contact' }).click()
     await expect(page.getByText(/no positionings for this stage/i)).toBeVisible()
   })
 })

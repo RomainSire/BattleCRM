@@ -25,7 +25,8 @@ test.describe('Settings - Funnel Configuration', () => {
 
   test('navigates to settings page via navbar', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await page.getByRole('button', { name: /user menu/i }).click()
+    await page.getByRole('menuitem', { name: /settings/i }).click()
     await expect(page).toHaveURL(/\/settings/)
     await expect(page.getByRole('heading', { name: /settings/i })).toBeVisible()
   })

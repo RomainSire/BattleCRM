@@ -69,31 +69,30 @@ test.describe('Prospects - List View', () => {
   test('shows search input and view toggle', async ({ page }) => {
     await page.goto('/prospects')
     await expect(page.getByRole('searchbox', { name: /search prospects/i })).toBeVisible()
-    // ToggleGroupItem (radix-ui type="single") renders as role="radio" — use aria-label selector
-    await expect(page.locator('[aria-label="List view"]')).toBeVisible()
-    await expect(page.locator('[aria-label="Kanban view"]')).toBeVisible()
+    // ToggleGroupItem (radix-ui type="single") renders as role="radio" — accessible name from text
+    await expect(page.getByRole('radio', { name: 'List' })).toBeVisible()
+    await expect(page.getByRole('radio', { name: 'Kanban' })).toBeVisible()
   })
 
-  test('shows funnel stage filter buttons', async ({ page }) => {
+  test('shows funnel stage filter select', async ({ page }) => {
     await page.goto('/prospects')
-    await expect(page.getByRole('button', { name: 'Lead qualified', exact: true })).toBeVisible()
-    await expect(
-      page.getByRole('button', { name: 'Linkedin connection', exact: true }),
-    ).toBeVisible()
+    // Stage filter is a combobox (Select) in the table header
+    await expect(page.getByRole('combobox')).toBeVisible()
   })
 
   // ── Stage filter ────────────────────────────────────────────────────────────
 
-  test('clicking a stage filter marks it active (aria-pressed)', async ({ page }) => {
+  test('selecting a stage filter updates the select value', async ({ page }) => {
     await page.goto('/prospects')
-    const filterBtn = page.getByRole('button', { name: 'Lead qualified', exact: true })
-    await filterBtn.click()
-    await expect(filterBtn).toHaveAttribute('aria-pressed', 'true')
+    await page.getByRole('combobox').click()
+    await page.getByRole('option', { name: 'Lead qualified' }).click()
+    await expect(page.getByRole('combobox')).toContainText('Lead qualified')
   })
 
   test('stage filter shows only matching prospects', async ({ page }) => {
     await page.goto('/prospects')
-    await page.getByRole('button', { name: 'Lead qualified', exact: true }).click()
+    await page.getByRole('combobox').click()
+    await page.getByRole('option', { name: 'Lead qualified' }).click()
     // Alice is in Lead qualified — should be visible
     await expect(page.getByText('Alice Martin')).toBeVisible()
     // Bob is in Linkedin connection — should not be visible
@@ -102,7 +101,8 @@ test.describe('Prospects - List View', () => {
 
   test('"Clear filter" button resets the stage filter', async ({ page }) => {
     await page.goto('/prospects')
-    await page.getByRole('button', { name: 'Lead qualified', exact: true }).click()
+    await page.getByRole('combobox').click()
+    await page.getByRole('option', { name: 'Lead qualified' }).click()
     await expect(page.getByRole('button', { name: /clear filter/i })).toBeVisible()
     await page.getByRole('button', { name: /clear filter/i }).click()
     // Both prospects visible again
@@ -110,14 +110,14 @@ test.describe('Prospects - List View', () => {
     await expect(page.getByText('Bob Dupont')).toBeVisible()
   })
 
-  test('clicking the active stage filter again deactivates it', async ({ page }) => {
+  test('selecting "All stages" in the select resets the filter', async ({ page }) => {
     await page.goto('/prospects')
-    const filterBtn = page.getByRole('button', { name: 'Lead qualified', exact: true })
-    await filterBtn.click()
-    await expect(filterBtn).toHaveAttribute('aria-pressed', 'true')
-    // Toggle off
-    await filterBtn.click()
-    await expect(filterBtn).toHaveAttribute('aria-pressed', 'false')
+    await page.getByRole('combobox').click()
+    await page.getByRole('option', { name: 'Lead qualified' }).click()
+    await expect(page.getByText('Bob Dupont')).not.toBeVisible()
+    // Select "All stages" to reset
+    await page.getByRole('combobox').click()
+    await page.getByRole('option', { name: /all stages/i }).click()
     await expect(page.getByText('Bob Dupont')).toBeVisible()
   })
 
