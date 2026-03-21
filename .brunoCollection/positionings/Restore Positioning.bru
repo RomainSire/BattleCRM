@@ -1,0 +1,16 @@
+meta {
+  name: Restore Positioning
+  type: http
+  seq: 8
+}
+
+patch {
+  url: http://localhost:3333/api/positionings/:id/restore
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

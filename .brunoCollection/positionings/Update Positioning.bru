@@ -1,0 +1,28 @@
+meta {
+  name: Update Positioning
+  type: http
+  seq: 6
+}
+
+put {
+  url: http://localhost:3333/api/positionings/:id
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Pitch ROI direction financière v2",
+    "description": "Mise à jour du positionnement Q1 2026",
+    "content": "Notre solution réduit les coûts opérationnels de 35% dès la première année..."
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

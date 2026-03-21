@@ -1,0 +1,16 @@
+meta {
+  name: List Positionings (with archived)
+  type: http
+  seq: 2
+}
+
+get {
+  url: http://localhost:3333/api/positionings?include_archived=true
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

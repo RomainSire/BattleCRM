@@ -152,6 +152,45 @@ export async function resetPositionings(request: APIRequestContext): Promise<voi
 }
 
 /**
+ * Create an interaction. Returns the created interaction object.
+ * Requires an authenticated request context.
+ */
+export async function createInteraction(
+  request: APIRequestContext,
+  data: {
+    prospect_id: string
+    status: 'positive' | 'pending' | 'negative'
+    notes?: string
+    positioning_id?: string
+    interaction_date?: string // ISO date string YYYY-MM-DD
+  },
+): Promise<{ id: string; prospectId: string; status: string; deletedAt: string | null }> {
+  const res = await request.post(`${API_URL}/api/interactions`, { data })
+  if (!res.ok()) throw new Error(`createInteraction failed: ${res.status()} ${await res.text()}`)
+  return res.json()
+}
+
+/**
+ * Reset interactions to a clean slate (including archived).
+ * Restores archived ones first (so DELETE can find them), then soft-deletes all.
+ * Requires an authenticated request context.
+ */
+export async function resetInteractions(request: APIRequestContext): Promise<void> {
+  const res = await request.get(`${API_URL}/api/interactions?include_archived=true`)
+  const body = await res.json()
+  const interactions: Array<{ id: string; deletedAt: string | null }> = body.data ?? []
+
+  for (const i of interactions) {
+    if (i.deletedAt !== null) {
+      await request.patch(`${API_URL}/api/interactions/${i.id}/restore`)
+    }
+  }
+  for (const i of interactions) {
+    await request.delete(`${API_URL}/api/interactions/${i.id}`)
+  }
+}
+
+/**
  * Delete (soft-delete) all prospects, including archived ones.
  * Archived prospects are restored first (backend destroy only works on active),
  * then archived again — leaving a clean slate of only archived records.
