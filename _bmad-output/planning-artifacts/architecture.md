@@ -3,8 +3,8 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-02-03'
-lastUpdated: '2026-03-01'
-lastUpdateReason: 'Added Epic 8 - Browser Extension Architecture (WXT, Adonis opaque tokens, MV3 patterns)'
+lastUpdated: '2026-03-23'
+lastUpdateReason: 'Revised Prospect-Positioning Assignment Model: simplified to many-to-many junction table (no lifecycle dates), explicit outcome via user buttons, Option A non-blocking stage transition UX, interaction.funnel_stage_id snapshot field added'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
@@ -883,6 +883,157 @@ All technology choices work together without conflicts:
 **Next Phase:** Begin implementation using the architectural decisions and patterns documented herein.
 
 **Document Maintenance:** Update this architecture when major technical decisions are made during implementation.
+
+---
+
+## Prospect-Positioning Assignment Model
+
+_Added: 2026-03-21 — Initial design decision. Revised: 2026-03-23 — Simplified from temporal lifecycle model to many-to-many junction table with explicit outcome._
+
+### Context & Problem Statement
+
+Le modèle original liait directement un `Positioning` à un `Prospect` (1-to-1, via `prospect.positioning_id`). Ce lien a été supprimé dans l'Epic 5 (migration 0007 : `drop_positioning_id_from_prospects`). Le modèle intermédiaire (positioning déduit via `interaction.positioning_id`) était insuffisant — pas de positionnement actif clair, pas de mesure d'efficacité.
+
+**Modèle final (2026-03-23) :** Junction table many-to-many `prospect_positionings`, sans gestion temporelle.
+
+### Design Decision: `prospect_positionings` Junction Table
+
+**Règle fondamentale :** Un prospect peut être lié à plusieurs positionnements (un par funnel stage traversé). Son positionnement **actif** est **dérivé automatiquement** : c'est l'entrée `prospect_positionings` dont le `funnel_stage_id` correspond au `funnel_stage_id` courant du prospect. Quand le prospect change de stage, aucune donnée dans `prospect_positionings` n'est modifiée — le "actif" change automatiquement.
+
+#### Table : `prospect_positionings`
+
+| Colonne | Type | Contraintes | Description |
+|---------|------|-------------|-------------|
+| `id` | uuid | PK | |
+| `user_id` | uuid | FK users, CASCADE | Isolation multi-tenant |
+| `prospect_id` | uuid | FK prospects | |
+| `positioning_id` | uuid | FK positionings | |
+| `funnel_stage_id` | uuid | FK funnel_stages | Dénormalisé depuis `positioning.funnel_stage_id` — pour contrainte + querying |
+| `outcome` | varchar(10) | nullable | `null` = en cours \| `'success'` \| `'failed'` |
+| `created_at` | timestamp | autoCreate | |
+
+**Contraintes :**
+- `UNIQUE (user_id, prospect_id, funnel_stage_id)` — max 1 positionnement par prospect par stage. Assigner un nouveau positionnement sur le même stage **remplace** l'ancien (delete + insert).
+
+**Index :**
+- `(user_id, prospect_id, funnel_stage_id)` — positionnement actif d'un prospect
+- `(user_id, positioning_id)` — FR16 : tous les prospects ayant utilisé un positionnement
+
+#### Positionnement "actif" d'un prospect
+
+Le positionnement actif est **calculé** grâce à la dénormalisation de `funnel_stage_id` :
+
+```sql
+SELECT * FROM prospect_positionings
+WHERE prospect_id = :prospectId
+  AND funnel_stage_id = :prospect.funnel_stage_id
+```
+
+#### Gestion de l'outcome
+
+L'outcome est **toujours défini explicitement par l'utilisateur** — jamais automatique :
+
+| Déclencheur | Résultat |
+|-------------|---------|
+| Bouton "Succès" sur le détail prospect | `outcome = 'success'` |
+| Bouton "Échec" sur le détail prospect | `outcome = 'failed'` |
+| Archivage du prospect | `outcome = 'failed'` sur le positionnement actif (stage courant) |
+| Pop-up lors du changement de stage — choix "Succès" ou "Échec" | `outcome = 'success'` ou `'failed'` |
+| Pop-up lors du changement de stage — "Passer sans décider" | `outcome` reste `null` |
+
+**Remplacement de positionnement :** Assigner un nouveau positionnement pour un stage déjà couvert → l'ancien enregistrement est supprimé (hard delete de la ligne junction), le nouveau est créé. Les interactions conservent leur `positioning_id` snapshot — inchangées.
+
+#### Flow UX — Changement de stage (Option A — non-bloquant)
+
+Quand un prospect est déplacé vers un nouveau stage ET qu'il a un positionnement `outcome = null` sur son stage courant, une pop-up ancrée (non modale plein écran) apparaît :
+
+```
+Avant de passer à "[Stage suivant]" :
+Comment s'est passé "[Nom du positionnement]" ?
+  [✓ Succès]  [✗ Échec]  [→ Passer sans décider]
+```
+
+Le déplacement n'est **pas bloqué** — "Passer sans décider" est toujours disponible. Si `outcome` reste `null`, l'indicateur visuel "en cours" persiste sur la carte prospect.
+
+#### Indicateurs visuels (Kanban + détail prospect)
+
+Deux icônes **distinctes** — ne coexistent jamais :
+
+| État | Icône | Signification |
+|------|-------|---------------|
+| Stage courant a des positionnements, aucun assigné | 🔴 point rouge / icône alerte | Action requise — inviter l'utilisateur à assigner |
+| Positionnement assigné, `outcome = null` | icône neutre/jaune (tooltip : "En cours") | Positionnement actif, pas encore évalué |
+| Positionnement assigné, `outcome = 'success'` | icône verte ✓ (tooltip : "Succès") | Positionnement validé |
+| Positionnement assigné, `outcome = 'failed'` | icône rouge ✗ (tooltip : "Échec") | Positionnement échoué |
+
+#### Règles de suppression des funnel stages
+
+| Situation | Comportement |
+|-----------|-------------|
+| Un prospect est **actuellement** sur ce stage (`prospect.funnel_stage_id = stage.id`) | ❌ **Blocage** — message d'erreur explicite. Suppression impossible. |
+| Des interactions référencent ce stage (`interaction.funnel_stage_id = stage.id`) | ✅ **Autorisé** — l'UI affiche "Stage supprimé" à la place du nom. |
+| Des `prospect_positionings` référencent ce stage | ✅ **Autorisé** — même comportement, affichage "Stage supprimé". |
+
+Note : la suppression d'un funnel stage est une soft-delete (`deleted_at`). Les références orphelines restent valides en DB ; l'UI gère l'affichage gracieux.
+
+#### Impact sur les entités existantes
+
+| Entité | Changement |
+|--------|------------|
+| `Prospect` | Aucune colonne ajoutée. `positioning_id` déjà supprimé (migration 0007). ✅ |
+| `Interaction` | `positioning_id` **conservé** (snapshot au moment de la création, immutable). `funnel_stage_id` **à ajouter** (snapshot du stage courant du prospect à la création — ne change jamais). Voir Story 5.1 mise à jour. |
+| `Positioning` | Supprimer `hasMany(() => Prospect)` dans `positioning.ts:53` — bug stale depuis migration 0007. |
+| `ProspectStageTransition` | Inchangé. La pop-up outcome est gérée côté frontend avant/pendant l'appel API de transition. |
+
+#### Réponse aux questions clés
+
+| Question | Réponse |
+|---|---|
+| Positionnement actif d'un prospect ? | `prospect_positionings WHERE prospect_id = X AND funnel_stage_id = prospect.funnel_stage_id` |
+| Tous les positionnements d'un prospect ? | Tous ses `prospect_positionings` (un par stage traversé) |
+| Succès/échec d'un positionnement ? | `outcome` — défini explicitement par l'utilisateur |
+| Un prospect peut-il avoir plusieurs positionnements ? | Oui — un par funnel stage, max un par stage |
+| Lien Interaction → Positionnement ? | `interaction.positioning_id` (snapshot, immutable) |
+| Lien Interaction → Funnel Stage ? | `interaction.funnel_stage_id` (snapshot, immutable) |
+
+#### Modèle Lucid (`prospect_positioning.ts`)
+
+```typescript
+export default class ProspectPositioning extends BaseModel {
+  static table = 'prospect_positionings'
+
+  @column({ isPrimary: true }) declare id: string
+  @column() declare userId: string
+  @column() declare prospectId: string
+  @column() declare positioningId: string
+  @column() declare funnelStageId: string  // dénormalisé depuis positioning.funnel_stage_id
+  @column() declare outcome: 'success' | 'failed' | null
+  @column.dateTime({ autoCreate: true }) declare createdAt: DateTime
+
+  static forUser = scope((query, userId: string) => query.where('user_id', userId))
+
+  @belongsTo(() => Prospect) declare prospect: BelongsTo<typeof Prospect>
+  @belongsTo(() => Positioning) declare positioning: BelongsTo<typeof Positioning>
+  @belongsTo(() => FunnelStage) declare funnelStage: BelongsTo<typeof FunnelStage>
+}
+```
+
+#### Type partagé (`packages/shared/src/types/prospect-positioning.ts`)
+
+```typescript
+export type ProspectPositioningType = {
+  id: string
+  prospectId: string
+  positioningId: string
+  funnelStageId: string
+  outcome: 'success' | 'failed' | null
+  createdAt: string
+}
+```
+
+#### Impact sur les analytics (Epic 6)
+
+`ProspectPositioning.outcome = 'success'` reste le signal de conversion principal pour les Battles — un positionnement est "validé" quand l'utilisateur clique "Succès" (généralement lors du passage au stage suivant). `interactions.status = 'positive'` reste utile pour la granularité timeline et la corrélation.
 
 ---
 

@@ -91,6 +91,16 @@ development_status:
   5-5-build-interactions-timeline-view: done
   epic-5-retrospective: done
 
+  # Epic 5B: Prospect-Positioning Assignment (Refacto Modèle)
+  # Décision architecturale 2026-03-21, révisée 2026-03-23
+  # Modèle final: junction table many-to-many, outcome explicite, pas de lifecycle temporel
+  # Voir architecture.md → "Prospect-Positioning Assignment Model"
+  epic-5b: backlog
+  5b-1-create-prospect-positioning-schema: backlog
+  5b-2-implement-prospect-positioning-api: backlog
+  5b-3-implement-prospect-positioning-frontend: backlog
+  epic-5b-retrospective: optional
+
   # Epic 6: Performance Analytics & Battle Management
   epic-6: backlog
   6-1-create-battles-database-schema: backlog

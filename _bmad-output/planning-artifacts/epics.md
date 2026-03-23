@@ -2,21 +2,53 @@
 stepsCompleted: [1, 2, 3, 4]
 status: complete
 completedAt: '2026-02-04'
-lastUpdated: '2026-03-06'
-lastUpdateReason: 'Added @battlecrm/shared implementation convention to Epics 4-8; added PositioningType note to Story 4.1-4.2; corrected API response casing (camelCase)'
+lastUpdated: '2026-03-23'
+lastUpdateReason: 'DATA MODEL REVISED: prospect_positionings simplifié en junction table many-to-many (pas de lifecycle temporel), outcome explicite via boutons, interaction.funnel_stage_id ajouté. Epic 5B stories réécrites. Story 5.1 mise à jour.'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
   - _bmad-output/analysis/brainstorming-extension-linkedin-2026-02-28.md
 summary:
-  epics: 8
-  stories: 50
+  epics: 9
+  stories: 53
   frs_covered: 76
   nfrs_integrated: 74
+  note: 'Epic 5B ajouté (3 stories) — refacto ProspectPositioning, prérequis Epic 6'
 ---
 
 # BattleCRM - Epic Breakdown
+
+---
+
+> ## ⚠️ DÉCISION MODÈLE DE DONNÉES — révisée 2026-03-23 (initiale 2026-03-21)
+>
+> **Contexte :** Le lien `prospect.positioning_id` avait été supprimé (migration 0007, Epic 5). Le modèle intermédiaire (positioning déduit via `interaction.positioning_id`) était insuffisant.
+>
+> **Décision finale :** Table junction `prospect_positionings` — many-to-many entre prospects et positionings, **sans gestion temporelle** (pas de `assigned_at`/`ended_at`).
+>
+> **Règle fondamentale :** Un prospect peut avoir **un positionnement par funnel stage** (max). Son positionnement **actif** est dérivé automatiquement : c'est l'entrée dont le `funnel_stage_id` correspond au stage courant du prospect. Quand le prospect change de stage, aucune donnée n'est modifiée — le "actif" change seul.
+>
+> **`outcome`** (`null` | `'success'` | `'failed'`) : toujours défini **explicitement** par l'utilisateur (boutons sur le détail prospect, ou pop-up lors du changement de stage). Archivage → `'failed'` automatique.
+>
+> **Stories à implémenter (Epic 5B) :**
+> - **Story 5B.1** : Schema `prospect_positionings` + `interaction.funnel_stage_id`
+> - **Story 5B.2** : API backend (assign, outcome, list, GET positionings/:id/prospects)
+> - **Story 5B.3** : Frontend (boutons succès/échec, icônes Kanban, pop-up changement de stage)
+>
+> **Stories existantes impactées (marquées ⚠️) :**
+> - Story 3.4 : "assigner un positionnement" → crée un enregistrement `prospect_positionings`
+> - Story 3.7 : positionnement actif = `prospect_positionings WHERE funnel_stage_id = prospect.funnel_stage_id`
+> - Story 4.2 : `GET /api/positionings/:id/prospects` → via `prospect_positionings`
+> - Story 4.5 : listing prospects par positioning → via `prospect_positionings`
+> - Story 5.3 : pré-remplissage variant actif = positionnement actif depuis `prospect_positionings`
+> - Epic 6 : signal de conversion = `prospect_positionings.outcome = 'success'`
+>
+> **Bug code à corriger :** `apps/backend/app/models/positioning.ts:53` — supprimer `hasMany(() => Prospect)` (cassé depuis migration 0007).
+>
+> **Référence :** Voir `architecture.md` → section "Prospect-Positioning Assignment Model" pour le design complet.
+
+---
 
 ## Overview
 
@@ -764,6 +796,8 @@ Permettre aux utilisateurs de gérer leurs contacts prospects de bout en bout av
 
 ### Story 3.1: Create Prospects Database Schema
 
+> ⚠️ **MODÈLE MIS À JOUR (2026-03-21)** : La colonne `positioning_id` sur `prospects` a été **supprimée** (migration 0007, Epic 5). La doc ci-dessous est obsolète sur ce point — la colonne ne doit PAS être créée. Le lien prospect↔positioning passe désormais par l'entité `ProspectPositioning` (Stories 5.6-5.8).
+
 As a developer,
 I want a prospects table with proper schema and relationships,
 So that users can store and manage their prospect data.
@@ -782,7 +816,7 @@ So that users can store and manage their prospect data.
   - phone (varchar, optional)
   - title (varchar, optional)
   - funnel_stage_id (uuid, foreign key to funnel_stages)
-  - positioning_id (uuid, foreign key to positionings, nullable)
+  - ~~positioning_id~~ ← **SUPPRIMÉ** — voir Stories 5.6-5.8
   - notes (text, optional)
   - created_at, updated_at, deleted_at
 **And** user isolation is enforced via `forUser(user_id)` query scope on the Prospect model (NOT database-level RLS)
@@ -887,8 +921,8 @@ So that I can maintain accurate data about my contacts.
 
 **Given** I am editing a prospect
 **When** I change the positioning variant dropdown
-**Then** the new positioning is assigned to the prospect (FR7)
-**And** this is tracked for analytics
+**Then** ~~the new positioning is assigned to the prospect (FR7)~~
+> ⚠️ **MODÈLE MIS À JOUR (2026-03-21)** : "Assigner un positionnement" crée désormais un enregistrement `ProspectPositioning` (Stories 5.6-5.8), pas une mise à jour de `prospect.positioning_id`. Le dropdown doit appeler `POST /api/prospect_positionings` pour assigner, en fermant d'abord le positionnement actif (`outcome = 'abandoned'` si remplacement manuel). FR7 reste valide fonctionnellement, le mécanisme technique change.
 
 ---
 
@@ -967,6 +1001,7 @@ So that I have complete context when engaging with a prospect.
 **Then** I see all prospect fields displayed (FR8)
 **And** I see the current funnel stage prominently displayed
 **And** I see the assigned positioning variant if any
+> ⚠️ **MODÈLE MIS À JOUR (2026-03-21)** : "Le positionnement assigné" = `ProspectPositioning WHERE prospect_id = X AND ended_at IS NULL` (Stories 5.6-5.8). Ne pas chercher `prospect.positioning_id`.
 
 **Given** I am viewing prospect detail
 **When** interactions exist for this prospect
@@ -1123,6 +1158,7 @@ So that the frontend can perform all positioning operations.
 **Then** I receive a list of prospects that have this positioning assigned (FR16)
 **And** all responses use camelCase field names (Lucid v3 default)
 **And** a `serializePositioning()` serializer in `apps/backend/app/serializers/positioning.ts` validates response shape against `PositioningType` from `@battlecrm/shared`
+> ⚠️ **MODÈLE MIS À JOUR (2026-03-21)** : Cet endpoint doit interroger `prospect_positionings WHERE positioning_id = :id` (au lieu de `prospects WHERE positioning_id = :id`). À implémenter après Stories 5.6-5.7.
 
 ---
 
@@ -1199,6 +1235,7 @@ So that I can maintain a clean list while preserving historical data.
 **When** prospects have been assigned this positioning
 **Then** I see a list of those prospects with links (FR16)
 **And** clicking a prospect navigates to their detail
+> ⚠️ **MODÈLE MIS À JOUR (2026-03-21)** : La liste des prospects vient de `prospect_positionings WHERE positioning_id = :id` (Stories 5.6-5.7). Peut distinguer les actuels (`ended_at IS NULL`) des historiques (`ended_at NOT NULL`).
 
 **Given** I am viewing a positioning's expanded details
 **When** I want more context
@@ -1232,14 +1269,16 @@ So that users can track their outreach activities over time.
   - id (uuid, primary key)
   - user_id (uuid, foreign key to users)
   - prospect_id (uuid, foreign key to prospects, required)
-  - positioning_id (uuid, foreign key to positionings, optional)
+  - funnel_stage_id (uuid, foreign key to funnel_stages, required) — **snapshot** du stage courant du prospect au moment de la création, immutable
+  - positioning_id (uuid, foreign key to positionings, optional) — **snapshot** du positionnement actif au moment de la création, immutable
   - status (varchar, required) - enum: positive, pending, negative
   - notes (text, optional) - free text for details (objective + subjective)
   - interaction_date (timestamp, defaults to now)
   - created_at, updated_at, deleted_at
 **And** user isolation is enforced via `forUser(user_id)` query scope on the Interaction model (NOT database-level RLS)
-**And** indexes exist on (user_id, prospect_id), (user_id, interaction_date), (user_id, positioning_id)
-**And** no type/subtype fields - the funnel stage of the prospect defines the interaction context
+**And** indexes exist on (user_id, prospect_id), (user_id, interaction_date), (user_id, positioning_id), (user_id, funnel_stage_id)
+**And** no type/subtype fields - the funnel stage snapshot defines the interaction context
+> ⚠️ **MIS À JOUR (2026-03-23)** : `funnel_stage_id` est une colonne obligatoire en DB (snapshot au moment de la création). Si ce funnel stage est ultérieurement supprimé (soft-delete), l'interaction affiche "Stage supprimé" dans l'UI. Ne jamais modifier ce champ après création.
 
 ---
 
@@ -1307,6 +1346,7 @@ So that capturing data doesn't slow down my prospecting workflow.
 **And** the positioning dropdown shows only variants for this prospect's funnel stage
 **And** the last used positioning is pre-selected
 **And** I can log the interaction in under 1 minute
+> ⚠️ **MODÈLE MIS À JOUR (2026-03-21)** : "Le positionnement pré-sélectionné" = `ProspectPositioning WHERE prospect_id = X AND ended_at IS NULL` → `positioning_id`. Ne pas chercher dans l'historique des interactions.
 
 **Given** I am logging multiple interactions
 **When** I open the form from the Interactions page (FR19)
@@ -1373,9 +1413,135 @@ So that I can review my prospecting activity over time.
 
 ---
 
+## Epic 5B: Prospect-Positioning Assignment (Refacto Modèle)
+
+Introduire la table `prospect_positionings` (junction many-to-many), ajouter `interaction.funnel_stage_id`, et implémenter le frontend d'assignation avec indicateurs visuels. Prérequis bloquant pour Epic 6.
+
+**Contexte :** Décision architecturale révisée le 2026-03-23. Voir `architecture.md` → section "Prospect-Positioning Assignment Model" pour le design complet.
+
+**Dépendances :** Epics 3, 4, 5 (tous `done`). Doit être complété avant Epic 6.
+
+**FRs impactés :** FR7 (assigner un positionnement), FR16 (voir les prospects d'un positionnement), FR17 (drill-down positioning → prospects), FR27 (pré-remplissage variant actif)
+
+---
+
+### Story 5B.1: Create prospect_positionings Schema and Update Interactions
+
+> 🆕 **NOUVELLE STORY — décision modèle révisée 2026-03-23.**
+
+As a developer,
+I want a `prospect_positionings` junction table and an updated `interactions` table with `funnel_stage_id`,
+So that we can track which positioning each prospect uses per funnel stage and preserve the funnel context of every interaction.
+
+**Acceptance Criteria:**
+
+**Given** I am setting up the prospect-positioning assignment feature
+**When** I run the database migration
+**Then** a `prospect_positionings` table is created with:
+  - id (uuid, primary key)
+  - user_id (uuid, FK users, CASCADE)
+  - prospect_id (uuid, FK prospects)
+  - positioning_id (uuid, FK positionings)
+  - funnel_stage_id (uuid, FK funnel_stages) — dénormalisé depuis `positioning.funnel_stage_id`
+  - outcome (varchar 10, nullable) — `null` | `'success'` | `'failed'`
+  - created_at (timestamp, autoCreate)
+**And** contrainte UNIQUE sur `(user_id, prospect_id, funnel_stage_id)` — max 1 positionnement par prospect par stage
+**And** index sur `(user_id, prospect_id, funnel_stage_id)` pour requêter le positionnement actif
+**And** index sur `(user_id, positioning_id)` pour FR16
+
+**Given** I am updating the interactions table
+**When** I run the migration
+**Then** une colonne `funnel_stage_id (uuid, FK funnel_stages, NOT NULL)` est ajoutée à `interactions`
+**And** index sur `(user_id, funnel_stage_id)` est créé
+**And** les interactions existantes sont migrées (`funnel_stage_id` = stage courant du prospect correspondant au moment de la migration — ou NULL si prospect archivé sans stage)
+
+**And** `forUser(userId)` query scope est implémenté sur le modèle `ProspectPositioning`
+**And** `ProspectPositioningType` est défini dans `packages/shared/src/types/prospect-positioning.ts` et exporté depuis `packages/shared/src/index.ts`
+**And** `serializeProspectPositioning()` est créé dans `apps/backend/app/serializers/prospect-positioning.ts`
+
+**Note technique :** Supprimer `hasMany(() => Prospect)` dans `apps/backend/app/models/positioning.ts:53` — bug stale depuis migration 0007.
+
+---
+
+### Story 5B.2: Implement ProspectPositioning API
+
+> 🆕 **NOUVELLE STORY — décision modèle révisée 2026-03-23.**
+> Dépend de : Story 5B.1
+
+As a developer,
+I want REST API endpoints to assign positionings to prospects, set outcomes, and query assignments,
+So that the frontend can manage positioning per prospect and display the correct state.
+
+**Acceptance Criteria:**
+
+**Given** I am authenticated
+**When** I call `POST /api/prospects/:id/positionings` with `{ positioning_id }`
+**Then** si un enregistrement `prospect_positionings` existe déjà pour ce prospect + même `funnel_stage_id`, il est supprimé (replaced)
+**And** un nouveau enregistrement est créé avec `outcome = null`
+**And** `funnel_stage_id` est dénormalisé depuis `positioning.funnel_stage_id`
+
+**Given** I am authenticated
+**When** I call `PATCH /api/prospects/:id/positionings/current/outcome` with `{ outcome: 'success' | 'failed' }`
+**Then** l'enregistrement `prospect_positionings` dont `funnel_stage_id = prospect.funnel_stage_id` est mis à jour
+**And** retourne 404 si aucun positionnement actif n'existe pour ce prospect
+
+**Given** I am authenticated
+**When** I call `GET /api/prospects/:id/positionings`
+**Then** je reçois tous les `prospect_positionings` de ce prospect (tous les stages), triés par `created_at` DESC
+
+**Given** I am authenticated
+**When** I call `GET /api/positionings/:id/prospects`
+**Then** je reçois les prospects liés via `prospect_positionings WHERE positioning_id = :id`
+**And** chaque résultat inclut si le lien est actif (`funnel_stage_id = prospect.funnel_stage_id`) ou historique
+**Note :** Remplace le comportement de Story 4.2 qui se basait sur `prospect.positioning_id`.
+
+---
+
+### Story 5B.3: Implement Positioning Frontend (Prospect Detail + Kanban)
+
+> 🆕 **NOUVELLE STORY — décision modèle révisée 2026-03-23.**
+> Dépend de : Story 5B.1, Story 5B.2
+
+As a user,
+I want to assign positionings to prospects, mark them as success/failure, and see visual indicators on the Kanban board,
+So that I can track which approach I'm using for each prospect and assess its effectiveness at a glance.
+
+**Acceptance Criteria:**
+
+**Given** je consulte le détail d'un prospect sur un funnel stage qui a des positionnements disponibles
+**When** aucun positionnement n'est assigné pour ce stage
+**Then** un indicateur visuel distinct (icône alerte / point rouge) s'affiche sur la carte Kanban et dans le détail
+**And** l'indicateur est différent de l'icône d'outcome
+
+**Given** je consulte le détail d'un prospect avec un positionnement actif (`outcome = null`)
+**When** le positionnement est assigné au stage courant
+**Then** le nom du positionnement est affiché avec une icône neutre/jaune "en cours"
+**And** deux boutons sont visibles : [✓ Succès] et [✗ Échec]
+**And** cliquer "Succès" appelle `PATCH /api/prospects/:id/positionings/current/outcome` avec `{ outcome: 'success' }` et met à jour l'icône
+**And** cliquer "Échec" fait de même avec `{ outcome: 'failed' }`
+
+**Given** le positionnement a un outcome défini (`'success'` ou `'failed'`)
+**When** je consulte le détail ou la carte Kanban
+**Then** une icône colorée avec tooltip s'affiche (vert ✓ = succès, rouge ✗ = échec) — les boutons succès/échec disparaissent
+
+**Given** je déplace un prospect vers un autre stage (drag Kanban ou dropdown)
+**When** le prospect a un positionnement actif avec `outcome = null` sur son stage courant
+**Then** une pop-up ancrée (non-bloquante) apparaît avant confirmation du déplacement :
+  "Avant de passer à [Stage X] : Comment s'est passé [Nom positionnement] ? [✓ Succès] [✗ Échec] [→ Passer sans décider]"
+**And** le déplacement se fait dans tous les cas (pop-up non bloquante)
+**And** si l'utilisateur choisit "Passer sans décider", `outcome` reste `null` et l'icône "en cours" persiste
+
+**Given** un prospect est archivé (soft-delete)
+**When** l'archivage est confirmé
+**Then** `PATCH /api/prospects/:id/positionings/current/outcome` est appelé avec `{ outcome: 'failed' }` automatiquement avant l'archivage
+
+---
+
 ## Epic 6: Performance Analytics & Battle Management
 
 Permettre aux utilisateurs de visualiser leurs performances via la Performance Matrix et optimiser via A/B testing avec Battles indépendantes par étape funnel.
+
+> ⚠️ **IMPACT MODÈLE (2026-03-23)** : Le signal de conversion principal pour les Battles est `prospect_positionings.outcome = 'success'` — défini explicitement par l'utilisateur lorsqu'il valide un positionnement. Plus objectif que `interaction.status`. Voir `architecture.md` → "Prospect-Positioning Assignment Model" → "Impact sur les analytics". **Dépendance : Epic 5B doit être complété avant d'implémenter Story 6.2.**
 
 **Implementation convention:** Follow the `@battlecrm/shared` pattern — add `BattleType`, `PerformanceMatrixType` etc. to `packages/shared/src/types/` in Story 6.1, create serializers in Story 6.2. See `architecture.md` → "Shared Package Pattern".
 

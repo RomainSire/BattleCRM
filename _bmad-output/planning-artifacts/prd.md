@@ -840,7 +840,7 @@ Semaines 22-25:
 - **FR4:** Users can archive prospects (soft delete) to remove them from active views
 - **FR5:** Users can search archived prospects and restore them to active status
 - **FR6:** Users can filter prospects by funnel stage
-- **FR7:** Users can assign a positioning variant to a prospect
+- **FR7:** Users can assign a positioning variant to a prospect (one per funnel stage; assigning a new one replaces the previous for that stage)
 - **FR8:** Users can view prospect detail with full information and interaction history
 - **FR9:** Users can drill down from prospects to related interactions inline
 - **FR76:** Users can switch between a list view and a Kanban board view for prospects, with drag-and-drop to move prospects between funnel stages
@@ -863,7 +863,7 @@ Semaines 22-25:
 - **FR20:** Users can add free-text notes for each interaction (objective + subjective data)
 - **FR21:** Users can categorize interactions by type and subtype
 - **FR22:** Users can assign interaction status (positive, pending, negative)
-- **FR23:** Users can link an interaction to a positioning variant used
+- **FR23:** System automatically links an interaction to the prospect's active positioning variant and current funnel stage at the time of logging (snapshots — immutable after creation)
 - **FR24:** Users can link an interaction to a prospect
 - **FR25:** Users can view chronological timeline of all interactions
 - **FR26:** Users can filter interactions by prospect, positioning, status, or date
@@ -886,7 +886,7 @@ Semaines 22-25:
 
 - **FR38:** Users can configure custom funnel stages (names and order)
 - **FR39:** System provides 10 default funnel stages pre-filled
-- **FR40:** Users can add, remove, or reorder funnel stages (max 15 stages)
+- **FR40:** Users can add, remove, or reorder funnel stages (max 15 stages); removing a stage is blocked if any active prospect is currently on it — allowed if only historical data (interactions, past positionings) references it
 - **FR41:** Users can configure funnel stages without touching code (via Settings page)
 - **FR42:** System enforces linear funnel order (no branching)
 - **FR43:** Users can move prospects between funnel stages

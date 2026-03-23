@@ -51,6 +51,18 @@ _Critical rules and patterns for implementing BattleCRM. Read this before writin
 - All fetch calls: `credentials: 'include'`
 - User isolation enforced at backend level (all queries scoped to `auth.user.id`)
 
+### Prospect-Positioning Assignment (CRITIQUE — révisé 2026-03-23)
+- **`prospect_positionings`** est une junction table many-to-many entre prospects et positionings. Un prospect peut avoir UN positionnement par funnel stage (max).
+- **Positionnement actif d'un prospect :** `prospect_positionings WHERE prospect_id = X AND funnel_stage_id = prospect.funnel_stage_id` (dérivé automatiquement — aucune colonne "actif" à maintenir).
+- **`outcome`** (`null` | `'success'` | `'failed'`) — défini TOUJOURS explicitement par l'utilisateur : boutons sur le détail prospect, ou pop-up lors du changement de stage. Jamais automatique. Archivage d'un prospect → `outcome = 'failed'` sur le positionnement du stage courant.
+- **Contrainte UNIQUE** sur `(user_id, prospect_id, funnel_stage_id)` — assigner un nouveau positionnement sur un stage existant remplace l'ancien (delete + insert).
+- **`interaction.funnel_stage_id` :** snapshot du stage courant du prospect au moment de la création. Immutable. Permet de retrouver le contexte même après changement de stage.
+- **`interaction.positioning_id` :** snapshot du positionnement actif au moment de la création. Immutable.
+- **Bug à corriger :** `apps/backend/app/models/positioning.ts:53` — `hasMany(() => Prospect)` est cassé depuis migration 0007, doit être supprimé.
+- **Suppression funnel stage :** bloquée si un prospect est actuellement dessus (`prospect.funnel_stage_id = stage.id`). Autorisée si seulement des interactions ou `prospect_positionings` y référencent — afficher "Stage supprimé" dans l'UI.
+- ❌ Ne pas chercher `prospect.positioning_id` — cette colonne n'existe plus (migration 0007).
+- ❌ Ne pas utiliser `ended_at` ni `assigned_at` — ces champs n'existent pas dans le modèle final.
+
 ### Data Patterns
 - **Soft delete only** - never hard delete, use `deleted_at`
 - Soft delete implemented via `adonis-lucid-soft-deletes` package; `.delete()` on a model instance performs a soft delete
