@@ -3,6 +3,7 @@ import { BaseModel, belongsTo, column, scope } from '@adonisjs/lucid/orm'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import { SoftDeletes } from 'adonis-lucid-soft-deletes'
 import type { DateTime } from 'luxon'
+import FunnelStage from '#models/funnel_stage'
 import Positioning from '#models/positioning'
 import Prospect from '#models/prospect'
 import User from '#models/user'
@@ -19,6 +20,10 @@ export default class Interaction extends compose(BaseModel, SoftDeletes) {
 
   @column()
   declare positioningId: string | null
+
+  // Snapshot of prospect.funnelStageId at interaction creation — immutable, never changed after create
+  @column()
+  declare funnelStageId: string
 
   @column()
   declare status: 'positive' | 'pending' | 'negative'
@@ -51,4 +56,7 @@ export default class Interaction extends compose(BaseModel, SoftDeletes) {
 
   @belongsTo(() => Positioning)
   declare positioning: BelongsTo<typeof Positioning>
+
+  @belongsTo(() => FunnelStage)
+  declare funnelStage: BelongsTo<typeof FunnelStage>
 }

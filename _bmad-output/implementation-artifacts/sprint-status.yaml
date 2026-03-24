@@ -95,8 +95,8 @@ development_status:
   # Décision architecturale 2026-03-21, révisée 2026-03-23
   # Modèle final: junction table many-to-many, outcome explicite, pas de lifecycle temporel
   # Voir architecture.md → "Prospect-Positioning Assignment Model"
-  epic-5b: backlog
-  5b-1-create-prospect-positioning-schema: backlog
+  epic-5b: in-progress
+  5b-1-create-prospect-positioning-schema: review
   5b-2-implement-prospect-positioning-api: backlog
   5b-3-implement-prospect-positioning-frontend: backlog
   epic-5b-retrospective: optional

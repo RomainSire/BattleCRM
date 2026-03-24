@@ -515,6 +515,7 @@ test.group('Positionings API', (group) => {
       userId: user.id,
       prospectId: prospect.id,
       positioningId: p.id,
+      funnelStageId: stage.id,
       status: 'pending',
       interactionDate: DateTime.now(),
     })
@@ -561,6 +562,7 @@ test.group('Positionings API', (group) => {
       userId: user.id,
       prospectId: prospect.id,
       positioningId: p.id,
+      funnelStageId: stage.id,
       status: 'pending',
       interactionDate: DateTime.now(),
     })
@@ -597,6 +599,7 @@ test.group('Positionings API', (group) => {
       userId: user.id,
       prospectId: prospect.id,
       positioningId: p.id,
+      funnelStageId: stage.id,
       status: 'pending',
       interactionDate: DateTime.now(),
     })

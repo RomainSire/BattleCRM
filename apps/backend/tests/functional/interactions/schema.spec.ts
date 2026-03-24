@@ -59,6 +59,7 @@ test.group('Interaction schema', (group) => {
       userId: user.id,
       prospectId: prospect.id,
       positioningId: positioning.id,
+      funnelStageId: stage.id,
       status: 'positive',
       notes: 'Great conversation',
       interactionDate: DateTime.now(),
@@ -68,6 +69,7 @@ test.group('Interaction schema', (group) => {
     assert.equal(interaction.userId, user.id)
     assert.equal(interaction.prospectId, prospect.id)
     assert.equal(interaction.positioningId, positioning.id)
+    assert.equal(interaction.funnelStageId, stage.id)
     assert.equal(interaction.status, 'positive')
     assert.equal(interaction.notes, 'Great conversation')
     assert.isDefined(interaction.interactionDate)
@@ -80,11 +82,12 @@ test.group('Interaction schema', (group) => {
     client,
     assert,
   }) => {
-    const { user, prospect } = await createUserWithContext(client, 'create-minimal')
+    const { user, stage, prospect } = await createUserWithContext(client, 'create-minimal')
 
     const interaction = await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
+      funnelStageId: stage.id,
       status: 'pending',
       interactionDate: DateTime.now(),
     })
@@ -94,6 +97,7 @@ test.group('Interaction schema', (group) => {
     assert.isNull(reloaded.positioningId)
     assert.isNull(reloaded.notes)
     assert.isNull(reloaded.deletedAt)
+    assert.equal(reloaded.funnelStageId, stage.id)
   })
 
   // ===========================
@@ -101,18 +105,28 @@ test.group('Interaction schema', (group) => {
   // ===========================
 
   test('forUser scope isolates interactions between users', async ({ client, assert }) => {
-    const { user: userA, prospect: prospectA } = await createUserWithContext(client, 'isolate-a')
-    const { user: userB, prospect: prospectB } = await createUserWithContext(client, 'isolate-b')
+    const {
+      user: userA,
+      stage: stageA,
+      prospect: prospectA,
+    } = await createUserWithContext(client, 'isolate-a')
+    const {
+      user: userB,
+      stage: stageB,
+      prospect: prospectB,
+    } = await createUserWithContext(client, 'isolate-b')
 
     await Interaction.create({
       userId: userA.id,
       prospectId: prospectA.id,
+      funnelStageId: stageA.id,
       status: 'positive',
       interactionDate: DateTime.now(),
     })
     await Interaction.create({
       userId: userB.id,
       prospectId: prospectB.id,
+      funnelStageId: stageB.id,
       status: 'negative',
       interactionDate: DateTime.now(),
     })
@@ -127,17 +141,19 @@ test.group('Interaction schema', (group) => {
   })
 
   test('each interaction belongs to the correct user_id', async ({ client, assert }) => {
-    const { user, prospect } = await createUserWithContext(client, 'user-id-check')
+    const { user, stage, prospect } = await createUserWithContext(client, 'user-id-check')
 
     await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
+      funnelStageId: stage.id,
       status: 'positive',
       interactionDate: DateTime.now(),
     })
     await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
+      funnelStageId: stage.id,
       status: 'pending',
       interactionDate: DateTime.now(),
     })
@@ -154,17 +170,19 @@ test.group('Interaction schema', (group) => {
   // ===========================
 
   test('soft-deleted interactions excluded from default queries', async ({ client, assert }) => {
-    const { user, prospect } = await createUserWithContext(client, 'soft-delete')
+    const { user, stage, prospect } = await createUserWithContext(client, 'soft-delete')
 
     const i1 = await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
+      funnelStageId: stage.id,
       status: 'positive',
       interactionDate: DateTime.now(),
     })
     const i2 = await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
+      funnelStageId: stage.id,
       status: 'negative',
       interactionDate: DateTime.now(),
     })
@@ -177,17 +195,19 @@ test.group('Interaction schema', (group) => {
   })
 
   test('withTrashed includes soft-deleted interactions', async ({ client, assert }) => {
-    const { user, prospect } = await createUserWithContext(client, 'with-trashed')
+    const { user, stage, prospect } = await createUserWithContext(client, 'with-trashed')
 
     await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
+      funnelStageId: stage.id,
       status: 'positive',
       interactionDate: DateTime.now(),
     })
     const i2 = await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
+      funnelStageId: stage.id,
       status: 'pending',
       interactionDate: DateTime.now(),
     })
@@ -200,11 +220,12 @@ test.group('Interaction schema', (group) => {
   })
 
   test('deleted_at is set on soft-delete and null after restore', async ({ client, assert }) => {
-    const { user, prospect } = await createUserWithContext(client, 'restore')
+    const { user, stage, prospect } = await createUserWithContext(client, 'restore')
 
     const interaction = await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
+      funnelStageId: stage.id,
       status: 'positive',
       interactionDate: DateTime.now(),
     })
@@ -221,11 +242,12 @@ test.group('Interaction schema', (group) => {
   // ===========================
 
   test('interaction.prospectId references an existing prospect', async ({ client, assert }) => {
-    const { user, prospect } = await createUserWithContext(client, 'fk-prospect')
+    const { user, stage, prospect } = await createUserWithContext(client, 'fk-prospect')
 
     const interaction = await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
+      funnelStageId: stage.id,
       status: 'positive',
       interactionDate: DateTime.now(),
     })
@@ -236,11 +258,12 @@ test.group('Interaction schema', (group) => {
   })
 
   test('interaction.positioningId is nullable (can be null)', async ({ client, assert }) => {
-    const { user, prospect } = await createUserWithContext(client, 'fk-null')
+    const { user, stage, prospect } = await createUserWithContext(client, 'fk-null')
 
     await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
+      funnelStageId: stage.id,
       status: 'pending',
       interactionDate: DateTime.now(),
     })
@@ -255,12 +278,13 @@ test.group('Interaction schema', (group) => {
     client,
     assert,
   }) => {
-    const { user } = await createUserWithContext(client, 'fk-invalid-prospect')
+    const { user, stage } = await createUserWithContext(client, 'fk-invalid-prospect')
 
     await assert.rejects(async () => {
       await Interaction.create({
         userId: user.id,
         prospectId: '00000000-0000-0000-0000-000000000000',
+        funnelStageId: stage.id,
         status: 'positive',
         interactionDate: DateTime.now(),
       })
@@ -271,11 +295,12 @@ test.group('Interaction schema', (group) => {
     client,
     assert,
   }) => {
-    const { user, prospect } = await createUserWithContext(client, 'cascade-user')
+    const { user, stage, prospect } = await createUserWithContext(client, 'cascade-user')
 
     const interaction = await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
+      funnelStageId: stage.id,
       status: 'positive',
       interactionDate: DateTime.now(),
     })
@@ -304,6 +329,7 @@ test.group('Interaction schema', (group) => {
       userId: user.id,
       prospectId: prospect.id,
       positioningId: positioning.id,
+      funnelStageId: stage.id,
       status: 'positive',
       interactionDate: DateTime.now(),
     })
