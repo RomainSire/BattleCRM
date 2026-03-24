@@ -248,7 +248,7 @@ test.group('Interactions API', (group) => {
     response.assertStatus(422)
   })
 
-  test('GET /api/interactions?funnel_stage_id filters by prospect funnel stage', async ({
+  test('GET /api/interactions?funnel_stage_id filters by interaction funnel_stage_id snapshot', async ({
     client,
     assert,
   }) => {

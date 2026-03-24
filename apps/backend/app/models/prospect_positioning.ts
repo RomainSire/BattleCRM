@@ -1,6 +1,7 @@
 import FunnelStage from '#models/funnel_stage'
 import Positioning from '#models/positioning'
 import Prospect from '#models/prospect'
+import User from '#models/user'
 import { BaseModel, belongsTo, column, scope } from '@adonisjs/lucid/orm'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import type { DateTime } from 'luxon'
@@ -25,6 +26,8 @@ export default class ProspectPositioning extends BaseModel {
   declare funnelStageId: string
 
   // null = in-progress | 'success' | 'failed' — always set explicitly by user, never automatic
+  // Note: outcome is mutable but there is no updated_at column on this table (design decision).
+  // Outcome changes have no timestamp audit trail — acceptable for the current analytics model.
   @column()
   declare outcome: 'success' | 'failed' | null
 
@@ -39,6 +42,9 @@ export default class ProspectPositioning extends BaseModel {
   static forUser = scope((query, userId: string) => {
     query.where('user_id', userId)
   })
+
+  @belongsTo(() => User)
+  declare user: BelongsTo<typeof User>
 
   @belongsTo(() => Prospect)
   declare prospect: BelongsTo<typeof Prospect>

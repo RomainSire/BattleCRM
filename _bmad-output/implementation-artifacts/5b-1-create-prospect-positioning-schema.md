@@ -1,6 +1,6 @@
 # Story 5B.1: Create prospect_positionings Schema and Update Interactions
 
-Status: review
+Status: done
 
 ## Story
 
@@ -500,8 +500,10 @@ claude-sonnet-4-6
 **Modified files:**
 - `apps/backend/app/models/interaction.ts` — added `funnelStageId` column + `FunnelStage` belongsTo relation
 - `apps/backend/app/models/positioning.ts` — removed stale `hasMany(() => Prospect)` and `Prospect` import
-- `apps/backend/app/controllers/interactions_controller.ts` — `store()` captures `prospect.funnelStageId` snapshot
+- `apps/backend/app/models/prospect_positioning.ts` — (code-review) added `User` belongsTo relation; documented outcome audit-trail tradeoff
+- `apps/backend/app/controllers/interactions_controller.ts` — `store()` captures `prospect.funnelStageId` snapshot; (code-review) `?funnel_stage_id` filter now uses `interaction.funnel_stage_id` directly
+- `apps/backend/start/routes.ts` — Biome cosmetic reformat (no logic change)
 - `apps/backend/tests/functional/interactions/schema.spec.ts` — added `funnelStageId: stage.id` to all `Interaction.create()` calls
-- `apps/backend/tests/functional/interactions/api.spec.ts` — updated `createInteraction` helper to auto-derive `funnelStageId` from prospect; fixed one inline `Interaction.create()` call
+- `apps/backend/tests/functional/interactions/api.spec.ts` — updated `createInteraction` helper to auto-derive `funnelStageId` from prospect; fixed one inline `Interaction.create()` call; (code-review) updated `?funnel_stage_id` test name to reflect snapshot semantics
 - `apps/backend/tests/functional/positionings/api.spec.ts` — added `funnelStageId: stage.id` to three `Interaction.create()` calls
 - `packages/shared/src/index.ts` — added `export type * from './types/prospect-positioning.js'`
