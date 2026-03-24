@@ -93,7 +93,5 @@ router
 // Test-only routes — hard-delete helpers for E2E test teardown.
 // NOT registered in production.
 if (process.env.E2E_TEST_ROUTES_ENABLED === 'true') {
-  router
-    .delete('/api/test/reset', [TestController, 'reset'])
-    .use(middleware.auth())
+  router.delete('/api/test/reset', [TestController, 'reset']).use(middleware.auth())
 }

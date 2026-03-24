@@ -81,8 +81,9 @@ test.describe('Positionings - Archive & Restore', () => {
     await archiveResponse
 
     await expect(page.getByText(/positioning archived/i)).toBeVisible()
+    await expect(page.getByRole('alertdialog')).not.toBeVisible()
     // Positioning no longer in default (active) list
-    await expect(page.getByText('To Be Archived')).not.toBeVisible()
+    await expect(page.locator('table').getByText('To Be Archived')).not.toBeVisible()
     // Other positioning unaffected
     await expect(page.getByText('Active Positioning')).toBeVisible()
   })

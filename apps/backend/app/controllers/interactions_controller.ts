@@ -85,8 +85,8 @@ export default class InteractionsController {
         .where('id', funnelStageId)
         .first()
       if (!stage) return response.notFound()
-      // funnel_stage_id is on prospects, not interactions — filter via relation
-      query.whereHas('prospect', (q) => q.withTrashed().where('funnel_stage_id', funnelStageId))
+      // Filter by snapshot: interaction.funnel_stage_id captures the prospect's stage at creation time
+      query.where('funnel_stage_id', funnelStageId)
     }
 
     const interactions = await query
@@ -118,7 +118,8 @@ export default class InteractionsController {
     const userId = auth.user!.id
 
     // Validate prospect ownership — withTrashed to allow interactions on archived prospects
-    await Prospect.query()
+    // Keep the result: we need prospect.funnelStageId as a snapshot for the interaction
+    const prospect = await Prospect.query()
       .withTrashed()
       .withScopes((s) => s.forUser(userId))
       .where('id', payload.prospect_id)
@@ -137,6 +138,8 @@ export default class InteractionsController {
       userId,
       prospectId: payload.prospect_id,
       positioningId: payload.positioning_id ?? null,
+      // funnelStageId is a server-side snapshot — never sent by client, captured from prospect
+      funnelStageId: prospect.funnelStageId,
       status: payload.status,
       notes: payload.notes ?? null,
       interactionDate: payload.interaction_date

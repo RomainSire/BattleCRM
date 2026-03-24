@@ -44,10 +44,13 @@ test.group('Interactions API', (group) => {
       interactionDate?: DateTime
     } = {},
   ) {
+    // funnelStageId is a server-side snapshot — auto-captured from prospect (mirrors controller behaviour)
+    const prospect = await Prospect.query().withTrashed().where('id', prospectId).firstOrFail()
     return Interaction.create({
       userId,
       prospectId,
       positioningId: overrides.positioningId ?? null,
+      funnelStageId: prospect.funnelStageId,
       status: overrides.status ?? 'positive',
       interactionDate: overrides.interactionDate ?? DateTime.now(),
     })
@@ -245,7 +248,7 @@ test.group('Interactions API', (group) => {
     response.assertStatus(422)
   })
 
-  test('GET /api/interactions?funnel_stage_id filters by prospect funnel stage', async ({
+  test('GET /api/interactions?funnel_stage_id filters by interaction funnel_stage_id snapshot', async ({
     client,
     assert,
   }) => {
@@ -449,6 +452,7 @@ test.group('Interactions API', (group) => {
     const interaction = await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
+      funnelStageId: stage.id,
       status: 'positive',
       notes: 'some notes',
       interactionDate: DateTime.now(),
