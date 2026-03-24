@@ -1,10 +1,9 @@
 import type { ApiClient } from '@japa/api-client'
 import { test } from '@japa/runner'
-import { DateTime } from 'luxon'
 import FunnelStage from '#models/funnel_stage'
-import Interaction from '#models/interaction'
 import Positioning from '#models/positioning'
 import Prospect from '#models/prospect'
+import ProspectPositioning from '#models/prospect_positioning'
 import User from '#models/user'
 
 const TEST_EMAIL_DOMAIN = '@test-positionings-api.com'
@@ -505,19 +504,18 @@ test.group('Positionings API', (group) => {
     const stage = await getUserFirstStage(user.id)
     const p = await createPositioning(user.id, stage.id)
 
-    // Link a prospect via an interaction that references this positioning
+    // Link a prospect via a ProspectPositioning record
     const prospect = await Prospect.create({
       userId: user.id,
       funnelStageId: stage.id,
       name: 'Jane Doe',
     })
-    await Interaction.create({
+    await ProspectPositioning.create({
       userId: user.id,
       prospectId: prospect.id,
       positioningId: p.id,
       funnelStageId: stage.id,
-      status: 'pending',
-      interactionDate: DateTime.now(),
+      outcome: null,
     })
 
     const response = await client.get(`/api/positionings/${p.id}/prospects`).loginAs(user)
@@ -552,19 +550,18 @@ test.group('Positionings API', (group) => {
     const stage = await getUserFirstStage(user.id)
     const p = await createPositioning(user.id, stage.id)
 
-    // Create and link a prospect via an interaction, then archive the prospect
+    // Create and link a prospect via a ProspectPositioning record, then archive the prospect
     const prospect = await Prospect.create({
       userId: user.id,
       funnelStageId: stage.id,
       name: 'Archived Prospect',
     })
-    await Interaction.create({
+    await ProspectPositioning.create({
       userId: user.id,
       prospectId: prospect.id,
       positioningId: p.id,
       funnelStageId: stage.id,
-      status: 'pending',
-      interactionDate: DateTime.now(),
+      outcome: null,
     })
 
     await client.delete(`/api/prospects/${prospect.id}`).loginAs(user)
@@ -589,19 +586,18 @@ test.group('Positionings API', (group) => {
     const stage = await getUserFirstStage(user.id)
     const p = await createPositioning(user.id, stage.id)
 
-    // Link a prospect via an interaction
+    // Link a prospect via a ProspectPositioning record
     const prospect = await Prospect.create({
       userId: user.id,
       funnelStageId: stage.id,
       name: 'Prospect On Archived Pos',
     })
-    await Interaction.create({
+    await ProspectPositioning.create({
       userId: user.id,
       prospectId: prospect.id,
       positioningId: p.id,
       funnelStageId: stage.id,
-      status: 'pending',
-      interactionDate: DateTime.now(),
+      outcome: null,
     })
 
     // Archive the positioning itself

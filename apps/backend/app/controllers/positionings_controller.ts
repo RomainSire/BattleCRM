@@ -1,11 +1,10 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { UUID_REGEX } from '#helpers/regex'
 import FunnelStage from '#models/funnel_stage'
-import Interaction from '#models/interaction'
 import Positioning from '#models/positioning'
-import Prospect from '#models/prospect'
+import ProspectPositioning from '#models/prospect_positioning'
 import { serializePositioning } from '#serializers/positioning'
-import { serializeProspect } from '#serializers/prospect'
+import { serializePositioningLinkedProspect } from '#serializers/prospect-positioning'
 import { createPositioningValidator, updatePositioningValidator } from '#validators/positionings'
 
 export default class PositioningsController {
@@ -174,41 +173,29 @@ export default class PositioningsController {
 
   /**
    * GET /api/positionings/:id/prospects
-   * Returns distinct prospects (including archived) that have at least one interaction
-   * linked to this positioning. Ordered by most recently updated prospect.
+   * Returns prospects linked to this positioning via prospect_positionings.
+   * Includes both active (isActive=true) and historical (isActive=false) assignments.
+   * Replaces Story 4.2 implementation (which used interactions to derive the link).
    */
   async prospects({ params, response, auth }: HttpContext) {
     const userId = auth.user!.id
 
-    // withTrashed() allows accessing prospects for archived positionings (historical data)
+    // withTrashed() — historical data accessible even if positioning is archived
     const positioning = await Positioning.query()
       .withTrashed()
       .withScopes((s) => s.forUser(userId))
       .where('id', params.id)
       .firstOrFail()
 
-    // Collect distinct prospect IDs from interactions linked to this positioning
-    const interactions = await Interaction.query()
-      .withTrashed()
+    const pps = await ProspectPositioning.query()
       .withScopes((s) => s.forUser(userId))
       .where('positioning_id', positioning.id)
-      .select('prospect_id')
-
-    const prospectIds = [...new Set(interactions.map((i) => i.prospectId))]
-
-    if (prospectIds.length === 0) {
-      return response.ok({ data: [], meta: { total: 0 } })
-    }
-
-    const linkedProspects = await Prospect.query()
-      .withTrashed()
-      .withScopes((s) => s.forUser(userId))
-      .whereIn('id', prospectIds)
-      .orderBy('updated_at', 'desc')
+      .preload('prospect', (q) => q.withTrashed())
+      .orderBy('created_at', 'desc')
 
     return response.ok({
-      data: linkedProspects.map(serializeProspect),
-      meta: { total: linkedProspects.length },
+      data: pps.map(serializePositioningLinkedProspect),
+      meta: { total: pps.length },
     })
   }
 }
