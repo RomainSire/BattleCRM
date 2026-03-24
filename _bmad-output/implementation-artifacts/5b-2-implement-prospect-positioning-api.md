@@ -1,6 +1,6 @@
 # Story 5B.2: Implement ProspectPositioning API
 
-Status: review
+Status: done
 
 ## Story
 
@@ -495,7 +495,11 @@ claude-sonnet-4-6
 
 **Modified files:**
 - `packages/shared/src/types/prospect-positioning.ts` — added `ProspectPositioningDetailType`, `PositioningLinkedProspectType`
+- `packages/shared/src/index.ts` — Biome reordering (cosmetic, no content change)
+- `apps/backend/app/models/prospect_positioning.ts` — Biome import reordering (cosmetic, from 5B.1 code review)
 - `apps/backend/app/serializers/prospect-positioning.ts` — added `serializeProspectPositioningDetail`, `serializePositioningLinkedProspect`
 - `apps/backend/app/controllers/positionings_controller.ts` — updated `prospects()` to use `prospect_positionings` table
+- `apps/backend/app/controllers/prospect_positionings_controller.ts` — H1 fix: `preload('positioning', q => q.withTrashed())`
 - `apps/backend/start/routes.ts` — added 3 routes + lazy import for `ProspectPositioningsController`
 - `apps/backend/tests/functional/positionings/api.spec.ts` — replaced `Interaction.create` with `ProspectPositioning.create` in 3 tests
+- `apps/backend/tests/functional/prospect_positionings/api.spec.ts` — added 3 tests (H1/M1/L1) + M2 silent-skip fix

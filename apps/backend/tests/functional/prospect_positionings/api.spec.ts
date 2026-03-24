@@ -439,10 +439,7 @@ test.group('ProspectPositionings API', (group) => {
       .withScopes((s) => s.forUser(user.id))
       .orderBy('position', 'asc')
 
-    if (stages.length < 2) {
-      // Skip if only one stage available
-      return
-    }
+    assert.isAbove(stages.length, 1, 'Expected at least 2 funnel stages in test setup')
 
     const otherStage = stages.find((s) => s.id !== stage.id)!
     const positioning2 = await Positioning.create({
@@ -542,5 +539,83 @@ test.group('ProspectPositionings API', (group) => {
     const response = await client.get(`/api/prospects/${prospect.id}/positionings`)
 
     response.assertStatus(401)
+  })
+
+  // H1 fix — archived positioning must still appear in history (withTrashed on preload)
+  test('GET /api/prospects/:id/positionings includes pp with archived positioning', async ({
+    client,
+    assert,
+  }) => {
+    const { user, stage, prospect, positioning } = await createUserWithContext(
+      client,
+      'index-archived-pos',
+    )
+
+    await ProspectPositioning.create({
+      userId: user.id,
+      prospectId: prospect.id,
+      positioningId: positioning.id,
+      funnelStageId: stage.id,
+      outcome: null,
+    })
+
+    // Archive the positioning — pp record stays, positioning becomes soft-deleted
+    await client.delete(`/api/positionings/${positioning.id}`).loginAs(user)
+
+    // Must not crash (500) — withTrashed on preload ensures archived positioning is loaded
+    const response = await client.get(`/api/prospects/${prospect.id}/positionings`).loginAs(user)
+
+    response.assertStatus(200)
+    assert.lengthOf(response.body().data, 1)
+    assert.equal(response.body().data[0].positioningId, positioning.id)
+    assert.equal(response.body().data[0].positioningName, positioning.name)
+  })
+
+  // M1 — positioning_id belonging to another user must return 404 (M1 isolation pattern)
+  test('POST /api/prospects/:id/positionings returns 404 for positioning belonging to another user', async ({
+    client,
+  }) => {
+    const { user: userA, prospect: prospectA } = await createUserWithContext(
+      client,
+      'assign-pos-isolation-a',
+    )
+    const { positioning: posB } = await createUserWithContext(client, 'assign-pos-isolation-b')
+
+    // userA uses their own prospect but userB's positioning_id → 404
+    const response = await client
+      .post(`/api/prospects/${prospectA.id}/positionings`)
+      .json({ positioning_id: posB.id })
+      .loginAs(userA)
+
+    response.assertStatus(404)
+  })
+
+  // L1 — setOutcome works on archived prospect (archival flow in Story 5B.3)
+  test('PATCH /api/prospects/:id/positionings/current/outcome works on archived prospect', async ({
+    client,
+    assert,
+  }) => {
+    const { user, prospect, positioning } = await createUserWithContext(
+      client,
+      'outcome-archived-pros',
+    )
+
+    // Assign positioning
+    await client
+      .post(`/api/prospects/${prospect.id}/positionings`)
+      .json({ positioning_id: positioning.id })
+      .loginAs(user)
+
+    // Archive the prospect
+    await client.delete(`/api/prospects/${prospect.id}`).loginAs(user)
+
+    // setOutcome must still work (withTrashed on prospect in controller)
+    const response = await client
+      .patch(`/api/prospects/${prospect.id}/positionings/current/outcome`)
+      .json({ outcome: 'success' })
+      .loginAs(user)
+
+    response.assertStatus(200)
+    assert.equal(response.body().outcome, 'success')
   })
 })

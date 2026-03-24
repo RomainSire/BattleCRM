@@ -32,7 +32,7 @@ export default class ProspectPositioningsController {
     const pps = await ProspectPositioning.query()
       .withScopes((s) => s.forUser(userId))
       .where('prospect_id', prospect.id)
-      .preload('positioning')
+      .preload('positioning', (q) => q.withTrashed()) // withTrashed: archived positionings must remain visible in history
       .preload('funnelStage', (q) => q.withTrashed())
       .orderBy('created_at', 'desc')
 
