@@ -15,6 +15,7 @@ const AuthController = () => import('#controllers/auth_controller')
 const FunnelStagesController = () => import('#controllers/funnel_stages_controller')
 const InteractionsController = () => import('#controllers/interactions_controller')
 const PositioningsController = () => import('#controllers/positionings_controller')
+const ProspectPositioningsController = () => import('#controllers/prospect_positionings_controller')
 const ProspectsController = () => import('#controllers/prospects_controller')
 const TestController = () => import('#controllers/test_controller')
 
@@ -83,6 +84,18 @@ router
         router.patch('/:id/restore', [ProspectsController, 'restore']).where('id', UUID_REGEX)
         router
           .get('/:id/stage-transitions', [ProspectsController, 'stageTransitions'])
+          .where('id', UUID_REGEX)
+        router
+          .get('/:id/positionings', [ProspectPositioningsController, 'index'])
+          .where('id', UUID_REGEX)
+        router
+          .post('/:id/positionings', [ProspectPositioningsController, 'assign'])
+          .where('id', UUID_REGEX)
+        router
+          .patch('/:id/positionings/current/outcome', [
+            ProspectPositioningsController,
+            'setOutcome',
+          ])
           .where('id', UUID_REGEX)
       })
       .prefix('/prospects')
