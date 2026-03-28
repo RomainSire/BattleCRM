@@ -47,7 +47,6 @@ test.describe('Interactions - List View', () => {
     // Interaction A: known past date — used for client-side date range filter test
     await createInteraction(context.request, {
       prospect_id: prospectA.id,
-      status: 'positive',
       notes: 'Went well',
       positioning_id: positioning.id,
       interaction_date: '2024-06-15',
@@ -55,7 +54,6 @@ test.describe('Interactions - List View', () => {
     // Interaction B: today's date (default)
     await createInteraction(context.request, {
       prospect_id: prospectB.id,
-      status: 'negative',
       notes: 'No answer',
     })
     await context.close()
@@ -153,69 +151,18 @@ test.describe('Interactions - List View', () => {
     await expect(page.getByRole('button', { name: /save/i })).not.toBeVisible()
   })
 
-  // ── Archive / Restore ────────────────────────────────────────────────────────
+  // ── Delete ───────────────────────────────────────────────────────────────────
 
-  test('clicking "Archive" shows a confirmation dialog', async ({ page }) => {
+  test('clicking "Delete" shows a confirmation dialog', async ({ page }) => {
     await page.goto('/interactions')
     const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' })
     await row.click()
-    await page.getByRole('button', { name: 'Archive', exact: true }).click()
+    await page.getByRole('button', { name: 'Delete', exact: true }).click()
     await expect(page.getByRole('alertdialog')).toBeVisible()
-    await expect(page.getByText(/archive interaction\?/i)).toBeVisible()
-  })
-
-  test('confirming archive removes interaction from default list', async ({ page }) => {
-    await page.goto('/interactions')
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' })
-    await row.click()
-    await page.getByRole('button', { name: 'Archive', exact: true }).click()
-    await page.getByRole('alertdialog').getByRole('button', { name: 'Archive' }).click()
-    await expect(page.getByText('Interaction archived.')).toBeVisible()
-    await expect(page.getByText('TL Prospect B')).not.toBeVisible()
-  })
-
-  test('"Show archived" switch reveals archived interaction with "Archived" badge', async ({
-    page,
-  }) => {
-    await page.goto('/interactions')
-    await page.getByRole('switch', { name: /show archived/i }).click()
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' })
-    await expect(row).toBeVisible()
-    await expect(row.getByText('Archived')).toBeVisible()
-  })
-
-  test('archived interaction shows "Restore" button, not Edit or Archive', async ({ page }) => {
-    await page.goto('/interactions')
-    await page.getByRole('switch', { name: /show archived/i }).click()
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' })
-    await row.click()
-    await expect(page.getByRole('button', { name: /restore/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Edit', exact: true })).not.toBeVisible()
-  })
-
-  test('clicking "Restore" restores the interaction', async ({ page }) => {
-    await page.goto('/interactions')
-    await page.getByRole('switch', { name: /show archived/i }).click()
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' })
-    await row.click()
-    await page.getByRole('button', { name: /restore/i }).click()
-    await expect(page.getByText('Interaction restored.')).toBeVisible()
-    // Interaction visible again in default view
-    await page.getByRole('switch', { name: /show archived/i }).click()
-    await expect(page.getByText('TL Prospect B')).toBeVisible()
-    await expect(page.getByText('2 / 2')).toBeVisible()
+    await expect(page.getByText(/delete interaction\?/i)).toBeVisible()
   })
 
   // ── Filters ──────────────────────────────────────────────────────────────────
-
-  test('status filter shows only matching interactions', async ({ page }) => {
-    await page.goto('/interactions')
-    // Status combobox is uniquely identified by "All statuses" default text
-    await page.getByRole('combobox').filter({ hasText: 'All statuses' }).click()
-    await page.getByRole('option', { name: /positive/i }).click()
-    await expect(page.getByText('TL Prospect A')).toBeVisible()
-    await expect(page.getByText('TL Prospect B')).not.toBeVisible()
-  })
 
   test('prospect filter shows only matching interactions', async ({ page }) => {
     await page.goto('/interactions')
@@ -259,8 +206,8 @@ test.describe('Interactions - List View', () => {
   test('"Clear filters" button resets all filters', async ({ page }) => {
     await page.goto('/interactions')
     // Apply a server-side filter
-    await page.getByRole('combobox').filter({ hasText: 'All statuses' }).click()
-    await page.getByRole('option', { name: /positive/i }).click()
+    await page.getByRole('combobox').filter({ hasText: 'All prospects' }).click()
+    await page.getByRole('option', { name: 'TL Prospect A' }).click()
     await expect(page.getByRole('button', { name: /clear filters/i })).toBeVisible()
     await page.getByRole('button', { name: /clear filters/i }).click()
     // Both interactions visible again
@@ -272,9 +219,9 @@ test.describe('Interactions - List View', () => {
     page,
   }) => {
     await page.goto('/interactions')
-    // Server-side filter (status): API returns 1 → "1 / 1"
-    await page.getByRole('combobox').filter({ hasText: 'All statuses' }).click()
-    await page.getByRole('option', { name: /positive/i }).click()
+    // Server-side filter (prospect A): API returns 1 → "1 / 1"
+    await page.getByRole('combobox').filter({ hasText: 'All prospects' }).click()
+    await page.getByRole('option', { name: 'TL Prospect A' }).click()
     await expect(page.getByText('1 / 1')).toBeVisible()
 
     // Clear and apply date range (client-side): API returns 2, client shows 1 → "1 / 2"
@@ -282,6 +229,16 @@ test.describe('Interactions - List View', () => {
     await page.locator('input[type="date"]').first().fill('2024-01-01')
     await page.locator('input[type="date"]').last().fill('2024-12-31')
     await expect(page.getByText('1 / 2')).toBeVisible()
+  })
+
+  test('confirming delete removes interaction from list', async ({ page }) => {
+    await page.goto('/interactions')
+    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'TL Prospect B' })
+    await row.click()
+    await page.getByRole('button', { name: 'Delete', exact: true }).click()
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+    await expect(page.getByText('Interaction deleted.')).toBeVisible()
+    await expect(page.getByText('TL Prospect B')).not.toBeVisible()
   })
 
   // ── Empty state ───────────────────────────────────────────────────────────────

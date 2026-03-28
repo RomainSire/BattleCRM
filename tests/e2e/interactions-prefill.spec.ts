@@ -71,14 +71,12 @@ test.describe('Interactions - Pre-fill & Quick Actions', () => {
 
   // ── AC5: 3-click interaction logging ───────────────────────────────────────
 
-  test('can log an interaction in 3 clicks from list view', async ({ page }) => {
+  test('can log an interaction in 2 clicks from list view', async ({ page }) => {
     await page.goto('/prospects')
-    // Click 1: quick-action button
+    // Click 1: quick-action button (prospect is pre-selected)
     await page.getByRole('button', { name: 'Log Interaction' }).first().click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    // Click 2: select status
-    await page.getByRole('radio', { name: 'Positive' }).click()
-    // Click 3: save
+    // Click 2: save
     await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
     await expect(page.getByText('Interaction logged.')).toBeVisible()
   })
@@ -94,7 +92,6 @@ test.describe('Interactions - Pre-fill & Quick Actions', () => {
     })
     await page.getByRole('button', { name: 'Log Interaction' }).first().click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    await page.getByRole('radio', { name: 'Positive' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
     await expect(page.getByText('Interaction logged.')).toBeVisible()
 
@@ -122,8 +119,7 @@ test.describe('Interactions - Pre-fill & Quick Actions', () => {
     await page.locator('#interaction-positioning').click()
     await page.getByRole('option', { name: 'Pre-fill Positioning' }).click()
 
-    // Select status and save
-    await page.getByRole('radio', { name: 'Positive' }).click()
+    // Save
     await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
     await expect(page.getByText('Interaction logged.')).toBeVisible()
 

@@ -172,32 +172,25 @@ export async function createInteraction(
   request: APIRequestContext,
   data: {
     prospect_id: string
-    status: 'positive' | 'pending' | 'negative'
     notes?: string
     positioning_id?: string
     interaction_date?: string // ISO date string YYYY-MM-DD
   },
-): Promise<{ id: string; prospectId: string; status: string; deletedAt: string | null }> {
+): Promise<{ id: string; prospectId: string }> {
   const res = await request.post(`${API_URL}/api/interactions`, { data })
   if (!res.ok()) throw new Error(`createInteraction failed: ${res.status()} ${await res.text()}`)
   return res.json()
 }
 
 /**
- * Reset interactions to a clean slate (including archived).
- * Restores archived ones first (so DELETE can find them), then soft-deletes all.
+ * Delete all interactions for the authenticated user.
+ * Interactions are hard-deleted (no archive/restore).
  * Requires an authenticated request context.
  */
 export async function resetInteractions(request: APIRequestContext): Promise<void> {
-  const res = await request.get(`${API_URL}/api/interactions?include_archived=true`)
+  const res = await request.get(`${API_URL}/api/interactions`)
   const body = await res.json()
-  const interactions: Array<{ id: string; deletedAt: string | null }> = body.data ?? []
-
-  for (const i of interactions) {
-    if (i.deletedAt !== null) {
-      await request.patch(`${API_URL}/api/interactions/${i.id}/restore`)
-    }
-  }
+  const interactions: Array<{ id: string }> = body.data ?? []
   for (const i of interactions) {
     await request.delete(`${API_URL}/api/interactions/${i.id}`)
   }
