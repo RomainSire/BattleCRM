@@ -18,11 +18,9 @@ export function serializeInteraction(interaction: Interaction): InteractionType 
     prospectFunnelStageName: interaction.prospect.funnelStage?.name ?? '',
     positioningId: interaction.positioningId,
     positioningName: positioning?.name ?? null,
-    status: interaction.status,
     notes: interaction.notes,
     interactionDate: interaction.interactionDate.toISO()!,
     createdAt: interaction.createdAt.toISO()!,
     updatedAt: interaction.updatedAt?.toISO() ?? null,
-    deletedAt: interaction.deletedAt?.toISO() ?? null,
   }
 }

@@ -40,7 +40,6 @@ test.group('Interactions API', (group) => {
     prospectId: string,
     overrides: {
       positioningId?: string | null
-      status?: 'positive' | 'pending' | 'negative'
       interactionDate?: DateTime
     } = {},
   ) {
@@ -51,7 +50,6 @@ test.group('Interactions API', (group) => {
       prospectId,
       positioningId: overrides.positioningId ?? null,
       funnelStageId: prospect.funnelStageId,
-      status: overrides.status ?? 'positive',
       interactionDate: overrides.interactionDate ?? DateTime.now(),
     })
   }
@@ -81,7 +79,6 @@ test.group('Interactions API', (group) => {
     assert.equal(data[0].prospectName, 'Test Prospect')
     assert.equal(data[0].prospectFunnelStageName, stage.name)
     assert.equal(data[0].prospectFunnelStageId, stage.id)
-    assert.equal(data[0].status, 'positive')
     assert.isNull(data[0].positioningName)
     assert.isNull(data[0].positioningId)
   })
@@ -101,12 +98,12 @@ test.group('Interactions API', (group) => {
     assert.equal(response.body().data[1].id, i1.id)
   })
 
-  test('GET /api/interactions excludes soft-deleted by default', async ({ client, assert }) => {
+  test('GET /api/interactions excludes hard-deleted interactions', async ({ client, assert }) => {
     const user = await registerUser(client, 'list-excl-deleted')
     const stage = await getUserFirstStage(user.id)
     const prospect = await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'P' })
     const i1 = await createInteraction(user.id, prospect.id)
-    const i2 = await createInteraction(user.id, prospect.id, { status: 'negative' })
+    const i2 = await createInteraction(user.id, prospect.id)
     await i2.delete()
 
     const response = await client.get('/api/interactions').loginAs(user)
@@ -114,23 +111,6 @@ test.group('Interactions API', (group) => {
     const ids = response.body().data.map((i: { id: string }) => i.id)
     assert.include(ids, i1.id)
     assert.notInclude(ids, i2.id)
-  })
-
-  test('GET /api/interactions?include_archived=true includes soft-deleted', async ({
-    client,
-    assert,
-  }) => {
-    const user = await registerUser(client, 'list-incl-archived')
-    const stage = await getUserFirstStage(user.id)
-    const prospect = await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'P' })
-    await createInteraction(user.id, prospect.id)
-    const i2 = await createInteraction(user.id, prospect.id, { status: 'negative' })
-    await i2.delete()
-
-    const response = await client.get('/api/interactions?include_archived=true').loginAs(user)
-    response.assertStatus(200)
-    const ids = response.body().data.map((i: { id: string }) => i.id)
-    assert.include(ids, i2.id)
   })
 
   // ===========================
@@ -222,30 +202,6 @@ test.group('Interactions API', (group) => {
       .get(`/api/interactions?positioning_id=${positioningA.id}`)
       .loginAs(userB)
     response.assertStatus(404)
-  })
-
-  test('GET /api/interactions?status=positive filters by status', async ({ client, assert }) => {
-    const user = await registerUser(client, 'filter-status')
-    const stage = await getUserFirstStage(user.id)
-    const prospect = await Prospect.create({
-      userId: user.id,
-      funnelStageId: stage.id,
-      name: 'P',
-    })
-    const i1 = await createInteraction(user.id, prospect.id, { status: 'positive' })
-    await createInteraction(user.id, prospect.id, { status: 'negative' })
-
-    const response = await client.get('/api/interactions?status=positive').loginAs(user)
-    response.assertStatus(200)
-    const ids = response.body().data.map((i: { id: string }) => i.id)
-    assert.include(ids, i1.id)
-    assert.lengthOf(ids, 1)
-  })
-
-  test('GET /api/interactions?status=invalid returns 422', async ({ client }) => {
-    const user = await registerUser(client, 'filter-status-invalid')
-    const response = await client.get('/api/interactions?status=unknown').loginAs(user)
-    response.assertStatus(422)
   })
 
   test('GET /api/interactions?funnel_stage_id filters by interaction funnel_stage_id snapshot', async ({
@@ -351,7 +307,6 @@ test.group('Interactions API', (group) => {
     const response = await client.post('/api/interactions').loginAs(user).json({
       prospect_id: prospect.id,
       positioning_id: positioning.id,
-      status: 'positive',
       notes: 'Great talk',
       interaction_date: DateTime.now().toISO(),
     })
@@ -359,7 +314,6 @@ test.group('Interactions API', (group) => {
     assert.isDefined(response.body().id)
     assert.equal(response.body().prospectName, 'P')
     assert.equal(response.body().positioningName, 'LinkedIn v1')
-    assert.equal(response.body().status, 'positive')
     assert.equal(response.body().notes, 'Great talk')
   })
 
@@ -374,7 +328,7 @@ test.group('Interactions API', (group) => {
     const response = await client
       .post('/api/interactions')
       .loginAs(user)
-      .json({ prospect_id: prospect.id, status: 'pending' })
+      .json({ prospect_id: prospect.id })
     response.assertStatus(201)
     assert.isNull(response.body().positioningId)
     assert.isNull(response.body().positioningName)
@@ -392,22 +346,10 @@ test.group('Interactions API', (group) => {
     const response = await client
       .post('/api/interactions')
       .loginAs(user)
-      .json({ prospect_id: prospect.id, status: 'pending' })
+      .json({ prospect_id: prospect.id })
     response.assertStatus(201)
     assert.isDefined(response.body().interactionDate)
     assert.isNotNull(response.body().interactionDate)
-  })
-
-  test('POST /api/interactions missing status returns 422', async ({ client }) => {
-    const user = await registerUser(client, 'post-missing-status')
-    const stage = await getUserFirstStage(user.id)
-    const prospect = await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'P' })
-
-    const response = await client
-      .post('/api/interactions')
-      .loginAs(user)
-      .json({ prospect_id: prospect.id })
-    response.assertStatus(422)
   })
 
   test('POST /api/interactions with another user prospect returns 404', async ({ client }) => {
@@ -423,27 +365,13 @@ test.group('Interactions API', (group) => {
     const response = await client
       .post('/api/interactions')
       .loginAs(userB)
-      .json({ prospect_id: prospectA.id, status: 'positive' })
+      .json({ prospect_id: prospectA.id })
     response.assertStatus(404)
   })
 
   // ===========================
   // PUT /api/interactions/:id
   // ===========================
-
-  test('PUT /api/interactions/:id updates status → 200', async ({ client, assert }) => {
-    const user = await registerUser(client, 'put-status')
-    const stage = await getUserFirstStage(user.id)
-    const prospect = await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'P' })
-    const interaction = await createInteraction(user.id, prospect.id, { status: 'pending' })
-
-    const response = await client
-      .put(`/api/interactions/${interaction.id}`)
-      .loginAs(user)
-      .json({ status: 'positive' })
-    response.assertStatus(200)
-    assert.equal(response.body().status, 'positive')
-  })
 
   test('PUT /api/interactions/:id updates notes to null', async ({ client, assert }) => {
     const user = await registerUser(client, 'put-null-notes')
@@ -453,7 +381,6 @@ test.group('Interactions API', (group) => {
       userId: user.id,
       prospectId: prospect.id,
       funnelStageId: stage.id,
-      status: 'positive',
       notes: 'some notes',
       interactionDate: DateTime.now(),
     })
@@ -497,7 +424,7 @@ test.group('Interactions API', (group) => {
     const response = await client
       .put('/api/interactions/00000000-0000-0000-0000-000000000000')
       .loginAs(user)
-      .json({ status: 'positive' })
+      .json({ notes: null })
     response.assertStatus(404)
   })
 
@@ -505,18 +432,18 @@ test.group('Interactions API', (group) => {
   // DELETE /api/interactions/:id
   // ===========================
 
-  test('DELETE /api/interactions/:id soft-deletes → 200 and excluded from list', async ({
+  test('DELETE /api/interactions/:id hard-deletes → 200 and excluded from list', async ({
     client,
     assert,
   }) => {
-    const user = await registerUser(client, 'delete-soft')
+    const user = await registerUser(client, 'delete-hard')
     const stage = await getUserFirstStage(user.id)
     const prospect = await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'P' })
     const interaction = await createInteraction(user.id, prospect.id)
 
     const deleteResponse = await client.delete(`/api/interactions/${interaction.id}`).loginAs(user)
     deleteResponse.assertStatus(200)
-    assert.equal(deleteResponse.body().message, 'Interaction archived')
+    assert.equal(deleteResponse.body().message, 'Interaction deleted')
 
     const listResponse = await client.get('/api/interactions').loginAs(user)
     const ids = listResponse.body().data.map((i: { id: string }) => i.id)
@@ -543,7 +470,7 @@ test.group('Interactions API', (group) => {
   test('POST /api/interactions without auth returns 401', async ({ client }) => {
     const response = await client
       .post('/api/interactions')
-      .json({ prospect_id: '00000000-0000-0000-0000-000000000001', status: 'positive' })
+      .json({ prospect_id: '00000000-0000-0000-0000-000000000001' })
     response.assertStatus(401)
   })
 
@@ -580,7 +507,7 @@ test.group('Interactions API', (group) => {
     const response = await client
       .put(`/api/interactions/${interaction.id}`)
       .loginAs(userB)
-      .json({ status: 'negative' })
+      .json({ notes: null })
     response.assertStatus(404)
   })
 
@@ -601,88 +528,4 @@ test.group('Interactions API', (group) => {
     response.assertStatus(404)
   })
 
-  // ===========================
-  // PATCH /api/interactions/:id/restore
-  // ===========================
-
-  test('PATCH /api/interactions/:id/restore restores archived interaction → 200', async ({
-    client,
-    assert,
-  }) => {
-    const user = await registerUser(client, 'restore-ok')
-    const stage = await getUserFirstStage(user.id)
-    const prospect = await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'P' })
-    const interaction = await createInteraction(user.id, prospect.id)
-    await interaction.delete()
-
-    const response = await client.patch(`/api/interactions/${interaction.id}/restore`).loginAs(user)
-    response.assertStatus(200)
-    assert.isNull(response.body().deletedAt)
-    assert.equal(response.body().id, interaction.id)
-    assert.equal(response.body().prospectName, 'P')
-  })
-
-  test('PATCH /api/interactions/:id/restore restored interaction appears in default list', async ({
-    client,
-    assert,
-  }) => {
-    const user = await registerUser(client, 'restore-list')
-    const stage = await getUserFirstStage(user.id)
-    const prospect = await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'P' })
-    const interaction = await createInteraction(user.id, prospect.id)
-    await interaction.delete()
-
-    await client.patch(`/api/interactions/${interaction.id}/restore`).loginAs(user)
-
-    const listResponse = await client.get('/api/interactions').loginAs(user)
-    const ids = listResponse.body().data.map((i: { id: string }) => i.id)
-    assert.include(ids, interaction.id)
-  })
-
-  test('PATCH /api/interactions/:id/restore on non-archived interaction → 404', async ({
-    client,
-  }) => {
-    const user = await registerUser(client, 'restore-not-archived')
-    const stage = await getUserFirstStage(user.id)
-    const prospect = await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'P' })
-    const interaction = await createInteraction(user.id, prospect.id)
-
-    const response = await client.patch(`/api/interactions/${interaction.id}/restore`).loginAs(user)
-    response.assertStatus(404)
-  })
-
-  test('PATCH /api/interactions/:id/restore non-existent → 404', async ({ client }) => {
-    const user = await registerUser(client, 'restore-404')
-    const response = await client
-      .patch('/api/interactions/00000000-0000-0000-0000-000000000000/restore')
-      .loginAs(user)
-    response.assertStatus(404)
-  })
-
-  test('PATCH /api/interactions/:id/restore without auth → 401', async ({ client }) => {
-    const response = await client.patch(
-      '/api/interactions/00000000-0000-0000-0000-000000000000/restore',
-    )
-    response.assertStatus(401)
-  })
-
-  test('user isolation: PATCH /:id/restore returns 404 for another user interaction', async ({
-    client,
-  }) => {
-    const userA = await registerUser(client, 'restore-iso-a')
-    const userB = await registerUser(client, 'restore-iso-b')
-    const stageA = await getUserFirstStage(userA.id)
-    const prospectA = await Prospect.create({
-      userId: userA.id,
-      funnelStageId: stageA.id,
-      name: 'PA',
-    })
-    const interaction = await createInteraction(userA.id, prospectA.id)
-    await interaction.delete()
-
-    const response = await client
-      .patch(`/api/interactions/${interaction.id}/restore`)
-      .loginAs(userB)
-    response.assertStatus(404)
-  })
 })

@@ -3,8 +3,13 @@ import { DateTime } from 'luxon'
 import { UUID_REGEX } from '#helpers/regex'
 import FunnelStage from '#models/funnel_stage'
 import Prospect from '#models/prospect'
+import ProspectPositioning from '#models/prospect_positioning'
 import ProspectStageTransition from '#models/prospect_stage_transition'
-import { serializeProspect, serializeTransition } from '#serializers/prospect'
+import {
+  loadActivePositioning,
+  serializeProspect,
+  serializeTransition,
+} from '#serializers/prospect'
 import { createProspectValidator, updateProspectValidator } from '#validators/prospects'
 
 export default class ProspectsController {
@@ -13,6 +18,7 @@ export default class ProspectsController {
    * Returns all prospects for the authenticated user, ordered by updated_at DESC.
    * ?include_archived=true includes soft-deleted prospects
    * ?funnel_stage_id=:uuid filters by funnel stage
+   * Includes activePositioning in each prospect (batch query — 1 extra DB round trip).
    */
   async index({ request, response, auth }: HttpContext) {
     const userId = auth.user!.id
@@ -46,8 +52,35 @@ export default class ProspectsController {
     }
 
     const prospects = await query
+
+    // Batch load active positionings — 1 extra query for all prospects (no N+1)
+    const activeByProspectId = new Map<
+      string,
+      { positioningId: string; positioningName: string; outcome: 'success' | 'failed' | null }
+    >()
+    if (prospects.length > 0) {
+      const prospectIds = prospects.map((p) => p.id)
+      const pps = await ProspectPositioning.query()
+        .where('user_id', userId)
+        .whereIn('prospect_id', prospectIds)
+        .preload('positioning', (q) => q.withTrashed())
+
+      const prospectById = new Map(prospects.map((p) => [p.id, p]))
+      for (const pp of pps) {
+        const p = prospectById.get(pp.prospectId)
+        // Active = pp whose funnel_stage_id matches the prospect's current funnel_stage_id
+        if (p && pp.funnelStageId === p.funnelStageId) {
+          activeByProspectId.set(pp.prospectId, {
+            positioningId: pp.positioningId,
+            positioningName: pp.positioning.name,
+            outcome: pp.outcome,
+          })
+        }
+      }
+    }
+
     return response.ok({
-      data: prospects.map(serializeProspect),
+      data: prospects.map((p) => serializeProspect(p, activeByProspectId.get(p.id) ?? null)),
       meta: { total: prospects.length },
     })
   }
@@ -55,6 +88,7 @@ export default class ProspectsController {
   /**
    * GET /api/prospects/:id
    * Returns a single active prospect by ID for the authenticated user.
+   * Includes activePositioning.
    */
   async show({ params, response, auth }: HttpContext) {
     const userId = auth.user!.id
@@ -64,13 +98,15 @@ export default class ProspectsController {
       .where('id', params.id)
       .firstOrFail()
 
-    return response.ok(serializeProspect(prospect))
+    const activePp = await loadActivePositioning(userId, prospect)
+    return response.ok(serializeProspect(prospect, activePp))
   }
 
   /**
    * POST /api/prospects
    * Creates a new prospect for the authenticated user.
    * Defaults funnel_stage_id to user's first active stage (lowest position) if not provided.
+   * New prospects always have activePositioning = null.
    */
   async store({ request, response, auth }: HttpContext) {
     const payload = await request.validateUsing(createProspectValidator)
@@ -117,13 +153,15 @@ export default class ProspectsController {
     if (payload.notes !== undefined) prospect.notes = payload.notes ?? null
 
     await prospect.save()
-    return response.created(serializeProspect(prospect))
+    // New prospects have no active positioning
+    return response.created(serializeProspect(prospect, null))
   }
 
   /**
    * PUT /api/prospects/:id
    * Updates a prospect owned by the authenticated user (partial update semantics).
    * Records a stage transition when funnel_stage_id actually changes (FR44).
+   * Includes activePositioning in response (recomputed after stage change).
    */
   async update({ params, request, response, auth }: HttpContext) {
     const payload = await request.validateUsing(updateProspectValidator)
@@ -167,7 +205,9 @@ export default class ProspectsController {
       })
     }
 
-    return response.ok(serializeProspect(prospect))
+    // Recompute active positioning — stage may have changed
+    const activePp = await loadActivePositioning(userId, prospect)
+    return response.ok(serializeProspect(prospect, activePp))
   }
 
   /**
@@ -190,6 +230,7 @@ export default class ProspectsController {
    * PATCH /api/prospects/:id/restore
    * Restores a soft-deleted prospect (sets deleted_at to null).
    * Must use withTrashed() to find archived prospects.
+   * Includes activePositioning in response.
    */
   async restore({ params, response, auth }: HttpContext) {
     const userId = auth.user!.id
@@ -201,7 +242,8 @@ export default class ProspectsController {
       .firstOrFail()
 
     await prospect.restore()
-    return response.ok(serializeProspect(prospect))
+    const activePp = await loadActivePositioning(userId, prospect)
+    return response.ok(serializeProspect(prospect, activePp))
   }
 
   /**

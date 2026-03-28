@@ -21,6 +21,10 @@ export default class TestController {
 
     await db.from('interactions').where('user_id', userId).delete()
     await db.from('prospect_stage_transitions').where('user_id', userId).delete()
+    await db
+      .from('prospect_positionings')
+      .whereIn('prospect_id', db.from('prospects').where('user_id', userId).select('id'))
+      .delete()
     await db.from('prospects').where('user_id', userId).delete()
     await db.from('positionings').where('user_id', userId).delete()
     await db.from('funnel_stages').where('user_id', userId).delete()
