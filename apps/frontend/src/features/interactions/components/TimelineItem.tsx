@@ -1,5 +1,5 @@
 import type { InteractionType } from '@battlecrm/shared'
-import { Archive, ChevronRight, Pencil, RotateCcw, X } from 'lucide-react'
+import { ChevronRight, Pencil, Trash2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
@@ -24,10 +24,8 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import { useInteractionEdit } from '../hooks/useInteractionEdit'
-import { StatusIcon } from './StatusIcon'
 
 export interface TimelineItemProps {
   interaction: InteractionType
@@ -39,18 +37,14 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
   const { t } = useTranslation()
   const {
     isEditing,
-    isArchived,
     apiError,
-    archiveError,
-    restoreError,
-    editStatus,
-    setEditStatus,
+    deleteError,
     editPositioningId,
     setEditPositioningId,
     editDate,
     setEditDate,
     update,
-    archive,
+    deleteInteraction,
     positionings,
     positioningsLoading,
     register,
@@ -58,8 +52,7 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
     onFormSubmit,
     handleEditStart,
     handleCancel,
-    handleArchive,
-    handleRestore,
+    handleDelete,
   } = useInteractionEdit(interaction, isExpanded)
 
   return (
@@ -68,10 +61,7 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
         type="button"
         onClick={onToggle}
         aria-expanded={isExpanded}
-        className={cn(
-          'flex w-full items-start gap-3 rounded px-1 py-1 text-left text-sm hover:bg-muted/50',
-          isArchived && 'opacity-60',
-        )}
+        className="flex w-full items-start gap-3 rounded px-1 py-1 text-left text-sm hover:bg-muted/50"
       >
         <ChevronRight
           aria-hidden="true"
@@ -80,9 +70,8 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
             isExpanded && 'rotate-90',
           )}
         />
-        <StatusIcon status={interaction.status} className="mt-0.5 size-4 shrink-0" />
         <div className="min-w-0 flex-1">
-          <span className={cn('text-muted-foreground text-xs', isArchived && 'line-through')}>
+          <span className="text-muted-foreground text-xs">
             {new Date(interaction.interactionDate).toLocaleDateString()}
             {interaction.positioningName && <> · {interaction.positioningName}</>}
           </span>
@@ -97,34 +86,6 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
           {isEditing ? (
             /* ── EDIT MODE ── */
             <form onSubmit={onFormSubmit} className="space-y-3">
-              {/* Status */}
-              <div className="flex flex-col gap-1">
-                <Label className="text-xs">
-                  {t('interactions.fields.status')}{' '}
-                  <span aria-hidden="true" className="text-destructive">
-                    *
-                  </span>
-                </Label>
-                <ToggleGroup
-                  type="single"
-                  value={editStatus}
-                  onValueChange={(v) => {
-                    if (v) setEditStatus(v as typeof editStatus)
-                  }}
-                  className="justify-start"
-                >
-                  <ToggleGroupItem value="positive" aria-label={t('interactions.status.positive')}>
-                    <StatusIcon status="positive" className="size-4" withLabel />
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="pending" aria-label={t('interactions.status.pending')}>
-                    <StatusIcon status="pending" className="size-4" withLabel />
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="negative" aria-label={t('interactions.status.negative')}>
-                    <StatusIcon status="negative" className="size-4" withLabel />
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </div>
-
               {/* Positioning */}
               <div className="flex flex-col gap-1">
                 <Label className="text-xs">{t('interactions.fields.positioning')}</Label>
@@ -195,64 +156,46 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
           ) : (
             /* ── READ-ONLY MODE ── */
             <>
-              {isArchived ? (
-                /* Archived — Restore only */
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={archive.isPending}
-                    onClick={handleRestore}
-                  >
-                    <RotateCcw className="size-4" />
-                    {t('interactions.restore')}
-                  </Button>
-                  {restoreError && <p className="text-xs text-destructive">{restoreError}</p>}
-                </div>
-              ) : (
-                /* Active — Edit + Archive */
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button type="button" size="sm" variant="outline" onClick={handleEditStart}>
-                    <Pencil className="size-4" />
-                    {t('interactions.edit')}
-                  </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={handleEditStart}>
+                  <Pencil className="size-4" />
+                  {t('interactions.edit')}
+                </Button>
 
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        disabled={archive.isPending}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      disabled={deleteInteraction.isPending}
+                    >
+                      <Trash2 className="size-4" />
+                      {t('interactions.delete')}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t('interactions.deleteDialog.title')}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t('interactions.deleteDialog.description')}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        disabled={deleteInteraction.isPending}
                       >
-                        <Archive className="size-4" />
-                        {t('interactions.archive')}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>{t('interactions.archiveDialog.title')}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {t('interactions.archiveDialog.description')}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleArchive}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          disabled={archive.isPending}
-                        >
-                          {t('interactions.archiveDialog.confirm')}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  {archiveError && <p className="text-xs text-destructive">{archiveError}</p>}
-                </div>
-              )}
+                        {t('interactions.deleteDialog.confirm')}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                {deleteError && <p className="text-xs text-destructive">{deleteError}</p>}
+              </div>
 
               <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
                 <span className="text-muted-foreground">{t('interactions.detail.date')}</span>

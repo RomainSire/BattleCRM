@@ -1,8 +1,7 @@
-import type { InteractionStatus, InteractionsFilterType } from '@battlecrm/shared'
+import type { InteractionsFilterType } from '@battlecrm/shared'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -11,7 +10,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Switch } from '@/components/ui/switch'
 import {
   Table,
   TableBody,
@@ -30,17 +28,12 @@ export function InteractionsList() {
   const { t } = useTranslation()
 
   const [filters, setFilters] = useState<InteractionsFilterType>({})
-  const [showArchived, setShowArchived] = useState(false)
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  const activeFilters: InteractionsFilterType = {
-    ...filters,
-    ...(showArchived && { include_archived: true }),
-  }
   const { data, isLoading, isError } = useInteractions(
-    Object.keys(activeFilters).length > 0 ? activeFilters : undefined,
+    Object.keys(filters).length > 0 ? filters : undefined,
   )
   const { data: stagesData } = useFunnelStages()
   const { data: prospectsData } = useProspects()
@@ -59,21 +52,10 @@ export function InteractionsList() {
     return true
   })
 
-  const hasActiveFilters =
-    Object.keys(filters).length > 0 || dateFrom !== '' || dateTo !== '' || showArchived
+  const hasActiveFilters = Object.keys(filters).length > 0 || dateFrom !== '' || dateTo !== ''
 
   function toggleExpanded(id: string) {
     setExpandedId((prev) => (prev === id ? null : id))
-  }
-
-  function handleStatusFilter(value: string) {
-    if (value === 'all') {
-      const { status: _s, ...rest } = filters
-      setFilters(rest)
-    } else {
-      setFilters((prev) => ({ ...prev, status: value as InteractionStatus }))
-    }
-    setExpandedId(null)
   }
 
   function handleProspectFilter(value: string) {
@@ -108,7 +90,6 @@ export function InteractionsList() {
 
   function clearAllFilters() {
     setFilters({})
-    setShowArchived(false)
     setDateFrom('')
     setDateTo('')
     setExpandedId(null)
@@ -124,22 +105,8 @@ export function InteractionsList() {
 
   return (
     <div className="space-y-3">
-      {/* Slim top bar: Show Archived + Positioning filter + Clear */}
+      {/* Slim top bar: Positioning filter + Clear */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <Switch
-            id="show-archived-interactions"
-            checked={showArchived}
-            onCheckedChange={(checked) => {
-              setShowArchived(checked)
-              setExpandedId(null)
-            }}
-          />
-          <Label htmlFor="show-archived-interactions" className="cursor-pointer text-sm">
-            {t('interactions.showArchived')}
-          </Label>
-        </div>
-
         {/* Positioning — secondary filter, no dedicated column */}
         <Select value={filters.positioning_id ?? 'all'} onValueChange={handlePositioningFilter}>
           <SelectTrigger className="h-8 w-44 text-sm">
@@ -246,24 +213,6 @@ export function InteractionsList() {
                 </div>
               </TableHead>
 
-              {/* Status filter */}
-              <TableHead className="w-28">
-                <div className="flex flex-col gap-1 py-0.5">
-                  <span className="text-xs font-medium">{t('interactions.fields.status')}</span>
-                  <Select value={filters.status ?? 'all'} onValueChange={handleStatusFilter}>
-                    <SelectTrigger className={headerSelectTrigger}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t('interactions.filters.allStatuses')}</SelectItem>
-                      <SelectItem value="positive">{t('interactions.status.positive')}</SelectItem>
-                      <SelectItem value="pending">{t('interactions.status.pending')}</SelectItem>
-                      <SelectItem value="negative">{t('interactions.status.negative')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </TableHead>
-
               <TableHead>{t('interactions.fields.notes')}</TableHead>
             </TableRow>
           </TableHeader>
@@ -285,16 +234,13 @@ export function InteractionsList() {
                     <Skeleton className="h-5 w-20" />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="h-4 w-4" />
-                  </TableCell>
-                  <TableCell>
                     <Skeleton className="h-4 w-48" />
                   </TableCell>
                 </TableRow>
               ))
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
                   {t('interactions.empty')}
                 </TableCell>
               </TableRow>

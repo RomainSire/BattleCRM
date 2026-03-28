@@ -24,20 +24,10 @@ export function useUpdateInteraction() {
   })
 }
 
-export function useArchiveInteraction() {
+export function useDeleteInteraction() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => interactionsApi.archive(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.interactions.all })
-    },
-  })
-}
-
-export function useRestoreInteraction() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) => interactionsApi.restore(id),
+    mutationFn: (id: string) => interactionsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.interactions.all })
     },
