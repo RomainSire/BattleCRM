@@ -183,6 +183,22 @@
       "searchPlaceholder": "Rechercher un prospect...",
       "showArchived": "Voir archivés"
     },
+    "positioning": {
+      "assignPlaceholder": "Assigner un positionnement...",
+      "inProgress": "En cours",
+      "outcomeSuccess": "Succès",
+      "outcomeFailedLabel": "Échec",
+      "success": "Succès",
+      "fail": "Échec",
+      "skip": "Passer sans décider",
+      "assignFailed": "Impossible d'assigner le positionnement.",
+      "setOutcomeFailed": "Impossible de définir le résultat.",
+      "popupTitle": "Avant de passer à \"{{stage}}\"",
+      "popupBody": "Comment s'est passé \"{{name}}\" ?",
+      "history": "Historique des positionnements",
+      "noneConfigured": "Aucun positionnement configuré pour cette étape.",
+      "changePositioning": "Changer de positionnement"
+    },
     "stageHistory": "Historique des étapes",
     "noStageHistory": "Aucun changement d'étape enregistré.",
     "initialStage": "Début",
@@ -288,14 +304,8 @@
     "noPositioning": "Sans positionnement",
     "fields": {
       "prospect": "Prospect",
-      "status": "Statut",
       "positioning": "Positionnement",
       "notes": "Notes"
-    },
-    "status": {
-      "positive": "Positif",
-      "pending": "En attente",
-      "negative": "Négatif"
     },
     "placeholders": {
       "selectProspect": "Sélectionner un prospect...",
@@ -308,29 +318,23 @@
       "submit": "Enregistrer"
     },
     "edit": "Modifier",
-    "archive": "Archiver",
-    "restore": "Restaurer",
-    "archivedBadge": "Archivée",
-    "showArchived": "Voir archivés",
-    "archiveDialog": {
-      "title": "Archiver l'interaction ?",
-      "description": "Cette interaction sera archivée et retirée de la liste.",
-      "confirm": "Archiver"
+    "delete": "Supprimer",
+    "deleteDialog": {
+      "title": "Supprimer l'interaction ?",
+      "description": "Cette interaction sera définitivement supprimée. Cette action est irréversible.",
+      "confirm": "Supprimer"
     },
     "toast": {
       "created": "Interaction enregistrée.",
       "createFailed": "Impossible d'enregistrer l'interaction.",
       "updated": "Interaction mise à jour.",
       "updateFailed": "Impossible de mettre à jour l'interaction.",
-      "archived": "Interaction archivée.",
-      "archiveFailed": "Impossible d'archiver l'interaction.",
-      "restored": "Interaction restaurée.",
-      "restoreFailed": "Impossible de restaurer l'interaction."
+      "deleted": "Interaction supprimée.",
+      "deleteFailed": "Impossible de supprimer l'interaction."
     },
     "loadError": "Impossible de charger les interactions.",
     "empty": "Aucune interaction enregistrée.",
     "filters": {
-      "allStatuses": "Tous les statuts",
       "allProspects": "Tous les prospects",
       "allPositionings": "Tous les positionnements",
       "allStages": "Toutes les étapes",
