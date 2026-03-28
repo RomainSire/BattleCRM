@@ -1,6 +1,6 @@
 import type { ProspectType } from '@battlecrm/shared'
 import { useDraggable } from '@dnd-kit/core'
-import { GripVertical, Plus } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, GripVertical, Plus, XCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,11 +12,63 @@ import { cn } from '@/lib/utils'
 interface KanbanCardProps {
   prospect: ProspectType
   onOpenDetail: (prospect: ProspectType) => void
+  /** True when the prospect's current stage has at least one non-archived positioning */
+  stageHasPositionings: boolean
   /** True when rendered inside DragOverlay — applies tilt + shadow effect */
   overlay?: boolean
 }
 
-export function KanbanCard({ prospect, onOpenDetail, overlay = false }: KanbanCardProps) {
+function PositioningIndicator({
+  prospect,
+  stageHasPositionings,
+}: {
+  prospect: ProspectType
+  stageHasPositionings: boolean
+}) {
+  const { t } = useTranslation()
+  const { activePositioning } = prospect
+
+  let icon: React.ReactNode = null
+  let tooltipText = ''
+
+  if (activePositioning?.outcome === 'success') {
+    icon = <CheckCircle2 className="size-3.5 shrink-0 text-green-600" />
+    tooltipText = t('prospects.positioning.outcomeSuccess')
+  } else if (activePositioning?.outcome === 'failed') {
+    icon = <XCircle className="size-3.5 shrink-0 text-destructive" />
+    tooltipText = t('prospects.positioning.outcomeFailedLabel')
+  } else if (activePositioning) {
+    // outcome = null (in progress)
+    icon = <Clock className="size-3.5 shrink-0 text-yellow-500" />
+    tooltipText = t('prospects.positioning.inProgress')
+  } else if (stageHasPositionings) {
+    // no positioning assigned but stage has some — alert
+    icon = <AlertCircle className="size-3.5 shrink-0 text-destructive" />
+    tooltipText = t('prospects.positioning.assignPlaceholder')
+  }
+
+  if (!icon) return null
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="flex items-center" aria-hidden="true">
+            {icon}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{tooltipText}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+export function KanbanCard({
+  prospect,
+  onOpenDetail,
+  stageHasPositionings,
+  overlay = false,
+}: KanbanCardProps) {
   const { t } = useTranslation()
   const isArchived = prospect.deletedAt !== null
 
@@ -70,6 +122,11 @@ export function KanbanCard({ prospect, onOpenDetail, overlay = false }: KanbanCa
             </Badge>
           )}
         </div>
+
+        {/* Positioning indicator — shown for non-archived prospects, not in drag overlay */}
+        {!isArchived && !overlay && (
+          <PositioningIndicator prospect={prospect} stageHasPositionings={stageHasPositionings} />
+        )}
 
         {/* Quick-add interaction — hidden for archived prospects and drag overlay */}
         {!isArchived && !overlay && (

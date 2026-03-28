@@ -3,9 +3,7 @@ import { ArrowRight, ChevronDown, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Switch } from '@/components/ui/switch'
 import { AddInteractionDialog } from '@/features/interactions/components/AddInteractionDialog'
 import { TimelineItem } from '@/features/interactions/components/TimelineItem'
 import { useInteractions } from '@/features/interactions/hooks/useInteractions'
@@ -24,7 +22,6 @@ const PREVIEW_COUNT = 5
 
 export function ProspectTimeline({ prospectId, isArchived }: ProspectTimelineProps) {
   const { t } = useTranslation()
-  const [showArchivedInteractions, setShowArchivedInteractions] = useState(false)
   const [showAll, setShowAll] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -32,10 +29,7 @@ export function ProspectTimeline({ prospectId, isArchived }: ProspectTimelinePro
     data: interactionsData,
     isLoading: interactionsLoading,
     isError: interactionsError,
-  } = useInteractions({
-    prospect_id: prospectId,
-    ...(showArchivedInteractions && { include_archived: true }),
-  })
+  } = useInteractions({ prospect_id: prospectId })
 
   const {
     data: transitionsData,
@@ -76,23 +70,6 @@ export function ProspectTimeline({ prospectId, isArchived }: ProspectTimelinePro
           <p className="text-xs font-medium text-muted-foreground">
             {t('prospects.timeline.title')}
           </p>
-          <div className="flex items-center gap-1.5">
-            <Switch
-              id="show-archived-timeline"
-              checked={showArchivedInteractions}
-              onCheckedChange={(checked) => {
-                setShowArchivedInteractions(checked)
-                setExpandedId(null)
-                setShowAll(false)
-              }}
-            />
-            <Label
-              htmlFor="show-archived-timeline"
-              className="cursor-pointer text-xs text-muted-foreground"
-            >
-              {t('interactions.showArchived')}
-            </Label>
-          </div>
         </div>
         {!isArchived && (
           <AddInteractionDialog

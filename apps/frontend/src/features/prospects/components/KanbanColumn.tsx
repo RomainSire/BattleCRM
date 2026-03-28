@@ -9,9 +9,15 @@ interface KanbanColumnProps {
   stage: FunnelStageType
   prospects: ProspectType[]
   onOpenDetail: (prospect: ProspectType) => void
+  stageHasPositionings: boolean
 }
 
-export function KanbanColumn({ stage, prospects, onOpenDetail }: KanbanColumnProps) {
+export function KanbanColumn({
+  stage,
+  prospects,
+  onOpenDetail,
+  stageHasPositionings,
+}: KanbanColumnProps) {
   const { t } = useTranslation()
   const { setNodeRef, isOver } = useDroppable({ id: stage.id })
 
@@ -44,7 +50,12 @@ export function KanbanColumn({ stage, prospects, onOpenDetail }: KanbanColumnPro
           </div>
         ) : (
           prospects.map((prospect) => (
-            <KanbanCard key={prospect.id} prospect={prospect} onOpenDetail={onOpenDetail} />
+            <KanbanCard
+              key={prospect.id}
+              prospect={prospect}
+              onOpenDetail={onOpenDetail}
+              stageHasPositionings={stageHasPositionings}
+            />
           ))
         )}
       </div>

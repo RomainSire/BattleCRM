@@ -12,6 +12,11 @@ export type ProspectType = {
   createdAt: string
   updatedAt: string
   deletedAt: string | null
+  activePositioning: {
+    positioningId: string
+    positioningName: string
+    outcome: 'success' | 'failed' | null
+  } | null
 }
 
 export type ProspectsListResponse = {

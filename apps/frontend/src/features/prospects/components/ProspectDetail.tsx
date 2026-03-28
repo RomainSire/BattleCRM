@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { usePositionings } from '@/features/positionings/hooks/usePositionings'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
 import { i18nMessagesProvider } from '@/lib/validation'
@@ -37,7 +38,9 @@ import {
   useRestoreProspect,
   useUpdateProspect,
 } from '../hooks/useProspectMutations'
+import { useSetPositioningOutcome } from '../hooks/useProspectPositioningMutations'
 import { updateProspectSchema } from '../schemas/prospect'
+import { PositioningSection } from './PositioningSection'
 import { ProspectTimeline } from './ProspectTimeline'
 
 interface ProspectDetailProps {
@@ -79,9 +82,14 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
   const [archiveError, setArchiveError] = useState<string | null>(null)
   const [restoreError, setRestoreError] = useState<string | null>(null)
   const [stageError, setStageError] = useState<string | null>(null)
+  const [showOutcomePrompt, setShowOutcomePrompt] = useState(false)
+  const [outcomeFromStageId, setOutcomeFromStageId] = useState<string | null>(null)
+  const [outcomePositioningName, setOutcomePositioningName] = useState<string | null>(null)
+
   const update = useUpdateProspect()
   const archive = useArchiveProspect()
   const restore = useRestoreProspect()
+  const setOutcome = useSetPositioningOutcome()
 
   const { data: stagesData } = useFunnelStages()
   const stages = stagesData?.data ?? []
@@ -90,6 +98,13 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
   const stagePosition = currentStageIndex >= 0 ? currentStageIndex + 1 : null
 
   const isArchived = prospect.deletedAt !== null
+
+  // Determine if current stage has any positionings — used by PositioningSection
+  const { data: stagePositioningsData } = usePositionings(
+    { funnel_stage_id: prospect.funnelStageId },
+    { enabled: !isArchived },
+  )
+  const stageHasPositionings = (stagePositioningsData?.data.length ?? 0) > 0
 
   const {
     register,
@@ -132,16 +147,30 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
 
   function handleArchiveConfirm() {
     setArchiveError(null)
-    archive.mutate(prospect.id, {
-      onSuccess: () => {
-        toast.success(t('prospects.toast.archived'))
-        onClose?.()
-      },
-      onError: (error) => {
-        const message = error instanceof ApiError ? error.errors[0]?.message : undefined
-        setArchiveError(message ?? t('prospects.toast.archiveFailed'))
-      },
-    })
+
+    const doArchive = () => {
+      archive.mutate(prospect.id, {
+        onSuccess: () => {
+          toast.success(t('prospects.toast.archived'))
+          onClose?.()
+        },
+        onError: (error) => {
+          const message = error instanceof ApiError ? error.errors[0]?.message : undefined
+          setArchiveError(message ?? t('prospects.toast.archiveFailed'))
+        },
+      })
+    }
+
+    // Best-effort: set outcome='failed' for active positioning before archiving (AC5)
+    // Backend setOutcome uses withTrashed() — safe even if prospect is being deleted
+    if (prospect.activePositioning?.outcome === null) {
+      setOutcome.mutate(
+        { prospectId: prospect.id, outcome: 'failed' },
+        { onSettled: doArchive }, // archive regardless of setOutcome success/failure
+      )
+    } else {
+      doArchive()
+    }
   }
 
   function handleRestore() {
@@ -159,6 +188,17 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
 
   function handleStageChange(newStageId: string) {
     setStageError(null)
+
+    // If active positioning has no outcome yet, show non-blocking outcome prompt (AC4).
+    // Capture both funnelStageId and positioningName NOW — the update API may complete (and
+    // activePositioning become null for the new stage) before the user clicks the button.
+    if (prospect.activePositioning?.outcome === null) {
+      setOutcomeFromStageId(prospect.funnelStageId)
+      setOutcomePositioningName(prospect.activePositioning.positioningName)
+      setShowOutcomePrompt(true)
+    }
+
+    // Stage change always proceeds immediately (non-blocking per architecture)
     update.mutate(
       { id: prospect.id, funnel_stage_id: newStageId },
       {
@@ -168,6 +208,7 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
         onError: (error) => {
           const message = error instanceof ApiError ? error.errors[0]?.message : undefined
           setStageError(message ?? t('prospects.toast.stageMoveFailed'))
+          setShowOutcomePrompt(false)
         },
       },
     )
@@ -404,6 +445,7 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
               </>
             )}
           </dl>
+
           {/* Stage management — active prospects only */}
           {!isArchived && (
             <div className="mt-4 flex flex-col gap-1">
@@ -441,6 +483,65 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
               {stageError && <p className="text-xs text-destructive">{stageError}</p>}
             </div>
           )}
+
+          {/* Non-blocking outcome prompt — shown after stage change when active positioning has no outcome */}
+          {showOutcomePrompt && outcomePositioningName && (
+            <div className="rounded-md border bg-muted/40 p-3 text-sm">
+              <p className="mb-2 font-medium">
+                {t('prospects.positioning.popupBody', {
+                  name: outcomePositioningName,
+                })}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-green-600/40 text-green-700 hover:bg-green-50 hover:text-green-700"
+                  disabled={setOutcome.isPending}
+                  onClick={() => {
+                    setOutcome.mutate(
+                      {
+                        prospectId: prospect.id,
+                        outcome: 'success',
+                        stageId: outcomeFromStageId ?? undefined,
+                      },
+                      { onSettled: () => setShowOutcomePrompt(false) },
+                    )
+                  }}
+                >
+                  ✓ {t('prospects.positioning.success')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  disabled={setOutcome.isPending}
+                  onClick={() => {
+                    setOutcome.mutate(
+                      {
+                        prospectId: prospect.id,
+                        outcome: 'failed',
+                        stageId: outcomeFromStageId ?? undefined,
+                      },
+                      { onSettled: () => setShowOutcomePrompt(false) },
+                    )
+                  }}
+                >
+                  ✗ {t('prospects.positioning.fail')}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowOutcomePrompt(false)}>
+                  {t('prospects.positioning.skip')}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Positioning section — active state + history for all prospects */}
+          <PositioningSection
+            prospect={prospect}
+            stageHasPositionings={stageHasPositionings}
+            isArchived={isArchived}
+          />
 
           {/* Unified timeline: interactions + stage transitions */}
           <div className="mt-4">
