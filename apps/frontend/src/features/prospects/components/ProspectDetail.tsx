@@ -85,6 +85,7 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
   const [showOutcomePrompt, setShowOutcomePrompt] = useState(false)
   const [outcomeFromStageId, setOutcomeFromStageId] = useState<string | null>(null)
   const [outcomePositioningName, setOutcomePositioningName] = useState<string | null>(null)
+  const [outcomeTargetStageName, setOutcomeTargetStageName] = useState<string | null>(null)
 
   const update = useUpdateProspect()
   const archive = useArchiveProspect()
@@ -188,6 +189,8 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
 
   function handleStageChange(newStageId: string) {
     setStageError(null)
+    // Always dismiss any previous prompt — a new stage change supersedes it
+    setShowOutcomePrompt(false)
 
     // If active positioning has no outcome yet, show non-blocking outcome prompt (AC4).
     // Capture both funnelStageId and positioningName NOW — the update API may complete (and
@@ -195,6 +198,7 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
     if (prospect.activePositioning?.outcome === null) {
       setOutcomeFromStageId(prospect.funnelStageId)
       setOutcomePositioningName(prospect.activePositioning.positioningName)
+      setOutcomeTargetStageName(stages.find((s) => s.id === newStageId)?.name ?? null)
       setShowOutcomePrompt(true)
     }
 
@@ -487,7 +491,12 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
           {/* Non-blocking outcome prompt — shown after stage change when active positioning has no outcome */}
           {showOutcomePrompt && outcomePositioningName && (
             <div className="rounded-md border bg-muted/40 p-3 text-sm">
-              <p className="mb-2 font-medium">
+              {outcomeTargetStageName && (
+                <p className="mb-1 text-sm font-medium">
+                  {t('prospects.positioning.popupTitle', { stage: outcomeTargetStageName })}
+                </p>
+              )}
+              <p className="mb-2 text-sm text-muted-foreground">
                 {t('prospects.positioning.popupBody', {
                   name: outcomePositioningName,
                 })}

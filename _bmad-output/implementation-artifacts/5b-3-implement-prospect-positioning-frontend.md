@@ -1,6 +1,6 @@
 # Story 5B.3: Implement Positioning Frontend (Prospect Detail + Kanban)
 
-Status: review
+Status: done
 
 ## Story
 
@@ -14,7 +14,7 @@ So that I can track which approach I'm using for each prospect and assess its ef
 
 2. **AC2 (Indicator — active positioning, outcome=null):** When a prospect has an active positioning (assigned to its current stage) with `outcome = null`, the positioning name is displayed with a neutral/yellow "in progress" icon. Two buttons are visible: [✓ Succès] and [✗ Échec]. Clicking either calls `PATCH /api/prospects/:id/positionings/current/outcome` with the appropriate outcome and updates the icon accordingly.
 
-3. **AC3 (Indicator — outcome decided):** When `outcome` is `'success'` or `'failed'`, a colored icon appears (green ✓ / red ✗) with a tooltip showing the outcome label. The success/fail buttons disappear. The positioning name is still displayed.
+3. **AC3 (Indicator — outcome decided):** When `outcome` is `'success'` or `'failed'`, a colored icon appears (green ✓ / red ✗) with a tooltip showing the outcome label. The positioning name is still displayed. The [✓ Succès] / [✗ Échec] buttons remain visible to allow changing the outcome, and a [Change positioning] button is available to reassign a different positioning (resets to State A select).
 
 4. **AC4 (Stage change popup):** When a prospect is moved to a different stage (drag-and-drop OR dropdown selector) AND the prospect has an active positioning with `outcome = null`, a non-blocking anchored popup appears asking: "Avant de passer à [Stage] : Comment s'est passé [Positioning name] ? [✓ Succès] [✗ Échec] [→ Passer sans décider]". The stage change proceeds regardless. If the user clicks success or fail, `PATCH /api/prospects/:id/positionings/current/outcome` is called before the popup closes.
 
@@ -25,6 +25,8 @@ So that I can track which approach I'm using for each prospect and assess its ef
 7. **AC7 (ProspectType extended):** `ProspectType` includes `activePositioning: { positioningId: string; positioningName: string; outcome: 'success' | 'failed' | null } | null`. All backend endpoints returning a prospect include this field. Null = no active positioning. The backend derives it by querying `prospect_positionings WHERE prospect_id = prospect.id AND funnel_stage_id = prospect.funnel_stage_id`.
 
 8. **AC8 (Verification):** `pnpm biome check --write .` — 0 errors. `pnpm --filter @battlecrm/shared build` — success. `pnpm --filter @battlecrm/backend type-check` — 0 errors. `pnpm --filter @battlecrm/frontend type-check` — 0 errors.
+
+9. **AC9 (Positioning history):** In ProspectDetail, `PositioningSection` displays past positionings (positionings assigned to previous funnel stages, `isActive = false`). Each past positioning shows its outcome icon + name + stage name. For archived prospects, only the history is shown (no interactive UI). Uses `GET /api/prospects/:id/positionings` (already implemented in Story 5B.2).
 
 ## Tasks / Subtasks
 
@@ -997,22 +999,33 @@ claude-sonnet-4-6
 8. Biome: 0 errors. Removed unused `ApiError` import from `ProspectsKanbanView.tsx`. 5 files auto-fixed (import ordering by Biome).
 9. Backend type-check: 0 errors. Frontend type-check: 0 errors.
 10. 245 functional tests pass — no regressions introduced.
+11. **AC9 (positioning history):** `PositioningSection` fetches `GET /api/prospects/:id/positionings` via new `useProspectPositionings` hook. Past positionings (those with `isActive = false`, i.e. assigned to a previous funnel stage) are shown with outcome icon + name + stage name. For archived prospects, only this history block is rendered (no interactive UI). New `isArchived` prop added to `PositioningSection` to control this.
+12. **AC3 extended:** State C keeps the [✓ Succès] / [✗ Échec] buttons to allow outcome correction after initial set. A [Change positioning] button (`isReassigning` state) allows full reassignment. `useAssignPositioning.onSuccess` now also resets `isReassigning = false`.
+13. **Bug fix (AC4 popup race condition):** `ProspectDetail` popup uses `outcomePositioningName` + `outcomeTargetStageName` states (captured at popup-open time) instead of reading `prospect.activePositioning` live. After a stage change, TanStack Query refetch sets `prospect.activePositioning = null` (the old positioning is no longer active for the new stage), which caused the popup to disappear before the user could click. The captured states prevent this. `popupTitle` also added to ProspectDetail popup (was missing — only KanbanView had it).
+14. **`setPositioningOutcome` `stage_id` override:** The mutation and API method accept an optional `stageId` parameter. For the KanbanView popup, the prospect may have already moved to the new stage by the time the user clicks — `stage_id` targets the correct `prospect_positionings` record (the one from the old stage). Backend `setOutcomeValidator` accepts optional `stage_id: uuid`.
+15. **E2E test suite (158 tests passing):** New `tests/e2e/prospects-positioning.spec.ts` covers AC1–AC6. Interaction tests updated for removed `status`/`deleted_at` fields (separate refactor on this branch). `test_controller.ts` fixed to delete `prospect_positionings` before `prospects` (FK constraint). SVG selector corrected: `svg.lucide-circle-alert` (lucide-react v0.563 renamed `AlertCircle` → `CircleAlert`).
 
 ### File List
 
 **New files:**
 - `apps/frontend/src/features/prospects/hooks/useProspectPositioningMutations.ts`
+- `apps/frontend/src/features/prospects/hooks/useProspectPositionings.ts` *(AC9 — positioning history)*
 - `apps/frontend/src/features/prospects/components/PositioningSection.tsx`
 
 **Modified files:**
 - `packages/shared/src/types/prospect.ts`
 - `apps/backend/app/serializers/prospect.ts`
 - `apps/backend/app/controllers/prospects_controller.ts`
+- `apps/backend/app/controllers/test_controller.ts` *(E2E fix: add prospect_positionings FK cleanup)*
 - `apps/frontend/src/lib/queryKeys.ts`
 - `apps/frontend/src/features/prospects/lib/api.ts`
 - `apps/frontend/src/features/prospects/components/KanbanCard.tsx`
 - `apps/frontend/src/features/prospects/components/KanbanColumn.tsx`
 - `apps/frontend/src/features/prospects/components/ProspectsKanbanView.tsx`
 - `apps/frontend/src/features/prospects/components/ProspectDetail.tsx`
+- `apps/frontend/src/features/prospects/components/ProspectTimeline.tsx` *(removed dead "show archived" toggle)*
 - `apps/frontend/public/locales/fr.json`
 - `apps/frontend/public/locales/en.json`
+- `apps/frontend/src/components/common/AppNavbar.tsx` *(Biome import sort + nav link order fix)*
+- `tests/e2e/prospects-positioning.spec.ts` *(new E2E tests for AC1–AC6)*
+- `tests/support/helpers/api.ts` *(updated createInteraction type)*

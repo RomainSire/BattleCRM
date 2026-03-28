@@ -4,7 +4,8 @@
     "loading": "Loading...",
     "error": "An error occurred",
     "cancel": "Cancel",
-    "save": "Save"
+    "save": "Save",
+    "edit": "Edit"
   },
   "nav": {
     "dashboard": "Dashboard",

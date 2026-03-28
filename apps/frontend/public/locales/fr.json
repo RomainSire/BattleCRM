@@ -4,7 +4,8 @@
     "loading": "Chargement...",
     "error": "Une erreur est survenue",
     "cancel": "Annuler",
-    "save": "Enregistrer"
+    "save": "Enregistrer",
+    "edit": "Modifier"
   },
   "nav": {
     "dashboard": "Tableau de bord",

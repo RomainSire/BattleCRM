@@ -140,24 +140,30 @@ test.describe('Prospects - Positioning Section', () => {
     await expandProspect(page, 'PP Assign Prospect')
     // PP Assign is now in State B — click "✓ Success"
     await page.getByRole('button', { name: /success/i }).first().click()
-    // After success: positioning name still visible, no API error
-    await expect(page.getByText('PP Positioning Alpha')).toBeVisible()
+    // Wait for State C: mutation complete when the collapsed [Edit] button appears
+    await expect(page.getByTestId('positioning-edit-btn')).toBeVisible()
   })
 
   // ── AC3: State C ───────────────────────────────────────────────────────────────
 
-  test('"Change positioning" button is visible in State C', async ({ page }) => {
+  test('"Edit" button is visible in State C (collapsed controls)', async ({ page }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'PP Assign Prospect')
-    // State C (outcome = success): "Change positioning" button visible
-    await expect(page.getByRole('button', { name: /change positioning/i })).toBeVisible()
+    // State C: outcome decided → shows [Edit] button for positioning (data-testid to disambiguate from ProspectDetail's Edit button)
+    await expect(page.getByTestId('positioning-edit-btn')).toBeVisible()
+    await expect(page.getByRole('button', { name: /change positioning/i })).not.toBeVisible()
   })
 
-  test('clicking "Change positioning" shows the reassign select', async ({ page }) => {
+  test('clicking "Edit" in State C reveals success/fail/change-positioning buttons', async ({
+    page,
+  }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'PP Assign Prospect')
+    await page.getByTestId('positioning-edit-btn').click()
+    // Full controls now visible
+    await expect(page.getByRole('button', { name: /change positioning/i })).toBeVisible()
+    // Click "Change positioning" → reassign select appears
     await page.getByRole('button', { name: /change positioning/i }).click()
-    // Reassign select appears with the assign placeholder
     await expect(
       page.getByRole('combobox').filter({ hasText: /assign a positioning/i }),
     ).toBeVisible()

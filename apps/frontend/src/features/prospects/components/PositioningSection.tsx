@@ -37,6 +37,7 @@ export function PositioningSection({
   const [assignError, setAssignError] = useState<string | null>(null)
   const [outcomeError, setOutcomeError] = useState<string | null>(null)
   const [isReassigning, setIsReassigning] = useState(false)
+  const [isEditingOutcome, setIsEditingOutcome] = useState(false)
 
   const assign = useAssignPositioning()
   const setOutcome = useSetPositioningOutcome()
@@ -62,7 +63,10 @@ export function PositioningSection({
     assign.mutate(
       { prospectId: prospect.id, positioningId },
       {
-        onSuccess: () => setIsReassigning(false),
+        onSuccess: () => {
+          setIsReassigning(false)
+          setIsEditingOutcome(false)
+        },
         onError: (error) => {
           const message = error instanceof ApiError ? error.errors[0]?.message : undefined
           setAssignError(message ?? t('prospects.positioning.assignFailed'))
@@ -76,6 +80,7 @@ export function PositioningSection({
     setOutcome.mutate(
       { prospectId: prospect.id, outcome },
       {
+        onSuccess: () => setIsEditingOutcome(false),
         onError: (error) => {
           const message = error instanceof ApiError ? error.errors[0]?.message : undefined
           setOutcomeError(message ?? t('prospects.positioning.setOutcomeFailed'))
@@ -164,7 +169,7 @@ export function PositioningSection({
     )
   }
 
-  // State C — outcome decided: icon + name + change outcome buttons + reassign option
+  // State C — outcome decided: icon + name + [Modifier] button (expands to full edit controls)
   if (activePositioning && activePositioning.outcome !== null) {
     return (
       <div className="flex flex-col gap-2">
@@ -192,37 +197,61 @@ export function PositioningSection({
               </TooltipProvider>
               <span>{activePositioning.positioningName}</span>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="border-green-600/40 text-green-700 hover:bg-green-50 hover:text-green-700"
-                disabled={setOutcome.isPending}
-                onClick={() => handleSetOutcome('success')}
-              >
-                ✓ {t('prospects.positioning.success')}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                disabled={setOutcome.isPending}
-                onClick={() => handleSetOutcome('failed')}
-              >
-                ✗ {t('prospects.positioning.fail')}
-              </Button>
+            {isEditingOutcome ? (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="border-green-600/40 text-green-700 hover:bg-green-50 hover:text-green-700"
+                  disabled={setOutcome.isPending}
+                  onClick={() => handleSetOutcome('success')}
+                >
+                  ✓ {t('prospects.positioning.success')}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  disabled={setOutcome.isPending}
+                  onClick={() => handleSetOutcome('failed')}
+                >
+                  ✗ {t('prospects.positioning.fail')}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={assign.isPending}
+                  onClick={() => setIsReassigning(true)}
+                >
+                  {t('prospects.positioning.changePositioning')}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setIsEditingOutcome(false)
+                    setOutcomeError(null)
+                  }}
+                >
+                  {t('common.cancel')}
+                </Button>
+              </div>
+            ) : (
               <Button
                 type="button"
                 size="sm"
                 variant="ghost"
-                disabled={assign.isPending}
-                onClick={() => setIsReassigning(true)}
+                className="self-start"
+                data-testid="positioning-edit-btn"
+                onClick={() => setIsEditingOutcome(true)}
               >
-                {t('prospects.positioning.changePositioning')}
+                {t('common.edit')}
               </Button>
-            </div>
+            )}
             {outcomeError && <FieldError>{outcomeError}</FieldError>}
           </>
         )}
