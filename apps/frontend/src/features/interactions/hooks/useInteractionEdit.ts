@@ -1,4 +1,4 @@
-import type { InteractionStatus, InteractionType } from '@battlecrm/shared'
+import type { InteractionType } from '@battlecrm/shared'
 import { vineResolver } from '@hookform/resolvers/vine'
 import { useEffect, useState } from 'react'
 import { type SubmitHandler, useForm } from 'react-hook-form'
@@ -8,11 +8,7 @@ import { usePositionings } from '@/features/positionings/hooks/usePositionings'
 import { ApiError } from '@/lib/api'
 import { i18nMessagesProvider } from '@/lib/validation'
 import { updateInteractionSchema } from '../schemas/interaction'
-import {
-  useArchiveInteraction,
-  useRestoreInteraction,
-  useUpdateInteraction,
-} from './useInteractionMutations'
+import { useDeleteInteraction, useUpdateInteraction } from './useInteractionMutations'
 
 export interface EditFormValues {
   notes: string
@@ -23,18 +19,14 @@ export function useInteractionEdit(interaction: InteractionType, isExpanded: boo
 
   const [isEditing, setIsEditing] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
-  const [archiveError, setArchiveError] = useState<string | null>(null)
-  const [restoreError, setRestoreError] = useState<string | null>(null)
-  const [editStatus, setEditStatus] = useState<InteractionStatus>(interaction.status)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [editPositioningId, setEditPositioningId] = useState<string>(
     interaction.positioningId ?? 'none',
   )
   const [editDate, setEditDate] = useState<string>(interaction.interactionDate.slice(0, 10))
 
-  const isArchived = interaction.deletedAt !== null
   const update = useUpdateInteraction()
-  const archive = useArchiveInteraction()
-  const restore = useRestoreInteraction()
+  const deleteInteraction = useDeleteInteraction()
 
   const { data: positioningsData, isLoading: positioningsLoading } = usePositionings(
     { funnel_stage_id: interaction.prospectFunnelStageId },
@@ -57,8 +49,7 @@ export function useInteractionEdit(interaction: InteractionType, isExpanded: boo
     if (!isExpanded) {
       setIsEditing(false)
       setApiError(null)
-      setArchiveError(null)
-      setRestoreError(null)
+      setDeleteError(null)
     }
   }, [isExpanded])
 
@@ -66,7 +57,6 @@ export function useInteractionEdit(interaction: InteractionType, isExpanded: boo
   useEffect(() => {
     if (!isEditing) {
       reset({ notes: interaction.notes ?? '' })
-      setEditStatus(interaction.status)
       setEditPositioningId(interaction.positioningId ?? 'none')
       setEditDate(interaction.interactionDate.slice(0, 10))
     }
@@ -74,7 +64,6 @@ export function useInteractionEdit(interaction: InteractionType, isExpanded: boo
 
   function handleEditStart() {
     reset({ notes: interaction.notes ?? '' })
-    setEditStatus(interaction.status)
     setEditPositioningId(interaction.positioningId ?? 'none')
     setEditDate(interaction.interactionDate.slice(0, 10))
     setApiError(null)
@@ -93,7 +82,6 @@ export function useInteractionEdit(interaction: InteractionType, isExpanded: boo
       {
         id: interaction.id,
         payload: {
-          status: editStatus,
           positioning_id: editPositioningId === 'none' ? null : editPositioningId,
           notes: values.notes.trim() || null,
           interaction_date: editDate || undefined,
@@ -112,24 +100,13 @@ export function useInteractionEdit(interaction: InteractionType, isExpanded: boo
     )
   }
 
-  function handleArchive() {
-    setArchiveError(null)
-    archive.mutate(interaction.id, {
-      onSuccess: () => toast.success(t('interactions.toast.archived')),
+  function handleDelete() {
+    setDeleteError(null)
+    deleteInteraction.mutate(interaction.id, {
+      onSuccess: () => toast.success(t('interactions.toast.deleted')),
       onError: (error) => {
         const message = error instanceof ApiError ? error.errors[0]?.message : undefined
-        setArchiveError(message ?? t('interactions.toast.archiveFailed'))
-      },
-    })
-  }
-
-  function handleRestore() {
-    setRestoreError(null)
-    restore.mutate(interaction.id, {
-      onSuccess: () => toast.success(t('interactions.toast.restored')),
-      onError: (error) => {
-        const message = error instanceof ApiError ? error.errors[0]?.message : undefined
-        setRestoreError(message ?? t('interactions.toast.restoreFailed'))
+        setDeleteError(message ?? t('interactions.toast.deleteFailed'))
       },
     })
   }
@@ -137,22 +114,17 @@ export function useInteractionEdit(interaction: InteractionType, isExpanded: boo
   return {
     // Mode
     isEditing,
-    isArchived,
     // Errors
     apiError,
-    archiveError,
-    restoreError,
+    deleteError,
     // Edit fields
-    editStatus,
-    setEditStatus,
     editPositioningId,
     setEditPositioningId,
     editDate,
     setEditDate,
     // Mutations (expose isPending for button disabled states)
     update,
-    archive,
-    restore,
+    deleteInteraction,
     // Positionings for positioning selector
     positionings,
     positioningsLoading,
@@ -163,7 +135,6 @@ export function useInteractionEdit(interaction: InteractionType, isExpanded: boo
     // Handlers
     handleEditStart,
     handleCancel,
-    handleArchive,
-    handleRestore,
+    handleDelete,
   }
 }

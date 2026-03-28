@@ -1,4 +1,3 @@
-import type { InteractionStatus } from '@battlecrm/shared'
 import { vineResolver } from '@hookform/resolvers/vine'
 import { Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -27,7 +26,6 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { usePositionings } from '@/features/positionings/hooks/usePositionings'
 import { useProspects } from '@/features/prospects/hooks/useProspects'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
@@ -36,7 +34,6 @@ import { i18nMessagesProvider } from '@/lib/validation'
 import { useCreateInteraction } from '../hooks/useInteractionMutations'
 import { useLastInteractionContext } from '../hooks/useLastInteractionContext'
 import { createInteractionSchema } from '../schemas/interaction'
-import { StatusIcon } from './StatusIcon'
 
 interface AddInteractionDialogProps {
   initialProspectId?: string
@@ -56,10 +53,8 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
   const [selectedProspectId, setSelectedProspectId] = useState(
     initialProspectId ?? lastProspectId ?? '',
   )
-  const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [selectedPositioningId, setSelectedPositioningId] = useState<string>('none')
   const [prospectError, setProspectError] = useState<string | null>(null)
-  const [statusError, setStatusError] = useState<string | null>(null)
 
   const create = useCreateInteraction()
   const { data: prospectsData, isLoading: prospectsLoading } = useProspects()
@@ -107,26 +102,16 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
   })
 
   function onSubmit(values: FormValues) {
-    let valid = true
     if (!selectedProspectId) {
       setProspectError(t('validation.required', { field: t('interactions.fields.prospect') }))
-      valid = false
-    } else {
-      setProspectError(null)
+      return
     }
-    if (!selectedStatus) {
-      setStatusError(t('validation.required', { field: t('interactions.fields.status') }))
-      valid = false
-    } else {
-      setStatusError(null)
-    }
-    if (!valid) return
+    setProspectError(null)
 
     setApiError(null)
     create.mutate(
       {
         prospect_id: selectedProspectId,
-        status: selectedStatus as InteractionStatus,
         positioning_id: selectedPositioningId === 'none' ? null : selectedPositioningId,
         notes: values.notes || null,
       },
@@ -148,10 +133,8 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
   function resetAll() {
     reset()
     setSelectedProspectId(initialProspectId ?? '')
-    setSelectedStatus('')
     setSelectedPositioningId('none')
     setProspectError(null)
-    setStatusError(null)
     setApiError(null)
   }
 
@@ -209,38 +192,6 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
             )}
             {currentStage && <p className="text-xs text-muted-foreground">{currentStage.name}</p>}
             <FieldError>{prospectError}</FieldError>
-          </div>
-
-          {/* Status — required, ToggleGroup */}
-          <div className="flex flex-col gap-1">
-            <Label>
-              {t('interactions.fields.status')}{' '}
-              <span aria-hidden="true" className="text-destructive">
-                *
-              </span>
-            </Label>
-            <ToggleGroup
-              type="single"
-              value={selectedStatus}
-              onValueChange={(value) => {
-                if (value) {
-                  setSelectedStatus(value)
-                  setStatusError(null)
-                }
-              }}
-              className="justify-start"
-            >
-              <ToggleGroupItem value="positive" aria-label={t('interactions.status.positive')}>
-                <StatusIcon status="positive" className="size-4" withLabel />
-              </ToggleGroupItem>
-              <ToggleGroupItem value="pending" aria-label={t('interactions.status.pending')}>
-                <StatusIcon status="pending" className="size-4" withLabel />
-              </ToggleGroupItem>
-              <ToggleGroupItem value="negative" aria-label={t('interactions.status.negative')}>
-                <StatusIcon status="negative" className="size-4" withLabel />
-              </ToggleGroupItem>
-            </ToggleGroup>
-            <FieldError>{statusError}</FieldError>
           </div>
 
           {/* Positioning — optional, filtered by prospect's funnel stage */}

@@ -349,7 +349,6 @@ test.group('ProspectPositioning schema', (group) => {
       userId: user.id,
       prospectId: prospect.id,
       funnelStageId: stage.id,
-      status: 'positive',
       interactionDate: DateTime.now(),
     })
 

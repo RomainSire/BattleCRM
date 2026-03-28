@@ -43,12 +43,10 @@ test.describe('Interactions - Prospect Timeline', () => {
     })
     await createInteraction(context.request, {
       prospect_id: mainProspect.id,
-      status: 'positive',
       notes: 'Timeline note 1',
     })
     await createInteraction(context.request, {
       prospect_id: mainProspect.id,
-      status: 'pending',
       notes: 'Timeline note 2',
     })
     // Move to a different stage → triggers a stage transition record
@@ -72,7 +70,6 @@ test.describe('Interactions - Prospect Timeline', () => {
     for (let i = 1; i <= 6; i++) {
       await createInteraction(context.request, {
         prospect_id: bulkProspect.id,
-        status: 'pending',
         notes: `Bulk note ${i}`,
       })
     }
@@ -178,50 +175,27 @@ test.describe('Interactions - Prospect Timeline', () => {
     await expect(page.getByRole('button', { name: /save/i })).not.toBeVisible()
   })
 
-  // ── Archive / Restore from timeline ───────────────────────────────────────────
+  // ── Delete from timeline ─────────────────────────────────────────────────────
 
-  test('clicking "Archive" on a timeline item shows confirmation dialog', async ({ page }) => {
+  test('clicking "Delete" on a timeline item shows confirmation dialog', async ({ page }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
     await page.locator('ul > li > button[aria-expanded]').first().click()
-    await page.locator('ul').getByRole('button', { name: 'Archive', exact: true }).click()
+    await page.locator('ul').getByRole('button', { name: 'Delete', exact: true }).click()
     await expect(page.getByRole('alertdialog')).toBeVisible()
-    await expect(page.getByText(/archive interaction\?/i)).toBeVisible()
+    await expect(page.getByText(/delete interaction\?/i)).toBeVisible()
   })
 
-  test('confirming archive makes item archived (opacity, no Edit button)', async ({ page }) => {
+  test('confirming delete removes item from timeline', async ({ page }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
-    // Archive the first item
     const firstItem = page.locator('ul > li > button[aria-expanded]').first()
     await firstItem.click()
-    await page.locator('ul').getByRole('button', { name: 'Archive', exact: true }).click()
-    await page.getByRole('alertdialog').getByRole('button', { name: 'Archive' }).click()
-    await expect(page.getByText('Interaction archived.')).toBeVisible()
-    // The item still visible but archived (show archived is default off, it disappears)
-    // Re-open: archived item gone from default timeline
+    await page.locator('ul').getByRole('button', { name: 'Delete', exact: true }).click()
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+    await expect(page.getByText('Interaction deleted.')).toBeVisible()
+    // Deleted item gone — remaining item not expanded so Edit button not visible
     await expect(page.locator('ul').getByRole('button', { name: 'Edit', exact: true })).not.toBeVisible()
-  })
-
-  test('"Show archived" switch in timeline reveals archived item', async ({ page }) => {
-    await page.goto('/prospects')
-    await expandProspect(page, 'TL Timeline Prospect')
-    // Turn on show archived for the timeline
-    await page.locator('#show-archived-timeline').click()
-    // Archived item should now appear (at least one expandable button in the timeline)
-    await expect(page.locator('ul > li > button[aria-expanded]').first()).toBeVisible()
-    // Expand and verify Restore button
-    await page.locator('ul > li > button[aria-expanded]').first().click()
-    await expect(page.getByRole('button', { name: /restore/i })).toBeVisible()
-  })
-
-  test('clicking "Restore" on a timeline item restores it', async ({ page }) => {
-    await page.goto('/prospects')
-    await expandProspect(page, 'TL Timeline Prospect')
-    await page.locator('#show-archived-timeline').click()
-    await page.locator('ul > li > button[aria-expanded]').first().click()
-    await page.getByRole('button', { name: /restore/i }).click()
-    await expect(page.getByText('Interaction restored.')).toBeVisible()
   })
 
   // ── Log Interaction button ────────────────────────────────────────────────────

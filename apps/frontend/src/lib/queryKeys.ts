@@ -23,6 +23,7 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.prospects.all, 'detail', id] as const,
     stageTransitions: (id: string) =>
       [...queryKeys.prospects.all, 'stage-transitions', id] as const,
+    positionings: (id: string) => [...queryKeys.prospects.all, 'positionings', id] as const,
   },
   positionings: {
     all: ['positionings'] as const,

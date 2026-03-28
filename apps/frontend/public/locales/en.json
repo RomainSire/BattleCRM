@@ -4,7 +4,8 @@
     "loading": "Loading...",
     "error": "An error occurred",
     "cancel": "Cancel",
-    "save": "Save"
+    "save": "Save",
+    "edit": "Edit"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -183,6 +184,22 @@
       "searchPlaceholder": "Search prospects...",
       "showArchived": "Show archived"
     },
+    "positioning": {
+      "assignPlaceholder": "Assign a positioning...",
+      "inProgress": "In progress",
+      "outcomeSuccess": "Success",
+      "outcomeFailedLabel": "Failure",
+      "success": "Success",
+      "fail": "Failure",
+      "skip": "Skip",
+      "assignFailed": "Failed to assign positioning.",
+      "setOutcomeFailed": "Failed to set outcome.",
+      "popupTitle": "Before moving to \"{{stage}}\"",
+      "popupBody": "How did \"{{name}}\" go?",
+      "history": "Positioning history",
+      "noneConfigured": "No positionings configured for this stage.",
+      "changePositioning": "Change positioning"
+    },
     "stageHistory": "Stage History",
     "noStageHistory": "No stage changes recorded yet.",
     "initialStage": "Initial",
@@ -288,14 +305,8 @@
     "noPositioning": "No positioning",
     "fields": {
       "prospect": "Prospect",
-      "status": "Status",
       "positioning": "Positioning",
       "notes": "Notes"
-    },
-    "status": {
-      "positive": "Positive",
-      "pending": "Pending",
-      "negative": "Negative"
     },
     "placeholders": {
       "selectProspect": "Select a prospect...",
@@ -308,29 +319,23 @@
       "submit": "Save"
     },
     "edit": "Edit",
-    "archive": "Archive",
-    "restore": "Restore",
-    "archivedBadge": "Archived",
-    "showArchived": "Show archived",
-    "archiveDialog": {
-      "title": "Archive interaction?",
-      "description": "This interaction will be archived and removed from the list.",
-      "confirm": "Archive"
+    "delete": "Delete",
+    "deleteDialog": {
+      "title": "Delete interaction?",
+      "description": "This interaction will be permanently deleted. This action cannot be undone.",
+      "confirm": "Delete"
     },
     "toast": {
       "created": "Interaction logged.",
       "createFailed": "Failed to log interaction.",
       "updated": "Interaction updated.",
       "updateFailed": "Failed to update interaction.",
-      "archived": "Interaction archived.",
-      "archiveFailed": "Failed to archive interaction.",
-      "restored": "Interaction restored.",
-      "restoreFailed": "Failed to restore interaction."
+      "deleted": "Interaction deleted.",
+      "deleteFailed": "Failed to delete interaction."
     },
     "loadError": "Failed to load interactions.",
     "empty": "No interactions logged yet.",
     "filters": {
-      "allStatuses": "All statuses",
       "allProspects": "All prospects",
       "allPositionings": "All positionings",
       "allStages": "All stages",

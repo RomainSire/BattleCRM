@@ -4,13 +4,16 @@ import { closestCorners, DndContext, DragOverlay } from '@dnd-kit/core'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
+import { usePositionings } from '@/features/positionings/hooks/usePositionings'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { useUpdateProspect } from '../hooks/useProspectMutations'
+import { useSetPositioningOutcome } from '../hooks/useProspectPositioningMutations'
 import { useProspects } from '../hooks/useProspects'
 import { KanbanCard } from './KanbanCard'
 import { KanbanColumn } from './KanbanColumn'
@@ -27,6 +30,13 @@ function groupBy<T>(arr: T[], key: (item: T) => string): Record<string, T[]> {
   )
 }
 
+interface OutcomePopupState {
+  prospectId: string
+  positioningName: string
+  targetStageName: string
+  fromStageId: string
+}
+
 export function ProspectsKanbanView() {
   const { t } = useTranslation()
   const [showArchived, setShowArchived] = useState(false)
@@ -34,15 +44,25 @@ export function ProspectsKanbanView() {
   const [selectedProspect, setSelectedProspect] = useState<ProspectType | null>(null)
   const [activeProspect, setActiveProspect] = useState<ProspectType | null>(null)
   const [optimisticOverrides, setOptimisticOverrides] = useState<Record<string, string>>({})
+  const [outcomePopup, setOutcomePopup] = useState<OutcomePopupState | null>(null)
 
   const { data: prospectsData, isLoading: prospectsLoading } = useProspects(
     showArchived ? { include_archived: true } : undefined,
   )
   const { data: stagesData, isLoading: stagesLoading } = useFunnelStages()
+  const { data: positioningsData } = usePositionings()
   const update = useUpdateProspect()
+  const setOutcome = useSetPositioningOutcome()
 
   const stages = stagesData?.data ?? []
   const allProspects = prospectsData?.data ?? []
+  const allPositionings = positioningsData?.data ?? []
+
+  // Compute set of stage IDs that have at least one non-archived positioning
+  const stagesWithPositionings = useMemo(
+    () => new Set(allPositionings.map((p) => p.funnelStageId)),
+    [allPositionings],
+  )
 
   // Clean up optimistic overrides that are resolved (server caught up) or orphaned (prospect archived/gone)
   useEffect(() => {
@@ -66,6 +86,16 @@ export function ProspectsKanbanView() {
         optimisticOverrides[p.id] ? { ...p, funnelStageId: optimisticOverrides[p.id] } : p,
       ),
     [allProspects, optimisticOverrides],
+  )
+
+  // Keep selectedProspect in sync with live server data so ProspectDetail always sees fresh
+  // funnelStageId + activePositioning after a stage change or positioning mutation.
+  const liveSelectedProspect = useMemo(
+    () =>
+      selectedProspect
+        ? (prospectsWithOverrides.find((p) => p.id === selectedProspect.id) ?? selectedProspect)
+        : null,
+    [selectedProspect, prospectsWithOverrides],
   )
 
   // Client-side search filter (name + company per AC5)
@@ -98,8 +128,9 @@ export function ProspectsKanbanView() {
     if (fromStageId === toStageId) return
 
     const prospectId = active.id as string
+    const prospect = allProspects.find((p) => p.id === prospectId)
 
-    // Optimistic move
+    // Optimistic move — always proceed immediately (non-blocking per architecture)
     setOptimisticOverrides((prev) => ({ ...prev, [prospectId]: toStageId }))
 
     // API call — intentional toast.error exception per AC3 (no form to show inline error on)
@@ -116,6 +147,25 @@ export function ProspectsKanbanView() {
           toast.error(t('prospects.kanban.moveFailed'))
         },
       },
+    )
+
+    // Show outcome popup if active positioning has no outcome yet (non-blocking)
+    if (prospect?.activePositioning?.outcome === null) {
+      const targetStage = stages.find((s) => s.id === toStageId)
+      setOutcomePopup({
+        prospectId,
+        positioningName: prospect.activePositioning.positioningName,
+        targetStageName: targetStage?.name ?? '',
+        fromStageId,
+      })
+    }
+  }
+
+  function handleOutcomeChoice(outcome: 'success' | 'failed') {
+    if (!outcomePopup) return
+    setOutcome.mutate(
+      { prospectId: outcomePopup.prospectId, outcome, stageId: outcomePopup.fromStageId },
+      { onSettled: () => setOutcomePopup(null) },
     )
   }
 
@@ -166,6 +216,7 @@ export function ProspectsKanbanView() {
               stage={stage}
               prospects={prospectsByStage[stage.id] ?? []}
               onOpenDetail={setSelectedProspect}
+              stageHasPositionings={stagesWithPositionings.has(stage.id)}
             />
           ))}
         </div>
@@ -173,11 +224,51 @@ export function ProspectsKanbanView() {
         <DragOverlay>
           {activeProspect ? (
             <div className="w-64">
-              <KanbanCard prospect={activeProspect} onOpenDetail={() => {}} overlay />
+              <KanbanCard
+                prospect={activeProspect}
+                onOpenDetail={() => {}}
+                stageHasPositionings={false}
+                overlay
+              />
             </div>
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Non-blocking outcome popup — appears after stage change when active positioning has no outcome */}
+      {outcomePopup && (
+        <div className="fixed bottom-4 right-4 z-50 w-80 rounded-lg border bg-background p-4 shadow-lg">
+          <p className="mb-1 text-sm font-medium">
+            {t('prospects.positioning.popupTitle', { stage: outcomePopup.targetStageName })}
+          </p>
+          <p className="mb-3 text-sm text-muted-foreground">
+            {t('prospects.positioning.popupBody', { name: outcomePopup.positioningName })}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-green-600/40 text-green-700 hover:bg-green-50 hover:text-green-700"
+              disabled={setOutcome.isPending}
+              onClick={() => handleOutcomeChoice('success')}
+            >
+              ✓ {t('prospects.positioning.success')}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              disabled={setOutcome.isPending}
+              onClick={() => handleOutcomeChoice('failed')}
+            >
+              ✗ {t('prospects.positioning.fail')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setOutcomePopup(null)}>
+              {t('prospects.positioning.skip')}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Prospect detail drawer */}
       <Drawer
@@ -187,12 +278,12 @@ export function ProspectsKanbanView() {
       >
         <DrawerContent className="overflow-y-auto" style={{ maxWidth: '560px' }}>
           <DrawerHeader>
-            <DrawerTitle>{selectedProspect?.name}</DrawerTitle>
+            <DrawerTitle>{liveSelectedProspect?.name}</DrawerTitle>
           </DrawerHeader>
-          {selectedProspect && (
+          {liveSelectedProspect && (
             <ProspectDetail
-              key={selectedProspect.id}
-              prospect={selectedProspect}
+              key={selectedProspect!.id}
+              prospect={liveSelectedProspect}
               onClose={() => setSelectedProspect(null)}
             />
           )}

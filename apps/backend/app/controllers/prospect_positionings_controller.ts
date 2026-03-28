@@ -108,11 +108,14 @@ export default class ProspectPositioningsController {
       .where('id', params.id)
       .firstOrFail()
 
-    // Active positioning = the pp record whose funnel_stage_id matches prospect's current stage
+    // stage_id override: caller may supply the original stage when the prospect has already been
+    // moved (stage-change popup use case — the update API completes before the user clicks).
+    const targetStageId = payload.stage_id ?? prospect.funnelStageId
+
     const pp = await ProspectPositioning.query()
       .withScopes((s) => s.forUser(userId))
       .where('prospect_id', prospect.id)
-      .where('funnel_stage_id', prospect.funnelStageId)
+      .where('funnel_stage_id', targetStageId)
       .first()
 
     if (!pp) return response.notFound()

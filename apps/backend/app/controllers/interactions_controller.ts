@@ -11,16 +11,14 @@ import { createInteractionValidator, updateInteractionValidator } from '#validat
 export default class InteractionsController {
   /**
    * GET /api/interactions
-   * Returns active interactions ordered by interaction_date DESC.
-   * Filters: ?prospect_id, ?positioning_id, ?status, ?funnel_stage_id, ?include_archived
+   * Returns interactions ordered by interaction_date DESC.
+   * Filters: ?prospect_id, ?positioning_id, ?status, ?funnel_stage_id
    */
   async index({ request, response, auth }: HttpContext) {
     const userId = auth.user!.id
     const qs = request.qs()
-    const includeArchived = qs.include_archived === 'true'
     const prospectId = qs.prospect_id as string | undefined
     const positioningId = qs.positioning_id as string | undefined
-    const status = qs.status as string | undefined
     const funnelStageId = qs.funnel_stage_id as string | undefined
 
     const query = Interaction.query()
@@ -28,10 +26,6 @@ export default class InteractionsController {
       .preload('prospect', (q) => q.withTrashed().preload('funnelStage', (sq) => sq.withTrashed()))
       .preload('positioning')
       .orderBy('interaction_date', 'desc')
-
-    if (includeArchived) {
-      query.withTrashed()
-    }
 
     if (prospectId) {
       if (!UUID_REGEX.test(prospectId)) {
@@ -63,15 +57,6 @@ export default class InteractionsController {
         .first()
       if (!pos) return response.notFound()
       query.where('positioning_id', positioningId)
-    }
-
-    if (status) {
-      if (!['positive', 'pending', 'negative'].includes(status)) {
-        return response.unprocessableEntity({
-          errors: [{ message: 'validation.enum', field: 'status', rule: 'enum' }],
-        })
-      }
-      query.where('status', status)
     }
 
     if (funnelStageId) {
@@ -140,7 +125,6 @@ export default class InteractionsController {
       positioningId: payload.positioning_id ?? null,
       // funnelStageId is a server-side snapshot — never sent by client, captured from prospect
       funnelStageId: prospect.funnelStageId,
-      status: payload.status,
       notes: payload.notes ?? null,
       interactionDate: payload.interaction_date
         ? DateTime.fromISO(payload.interaction_date)
@@ -170,7 +154,6 @@ export default class InteractionsController {
       .where('id', params.id)
       .firstOrFail()
 
-    if (payload.status !== undefined) interaction.status = payload.status
     if (payload.notes !== undefined) interaction.notes = payload.notes ?? null
     if (payload.positioning_id !== undefined) {
       // Validate positioning ownership — withTrashed to allow archived positionings
@@ -201,7 +184,7 @@ export default class InteractionsController {
 
   /**
    * DELETE /api/interactions/:id
-   * Soft-deletes an interaction.
+   * Hard-deletes an interaction (permanent, no restore).
    */
   async destroy({ params, response, auth }: HttpContext) {
     const userId = auth.user!.id
@@ -210,33 +193,6 @@ export default class InteractionsController {
       .where('id', params.id)
       .firstOrFail()
     await interaction.delete()
-    return response.ok({ message: 'Interaction archived' })
-  }
-
-  /**
-   * PATCH /api/interactions/:id/restore
-   * Restores a soft-deleted interaction (sets deleted_at to null).
-   */
-  async restore({ params, response, auth }: HttpContext) {
-    const userId = auth.user!.id
-
-    const interaction = await Interaction.query()
-      .withTrashed()
-      .withScopes((s) => s.forUser(userId))
-      .where('id', params.id)
-      .firstOrFail()
-
-    if (!interaction.deletedAt) return response.notFound()
-
-    await interaction.restore()
-
-    const restored = await Interaction.query()
-      .withScopes((s) => s.forUser(userId))
-      .where('id', interaction.id)
-      .preload('prospect', (q) => q.withTrashed().preload('funnelStage', (sq) => sq.withTrashed()))
-      .preload('positioning')
-      .firstOrFail()
-
-    return response.ok(serializeInteraction(restored))
+    return response.ok({ message: 'Interaction deleted' })
   }
 }

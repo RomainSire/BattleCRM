@@ -1,5 +1,5 @@
 import type { InteractionType } from '@battlecrm/shared'
-import { Archive, ChevronRight, Pencil, RotateCcw, X } from 'lucide-react'
+import { ChevronRight, Pencil, Trash2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
@@ -26,10 +26,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import { useInteractionEdit } from '../hooks/useInteractionEdit'
-import { StatusIcon } from './StatusIcon'
 
 interface InteractionRowProps {
   interaction: InteractionType
@@ -41,18 +39,14 @@ export function InteractionRow({ interaction, isExpanded, onToggle }: Interactio
   const { t } = useTranslation()
   const {
     isEditing,
-    isArchived,
     apiError,
-    archiveError,
-    restoreError,
-    editStatus,
-    setEditStatus,
+    deleteError,
     editPositioningId,
     setEditPositioningId,
     editDate,
     setEditDate,
     update,
-    archive,
+    deleteInteraction,
     positionings,
     positioningsLoading,
     register,
@@ -60,8 +54,7 @@ export function InteractionRow({ interaction, isExpanded, onToggle }: Interactio
     onFormSubmit,
     handleEditStart,
     handleCancel,
-    handleArchive,
-    handleRestore,
+    handleDelete,
   } = useInteractionEdit(interaction, isExpanded)
 
   const notesPreview = interaction.notes
@@ -72,11 +65,7 @@ export function InteractionRow({ interaction, isExpanded, onToggle }: Interactio
 
   return (
     <>
-      <TableRow
-        onClick={onToggle}
-        className={cn('cursor-pointer', isArchived && 'opacity-60')}
-        aria-expanded={isExpanded}
-      >
+      <TableRow onClick={onToggle} className="cursor-pointer" aria-expanded={isExpanded}>
         <TableCell className="w-8 pr-0">
           <ChevronRight
             className={cn(
@@ -86,28 +75,14 @@ export function InteractionRow({ interaction, isExpanded, onToggle }: Interactio
           />
         </TableCell>
 
-        <TableCell className={cn('text-sm text-muted-foreground', isArchived && 'line-through')}>
+        <TableCell className="text-sm text-muted-foreground">
           {new Date(interaction.interactionDate).toLocaleDateString()}
         </TableCell>
 
-        <TableCell
-          className={cn('font-medium', isArchived && 'line-through text-muted-foreground')}
-        >
-          {interaction.prospectName}
-        </TableCell>
+        <TableCell className="font-medium">{interaction.prospectName}</TableCell>
 
         <TableCell>
-          {isArchived ? (
-            <Badge variant="outline" className="text-muted-foreground">
-              {t('interactions.archivedBadge')}
-            </Badge>
-          ) : (
-            <Badge variant="outline">{interaction.prospectFunnelStageName}</Badge>
-          )}
-        </TableCell>
-
-        <TableCell>
-          <StatusIcon status={interaction.status} className="size-4" />
+          <Badge variant="outline">{interaction.prospectFunnelStageName}</Badge>
         </TableCell>
 
         <TableCell className="text-sm text-muted-foreground">{notesPreview}</TableCell>
@@ -115,48 +90,11 @@ export function InteractionRow({ interaction, isExpanded, onToggle }: Interactio
 
       {isExpanded && (
         <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={6} className="p-0">
+          <TableCell colSpan={5} className="p-0">
             <div className="space-y-3 border-t bg-muted/30 px-4 py-3 text-sm">
               {isEditing ? (
                 /* ── EDIT MODE ── */
                 <form onSubmit={onFormSubmit} className="space-y-3">
-                  {/* Status */}
-                  <div className="flex flex-col gap-1">
-                    <Label>
-                      {t('interactions.fields.status')}{' '}
-                      <span aria-hidden="true" className="text-destructive">
-                        *
-                      </span>
-                    </Label>
-                    <ToggleGroup
-                      type="single"
-                      value={editStatus}
-                      onValueChange={(v) => {
-                        if (v) setEditStatus(v as typeof editStatus)
-                      }}
-                      className="justify-start"
-                    >
-                      <ToggleGroupItem
-                        value="positive"
-                        aria-label={t('interactions.status.positive')}
-                      >
-                        <StatusIcon status="positive" className="size-4" withLabel />
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value="pending"
-                        aria-label={t('interactions.status.pending')}
-                      >
-                        <StatusIcon status="pending" className="size-4" withLabel />
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value="negative"
-                        aria-label={t('interactions.status.negative')}
-                      >
-                        <StatusIcon status="negative" className="size-4" withLabel />
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
-
                   {/* Positioning */}
                   <div className="flex flex-col gap-1">
                     <Label>{t('interactions.fields.positioning')}</Label>
@@ -227,85 +165,61 @@ export function InteractionRow({ interaction, isExpanded, onToggle }: Interactio
               ) : (
                 /* ── READ-ONLY MODE ── */
                 <>
-                  {isArchived ? (
-                    /* Archived — Restore only */
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={archive.isPending}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleRestore()
-                        }}
-                      >
-                        <RotateCcw className="size-4" />
-                        {t('interactions.restore')}
-                      </Button>
-                      {restoreError && <p className="text-xs text-destructive">{restoreError}</p>}
-                    </div>
-                  ) : (
-                    /* Active — Edit + Archive */
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleEditStart()
-                        }}
-                      >
-                        <Pencil className="size-4" />
-                        {t('interactions.edit')}
-                      </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleEditStart()
+                      }}
+                    >
+                      <Pencil className="size-4" />
+                      {t('interactions.edit')}
+                    </Button>
 
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            disabled={archive.isPending}
-                            onClick={(e) => e.stopPropagation()}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          disabled={deleteInteraction.isPending}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Trash2 className="size-4" />
+                          {t('interactions.delete')}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            {t('interactions.deleteDialog.title')}
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t('interactions.deleteDialog.description')}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={deleteInteraction.isPending}
                           >
-                            <Archive className="size-4" />
-                            {t('interactions.archive')}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              {t('interactions.archiveDialog.title')}
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {t('interactions.archiveDialog.description')}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={handleArchive}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              disabled={archive.isPending}
-                            >
-                              {t('interactions.archiveDialog.confirm')}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                      {archiveError && <p className="text-xs text-destructive">{archiveError}</p>}
-                    </div>
-                  )}
+                            {t('interactions.deleteDialog.confirm')}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    {deleteError && <p className="text-xs text-destructive">{deleteError}</p>}
+                  </div>
 
                   <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
                     <span className="text-muted-foreground">{t('interactions.detail.date')}</span>
                     <span>{new Date(interaction.interactionDate).toLocaleString()}</span>
-
-                    <span className="text-muted-foreground">{t('interactions.fields.status')}</span>
-                    <StatusIcon status={interaction.status} className="size-4" withLabel />
 
                     <span className="text-muted-foreground">
                       {t('interactions.detail.positioning')}

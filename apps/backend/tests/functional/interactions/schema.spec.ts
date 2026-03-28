@@ -60,7 +60,6 @@ test.group('Interaction schema', (group) => {
       prospectId: prospect.id,
       positioningId: positioning.id,
       funnelStageId: stage.id,
-      status: 'positive',
       notes: 'Great conversation',
       interactionDate: DateTime.now(),
     })
@@ -70,12 +69,11 @@ test.group('Interaction schema', (group) => {
     assert.equal(interaction.prospectId, prospect.id)
     assert.equal(interaction.positioningId, positioning.id)
     assert.equal(interaction.funnelStageId, stage.id)
-    assert.equal(interaction.status, 'positive')
     assert.equal(interaction.notes, 'Great conversation')
     assert.isDefined(interaction.interactionDate)
     assert.isDefined(interaction.createdAt)
     const reloaded = await Interaction.findOrFail(interaction.id)
-    assert.isNull(reloaded.deletedAt)
+    assert.isDefined(reloaded.id)
   })
 
   test('can create an interaction with minimal fields (no positioning, no notes)', async ({
@@ -88,7 +86,6 @@ test.group('Interaction schema', (group) => {
       userId: user.id,
       prospectId: prospect.id,
       funnelStageId: stage.id,
-      status: 'pending',
       interactionDate: DateTime.now(),
     })
 
@@ -96,7 +93,6 @@ test.group('Interaction schema', (group) => {
     const reloaded = await Interaction.findOrFail(interaction.id)
     assert.isNull(reloaded.positioningId)
     assert.isNull(reloaded.notes)
-    assert.isNull(reloaded.deletedAt)
     assert.equal(reloaded.funnelStageId, stage.id)
   })
 
@@ -120,14 +116,12 @@ test.group('Interaction schema', (group) => {
       userId: userA.id,
       prospectId: prospectA.id,
       funnelStageId: stageA.id,
-      status: 'positive',
       interactionDate: DateTime.now(),
     })
     await Interaction.create({
       userId: userB.id,
       prospectId: prospectB.id,
       funnelStageId: stageB.id,
-      status: 'negative',
       interactionDate: DateTime.now(),
     })
 
@@ -147,14 +141,12 @@ test.group('Interaction schema', (group) => {
       userId: user.id,
       prospectId: prospect.id,
       funnelStageId: stage.id,
-      status: 'positive',
       interactionDate: DateTime.now(),
     })
     await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
       funnelStageId: stage.id,
-      status: 'pending',
       interactionDate: DateTime.now(),
     })
 
@@ -166,75 +158,36 @@ test.group('Interaction schema', (group) => {
   })
 
   // ===========================
-  // Soft delete
+  // Hard delete
   // ===========================
 
-  test('soft-deleted interactions excluded from default queries', async ({ client, assert }) => {
-    const { user, stage, prospect } = await createUserWithContext(client, 'soft-delete')
+  test('hard-deleted interactions are permanently removed from queries', async ({
+    client,
+    assert,
+  }) => {
+    const { user, stage, prospect } = await createUserWithContext(client, 'hard-delete')
 
     const i1 = await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
       funnelStageId: stage.id,
-      status: 'positive',
       interactionDate: DateTime.now(),
     })
     const i2 = await Interaction.create({
       userId: user.id,
       prospectId: prospect.id,
       funnelStageId: stage.id,
-      status: 'negative',
       interactionDate: DateTime.now(),
     })
 
     await i2.delete()
 
-    const active = await Interaction.query().withScopes((s) => s.forUser(user.id))
-    assert.lengthOf(active, 1)
-    assert.equal(active[0].id, i1.id)
-  })
+    const remaining = await Interaction.query().withScopes((s) => s.forUser(user.id))
+    assert.lengthOf(remaining, 1)
+    assert.equal(remaining[0].id, i1.id)
 
-  test('withTrashed includes soft-deleted interactions', async ({ client, assert }) => {
-    const { user, stage, prospect } = await createUserWithContext(client, 'with-trashed')
-
-    await Interaction.create({
-      userId: user.id,
-      prospectId: prospect.id,
-      funnelStageId: stage.id,
-      status: 'positive',
-      interactionDate: DateTime.now(),
-    })
-    const i2 = await Interaction.create({
-      userId: user.id,
-      prospectId: prospect.id,
-      funnelStageId: stage.id,
-      status: 'pending',
-      interactionDate: DateTime.now(),
-    })
-    await i2.delete()
-
-    const all = await Interaction.query()
-      .withTrashed()
-      .withScopes((s) => s.forUser(user.id))
-    assert.lengthOf(all, 2)
-  })
-
-  test('deleted_at is set on soft-delete and null after restore', async ({ client, assert }) => {
-    const { user, stage, prospect } = await createUserWithContext(client, 'restore')
-
-    const interaction = await Interaction.create({
-      userId: user.id,
-      prospectId: prospect.id,
-      funnelStageId: stage.id,
-      status: 'positive',
-      interactionDate: DateTime.now(),
-    })
-
-    await interaction.delete()
-    assert.isNotNull(interaction.deletedAt)
-
-    await interaction.restore()
-    assert.isNull(interaction.deletedAt)
+    const found = await Interaction.query().where('id', i2.id).first()
+    assert.isNull(found)
   })
 
   // ===========================
@@ -248,7 +201,6 @@ test.group('Interaction schema', (group) => {
       userId: user.id,
       prospectId: prospect.id,
       funnelStageId: stage.id,
-      status: 'positive',
       interactionDate: DateTime.now(),
     })
 
@@ -264,7 +216,6 @@ test.group('Interaction schema', (group) => {
       userId: user.id,
       prospectId: prospect.id,
       funnelStageId: stage.id,
-      status: 'pending',
       interactionDate: DateTime.now(),
     })
 
@@ -285,7 +236,6 @@ test.group('Interaction schema', (group) => {
         userId: user.id,
         prospectId: '00000000-0000-0000-0000-000000000000',
         funnelStageId: stage.id,
-        status: 'positive',
         interactionDate: DateTime.now(),
       })
     })
@@ -301,15 +251,13 @@ test.group('Interaction schema', (group) => {
       userId: user.id,
       prospectId: prospect.id,
       funnelStageId: stage.id,
-      status: 'positive',
       interactionDate: DateTime.now(),
     })
     const interactionId = interaction.id
 
-    // Bypass SoftDeletes — hard delete pour déclencher la contrainte CASCADE
     await db.from('users').where('id', user.id).delete()
 
-    const found = await Interaction.query().withTrashed().where('id', interactionId).first()
+    const found = await Interaction.query().where('id', interactionId).first()
     assert.isNull(found)
   })
 
@@ -330,7 +278,6 @@ test.group('Interaction schema', (group) => {
       prospectId: prospect.id,
       positioningId: positioning.id,
       funnelStageId: stage.id,
-      status: 'positive',
       interactionDate: DateTime.now(),
     })
 

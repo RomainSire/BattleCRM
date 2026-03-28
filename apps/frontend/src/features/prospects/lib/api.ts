@@ -1,5 +1,7 @@
 import type {
   CreateProspectPayload,
+  ProspectPositioningDetailType,
+  ProspectPositioningType,
   ProspectsFilterType,
   ProspectsListResponse,
   ProspectType,
@@ -55,5 +57,29 @@ export const prospectsApi = {
 
   stageTransitions(id: string): Promise<StageTransitionsResponse> {
     return fetchApi<StageTransitionsResponse>(`/prospects/${id}/stage-transitions`)
+  },
+
+  positionings(
+    id: string,
+  ): Promise<{ data: ProspectPositioningDetailType[]; meta: { total: number } }> {
+    return fetchApi(`/prospects/${id}/positionings`)
+  },
+
+  assignPositioning(id: string, positioningId: string): Promise<ProspectPositioningType> {
+    return fetchApi(`/prospects/${id}/positionings`, {
+      method: 'POST',
+      body: JSON.stringify({ positioning_id: positioningId }),
+    })
+  },
+
+  setPositioningOutcome(
+    id: string,
+    outcome: 'success' | 'failed',
+    stageId?: string,
+  ): Promise<ProspectPositioningType> {
+    return fetchApi(`/prospects/${id}/positionings/current/outcome`, {
+      method: 'PATCH',
+      body: JSON.stringify({ outcome, ...(stageId && { stage_id: stageId }) }),
+    })
   },
 }
