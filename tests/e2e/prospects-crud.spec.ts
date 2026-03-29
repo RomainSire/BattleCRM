@@ -94,7 +94,7 @@ test.describe('Prospects - Create & Edit', () => {
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Prospect' })
       .click()
-    await expect(page.getByRole('button', { name: /^edit$/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^edit/i })).toBeVisible()
   })
 
   test('clicking Edit opens inline form pre-filled with current values', async ({ page }) => {
@@ -103,7 +103,7 @@ test.describe('Prospects - Create & Edit', () => {
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Prospect' })
       .click()
-    await page.getByRole('button', { name: /^edit$/i }).click()
+    await page.getByRole('button', { name: /^edit/i }).click()
 
     // Save button appears (edit mode active)
     await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible()
@@ -118,7 +118,7 @@ test.describe('Prospects - Create & Edit', () => {
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Prospect' })
       .click()
-    await page.getByRole('button', { name: /^edit$/i }).click()
+    await page.getByRole('button', { name: /^edit/i }).click()
 
     const nameInput = page.getByRole('textbox', { name: /^name/i })
     await nameInput.clear()
@@ -138,7 +138,7 @@ test.describe('Prospects - Create & Edit', () => {
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'Initial Prospect' })
       .click()
-    await page.getByRole('button', { name: /^edit$/i }).click()
+    await page.getByRole('button', { name: /^edit/i }).click()
 
     const nameInput = page.getByRole('textbox', { name: /^name/i })
     await nameInput.clear()
@@ -157,6 +157,6 @@ test.describe('Prospects - Create & Edit', () => {
     await expect(page.getByText(/prospect updated/i)).toBeVisible()
     // Read-only view restored with new name
     await expect(page.getByText('Updated Prospect Name')).toBeVisible()
-    await expect(page.getByRole('button', { name: /^edit$/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^edit/i })).toBeVisible()
   })
 })
