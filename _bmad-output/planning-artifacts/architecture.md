@@ -405,6 +405,20 @@ BattleCRM/
 - **Response bodies:** camelCase fields — Lucid v3 ORM serializes camelCase by default (e.g. `funnelStageId`, `deletedAt`, `createdAt`)
 - ⚠️ **Known divergence from original spec:** Lucid v3 does NOT do snake_case→camelCase transformation for free — it simply outputs whatever the TypeScript property name is (which is camelCase by Adonis/Lucid convention). All frontend code and `@battlecrm/shared` types must use camelCase for response fields.
 
+**Accessible Names & `data-testid` Convention:**
+
+> **Règle :** Quand deux boutons (ou éléments interactifs) dans la même vue ont le même nom accessible, prévoir un `aria-label` distinctif **ou** un `data-testid` intentionnel **dès la conception** — pas en réaction à un E2E qui échoue.
+
+| Situation | Solution préférée | Exemple |
+|-----------|------------------|---------|
+| Même texte visible (ex: deux "Edit") | `aria-label` descriptif | `aria-label="Edit prospect"` vs `aria-label="Edit outcome"` |
+| Élément sans texte visible (icône seule) | `aria-label` sur le bouton | `aria-label="Delete interaction"` |
+| Ciblage Playwright sans ambiguïté | `data-testid` intentionnel | `data-testid="positioning-edit-btn"` |
+
+**Quand appliquer :** Lors de l'ajout de tout bouton/action dans une vue, vérifier s'il existe déjà un autre élément avec le même nom accessible. Si oui → différencier immédiatement.
+
+**Incident ayant motivé cette règle :** Story 5B.3 — deux boutons "Edit" dans ProspectDetail (prospect + outcome) indistinguables pour Playwright → résolu via `data-testid="positioning-edit-btn"`.
+
 ### Structure Patterns
 
 **Frontend (Feature-Based Organization):**
@@ -517,6 +531,35 @@ apps/backend/
 | Actions | Discrete spinner on button |
 | Avoid | Full-page blocking overlays |
 
+**TanStack Query — Réactivité vs State UI (pattern "captured state popup") :**
+
+> **Problème :** Un refetch TanStack Query peut écraser du state UI utile pendant qu'un dialog/popup attend une interaction utilisateur.
+
+**Scénario type :** L'utilisateur déclenche une action (ex: changement de stage) → TanStack Query invalide et refetch → les données du prospect changent → la popup qui devait s'afficher lit les nouvelles données (état vide ou différent) → la popup disparaît ou affiche le mauvais état.
+
+**Règle :** Quand un dialog/popup s'ouvre suite à une action, **capturer les valeurs nécessaires au moment de l'ouverture** (dans un `useState` ou variable locale), pas les lire en live depuis le cache TanStack Query.
+
+```tsx
+// ❌ ANTI-PATTERN — lit les données live, écrasées au prochain refetch
+<Dialog open={showOutcomeDialog}>
+  <p>Positionnement : {prospect.activePositioning?.name}</p>
+</Dialog>
+
+// ✅ PATTERN CORRECT — valeurs capturées à l'ouverture
+const [capturedPositioningName, setCapturedPositioningName] = useState('')
+const openOutcomeDialog = () => {
+  setCapturedPositioningName(prospect.activePositioning?.name ?? '')
+  setShowOutcomeDialog(true)
+}
+<Dialog open={showOutcomeDialog}>
+  <p>Positionnement : {capturedPositioningName}</p>
+</Dialog>
+```
+
+**Cas d'application :** Tout composant qui (1) ouvre un dialog basé sur des données serveur ET (2) attend une interaction utilisateur avant de fermer.
+
+**Incident ayant motivé ce pattern :** Story 5B.3 — race condition popup outcome lors d'un changement de stage.
+
 **Soft Delete:**
 
 | Action | Behavior |
@@ -529,6 +572,19 @@ apps/backend/
 **Optimistic Updates:**
 - Used for quick actions (toggle lead score, archive)
 - Automatic rollback on API error (TanStack Query built-in)
+
+**Testing — `hardResetTestData` Deletion Order:**
+
+> **Règle :** Toute nouvelle table avec une FK vers `prospects`, `positionings`, `interactions` ou `funnel_stages` **doit être ajoutée à l'ordre de suppression dans `apps/backend/app/controllers/test_controller.ts`** (`hardResetTestData`), avant la table parente.
+
+**Pourquoi :** PostgreSQL applique les contraintes FK au niveau DB. Supprimer un parent avant ses enfants déclenche une erreur FK 23503. Ce bug n'est détecté qu'aux E2E (pas aux tests fonctionnels unitaires), ce qui rend le diagnostic lent.
+
+**Checklist à la création d'une nouvelle table :**
+1. La table a une FK vers une entité existante ? → la lister dans `hardResetTestData` AVANT la suppression de l'entité parente
+2. C'est une junction table (ex: `prospect_positionings`) ? → elle doit passer avant les deux tables référencées
+3. Vérifier l'ordre après chaque migration ajoutant une nouvelle relation
+
+**Incident ayant motivé cette règle :** `prospect_positionings` (FK → `prospects`) supprimait les prospects avant les positionings lors du reset → crash FK non détecté jusqu'aux E2E de Story 5B.3.
 
 ### Enforcement Guidelines
 
@@ -1037,9 +1093,22 @@ export type ProspectPositioningType = {
 
 ---
 
-## Browser Extension Architecture (Epic 8)
+## Browser Extension Architecture (Epic 7)
 
-_Added: 2026-03-01 — Validated against current docs (WXT, Chrome MV3, AdonisJS 6 auth, Firefox MV3)._
+_Added: 2026-03-01 — Validated against current docs (WXT, Chrome MV3, AdonisJS 6 auth, Firefox MV3). Section header corrected 2026-03-29 (was mistakenly labeled "Epic 8")._
+
+### Deux mécanismes d'authentification — Ne pas confondre
+
+| Mécanisme | Utilisé par | Transport | Cookie / Header | Stockage client |
+|-----------|------------|-----------|-----------------|-----------------|
+| **Session httpOnly cookie** | Web app (`apps/frontend`) | Via navigateur automatiquement | `Cookie: adonis_session=...` | httpOnly — inaccessible au JS |
+| **Opaque Bearer token** | Extension (`apps/extension`) | Header manuel | `Authorization: Bearer <token>` | `chrome.storage.local` (service worker uniquement) |
+
+**Règles critiques :**
+- Les endpoints `/api/extension/*` utilisent `BearerTokenMiddleware` (guard `extension`) — ils n'acceptent **pas** de session cookie
+- Les endpoints `/api/*` (hors extension) utilisent `auth` middleware session — ils n'acceptent **pas** de Bearer token
+- L'extension ne peut pas utiliser les session cookies (`httpOnly` = inaccessible au JS, et l'extension tourne hors du contexte du navigateur web classique)
+- Le content script ne lit **jamais** le token directement — tout passe par message passing vers le service worker
 
 ### Technology Stack
 
