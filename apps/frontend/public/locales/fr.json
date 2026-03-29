@@ -198,7 +198,10 @@
       "popupBody": "Comment s'est passé \"{{name}}\" ?",
       "history": "Historique des positionnements",
       "noneConfigured": "Aucun positionnement configuré pour cette étape.",
-      "changePositioning": "Changer de positionnement"
+      "changePositioning": "Changer de positionnement",
+      "aria": {
+        "editOutcome": "Modifier le résultat du positionnement"
+      }
     },
     "stageHistory": "Historique des étapes",
     "noStageHistory": "Aucun changement d'étape enregistré.",

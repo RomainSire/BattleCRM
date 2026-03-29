@@ -7,9 +7,13 @@ export function useAssignPositioning() {
   return useMutation({
     mutationFn: ({ prospectId, positioningId }: { prospectId: string; positioningId: string }) =>
       prospectsApi.assignPositioning(prospectId, positioningId),
-    onSuccess: () => {
-      // Refresh all prospect data — activePositioning changes after assign
-      queryClient.invalidateQueries({ queryKey: queryKeys.prospects.all })
+    onSuccess: (_, { prospectId }) => {
+      // list: activePositioning icon changes; detail: positioning section changes;
+      // positionings(id): positioning history gains a new entry.
+      // stage-transitions: NOT invalidated (assign doesn't move stages).
+      queryClient.invalidateQueries({ queryKey: queryKeys.prospects.list() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.prospects.detail(prospectId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.prospects.positionings(prospectId) })
     },
   })
 }
@@ -26,8 +30,12 @@ export function useSetPositioningOutcome() {
       outcome: 'success' | 'failed'
       stageId?: string
     }) => prospectsApi.setPositioningOutcome(prospectId, outcome, stageId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.prospects.all })
+    onSuccess: (_, { prospectId }) => {
+      // Same scope as assign: outcome change is visible in list icon + detail + history.
+      // stage-transitions: NOT invalidated (outcome doesn't move stages).
+      queryClient.invalidateQueries({ queryKey: queryKeys.prospects.list() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.prospects.detail(prospectId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.prospects.positionings(prospectId) })
     },
   })
 }

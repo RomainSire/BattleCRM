@@ -73,5 +73,16 @@ export default defineConfig({
       },
       dependencies: ['setup'],
     },
+
+    // ── Extension: runs spec files in tests/e2e-extension/ ──────────────────
+    // Uses a persistent Chromium context with --load-extension (see extension-fixture.ts).
+    // Does NOT depend on `setup` — extension tests use Bearer tokens, not session cookies.
+    // Requires: pnpm build:extension (apps/extension/.output/chrome-mv3/ must exist).
+    // CI: wrap with xvfb-run (extensions require a display server).
+    // Run standalone: pnpm test:e2e:extension
+    {
+      name: 'extension',
+      testMatch: /e2e-extension\/.*\.spec\.ts/,
+    },
   ],
 })

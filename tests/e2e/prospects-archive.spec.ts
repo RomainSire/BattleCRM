@@ -32,8 +32,8 @@ test.describe('Prospects - Archive & Restore', () => {
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .click()
-    // Archive trigger button has aria-label="Archive To Be Archived" → use [aria-label*="Archive"]
-    await expect(page.locator('[aria-label*="Archive"]').first()).toBeVisible()
+    // Archive trigger button has aria-label="Archive To Be Archived" → use [aria-label^="Archive"]
+    await expect(page.locator('[aria-label^="Archive"]').first()).toBeVisible()
   })
 
   test('clicking Archive opens a confirmation dialog', async ({ page }) => {
@@ -42,7 +42,7 @@ test.describe('Prospects - Archive & Restore', () => {
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .click()
-    await page.locator('[aria-label*="Archive"]').first().click()
+    await page.locator('[aria-label^="Archive"]').first().click()
     await expect(page.getByRole('alertdialog')).toBeVisible()
     await expect(page.getByRole('alertdialog')).toContainText('To Be Archived')
   })
@@ -53,7 +53,7 @@ test.describe('Prospects - Archive & Restore', () => {
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .click()
-    await page.locator('[aria-label*="Archive"]').first().click()
+    await page.locator('[aria-label^="Archive"]').first().click()
     await expect(page.getByRole('alertdialog')).toBeVisible()
     await page.getByRole('button', { name: /cancel/i }).click()
     await expect(page.getByRole('alertdialog')).not.toBeVisible()
@@ -66,7 +66,7 @@ test.describe('Prospects - Archive & Restore', () => {
       .locator('tr[aria-expanded]')
       .filter({ hasText: 'To Be Archived' })
       .click()
-    await page.locator('[aria-label*="Archive"]').first().click()
+    await page.locator('[aria-label^="Archive"]').first().click()
     await expect(page.getByRole('alertdialog')).toBeVisible()
 
     const archiveResponse = page.waitForResponse(
@@ -124,7 +124,7 @@ test.describe('Prospects - Archive & Restore', () => {
       .click()
     // Restore visible, Archive trigger not rendered for archived prospects
     await expect(page.getByRole('button', { name: /^restore$/i })).toBeVisible()
-    await expect(page.locator('[aria-label*="Archive"]')).not.toBeVisible()
+    await expect(page.locator('[aria-label^="Archive"]')).not.toBeVisible()
   })
 
   test('restore brings prospect back to active list — toast success', async ({ page }) => {

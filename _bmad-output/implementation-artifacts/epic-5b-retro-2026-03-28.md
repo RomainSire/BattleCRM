@@ -139,23 +139,145 @@ AC3 spécifiait les boutons Success/Fail toujours visibles — l'UX finale (bout
 
 ## Action Items
 
-### Avant Epic 7
+### Statut final — tous traités (2026-03-29)
 
-| # | Action | Priorité |
-|---|--------|----------|
-| A1 | **Checklist `hardResetTestData`** : documenter que toute nouvelle junction table avec FK vers `prospects` ou `positionings` doit être ajoutée à l'ordre de suppression dans `test_controller.ts` | Haute |
-| A2 | **Pattern "captured state popup"** : documenter dans `architecture.md` — quand TanStack Query peut effacer du state UI pendant un refetch, capturer les valeurs au moment d'ouvrir (ex: `outcomePositioningName`) | Moyenne |
-| A3 | **Convention noms accessibles** : deux boutons avec le même nom accessible dans la même vue → `aria-label` distinctif ou `data-testid` intentionnel dès la conception | Moyenne |
-| A4 | **[Carry-over Epic 5] Investigation TanStack Query cache** — audit `staleTime` et granularité des invalidations | Haute |
-| A5 | **[Carry-over Epic 5] Zustand pour funnel stages** — envisager si staleTime insuffisant | Moyenne |
+| # | Action | Priorité | Statut |
+|---|--------|----------|--------|
+| A1 | **Checklist `hardResetTestData`** : documenter l'ordre de suppression dans `test_controller.ts` | Haute | ✅ |
+| A2 | **Pattern "captured state popup"** : documenter dans `architecture.md` | Moyenne | ✅ |
+| A3 | **Convention noms accessibles** : `aria-label` distinctif sur boutons ambigus | Moyenne | ✅ |
+| A4 | **TanStack Query cache audit** — `staleTime`, `gcTime`, invalidations, `setQueryData` | Haute | ✅ |
+| A5 | **Zustand audit complet** — évaluation de pertinence sur toute l'appli | Moyenne | ✅ |
+| A6 | **Scaffold Playwright extension** — contexte `--load-extension`, worker fixture | Haute | ✅ |
+| A7 | **Documenter token Bearer extension** dans `architecture.md` | Haute | ✅ |
+| A8 | **Valider spec Epic 7** dans `epics.md` | Haute | ✅ |
 
-### Pendant / avant Epic 7
+---
 
-| # | Action | Priorité |
-|---|--------|----------|
-| A6 | Scaffolder le contexte test Playwright pour extension Chromium (`--load-extension`, config spécifique) | Haute |
-| A7 | Documenter mécanisme token Bearer dédié extension dans `architecture.md` (distinct des session cookies httpOnly) | Haute |
-| A8 | Lire + valider la spec Epic 7 dans `epics.md` avant Story 7.1 — confirmer le périmètre des 6 stories | Haute |
+## Traitement des Action Items (2026-03-29)
+
+### A1 — Checklist `hardResetTestData`
+
+**Fichier :** `apps/backend/app/controllers/test_controller.ts`
+
+Commentaire JSDoc mis à jour pour lister l'ordre de suppression complet :
+```
+interactions → prospect_stage_transitions → prospect_positionings → prospects → positionings → funnel_stages
+```
+Règle ajoutée : toute nouvelle table avec FK vers une entité existante doit être insérée avant son parent dans cet ordre.
+
+**Fichier :** `_bmad-output/planning-artifacts/architecture.md`
+
+Section "Process Patterns" enrichie avec la checklist complète et l'explication du pourquoi (FK constraints, soft deletes).
+
+---
+
+### A2 — Pattern "captured state popup"
+
+**Fichier :** `_bmad-output/planning-artifacts/architecture.md`
+
+Anti-pattern documenté sous "Process Patterns — TanStack Query" : quand une popup dépend de données serveur et attend une interaction utilisateur, un refetch TanStack Query peut effacer `activePositioning` avant que l'utilisateur clique. Solution : capturer les valeurs au moment d'ouvrir la popup (pas les lire en live depuis le prospect). Exemple TSX inclus.
+
+---
+
+### A3 — Convention noms accessibles
+
+**Fichier :** `apps/frontend/src/features/prospects/components/ProspectDetail.tsx`
+
+Ajout de `aria-label={t('prospects.aria.editProspect', { name: prospect.name })}` sur le bouton Edit prospect.
+
+**Fichier :** `apps/frontend/src/features/prospects/components/PositioningSection.tsx`
+
+Ajout de `aria-label={t('prospects.positioning.aria.editOutcome')}` sur le bouton Edit outcome (en complément du `data-testid` existant).
+
+**Fichiers :** `apps/frontend/public/locales/fr.json` + `en.json`
+
+Nouvelles clés i18n ajoutées : `prospects.aria.editProspect` et `prospects.positioning.aria.editOutcome`.
+
+**Fichiers E2E :** `tests/e2e/prospects-crud.spec.ts`, `prospects-kanban.spec.ts`, `prospects-archive.spec.ts`
+
+- `/^edit$/i` → `/^edit/i` (5 occurrences) — le bouton a maintenant un accessible name complet type "Edit Initial Prospect"
+- `[aria-label*="Archive"]` → `[aria-label^="Archive"]` (5 occurrences) — starts-with au lieu de contains pour éviter le match sur "Edit **To Be Archive**d"
+
+**Fichier :** `_bmad-output/planning-artifacts/architecture.md`
+
+Table de convention des noms accessibles ajoutée sous "Naming Patterns".
+
+---
+
+### A4 — TanStack Query cache audit
+
+Audit complet des mutations, invalidations et configuration QueryClient. Corrections apportées :
+
+**`apps/frontend/src/App.tsx`**
+- `staleTime: 2 * 60 * 1000` (2 min) — évite les refetches sur window focus / remount
+- `gcTime: 10 * 60 * 1000` (10 min) — garde les pages récentes en cache pendant la navigation
+
+**`apps/frontend/src/features/prospects/hooks/useProspectMutations.ts`**
+- `useUpdateProspect` : `setQueryData(detail)` + `setQueriesData(list)` — injection directe, 0 refetch
+- `useArchiveProspect` / `useRestoreProspect` : invalidation `list()` + `detail(id)` (granulaire)
+
+**`apps/frontend/src/features/prospects/hooks/useProspectPositioningMutations.ts`**
+- `useAssignPositioning` + `useSetPositioningOutcome` : invalidation `list()` + `detail(id)` + `positionings(id)` — NOT stage-transitions (assign/outcome ne déplacent pas de stage)
+
+**`apps/frontend/src/features/positionings/hooks/usePositioningMutations.ts`**
+- `useUpdatePositioning` : `setQueriesData(positionings.list)` + `invalidateQueries(prospects.list)` — prospects invalidés car `positioningName` est embarqué dans `prospect.activePositioning`
+- `useArchivePositioning` : `positionings.list()` + `prospects.list()` — archivage set `outcome='failed'` sur les prospects liés
+
+**`apps/frontend/src/features/interactions/hooks/useInteractionMutations.ts`**
+- `useUpdateInteraction` : `setQueriesData(interactions.list)` — injection directe, 0 refetch
+
+---
+
+### A5 — Audit Zustand
+
+Audit complet de toute l'appli frontend : tous les `useState`, `useReducer`, Context, et `localStorage` analysés.
+
+**Verdict : Zustand non nécessaire à ce stade.** La discipline de state management actuelle est bonne. TanStack Query gère le server state, `useState` local gère l'UI state. Pas de prop drilling profond problématique.
+
+Trois candidats évalués :
+
+| Candidat | Valeur | Verdict |
+|----------|--------|---------|
+| `ProspectsViewStore` — partager `searchQuery`/`showArchived` entre ListView et KanbanView | Moyenne — filtres perdus au changement de vue | À envisager si UX confirme le besoin ; sinon lifting state up suffit |
+| `ModalsStore` — centraliser les dialogs | Faible — refactor cosmétique | Pas justifié |
+| `InteractionContextStore` — remplacer localStorage | Très faible — micro-optimisation | Pas justifié |
+
+---
+
+### A6 — Scaffold Playwright extension
+
+**Fichier :** `tests/support/fixtures/extension-fixture.ts` (nouveau)
+
+Worker fixture `extensionContext` : `launchPersistentContext` avec `--load-extension` + `--disable-extensions-except`. Worker fixture `extensionId` : extrait depuis l'URL du service worker. Fixture `extensionLoginAs` : POST vers `/api/extension/auth/login`, retourne le Bearer token.
+
+**Fichier :** `tests/e2e-extension/extension-smoke.spec.ts` (nouveau)
+
+1 test actif (extensionId format `/^[a-z]{32}$/`). 4 tests skippés annotés avec les blockers Story 7.1/7.3.
+
+**Fichiers :** `playwright.config.ts` + `package.json`
+
+- Nouveau projet `extension` : `testMatch: /e2e-extension\/.*\.spec\.ts/`, sans dépendance `setup`
+- `test:e2e` → `--project=chromium` (exclut extension du run par défaut)
+- `test:e2e:extension` → `--project=extension` (nouveau script)
+
+---
+
+### A7 — Documentation token Bearer extension
+
+**Fichier :** `_bmad-output/planning-artifacts/architecture.md`
+
+Table "Deux mécanismes d'authentification" ajoutée : session cookies httpOnly (web app) vs Bearer token opaque (extension). Distinctions : stockage, transmission, révocation, expiration, cas d'usage.
+
+Titre de section corrigé : "Browser Extension Architecture (Epic 8)" → "Epic 7".
+
+---
+
+### A8 — Validation spec Epic 7
+
+Spec lue et validée. Périmètre : 6 stories (7.1 token auth backend, 7.2 API prospect extension, 7.3 scaffold extension, 7.4 settings/auth UI, 7.5 badge LinkedIn, 7.6 floating panel). Pas d'ambiguïté bloquante identifiée. Prêt à démarrer Story 7.1.
+
+---
 
 ### Accord d'équipe
 

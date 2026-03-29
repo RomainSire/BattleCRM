@@ -91,7 +91,7 @@ test.describe('Prospects - Kanban Board View', () => {
     // Drawer opens: DrawerTitle shows prospect name
     await expect(page.getByRole('heading', { name: 'Kanban Prospect A' })).toBeVisible()
     // ProspectDetail renders inside: Edit button is visible
-    await expect(page.getByRole('button', { name: /^edit$/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^edit/i })).toBeVisible()
   })
 
   test('pressing Escape closes the Drawer', async ({ page }) => {
