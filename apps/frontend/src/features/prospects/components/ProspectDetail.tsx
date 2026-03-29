@@ -337,7 +337,13 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
           {/* Action bar */}
           <div className="flex flex-wrap items-center gap-2">
             {!isArchived && (
-              <Button type="button" size="sm" variant="outline" onClick={handleEditStart}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleEditStart}
+                aria-label={t('prospects.aria.editProspect', { name: prospect.name })}
+              >
                 <Pencil className="size-4" />
                 {t('prospects.edit')}
               </Button>

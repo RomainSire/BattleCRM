@@ -198,7 +198,10 @@
       "popupBody": "How did \"{{name}}\" go?",
       "history": "Positioning history",
       "noneConfigured": "No positionings configured for this stage.",
-      "changePositioning": "Change positioning"
+      "changePositioning": "Change positioning",
+      "aria": {
+        "editOutcome": "Edit positioning outcome"
+      }
     },
     "stageHistory": "Stage History",
     "noStageHistory": "No stage changes recorded yet.",

@@ -247,6 +247,7 @@ export function PositioningSection({
                 variant="ghost"
                 className="self-start"
                 data-testid="positioning-edit-btn"
+                aria-label={t('prospects.positioning.aria.editOutcome')}
                 onClick={() => setIsEditingOutcome(true)}
               >
                 {t('common.edit')}

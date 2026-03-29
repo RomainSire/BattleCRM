@@ -10,8 +10,12 @@ export default class TestController {
    * DELETE /api/test/reset
    *
    * Hard-deletes ALL data owned by the authenticated user, bypassing soft-deletes.
-   * Deletion order respects FK dependencies (interactions → transitions → prospects
-   * → positionings → funnel_stages).
+   * Deletion order respects FK dependencies:
+   * interactions → prospect_stage_transitions → prospect_positionings
+   * → prospects → positionings → funnel_stages
+   *
+   * When adding a new table with FK toward prospects/positionings/interactions/funnel_stages,
+   * insert its deletion BEFORE the referenced parent table.
    *
    * Use this in E2E `beforeAll` hooks instead of the restore + soft-delete pattern
    * to prevent stale archived records from accumulating across test runs.
