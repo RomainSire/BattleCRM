@@ -13,6 +13,7 @@ import { middleware } from '#start/kernel'
 
 const AuthController = () => import('#controllers/auth_controller')
 const ExtensionAuthController = () => import('#controllers/extension_auth_controller')
+const ExtensionProspectsController = () => import('#controllers/extension_prospects_controller')
 const FunnelStagesController = () => import('#controllers/funnel_stages_controller')
 const InteractionsController = () => import('#controllers/interactions_controller')
 const PositioningsController = () => import('#controllers/positionings_controller')
@@ -43,6 +44,16 @@ router
         router.post('/auth/login', [ExtensionAuthController, 'login'])
         router
           .post('/auth/logout', [ExtensionAuthController, 'logout'])
+          .use(middleware.extensionAuth())
+
+        // Prospect routes — all require Bearer token
+        router
+          .group(() => {
+            router.get('/check', [ExtensionProspectsController, 'check'])
+            router.post('/', [ExtensionProspectsController, 'store'])
+            router.patch('/:id', [ExtensionProspectsController, 'update']).where('id', UUID_REGEX)
+          })
+          .prefix('/prospects')
           .use(middleware.extensionAuth())
       })
       .prefix('/extension')
