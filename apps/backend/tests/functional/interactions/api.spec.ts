@@ -527,5 +527,4 @@ test.group('Interactions API', (group) => {
     const response = await client.delete(`/api/interactions/${interaction.id}`).loginAs(userB)
     response.assertStatus(404)
   })
-
 })

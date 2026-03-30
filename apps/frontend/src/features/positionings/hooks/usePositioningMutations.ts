@@ -27,8 +27,7 @@ export function useUpdatePositioning() {
       // Inject updated data directly into all positionings list variants
       queryClient.setQueriesData<PositioningListResponse>(
         { queryKey: queryKeys.positionings.list() },
-        (old) =>
-          old ? { ...old, data: old.data.map((p) => (p.id === id ? updated : p)) } : old,
+        (old) => (old ? { ...old, data: old.data.map((p) => (p.id === id ? updated : p)) } : old),
       )
       // Positioning name is embedded in prospect.activePositioning.positioningName —
       // patching every affected prospect is complex; a targeted refetch is simpler here.

@@ -1,3 +1,7 @@
+import { CircleUser, LogOut, Menu, Settings } from 'lucide-react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { NavLink } from 'react-router'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -9,10 +13,6 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { useLogout } from '@/features/auth/hooks/useAuth'
-import { CircleUser, LogOut, Menu, Settings } from 'lucide-react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { NavLink } from 'react-router'
 
 function navLinkClass({ isActive }: { isActive: boolean }) {
   return `outline-none rounded-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] ${

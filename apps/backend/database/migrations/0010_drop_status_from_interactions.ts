@@ -11,10 +11,7 @@ export default class extends BaseSchema {
 
   async down() {
     this.schema.alterTable(this.tableName, (table) => {
-      table
-        .enu('status', ['positive', 'pending', 'negative'])
-        .notNullable()
-        .defaultTo('pending')
+      table.enu('status', ['positive', 'pending', 'negative']).notNullable().defaultTo('pending')
     })
   }
 }

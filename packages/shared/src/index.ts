@@ -1,4 +1,5 @@
 export type * from './types/auth.js'
+export type * from './types/extension.js'
 export type * from './types/funnel-stage.js'
 export type * from './types/interaction.js'
 export type * from './types/positioning.js'

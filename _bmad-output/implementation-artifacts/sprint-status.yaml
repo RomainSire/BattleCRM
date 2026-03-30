@@ -114,8 +114,8 @@ development_status:
   epic-6-retrospective: optional
 
   # Epic 7: LinkedIn Browser Extension
-  epic-7: backlog
-  7-1-extension-token-authentication-backend: backlog
+  epic-7: in-progress
+  7-1-extension-token-authentication-backend: done
   7-2-extension-facing-prospect-api-backend: backlog
   7-3-extension-app-scaffold: backlog
   7-4-extension-settings-and-authentication-ui: backlog
