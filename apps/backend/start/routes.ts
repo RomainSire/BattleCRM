@@ -12,6 +12,7 @@ import { UUID_REGEX } from '#helpers/regex'
 import { middleware } from '#start/kernel'
 
 const AuthController = () => import('#controllers/auth_controller')
+const ExtensionAuthController = () => import('#controllers/extension_auth_controller')
 const FunnelStagesController = () => import('#controllers/funnel_stages_controller')
 const InteractionsController = () => import('#controllers/interactions_controller')
 const PositioningsController = () => import('#controllers/positionings_controller')
@@ -35,6 +36,16 @@ router
         router.post('/logout', [AuthController, 'logout']).use(middleware.auth())
       })
       .prefix('/auth')
+
+    // Extension routes — Bearer token auth (NOT session)
+    router
+      .group(() => {
+        router.post('/auth/login', [ExtensionAuthController, 'login'])
+        router
+          .post('/auth/logout', [ExtensionAuthController, 'logout'])
+          .use(middleware.extensionAuth())
+      })
+      .prefix('/extension')
 
     // Funnel stages routes — ALL require auth
     router

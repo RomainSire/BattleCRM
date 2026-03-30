@@ -27,8 +27,7 @@ export function useUpdateInteraction() {
       // Inject updated data directly into all interaction list variants
       queryClient.setQueriesData<InteractionListResponse>(
         { queryKey: queryKeys.interactions.list() },
-        (old) =>
-          old ? { ...old, data: old.data.map((i) => (i.id === id ? updated : i)) } : old,
+        (old) => (old ? { ...old, data: old.data.map((i) => (i.id === id ? updated : i)) } : old),
       )
     },
   })
