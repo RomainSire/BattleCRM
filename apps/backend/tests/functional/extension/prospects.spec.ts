@@ -1,3 +1,4 @@
+import db from '@adonisjs/lucid/services/db'
 import type { ApiClient } from '@japa/api-client'
 import { test } from '@japa/runner'
 import FunnelStage from '#models/funnel_stage'
@@ -56,6 +57,10 @@ test.group('Extension Prospects API', (group) => {
       name: 'John Doe',
       linkedinUrl: 'https://linkedin.com/in/johndoe',
       title: 'Engineer',
+      company: 'ACME',
+      email: 'john@acme.com',
+      phone: '+33600000000',
+      notes: 'Met at conf',
     })
 
     const res = await client
@@ -66,9 +71,15 @@ test.group('Extension Prospects API', (group) => {
     res.assertStatus(200)
     const body = res.body()
     assert.isTrue(body.found)
+    assert.isString(body.prospect.id)
     assert.equal(body.prospect.name, 'John Doe')
     assert.equal(body.prospect.linkedinUrl, 'https://linkedin.com/in/johndoe')
     assert.equal(body.prospect.title, 'Engineer')
+    assert.equal(body.prospect.company, 'ACME')
+    assert.equal(body.prospect.email, 'john@acme.com')
+    assert.equal(body.prospect.phone, '+33600000000')
+    assert.equal(body.prospect.notes, 'Met at conf')
+    assert.equal(body.prospect.funnelStageId, stage.id)
     assert.isString(body.prospect.funnelStageName)
     assert.isNotEmpty(body.prospect.funnelStageName)
   })
@@ -129,6 +140,27 @@ test.group('Extension Prospects API', (group) => {
 
     res.assertStatus(200)
     assert.isTrue(res.body().found)
+  })
+
+  test('check normalizes URL by stripping hash fragment', async ({ client, assert }) => {
+    const { user, token } = await setupUser(client, 'check-normalize-hash')
+    const stage = await getFirstStage(user.id)
+
+    await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'Hash Person',
+      linkedinUrl: 'https://linkedin.com/in/hashperson',
+    })
+
+    const res = await client
+      .get('/api/extension/prospects/check')
+      .qs({ linkedin_url: 'https://linkedin.com/in/hashperson#profile' })
+      .header('Authorization', `Bearer ${token}`)
+
+    res.assertStatus(200)
+    assert.isTrue(res.body().found)
+    assert.equal(res.body().prospect.name, 'Hash Person')
   })
 
   test('check returns 422 when linkedin_url is missing', async ({ client, assert }) => {
@@ -269,6 +301,20 @@ test.group('Extension Prospects API', (group) => {
     assert.equal(res.body().prospectId, existing.id)
   })
 
+  test('store returns 422 when user has no active funnel stages', async ({ client, assert }) => {
+    const { user, token } = await setupUser(client, 'store-no-stage')
+    // Hard-delete all stages to bypass SoftDeletes and simulate a user with no stages
+    await db.from('funnel_stages').where('user_id', user.id).delete()
+
+    const res = await client
+      .post('/api/extension/prospects')
+      .header('Authorization', `Bearer ${token}`)
+      .json({ name: 'No Stage Person', linkedin_url: 'https://linkedin.com/in/no-stage' })
+
+    res.assertStatus(422)
+    assert.isTrue(res.body().errors.some((e: { field: string }) => e.field === 'funnel_stage_id'))
+  })
+
   test('store returns 401 without Bearer token', async ({ client }) => {
     const res = await client
       .post('/api/extension/prospects')
@@ -356,5 +402,16 @@ test.group('Extension Prospects API', (group) => {
       .json({ name: 'No Auth' })
 
     res.assertStatus(401)
+  })
+
+  test('update returns 404 for non-UUID id format', async ({ client }) => {
+    const { token } = await setupUser(client, 'update-bad-uuid')
+
+    const res = await client
+      .patch('/api/extension/prospects/not-a-valid-uuid')
+      .header('Authorization', `Bearer ${token}`)
+      .json({ name: 'Test' })
+
+    res.assertStatus(404)
   })
 })

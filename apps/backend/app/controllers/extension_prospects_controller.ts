@@ -1,6 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { ExtensionCheckResponse, ExtensionProspectData } from '@battlecrm/shared'
-import { UUID_REGEX } from '#helpers/regex'
 import FunnelStage from '#models/funnel_stage'
 import Prospect from '#models/prospect'
 import {
@@ -119,7 +118,27 @@ export default class ExtensionProspectsController {
     if (payload.title !== undefined) prospect.title = payload.title ?? null
     if (payload.notes !== undefined) prospect.notes = payload.notes ?? null
 
-    await prospect.save()
+    try {
+      await prospect.save()
+    } catch (error: unknown) {
+      // Race condition: concurrent request created the same linkedin_url between our pre-check and insert
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === '23505'
+      ) {
+        const conflicting = await Prospect.query()
+          .withScopes((s) => s.forUser(userId))
+          .where('linkedin_url', normalizedUrl)
+          .firstOrFail()
+        return response.conflict({
+          message: 'Prospect already exists',
+          prospectId: conflicting.id,
+        })
+      }
+      throw error
+    }
     return response.created(await serializeExtensionProspect(prospect))
   }
 
@@ -129,10 +148,6 @@ export default class ExtensionProspectsController {
    * Returns 404 if prospect belongs to another user (forUser() pattern).
    */
   async update({ params, request, response, auth }: HttpContext) {
-    if (!UUID_REGEX.test(params.id)) {
-      return response.notFound()
-    }
-
     const payload = await request.validateUsing(extensionUpdateProspectValidator)
     const userId = auth.use('extension').user!.id
 

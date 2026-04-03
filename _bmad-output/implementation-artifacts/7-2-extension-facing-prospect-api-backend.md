@@ -1,6 +1,6 @@
 # Story 7.2: Extension-Facing Prospect API (Backend)
 
-Status: review
+Status: done
 
 ## Story
 
@@ -555,16 +555,26 @@ claude-sonnet-4-6
 - `User.create()` direct DB creation does not trigger funnel stage auto-creation — test helper uses API `POST /api/auth/register` instead (consistent with `interactions/api.spec.ts` pattern).
 - `auth.use('extension').user!.id` required in all controller methods — `auth.user!.id` defaults to the `web` guard and is undefined on Bearer-only requests.
 - URL normalization handles both `URL` parsing (strips search+hash) and malformed URL fallback (regex strip).
-- 262 tests pass (245 pre-existing + 16 new extension prospect tests + 1 expired token test from Story 7.1).
+- 265 tests pass (262 pre-existing + 3 new from code review fixes).
+
+**Code review fixes applied:**
+- M1: Added test for store when user has no active funnel stages → 422.
+- M2: Added try/catch on `prospect.save()` to handle PostgreSQL `23505` unique constraint violation on race condition → returns 409 with `prospectId` instead of 500.
+- L1: Corrected File List — `extension.ts` was modified (not new).
+- L2: Added `.url()` validation to `linkedin_url` in check and create validators — rejects non-URL strings with 422.
+- L3: Removed dead UUID guard from `update()` controller — route `.where('id', UUID_REGEX)` constraint already handles it upstream.
+- L4: Added test for hash fragment stripping in URL normalization.
+- L5: Updated check found:true test to assert all `ExtensionProspectData` fields (id, company, email, phone, notes, funnelStageId).
+- L6: Added test for PATCH with non-UUID id format → 404.
 
 ### File List
 
 **New files:**
-- `packages/shared/src/types/extension.ts` — added `ExtensionProspectData`, `ExtensionCheckResponse`
 - `apps/backend/database/migrations/0012_add_linkedin_url_index_to_prospects.ts`
 - `apps/backend/app/controllers/extension_prospects_controller.ts`
 - `apps/backend/app/validators/extension_prospects.ts`
 - `apps/backend/tests/functional/extension/prospects.spec.ts`
 
 **Modified files:**
+- `packages/shared/src/types/extension.ts` — added `ExtensionProspectData`, `ExtensionCheckResponse` (file created in Story 7.1)
 - `apps/backend/start/routes.ts` — added `/api/extension/prospects/*` routes
