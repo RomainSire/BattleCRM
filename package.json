@@ -19,6 +19,8 @@
     "test:e2e": "playwright test --project=chromium",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:extension": "playwright test --project=extension",
+    "dev:extension": "pnpm --filter @battlecrm/extension dev",
+    "build:extension": "pnpm --filter @battlecrm/extension build",
     "shared:build": "pnpm --filter @battlecrm/shared build",
     "type-check": "pnpm --filter @battlecrm/shared build && pnpm -r type-check"
   },

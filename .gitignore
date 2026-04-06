@@ -106,6 +106,13 @@ temp/
 .adonisjs/
 
 # -------------------------------------------
+# Browser Extension (apps/extension)
+# -------------------------------------------
+apps/extension/.output/
+apps/extension/.wxt/
+apps/extension/key.pem
+
+# -------------------------------------------
 # Personal notes (optional)
 # -------------------------------------------
 NOTES.md

@@ -1,6 +1,6 @@
 # Story 7.3: Extension App Scaffold
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -46,7 +46,7 @@ So that I can develop the extension with modern tooling consistent with the rest
 
 ### Task 1: Create apps/extension workspace package (AC1, AC9)
 
-- [ ] **1.1** Create `apps/extension/package.json`:
+- [x] **1.1** Create `apps/extension/package.json`:
   ```json
   {
     "name": "@battlecrm/extension",
@@ -80,13 +80,13 @@ So that I can develop the extension with modern tooling consistent with the rest
   ```
   > Pin React + Tailwind + TypeScript to same versions as `apps/frontend` for consistency.
 
-- [ ] **1.2** Run from repo root: `pnpm install` — installs `wxt`, `@wxt-dev/module-react`, Tailwind v4, React 19, TypeScript.
+- [x] **1.2** Run from repo root: `pnpm install` — installs `wxt`, `@wxt-dev/module-react`, Tailwind v4, React 19, TypeScript.
 
 ---
 
 ### Task 2: WXT configuration (AC1, AC2, AC3)
 
-- [ ] **2.1** Create `apps/extension/wxt.config.ts`:
+- [x] **2.1** Create `apps/extension/wxt.config.ts`:
   ```typescript
   import tailwindcss from '@tailwindcss/vite'
   import { defineConfig } from 'wxt'
@@ -110,15 +110,15 @@ So that I can develop the extension with modern tooling consistent with the rest
   ```
   > Content script match URL is declared in the entrypoint (Task 5), not here.
 
-- [ ] **2.2** Generate the extension `key` and uncomment the line (see Dev Notes → Stable Extension ID for instructions). Add the generated key to `.env` as a comment reference for `EXTENSION_ORIGINS`.
+- [x] **2.2** Generate the extension `key` and uncomment the line (see Dev Notes → Stable Extension ID for instructions). Add the generated key to `.env` as a comment reference for `EXTENSION_ORIGINS`.
 
 ---
 
 ### Task 3: TypeScript configuration (AC9)
 
-- [ ] **3.1** Run `wxt prepare` from `apps/extension/` to generate `.wxt/tsconfig.json`.
+- [x] **3.1** Run `wxt prepare` from `apps/extension/` to generate `.wxt/tsconfig.json`.
 
-- [ ] **3.2** Create `apps/extension/tsconfig.json` (extends from WXT-generated config):
+- [x] **3.2** Create `apps/extension/tsconfig.json` (extends from WXT-generated config):
   ```json
   {
     "extends": ".wxt/tsconfig.json",
@@ -134,7 +134,7 @@ So that I can develop the extension with modern tooling consistent with the rest
 
 ### Task 4: Tailwind CSS setup (AC1, AC4)
 
-- [ ] **4.1** Create `apps/extension/src/assets/tailwind.css`:
+- [x] **4.1** Create `apps/extension/src/assets/tailwind.css`:
   ```css
   @import "tailwindcss";
   ```
@@ -144,14 +144,14 @@ So that I can develop the extension with modern tooling consistent with the rest
 
 ### Task 5: WXT entrypoints — working stubs (AC5)
 
-- [ ] **5.1** Create `apps/extension/src/entrypoints/background.ts`:
+- [x] **5.1** Create `apps/extension/src/entrypoints/background.ts`:
   ```typescript
   export default defineBackground(() => {
     console.log('BattleCRM service worker initialized', { id: browser.runtime.id })
   })
   ```
 
-- [ ] **5.2** Create `apps/extension/src/entrypoints/content.ts`:
+- [x] **5.2** Create `apps/extension/src/entrypoints/content.ts`:
   ```typescript
   export default defineContentScript({
     matches: ['*://www.linkedin.com/in/*'],
@@ -161,7 +161,7 @@ So that I can develop the extension with modern tooling consistent with the rest
   })
   ```
 
-- [ ] **5.3** Create `apps/extension/src/entrypoints/popup/index.html`:
+- [x] **5.3** Create `apps/extension/src/entrypoints/popup/index.html`:
   ```html
   <!doctype html>
   <html lang="fr">
@@ -177,7 +177,7 @@ So that I can develop the extension with modern tooling consistent with the rest
   </html>
   ```
 
-- [ ] **5.4** Create `apps/extension/src/entrypoints/popup/App.tsx`:
+- [x] **5.4** Create `apps/extension/src/entrypoints/popup/App.tsx`:
   ```typescript
   import '../../assets/tailwind.css'
 
@@ -191,9 +191,9 @@ So that I can develop the extension with modern tooling consistent with the rest
   }
   ```
 
-- [ ] **5.5** Create `apps/extension/src/entrypoints/panel/index.html` — same structure as popup but `title="BattleCRM Panel"` and `src="./App.tsx"`.
+- [x] **5.5** Create `apps/extension/src/entrypoints/panel/index.html` — same structure as popup but `title="BattleCRM Panel"` and `src="./App.tsx"`.
 
-- [ ] **5.6** Create `apps/extension/src/entrypoints/panel/App.tsx`:
+- [x] **5.6** Create `apps/extension/src/entrypoints/panel/App.tsx`:
   ```typescript
   import '../../assets/tailwind.css'
 
@@ -211,7 +211,7 @@ So that I can develop the extension with modern tooling consistent with the rest
 
 ### Task 6: Lib utility skeletons (AC6)
 
-- [ ] **6.1** Create `apps/extension/src/lib/storage.ts`:
+- [x] **6.1** Create `apps/extension/src/lib/storage.ts`:
   ```typescript
   export interface ExtensionStorage {
     token?: string
@@ -236,7 +236,7 @@ So that I can develop the extension with modern tooling consistent with the rest
   ```
   > Uses `browser.*` (WXT polyfill for cross-browser compatibility) instead of `chrome.*`.
 
-- [ ] **6.2** Create `apps/extension/src/lib/api.ts`:
+- [x] **6.2** Create `apps/extension/src/lib/api.ts`:
   ```typescript
   import type { ExtensionCheckResponse, ExtensionProspectData } from '@battlecrm/shared'
 
@@ -309,7 +309,7 @@ So that I can develop the extension with modern tooling consistent with the rest
   }
   ```
 
-- [ ] **6.3** Create `apps/extension/src/lib/linkedin.ts`:
+- [x] **6.3** Create `apps/extension/src/lib/linkedin.ts`:
   ```typescript
   export interface LinkedInScrapedData {
     /** Full name from profile h1 — split on last space for firstName/lastName in Stories 7.5/7.6 */
@@ -358,7 +358,7 @@ So that I can develop the extension with modern tooling consistent with the rest
 
 ### Task 7: Root package.json scripts (AC7)
 
-- [ ] **7.1** Add to `package.json` at repo root:
+- [x] **7.1** Add to `package.json` at repo root:
   ```json
   "dev:extension": "pnpm --filter @battlecrm/extension dev",
   "build:extension": "pnpm --filter @battlecrm/extension build",
@@ -369,10 +369,10 @@ So that I can develop the extension with modern tooling consistent with the rest
 
 ### Task 8: Extension icons placeholder (AC8)
 
-- [ ] **8.1** Create `apps/extension/public/icons/` directory with placeholder icon files. WXT expects icons at these sizes: 16, 32, 48, 128px. For now, simple PNG placeholders suffice — they will be replaced with the real BattleCRM icon in a later story.
+- [x] **8.1** Create `apps/extension/public/icons/` directory with placeholder icon files. WXT expects icons at these sizes: 16, 32, 48, 128px. For now, simple PNG placeholders suffice — they will be replaced with the real BattleCRM icon in a later story.
   > Simplest approach: use any 128x128 PNG image renamed to `128.png`, and scale down copies for other sizes. Or create minimal colored PNGs with an image tool. WXT will warn if icons are missing from the manifest but the build will still succeed.
 
-- [ ] **8.2** Reference icons in `wxt.config.ts` manifest if WXT requires explicit declaration:
+- [x] **8.2** Reference icons in `wxt.config.ts` manifest if WXT requires explicit declaration:
   ```typescript
   manifest: {
     // ... existing fields ...
@@ -389,11 +389,11 @@ So that I can develop the extension with modern tooling consistent with the rest
 
 ### Task 9: Verification (AC8, AC9, AC10)
 
-- [ ] **9.1** From `apps/extension/`: `pnpm run type-check` → 0 TypeScript errors.
-- [ ] **9.2** From repo root: `pnpm biome check --write .` → 0 Biome errors.
-- [ ] **9.3** From repo root: `pnpm build:extension` → succeeds, `apps/extension/.output/chrome-mv3/` exists.
+- [x] **9.1** From `apps/extension/`: `pnpm run type-check` → 0 TypeScript errors.
+- [x] **9.2** From repo root: `pnpm biome check --write .` → 0 Biome errors.
+- [x] **9.3** From repo root: `pnpm build:extension` → succeeds, `apps/extension/.output/chrome-mv3/` exists.
 - [ ] **9.4** Load `apps/extension/.output/chrome-mv3/` in Chrome (Settings → Extensions → Load unpacked) → extension icon appears in toolbar. Clicking it opens the popup stub.
-- [ ] **9.5** Verify `manifest.json` inside `.output/chrome-mv3/` contains correct permissions, host_permissions, and content_scripts.
+- [x] **9.5** Verify `manifest.json` inside `.output/chrome-mv3/` contains correct permissions, host_permissions, and content_scripts.
 
 ---
 
@@ -527,4 +527,37 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
+- **Tailwind v4 via PostCSS** : `@tailwindcss/vite` crée un conflit de types avec WXT 0.20.20 (WXT utilise vite 7.3.1, `@tailwindcss/vite` 4.1.18 attend vite 8+). Solution : `@tailwindcss/postcss` avec `postcss.config.mjs` — Tailwind v4 supporte les deux approches, PostCSS évite entièrement le conflit de versions vite.
+- **`main.tsx` entry points** : La story template suggérait `./App.tsx` directement dans le HTML, mais cela ne monte pas React. Implémentation réelle avec `main.tsx` (qui appelle `ReactDOM.createRoot`) + `App.tsx` (composant pur). Build WXT compile et génère popup.html + panel.html corrects.
+- **Génération de la clé RSA** : Exécutée via `openssl genrsa 2048 | openssl pkcs8 -topk8 -nocrypt -out key.pem && openssl rsa -in key.pem -pubout -outform DER | openssl base64 -A`. Clé publique enregistrée dans `wxt.config.ts`. Clé privée `key.pem` ajoutée au `.gitignore`.
+- **WXT auto-imports** : `defineBackground`, `defineContentScript`, `browser.*` sont des globals WXT — aucun import manuel requis dans les entrypoints. `.wxt/tsconfig.json` généré par `wxt prepare` fournit les types.
+- **`w-105` pour 420px** : Tailwind v4 canonical class pour 420px (105 × 4px). `w-[420px]` accepté aussi mais Biome préfère `w-105`.
+- Build final : `pnpm build:extension` → 205.29 kB en 966ms, 0 erreur. `pnpm --filter @battlecrm/extension type-check` → 0 erreur. `pnpm biome check .` → 0 erreur.
+- 9.4 (chargement Chrome) : vérification manuelle requise par l'utilisateur — impossible à automatiser en CI.
+
 ### File List
+
+**New files:**
+- `apps/extension/package.json` — workspace package definition (`@battlecrm/extension`)
+- `apps/extension/wxt.config.ts` — WXT config, manifest MV3, clé RSA stable, icônes
+- `apps/extension/postcss.config.mjs` — PostCSS avec `@tailwindcss/postcss` (évite conflit vite 7/8)
+- `apps/extension/src/assets/tailwind.css` — `@import "tailwindcss"` (Tailwind v4)
+- `apps/extension/src/entrypoints/background.ts` — service worker stub
+- `apps/extension/src/entrypoints/content.ts` — content script, match `*://www.linkedin.com/in/*`
+- `apps/extension/src/entrypoints/popup/index.html` — popup HTML
+- `apps/extension/src/entrypoints/popup/main.tsx` — React root mounting
+- `apps/extension/src/entrypoints/popup/App.tsx` — popup stub component
+- `apps/extension/src/entrypoints/panel/index.html` — panel HTML
+- `apps/extension/src/entrypoints/panel/main.tsx` — React root mounting
+- `apps/extension/src/entrypoints/panel/App.tsx` — panel stub component
+- `apps/extension/src/lib/api.ts` — typed API client (loginExtension, logoutExtension, checkProspect, createProspect, updateProspect)
+- `apps/extension/src/lib/storage.ts` — chrome.storage.local wrapper (getStorage, setStorage, clearAuth)
+- `apps/extension/src/lib/linkedin.ts` — scrapeLinkedInProfile stub + normalizeLinkedInUrl
+- `apps/extension/public/icons/16.png` — placeholder icon
+- `apps/extension/public/icons/32.png` — placeholder icon
+- `apps/extension/public/icons/48.png` — placeholder icon
+- `apps/extension/public/icons/128.png` — placeholder icon
+
+**Modified files:**
+- `package.json` (root) — ajout `dev:extension` et `build:extension` scripts
+- `.gitignore` — ajout `apps/extension/.output/`, `apps/extension/.wxt/`, `apps/extension/key.pem`
