@@ -9,7 +9,8 @@ export async function loginExtension(
   const res = await fetch(`${baseUrl}/api/extension/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, name: 'Mon Chrome' }),
+    // TODO Story 7.5: pass device name as parameter (e.g. navigator.userAgent-based label)
+    body: JSON.stringify({ email, password, name: 'BattleCRM Extension' }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json()
@@ -17,10 +18,11 @@ export async function loginExtension(
 
 /** POST /api/extension/auth/logout — revokes the token */
 export async function logoutExtension(baseUrl: string, token: string): Promise<void> {
-  await fetch(`${baseUrl}/api/extension/auth/logout`, {
+  const res = await fetch(`${baseUrl}/api/extension/auth/logout`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
 
 /** GET /api/extension/prospects/check */

@@ -1,3 +1,5 @@
+import '../../assets/tailwind.css'
+
 export default function App() {
   return (
     <div className="w-105 p-4">

@@ -110,6 +110,7 @@ temp/
 # -------------------------------------------
 apps/extension/.output/
 apps/extension/.wxt/
+apps/extension/dev/
 apps/extension/key.pem
 
 # -------------------------------------------

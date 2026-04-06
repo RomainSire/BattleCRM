@@ -1,6 +1,6 @@
 # Story 7.3: Extension App Scaffold
 
-Status: review
+Status: done
 
 ## Story
 
@@ -118,17 +118,33 @@ So that I can develop the extension with modern tooling consistent with the rest
 
 - [x] **3.1** Run `wxt prepare` from `apps/extension/` to generate `.wxt/tsconfig.json`.
 
-- [x] **3.2** Create `apps/extension/tsconfig.json` (extends from WXT-generated config):
+- [x] **3.2** Create `apps/extension/tsconfig.json` (standalone — does NOT extend `.wxt/tsconfig.json` due to Vite 7/esbuild incompatibility with extends resolution):
   ```json
   {
-    "extends": ".wxt/tsconfig.json",
     "compilerOptions": {
+      "target": "ESNext",
+      "module": "ESNext",
+      "moduleResolution": "Bundler",
+      "jsx": "react-jsx",
+      "noEmit": true,
+      "esModuleInterop": true,
+      "forceConsistentCasingInFileNames": true,
+      "resolveJsonModule": true,
+      "allowImportingTsExtensions": true,
       "strict": true,
-      "skipLibCheck": true
-    }
+      "skipLibCheck": true,
+      "paths": {
+        "@": ["./src"],
+        "@/*": ["./src/*"],
+        "~": ["./src"],
+        "~/*": ["./src/*"]
+      }
+    },
+    "include": ["src/**/*", ".wxt/wxt.d.ts"],
+    "exclude": [".output", "node_modules"]
   }
   ```
-  > WXT generates `.wxt/tsconfig.json` automatically when `wxt prepare` runs (or on first dev/build). Extending it gives full WXT type support (chrome.* APIs, defineContentScript, defineBackground, etc.).
+  > Cannot use `"extends": ".wxt/tsconfig.json"` — Vite 7's esbuild fails to resolve this path during build. Instead, settings are inlined. `.wxt/wxt.d.ts` is included explicitly to get WXT globals (browser.*, defineContentScript, defineBackground, etc.). The type-check script remains `wxt prepare && tsc --noEmit` which picks up this file.
 
 ---
 
@@ -528,17 +544,21 @@ claude-sonnet-4-6
 ### Completion Notes List
 
 - **Tailwind v4 via PostCSS** : `@tailwindcss/vite` crée un conflit de types avec WXT 0.20.20 (WXT utilise vite 7.3.1, `@tailwindcss/vite` 4.1.18 attend vite 8+). Solution : `@tailwindcss/postcss` avec `postcss.config.mjs` — Tailwind v4 supporte les deux approches, PostCSS évite entièrement le conflit de versions vite.
-- **`main.tsx` entry points** : La story template suggérait `./App.tsx` directement dans le HTML, mais cela ne monte pas React. Implémentation réelle avec `main.tsx` (qui appelle `ReactDOM.createRoot`) + `App.tsx` (composant pur). Build WXT compile et génère popup.html + panel.html corrects.
+- **`main.tsx` entry points** : La story template suggérait `./App.tsx` directement dans le HTML, mais cela ne monte pas React. Implémentation réelle avec `main.tsx` (qui appelle `ReactDOM.createRoot`) + `App.tsx` (composant pur). Import Tailwind dans `App.tsx` ET `main.tsx` (WXT déduplique). Build WXT compile et génère popup.html + panel.html corrects.
 - **Génération de la clé RSA** : Exécutée via `openssl genrsa 2048 | openssl pkcs8 -topk8 -nocrypt -out key.pem && openssl rsa -in key.pem -pubout -outform DER | openssl base64 -A`. Clé publique enregistrée dans `wxt.config.ts`. Clé privée `key.pem` ajoutée au `.gitignore`.
-- **WXT auto-imports** : `defineBackground`, `defineContentScript`, `browser.*` sont des globals WXT — aucun import manuel requis dans les entrypoints. `.wxt/tsconfig.json` généré par `wxt prepare` fournit les types.
+- **WXT auto-imports** : `defineBackground`, `defineContentScript`, `browser.*` sont des globals WXT — aucun import manuel requis dans les entrypoints. `.wxt/wxt.d.ts` (inclus dans `tsconfig.json`) fournit les types.
+- **`tsconfig.json` standalone** : `"extends": ".wxt/tsconfig.json"` casse Vite 7/esbuild (résolution du path échoue pendant le build). Solution : `tsconfig.json` autonome qui inclut `.wxt/wxt.d.ts` directement. Le tsconfig racine du monorepo exclut `apps/` — sans ce fichier, `tsc --noEmit` n'aurait vérifié aucun code de l'extension.
 - **`w-105` pour 420px** : Tailwind v4 canonical class pour 420px (105 × 4px). `w-[420px]` accepté aussi mais Biome préfère `w-105`.
-- Build final : `pnpm build:extension` → 205.29 kB en 966ms, 0 erreur. `pnpm --filter @battlecrm/extension type-check` → 0 erreur. `pnpm biome check .` → 0 erreur.
+- **`logoutExtension`** : ajout du check `res.ok` (M1 code review) — les stories 7.5/7.6 doivent pouvoir détecter les échecs de déconnexion.
+- **`apps/extension/dev/`** : répertoire parasite supprimé du git (artefact WXT lancé dans le mauvais dossier). Ajouté au `.gitignore`.
+- Build final : `pnpm build:extension` → 205.75 kB, 0 erreur. `pnpm --filter @battlecrm/extension type-check` → 0 erreur. `pnpm biome check .` → 0 erreur.
 - 9.4 (chargement Chrome) : vérification manuelle requise par l'utilisateur — impossible à automatiser en CI.
 
 ### File List
 
 **New files:**
 - `apps/extension/package.json` — workspace package definition (`@battlecrm/extension`)
+- `apps/extension/tsconfig.json` — TypeScript config standalone (JSX, WXT types via `.wxt/wxt.d.ts`)
 - `apps/extension/wxt.config.ts` — WXT config, manifest MV3, clé RSA stable, icônes
 - `apps/extension/postcss.config.mjs` — PostCSS avec `@tailwindcss/postcss` (évite conflit vite 7/8)
 - `apps/extension/src/assets/tailwind.css` — `@import "tailwindcss"` (Tailwind v4)
@@ -560,4 +580,5 @@ claude-sonnet-4-6
 
 **Modified files:**
 - `package.json` (root) — ajout `dev:extension` et `build:extension` scripts
-- `.gitignore` — ajout `apps/extension/.output/`, `apps/extension/.wxt/`, `apps/extension/key.pem`
+- `pnpm-lock.yaml` — mis à jour après `pnpm install` dans `apps/extension/`
+- `.gitignore` — ajout `apps/extension/.output/`, `apps/extension/.wxt/`, `apps/extension/dev/`, `apps/extension/key.pem`
