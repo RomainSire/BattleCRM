@@ -14,17 +14,18 @@
   },
   "dependencies": {
     "@battlecrm/shared": "workspace:*",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
-    "@types/react": "^19.2.7",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@wxt-dev/module-react": "latest",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.18",
+    "@wxt-dev/module-react": "^1.2.2",
+    "postcss": "^8.5.9",
+    "tailwindcss": "^4.2.2",
     "typescript": "~5.9.3",
-    "wxt": "latest"
+    "vite": "^8.0.8",
+    "wxt": "^0.20.20"
   }
 }
