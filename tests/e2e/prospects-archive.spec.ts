@@ -80,8 +80,9 @@ test.describe('Prospects - Archive & Restore', () => {
     await archiveResponse
 
     await expect(page.getByText(/prospect archived/i)).toBeVisible()
+    await expect(page.getByRole('alertdialog')).not.toBeVisible()
     // Prospect no longer in default (active) list
-    await expect(page.getByText('To Be Archived')).not.toBeVisible()
+    await expect(page.locator('table').getByText('To Be Archived')).not.toBeVisible()
     // Other prospect unaffected
     await expect(page.getByText('Active Prospect')).toBeVisible()
   })

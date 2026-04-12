@@ -5,12 +5,12 @@ export async function loginExtension(
   baseUrl: string,
   email: string,
   password: string,
+  name = 'Extension',
 ): Promise<{ token: string; user: { id: string; email: string } }> {
   const res = await fetch(`${baseUrl}/api/extension/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    // TODO Story 7.5: pass device name as parameter (e.g. navigator.userAgent-based label)
-    body: JSON.stringify({ email, password, name: 'BattleCRM Extension' }),
+    body: JSON.stringify({ email, password, name }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json()
