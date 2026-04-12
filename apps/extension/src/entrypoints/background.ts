@@ -24,8 +24,9 @@ async function handleLogout(): Promise<void> {
   await clearAuth()
 }
 
-// Called when any API call returns 401 (used by Stories 7.5/7.6)
-export async function handleAuthExpired(): Promise<void> {
+// Called from within background.ts when any API call returns 401 (wired up in Stories 7.5/7.6)
+// biome-ignore lint/correctness/noUnusedVariables: intentional stub for upcoming stories
+async function handleAuthExpired(): Promise<void> {
   await clearAuth()
   try {
     await browser.runtime.sendMessage({ type: 'AUTH_EXPIRED' })

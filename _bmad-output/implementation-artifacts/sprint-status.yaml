@@ -118,7 +118,7 @@ development_status:
   7-1-extension-token-authentication-backend: done
   7-2-extension-facing-prospect-api-backend: done
   7-3-extension-app-scaffold: done
-  7-4-extension-settings-and-authentication-ui: review
+  7-4-extension-settings-and-authentication-ui: done
   7-5-linkedin-profile-detection-and-badge-update: backlog
   7-6-prospect-add-update-floating-window: backlog
   epic-7-retrospective: optional

@@ -5,8 +5,8 @@ interface NeutralScreenProps {
 }
 
 export default function NeutralScreen({ email, baseUrl, onSettingsClick }: NeutralScreenProps) {
-  function openApp() {
-    browser.tabs.create({ url: baseUrl })
+  async function openApp() {
+    await browser.tabs.create({ url: baseUrl })
   }
 
   return (

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { loginExtension } from '../lib/api'
+import { useEffect, useState } from 'react'
+import { HttpError, loginExtension } from '../lib/api'
 import { setStorage } from '../lib/storage'
 
 interface AuthFormProps {
@@ -14,6 +14,10 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(initialError ?? null)
 
+  useEffect(() => {
+    if (initialError) setError(initialError)
+  }, [initialError])
+
   const isDisabled = !baseUrl.trim() || !email.trim() || !password.trim() || loading
 
   async function handleSubmit(e: React.FormEvent) {
@@ -26,8 +30,7 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
       await setStorage({ token: res.token, baseUrl: baseUrl.trim(), email: email.trim() })
       onSuccess(email.trim())
     } catch (err) {
-      const message = err instanceof Error ? err.message : ''
-      if (message.includes('401')) {
+      if (err instanceof HttpError && err.status === 401) {
         setError('Identifiants invalides')
       } else {
         setError('Serveur inaccessible')
@@ -55,7 +58,7 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
             id="baseUrl"
             onChange={(e) => setBaseUrl(e.target.value)}
             placeholder="http://localhost:3333"
-            type="url"
+            type="text"
             value={baseUrl}
           />
         </div>

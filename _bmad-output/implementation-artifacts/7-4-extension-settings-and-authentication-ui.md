@@ -1,6 +1,6 @@
 # Story 7.4: Extension Settings & Authentication UI
 
-Status: review
+Status: done
 
 ## Story
 
@@ -299,4 +299,7 @@ claude-sonnet-4-6
 **Modified files:**
 - `apps/extension/src/entrypoints/background.ts` — LOGOUT message handler + handleAuthExpired() shell
 - `apps/extension/src/entrypoints/popup/App.tsx` — Machine à états login/neutral/settings
-- `apps/extension/src/lib/api.ts` — loginExtension: ajout paramètre `name = 'Extension'`
+- `apps/extension/src/lib/api.ts` — loginExtension: ajout paramètre `name = 'Extension'`; ajout classe `HttpError`
+- `tests/e2e/prospects-archive.spec.ts` — tests Playwright archive/restore (Epic 3 story 3.5) — ajouté sur cette branche en parallèle de 7.4
+
+**Note (SettingsScreen header):** Le titre affiche "Paramètres" au lieu de "⚔️ BattleCRM" comme spécifié dans la task 4.1. L'AC6 ne prescrit pas de titre exact — déviation délibérée retenue pour la lisibilité (écran de paramètres).

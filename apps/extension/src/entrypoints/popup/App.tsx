@@ -62,7 +62,7 @@ export default function App() {
 
   if (screen === 'login') {
     return (
-      <div className="w-72">
+      <div className="w-72 min-h-48">
         <AuthForm initialError={sessionExpiredMessage} onSuccess={handleAuthSuccess} />
       </div>
     )
