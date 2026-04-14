@@ -1,18 +1,24 @@
 import type { ExtensionCheckResponse, ExtensionProspectData } from '@battlecrm/shared'
 
+export class HttpError extends Error {
+  constructor(public readonly status: number) {
+    super(`HTTP ${status}`)
+  }
+}
+
 /** POST /api/extension/auth/login — returns raw token (one-time display) */
 export async function loginExtension(
   baseUrl: string,
   email: string,
   password: string,
+  name = 'Extension',
 ): Promise<{ token: string; user: { id: string; email: string } }> {
   const res = await fetch(`${baseUrl}/api/extension/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    // TODO Story 7.5: pass device name as parameter (e.g. navigator.userAgent-based label)
-    body: JSON.stringify({ email, password, name: 'BattleCRM Extension' }),
+    body: JSON.stringify({ email, password, name }),
   })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  if (!res.ok) throw new HttpError(res.status)
   return res.json()
 }
 
@@ -22,7 +28,7 @@ export async function logoutExtension(baseUrl: string, token: string): Promise<v
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  if (!res.ok) throw new HttpError(res.status)
 }
 
 /** GET /api/extension/prospects/check */
@@ -35,7 +41,7 @@ export async function checkProspect(
     `${baseUrl}/api/extension/prospects/check?linkedin_url=${encodeURIComponent(linkedinUrl)}`,
     { headers: { Authorization: `Bearer ${token}` } },
   )
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  if (!res.ok) throw new HttpError(res.status)
   return res.json() as Promise<ExtensionCheckResponse>
 }
 
@@ -57,7 +63,7 @@ export async function createProspect(
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  if (!res.ok) throw new HttpError(res.status)
   return res.json() as Promise<ExtensionProspectData>
 }
 
@@ -75,6 +81,6 @@ export async function updateProspect(
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  if (!res.ok) throw new HttpError(res.status)
   return res.json() as Promise<ExtensionProspectData>
 }
