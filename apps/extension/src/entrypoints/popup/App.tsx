@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import '../../assets/tailwind.css'
 import AuthForm from '../../components/AuthForm'
 import NeutralScreen from '../../components/NeutralScreen'
@@ -8,6 +9,7 @@ import { clearAuth, getStorage } from '../../lib/storage'
 type Screen = 'loading' | 'login' | 'neutral' | 'settings'
 
 export default function App() {
+  const { t } = useTranslation()
   const [screen, setScreen] = useState<Screen>('loading')
   const [email, setEmail] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
@@ -28,7 +30,7 @@ export default function App() {
   useEffect(() => {
     function handleMessage(message: { type: string }) {
       if (message.type === 'AUTH_EXPIRED') {
-        setSessionExpiredMessage('Session expirée, veuillez vous reconnecter')
+        setSessionExpiredMessage(t('session.expired'))
         setScreen('login')
       }
     }
@@ -36,7 +38,7 @@ export default function App() {
     return () => {
       browser.runtime.onMessage.removeListener(handleMessage)
     }
-  }, [])
+  }, [t])
 
   function handleAuthSuccess(loggedInEmail: string) {
     setEmail(loggedInEmail)
@@ -62,7 +64,7 @@ export default function App() {
 
   if (screen === 'login') {
     return (
-      <div className="w-72 min-h-48">
+      <div className="min-h-48 w-72">
         <AuthForm initialError={sessionExpiredMessage} onSuccess={handleAuthSuccess} />
       </div>
     )
@@ -70,14 +72,14 @@ export default function App() {
 
   if (screen === 'settings') {
     return (
-      <div className="w-72 min-h-48">
+      <div className="min-h-48 w-72">
         <SettingsScreen email={email} onBack={() => setScreen('neutral')} onLogout={handleLogout} />
       </div>
     )
   }
 
   return (
-    <div className="w-72 min-h-48">
+    <div className="min-h-48 w-72">
       <NeutralScreen
         baseUrl={baseUrl}
         email={email}

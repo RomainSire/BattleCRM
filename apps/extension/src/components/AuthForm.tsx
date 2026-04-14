@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { HttpError, loginExtension } from '../lib/api'
 import { setStorage } from '../lib/storage'
 
@@ -8,6 +9,7 @@ interface AuthFormProps {
 }
 
 export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
+  const { t } = useTranslation()
   const [baseUrl, setBaseUrl] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -31,9 +33,9 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
       onSuccess(email.trim())
     } catch (err) {
       if (err instanceof HttpError && err.status === 401) {
-        setError('Identifiants invalides')
+        setError(t('auth.errors.invalidCredentials'))
       } else {
-        setError('Serveur inaccessible')
+        setError(t('auth.errors.serverUnreachable'))
       }
     } finally {
       setLoading(false)
@@ -43,21 +45,21 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="text-center">
-        <h1 className="text-base font-bold text-gray-900">⚔️ BattleCRM</h1>
-        <p className="mt-0.5 text-xs text-gray-500">Connectez votre instance</p>
+        <h1 className="text-base font-bold text-gray-900">{t('auth.title')}</h1>
+        <p className="mt-0.5 text-xs text-gray-500">{t('auth.subtitle')}</p>
       </div>
 
       <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-gray-700" htmlFor="baseUrl">
-            URL BattleCRM
+            {t('auth.fields.url')}
           </label>
           <input
             className="rounded border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
             id="baseUrl"
             onChange={(e) => setBaseUrl(e.target.value)}
-            placeholder="http://localhost:3333"
+            placeholder={t('auth.placeholders.url')}
             type="text"
             value={baseUrl}
           />
@@ -65,14 +67,14 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-gray-700" htmlFor="email">
-            Email
+            {t('auth.fields.email')}
           </label>
           <input
             className="rounded border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
             id="email"
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="vous@exemple.com"
+            placeholder={t('auth.placeholders.email')}
             type="email"
             value={email}
           />
@@ -80,7 +82,7 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-gray-700" htmlFor="password">
-            Mot de passe
+            {t('auth.fields.password')}
           </label>
           <input
             className="rounded border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -99,7 +101,7 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
           disabled={isDisabled}
           type="submit"
         >
-          {loading ? 'Connexion…' : 'Se connecter'}
+          {loading ? t('auth.submitting') : t('auth.submit')}
         </button>
       </form>
     </div>

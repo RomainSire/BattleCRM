@@ -1,0 +1,46 @@
+{
+  "auth": {
+    "title": "⚔️ BattleCRM",
+    "subtitle": "Connectez votre instance",
+    "fields": {
+      "url": "URL BattleCRM",
+      "email": "Email",
+      "password": "Mot de passe"
+    },
+    "placeholders": {
+      "url": "http://localhost:3333",
+      "email": "vous@exemple.com"
+    },
+    "submit": "Se connecter",
+    "submitting": "Connexion…",
+    "errors": {
+      "invalidCredentials": "Identifiants invalides",
+      "serverUnreachable": "Serveur inaccessible"
+    }
+  },
+  "neutral": {
+    "openApp": "Ouvrir BattleCRM ↗",
+    "linkedinHint": "Naviguez vers un profil LinkedIn pour capturer un prospect.",
+    "connected": "Connecté : {{email}}"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "back": "Retour",
+    "connectedAs": "Connecté en tant que",
+    "language": {
+      "label": "Langue"
+    },
+    "logout": "Se déconnecter",
+    "loggingOut": "Déconnexion…"
+  },
+  "panel": {
+    "title": "BattleCRM Panel",
+    "description": "Fenêtre flottante"
+  },
+  "session": {
+    "expired": "Session expirée, veuillez vous reconnecter"
+  },
+  "aria": {
+    "settings": "Paramètres"
+  }
+}
