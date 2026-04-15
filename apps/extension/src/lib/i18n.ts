@@ -24,7 +24,7 @@ i18next
       lookupLocalStorage: 'battlecrm-ext-lang',
     },
     // Translations are bundled — resolve synchronously on first render
-    initImmediate: false,
+    initAsync: false,
   })
 
 export default i18next
