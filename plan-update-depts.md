@@ -229,10 +229,31 @@
   ✅ tests backend : 269/269 passed
 
   ---
-  shadcn CLI 3 → 4 🟢 (quand besoin)
+  Phase 8 — Mises à jour mineures résiduelles 🟢 ✅ DONE (2026-04-15)
 
-  C'est un outil CLI de génération uniquement, pas une runtime dep. Aucune urgence. Mettre à jour quand on installe un nouveau composant. La nouveauté utile : flag
-  --monorepo pour les setups pnpm.
+  Packages mis à jour après les phases 1-7 :
+
+  ┌──────────────────┬──────────────────────────────────────────────┬────────────────────────────────────────────────────────────┐
+  │ Package          │ Avant → Après                                │ Note                                                       │
+  ├──────────────────┼──────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ @biomejs/biome   │ 2.x → ^2.4.12                               │ Patch — root devDep                                        │
+  ├──────────────────┼──────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ postcss          │ 8.x → ^8.5.10                               │ Patch — extension devDep                                   │
+  ├──────────────────┼──────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ @swc/core        │ 1.11.24 → 1.15.26                           │ Mineur — backend devDep (transpileur AdonisJS assembler)    │
+  ├──────────────────┼──────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ @types/node      │ ~22.x → ^24.12.2                            │ Aligné sur Node.js v24.13.0 runtime                        │
+  ├──────────────────┼──────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ shadcn (CLI)     │ 3.x → ^4.2.0                                │ Outil CLI uniquement — flag --monorepo utile (pnpm)         │
+  ├──────────────────┼──────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ hot-hook         │ 0.4.0 → ^1.0.0                              │ Majeur mais dev-only (HMR backend) — même API de config     │
+  └──────────────────┴──────────────────────────────────────────────┴────────────────────────────────────────────────────────────┘
+
+  ▎ Note @types/node@25 : existe mais on reste sur ^24 (aligné runtime Node v24).
+  ▎ Note hot-hook@1 : v1.0.0 publiée le 2026-02-25 — même format hotHook.boundaries dans package.json.
+
+  ✅ type-check : OK (tous workspaces)
+  ✅ tests backend : 269/269 passed
 
   ---
   Récapitulatif
