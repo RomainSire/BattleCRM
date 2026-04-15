@@ -196,7 +196,7 @@
   ✅ tests backend : 269/269 passed
 
   ---
-  Phase 7 — TypeScript 6 🔴 (2-4h, à planifier séparément)
+  Phase 7 — TypeScript 6 🔴 (2-4h, à planifier séparément) ✅ DONE (2026-04-15)
 
   ▎ ⚠️  Vérifier d'abord que AdonisJS v7 + @adonisjs/tsconfig v2 supportent TS6 avant d'attaquer cette phase.
 
@@ -221,6 +221,12 @@
   └────────────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────┘
 
   Approche : utiliser "ignoreDeprecations": "6.0" temporairement si blocage.
+
+  ✅ typescript → 6.0.2 (tous workspaces)
+  ✅ Migration tool @andrewbranch/ts5to6 : baseUrl supprimé dans tsconfig.json + tsconfig.app.json (frontend)
+  ✅ Aucun autre breaking change détecté (strict déjà actif, moduleResolution déjà bundler/NodeNext, pas d'import assert)
+  ✅ type-check : OK (shared, backend, frontend, extension)
+  ✅ tests backend : 269/269 passed
 
   ---
   shadcn CLI 3 → 4 🟢 (quand besoin)
