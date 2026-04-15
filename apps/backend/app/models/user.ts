@@ -3,10 +3,10 @@ import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
 import { compose } from '@adonisjs/core/helpers'
 import hash from '@adonisjs/core/services/hash'
 import { BaseModel, column, scope } from '@adonisjs/lucid/orm'
-import { SoftDeletes } from 'adonis-lucid-soft-deletes'
 import type { DateTime } from 'luxon'
+import { SoftDeletes } from '#mixins/soft_deletes'
 
-const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
+const AuthFinder = withAuthFinder(hash, {
   uids: ['email'],
   passwordColumnName: 'password',
 })

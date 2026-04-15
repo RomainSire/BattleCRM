@@ -120,7 +120,7 @@
   ⚠️  Test visuel (pnpm dev) à valider manuellement
 
   ---
-  Phase 6 — Écosystème AdonisJS 🔴 (2-4h)
+  Phase 6 — Écosystème AdonisJS 🔴 (2-4h) ✅ DONE (2026-04-15)
 
   ⚠️  Tout l'écosystème en une seule fois — les packages sont interdépendants.
 
@@ -182,6 +182,18 @@
   getDirname  getFilename  slash(  router.makeUrl  router.makeSignedUrl  cuid(
 
   Vérification : pnpm test (toute la suite Japa), pnpm build
+  ✅ adonis-lucid-soft-deletes supprimé — mixin inliné dans app/mixins/soft_deletes.ts
+     (lib communautaire incompatible v7 ; Exception supprimée de @poppinss/utils v7)
+  ✅ Provider local : providers/lucid_soft_deletes_provider.ts
+  ✅ Alias #mixins/* ajouté dans package.json imports
+  ✅ adonisrc.ts : globs .{ts,js} + provider local
+  ✅ config/app.ts : appKey supprimé
+  ✅ config/encryption.ts : créé avec drivers.legacy({ keys: [...] })
+  ✅ ace.js : ts-node-maintained → @poppinss/ts-exec
+  ✅ user.ts : withAuthFinder(hash) (sans lambda)
+  ✅ @poppinss/ts-exec + youch ajoutés, ts-node-maintained supprimé
+  ✅ type-check : OK (tous workspaces)
+  ✅ tests backend : 269/269 passed
 
   ---
   Phase 7 — TypeScript 6 🔴 (2-4h, à planifier séparément)
