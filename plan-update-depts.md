@@ -15,7 +15,7 @@
   ✅ tests backend : 269/269 passed
 
   ---
-  Phase 2 — VineJS 3 → 4 🟡 (~1h)
+  Phase 2 — VineJS 3 → 4 🟡 (~1h) ✅ DONE (2026-04-15)
 
   Breaking changes à corriger manuellement :
 
@@ -33,9 +33,13 @@
   │ BaseModifiers supprimé                                                                    │ peu probable, mais grep                  │
   └───────────────────────────────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
-  Upgrade : pnpm up @vinejs/vine --recursive
+  Upgrade : pnpm up @vinejs/vine@4 --recursive  ← @4 requis (saut majeur, semver ne passe pas)
 
   Vérification : pnpm test (unit + functional backend), pnpm type-check
+  ✅ Aucun breaking change dans le code (vine.file, .positive/.negative, confirmationField, BaseModifiers → non utilisés)
+  ✅ @vinejs/vine → 4.3.1
+  ✅ type-check : OK
+  ✅ tests backend : 269/269 passed
 
   ---
   Phase 3 — i18next 25 → 26 + react-i18next 16 → 17 🟡 (~30 min)

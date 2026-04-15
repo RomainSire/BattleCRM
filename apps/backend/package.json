@@ -55,7 +55,7 @@
     "@adonisjs/lucid": "^21.8.2",
     "@adonisjs/session": "^7.7.1",
     "@battlecrm/shared": "workspace:*",
-    "@vinejs/vine": "^3.0.1",
+    "@vinejs/vine": "^4.3.1",
     "adonis-lucid-soft-deletes": "^2.1.0",
     "luxon": "^3.7.2",
     "pg": "^8.20.0",
