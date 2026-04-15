@@ -42,7 +42,7 @@
   ✅ tests backend : 269/269 passed
 
   ---
-  Phase 3 — i18next 25 → 26 + react-i18next 16 → 17 🟡 (~30 min)
+  Phase 3 — i18next 25 → 26 + react-i18next 16 → 17 🟡 (~30 min) ✅ DONE (2026-04-15)
 
   Ces deux packages vont ensemble (react-i18next v17 exige i18next v26 comme peer dep).
 
@@ -62,24 +62,33 @@
   │ interpolations                                                                                         │                                                    │
   └────────────────────────────────────────────────────────────────────────────────────────────────────────┴────────────────────────────────────────────────────┘
 
-  Upgrade : pnpm up i18next react-i18next --recursive
+  Upgrade : pnpm up i18next@26 react-i18next@17 --recursive  ← @26/@17 requis (sauts majeurs)
+
+  Fix appliqué :
+  - apps/extension/src/lib/i18n.ts : initImmediate: false → initAsync: false
 
   Vérification : pnpm type-check + test visuel des traductions
+  ✅ i18next → 26.0.5, react-i18next → 17.0.3
+  ✅ type-check : OK
+  ✅ tests backend : 269/269 passed
+  ⚠️  Test visuel des traductions à valider manuellement (frontend + extension)
 
   ---
-  Phase 4 — lucide-react 0.x → 1.x 🟢 (~10 min)
+  Phase 4 — lucide-react 0.x → 1.x 🟢 (~10 min) ✅ DONE (2026-04-15)
 
   Bonne nouvelle : Aucun des icônes utilisés dans BattleCRM n'est un brand icon supprimé. Les 14 icônes supprimées (Github, Slack, Facebook, etc.) ne sont pas
   utilisées.
 
   Seul changement potentiel : aria-hidden="true" ajouté par défaut sur tous les icônes décoratifs (positif pour l'accessibilité).
 
-  Upgrade : pnpm up lucide-react --filter @battlecrm/frontend
+  Upgrade : pnpm up lucide-react@1 --filter @battlecrm/frontend  ← @1 requis (saut majeur)
 
   Vérification : pnpm type-check (TypeScript détectera immédiatement tout icône manquant)
+  ✅ lucide-react → 1.8.0
+  ✅ type-check : OK (aucun icône manquant)
 
   ---
-  Phase 5 — Vite 8 + @vitejs/plugin-react 6 🟡 (~1h)
+  Phase 5 — Vite 8 + @vitejs/plugin-react 6 🟡 (~1h) ✅ DONE (2026-04-15)
 
   Architecture : Rolldown (Rust) remplace esbuild+Rollup. Une compat layer automatique existe.
 
@@ -101,9 +110,14 @@
 
   En pratique pour ce projet : probablement juste un bump de version.
 
-  Upgrade : pnpm up vite @vitejs/plugin-react --filter @battlecrm/frontend
+  Upgrade : pnpm up vite@8 @vitejs/plugin-react@6 --filter @battlecrm/frontend  ← @8/@6 requis
 
   Vérification : pnpm build (frontend) + pnpm dev + test visuel
+  ✅ vite → 8.0.8, @vitejs/plugin-react → 6.0.1
+  ✅ Aucun breaking change (pas de babel, rollupOptions, esbuild dans la config)
+  ✅ type-check : OK
+  ✅ pnpm build : OK (warning chunk 1.6MB pré-existant, pas lié à l'upgrade)
+  ⚠️  Test visuel (pnpm dev) à valider manuellement
 
   ---
   Phase 6 — Écosystème AdonisJS 🔴 (2-4h)
