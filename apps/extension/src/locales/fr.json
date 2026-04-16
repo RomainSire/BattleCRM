@@ -42,5 +42,10 @@
   },
   "aria": {
     "settings": "Paramètres"
+  },
+  "validation": {
+    "required": "Ce champ est obligatoire",
+    "email": "Email invalide",
+    "minLength": "Ce champ est obligatoire"
   }
 }

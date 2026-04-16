@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { type SubmitHandler, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { HttpError, loginExtension } from '../lib/api'
 import { setStorage } from '../lib/storage'
@@ -8,37 +9,43 @@ interface AuthFormProps {
   initialError?: string
 }
 
+interface LoginFormValues {
+  baseUrl: string
+  email: string
+  password: string
+}
+
 export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
   const { t } = useTranslation()
-  const [baseUrl, setBaseUrl] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(initialError ?? null)
+
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    defaultValues: { baseUrl: '', email: '', password: '' },
+    mode: 'onTouched',
+  })
 
   useEffect(() => {
-    if (initialError) setError(initialError)
-  }, [initialError])
+    if (initialError) {
+      setError('root', { message: initialError })
+    }
+  }, [initialError, setError])
 
-  const isDisabled = !baseUrl.trim() || !email.trim() || !password.trim() || loading
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+  const onSubmit: SubmitHandler<LoginFormValues> = async (data) => {
     try {
       const tokenName = browser.runtime.getManifest().name
-      const res = await loginExtension(baseUrl.trim(), email.trim(), password, tokenName)
-      await setStorage({ token: res.token, baseUrl: baseUrl.trim(), email: email.trim() })
-      onSuccess(email.trim())
+      const res = await loginExtension(data.baseUrl, data.email, data.password, tokenName)
+      await setStorage({ token: res.token, baseUrl: data.baseUrl, email: data.email })
+      onSuccess(data.email)
     } catch (err) {
       if (err instanceof HttpError && err.status === 401) {
-        setError(t('auth.errors.invalidCredentials'))
+        setError('root', { message: t('auth.errors.invalidCredentials') })
       } else {
-        setError(t('auth.errors.serverUnreachable'))
+        setError('root', { message: t('auth.errors.serverUnreachable') })
       }
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -49,20 +56,20 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
         <p className="mt-0.5 text-xs text-gray-500">{t('auth.subtitle')}</p>
       </div>
 
-      <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-3" onSubmit={handleSubmit(onSubmit)}>
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-gray-700" htmlFor="baseUrl">
             {t('auth.fields.url')}
           </label>
           <input
+            {...register('baseUrl', { required: t('validation.required') })}
             className="rounded border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
+            disabled={isSubmitting}
             id="baseUrl"
-            onChange={(e) => setBaseUrl(e.target.value)}
             placeholder={t('auth.placeholders.url')}
             type="text"
-            value={baseUrl}
           />
+          {errors.baseUrl && <p className="text-xs text-red-600">{errors.baseUrl.message}</p>}
         </div>
 
         <div className="flex flex-col gap-1">
@@ -70,14 +77,20 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
             {t('auth.fields.email')}
           </label>
           <input
+            {...register('email', {
+              required: t('validation.required'),
+              pattern: {
+                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                message: t('validation.email'),
+              },
+            })}
             className="rounded border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
+            disabled={isSubmitting}
             id="email"
-            onChange={(e) => setEmail(e.target.value)}
             placeholder={t('auth.placeholders.email')}
             type="email"
-            value={email}
           />
+          {errors.email && <p className="text-xs text-red-600">{errors.email.message}</p>}
         </div>
 
         <div className="flex flex-col gap-1">
@@ -85,23 +98,23 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
             {t('auth.fields.password')}
           </label>
           <input
+            {...register('password', { required: t('validation.required') })}
             className="rounded border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
+            disabled={isSubmitting}
             id="password"
-            onChange={(e) => setPassword(e.target.value)}
             type="password"
-            value={password}
           />
+          {errors.password && <p className="text-xs text-red-600">{errors.password.message}</p>}
         </div>
 
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {errors.root && <p className="text-xs text-red-600">{errors.root.message}</p>}
 
         <button
           className="mt-1 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={isDisabled}
+          disabled={isSubmitting}
           type="submit"
         >
-          {loading ? t('auth.submitting') : t('auth.submit')}
+          {isSubmitting ? t('auth.submitting') : t('auth.submit')}
         </button>
       </form>
     </div>
