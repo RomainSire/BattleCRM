@@ -1,4 +1,4 @@
-import { logoutExtension } from '../lib/api'
+import { authApi } from '../features/auth/lib/api'
 import { clearAuth, getStorage } from '../lib/storage'
 
 export default defineBackground(() => {
@@ -16,7 +16,7 @@ async function handleLogout(): Promise<void> {
   const { token, baseUrl } = await getStorage()
   if (token && baseUrl) {
     try {
-      await logoutExtension(baseUrl, token)
+      await authApi.logout(baseUrl, token)
     } catch {
       // Ignore API errors — always clear local storage regardless
     }

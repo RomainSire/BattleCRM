@@ -1,0 +1,20 @@
+meta {
+  name: Extension Logout
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:3333/api/extension/auth/logout
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{extensionToken}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

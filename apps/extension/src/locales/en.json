@@ -42,5 +42,17 @@
   },
   "aria": {
     "settings": "Settings"
+  },
+  "accessibility": {
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
+  },
+  "validation": {
+    "required": "This field is required",
+    "email": "Invalid email address",
+    "minLength": "This field is required"
+  },
+  "common": {
+    "appName": "BattleCRM"
   }
 }

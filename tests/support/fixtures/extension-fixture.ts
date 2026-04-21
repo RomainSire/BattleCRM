@@ -110,6 +110,15 @@ export const test = base.extend<ExtensionFixtures, ExtensionWorkerFixtures>({
     await use(extensionContext)
   },
 
+  // ── Test-scoped: explicitly close the page after each test ──────────────────
+  // Without this override, pages accumulate in the persistent context until the
+  // worker shuts down (context.close() is the only cleanup, but it's worker-scoped).
+  page: async ({ extensionContext }, use) => {
+    const page = await extensionContext.newPage()
+    await use(page)
+    await page.close().catch(() => {})
+  },
+
   // ── Test-scoped helpers ──────────────────────────────────────────────────────
   extensionLoginAs: async ({ extensionContext }, use) => {
     await use(async (email: string, password: string) => {

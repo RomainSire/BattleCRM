@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { cn } from '../lib/utils'
 
 const LANGUAGES = [
   { code: 'fr', label: 'FR' },
@@ -11,13 +12,17 @@ export default function LanguageSelector() {
 
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-gray-700">{t('settings.language.label')}</span>
-      <div className="flex overflow-hidden rounded border border-gray-200 text-xs font-medium">
+      <span className="text-sm">{t('settings.language.label')}</span>
+      <div className="flex overflow-hidden rounded-md border border-border text-xs font-medium">
         {LANGUAGES.map(({ code, label }, index) => (
           <button
-            className={`px-3 py-1 transition-colors ${index > 0 ? 'border-l border-gray-200' : ''} ${
-              current === code ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
-            }`}
+            className={cn(
+              'px-3 py-1.5 transition-colors',
+              index > 0 && 'border-l border-border',
+              current === code
+                ? 'bg-brand-gradient text-white'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+            )}
             key={code}
             onClick={() => i18n.changeLanguage(code)}
             type="button"

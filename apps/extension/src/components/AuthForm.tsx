@@ -1,108 +1,126 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { type SubmitHandler, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { HttpError, loginExtension } from '../lib/api'
-import { setStorage } from '../lib/storage'
+import { useLoginExtension } from '../features/auth/hooks/useAuth'
+import { HttpError } from '../lib/api'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
+import { PasswordInput } from './ui/password-input'
 
 interface AuthFormProps {
   onSuccess: (email: string) => void
   initialError?: string
 }
 
+interface LoginFormValues {
+  baseUrl: string
+  email: string
+  password: string
+}
+
 export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
   const { t } = useTranslation()
-  const [baseUrl, setBaseUrl] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(initialError ?? null)
+  const login = useLoginExtension()
+
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    defaultValues: { baseUrl: '', email: '', password: '' },
+    mode: 'onTouched',
+  })
 
   useEffect(() => {
-    if (initialError) setError(initialError)
-  }, [initialError])
-
-  const isDisabled = !baseUrl.trim() || !email.trim() || !password.trim() || loading
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    try {
-      const tokenName = browser.runtime.getManifest().name
-      const res = await loginExtension(baseUrl.trim(), email.trim(), password, tokenName)
-      await setStorage({ token: res.token, baseUrl: baseUrl.trim(), email: email.trim() })
-      onSuccess(email.trim())
-    } catch (err) {
-      if (err instanceof HttpError && err.status === 401) {
-        setError(t('auth.errors.invalidCredentials'))
-      } else {
-        setError(t('auth.errors.serverUnreachable'))
-      }
-    } finally {
-      setLoading(false)
+    if (initialError) {
+      setError('root', { message: initialError })
     }
+  }, [initialError, setError])
+
+  const onSubmit: SubmitHandler<LoginFormValues> = (data) => {
+    const tokenName = browser.runtime.getManifest().name
+    login.mutate(
+      { baseUrl: data.baseUrl, email: data.email, password: data.password, tokenName },
+      {
+        onSuccess: ({ email }) => onSuccess(email),
+        onError: (err) => {
+          if (err instanceof HttpError && err.status === 401) {
+            setError('root', { message: t('auth.errors.invalidCredentials') })
+          } else {
+            setError('root', { message: t('auth.errors.serverUnreachable') })
+          }
+        },
+      },
+    )
   }
 
+  const isPending = isSubmitting || login.isPending
+
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <div className="text-center">
-        <h1 className="text-base font-bold text-gray-900">{t('auth.title')}</h1>
-        <p className="mt-0.5 text-xs text-gray-500">{t('auth.subtitle')}</p>
+    <div className="flex flex-col gap-5 p-5">
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex items-center gap-2">
+          <img alt="BattleCRM" className="h-8 w-auto" src="/BattleCRM_logo.svg" />
+          <span className="font-bold text-2xl text-brand-gradient">{t('common.appName')}</span>
+        </div>
+        <p className="text-xs text-muted-foreground">{t('auth.subtitle')}</p>
       </div>
 
-      <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-700" htmlFor="baseUrl">
-            {t('auth.fields.url')}
-          </label>
-          <input
-            className="rounded border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
+      <form className="flex flex-col gap-3" onSubmit={handleSubmit(onSubmit)}>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="baseUrl">{t('auth.fields.url')}</Label>
+          <Input
+            {...register('baseUrl', { required: t('validation.required') })}
+            aria-invalid={!!errors.baseUrl}
+            disabled={isPending}
             id="baseUrl"
-            onChange={(e) => setBaseUrl(e.target.value)}
             placeholder={t('auth.placeholders.url')}
             type="text"
-            value={baseUrl}
           />
+          {errors.baseUrl && <p className="text-xs text-destructive">{errors.baseUrl.message}</p>}
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-700" htmlFor="email">
-            {t('auth.fields.email')}
-          </label>
-          <input
-            className="rounded border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="email">{t('auth.fields.email')}</Label>
+          <Input
+            {...register('email', {
+              required: t('validation.required'),
+              pattern: {
+                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                message: t('validation.email'),
+              },
+            })}
+            aria-invalid={!!errors.email}
+            disabled={isPending}
             id="email"
-            onChange={(e) => setEmail(e.target.value)}
             placeholder={t('auth.placeholders.email')}
             type="email"
-            value={email}
           />
+          {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-700" htmlFor="password">
-            {t('auth.fields.password')}
-          </label>
-          <input
-            className="rounded border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="password">{t('auth.fields.password')}</Label>
+          <PasswordInput
+            {...register('password', { required: t('validation.required') })}
+            aria-invalid={!!errors.password}
+            disabled={isPending}
             id="password"
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            value={password}
           />
+          {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
         </div>
 
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {errors.root && (
+          <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {errors.root.message}
+          </p>
+        )}
 
-        <button
-          className="mt-1 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={isDisabled}
-          type="submit"
-        >
-          {loading ? t('auth.submitting') : t('auth.submit')}
-        </button>
+        <Button className="mt-1 w-full" disabled={isPending} type="submit">
+          {isPending ? t('auth.submitting') : t('auth.submit')}
+        </Button>
       </form>
     </div>
   )

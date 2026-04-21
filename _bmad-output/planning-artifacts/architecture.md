@@ -1244,13 +1244,15 @@ origin: (requestOrigin) => {
 EXTENSION_ORIGINS=chrome-extension://abcdefghijklmnopqrstuvwxyz123456,moz-extension://uuid-here
 ```
 
-### Gotcha : `activeTab` + `chrome.windows.create`
+### Gotcha : `chrome.storage.session` et form state
 
-**Comportement documenté :** Quand le popup est ouvert via `chrome.windows.create` (et non le standard action popup), la permission `activeTab` n'est **pas** automatiquement accordée à la nouvelle fenêtre.
+**Choix architectural :** L'extension utilise uniquement le popup action standard (pas de `chrome.windows.create`). Pour compenser le fait que le popup se ferme au clic extérieur, le form state est persisté dans `chrome.storage.session` — une clé par LinkedIn URL normalisée.
 
-**Impact sur notre archi :** Aucun — notre flow n'a pas besoin d'injecter des scripts depuis la fenêtre flottante. Le content script est déclaré dans le manifest et injecté au chargement de page (pas via `scripting.executeScript()` depuis la fenêtre). La fenêtre flottante communique avec le service worker via message passing uniquement.
+**`chrome.storage.session` vs `chrome.storage.local` :**
+- `session` : effacé au redémarrage du navigateur, partagé entre tous les contextes de l'extension (popup, service worker), synchrone en lecture dans MV3
+- `local` : persiste entre sessions → réservé aux credentials (token, baseUrl, email)
 
-**Garder `activeTab` dans les permissions** pour la flexibilité future, mais ne pas en dépendre depuis la fenêtre flottante.
+**Flux :** chaque changement de champ → `chrome.storage.session.set({ [linkedinUrl]: formState })`. Réouverture du popup → lecture de la clé → restauration. Navigation vers un autre profil (Story 7.5) → suppression de la clé de l'ancien profil.
 
 ### Structure `apps/extension/`
 
@@ -1260,10 +1262,7 @@ apps/extension/
 │   ├── entrypoints/
 │   │   ├── background.ts          # Service worker — message handler, API calls, badge updates
 │   │   ├── content.ts             # Content script — détection profil LinkedIn, scraping DOM
-│   │   ├── popup/                 # Action popup (état neutre + settings)
-│   │   │   ├── index.html
-│   │   │   └── App.tsx
-│   │   └── panel/                 # Fenêtre flottante add/edit (chrome.windows.create)
+│   │   └── popup/                 # Action popup (état neutre, settings, ET formulaire prospect)
 │   │       ├── index.html
 │   │       └── App.tsx
 │   ├── components/
@@ -1286,8 +1285,7 @@ apps/extension/
 **WXT Entrypoints :**
 - `background.ts` → compilé en service worker (`background.service_worker`)
 - `content.ts` → injecté sur `*://www.linkedin.com/in/*`
-- `popup/` → action popup par défaut (état neutre / settings)
-- `panel/` → fenêtre flottante, ouverte via `chrome.windows.create`
+- `popup/` → action popup (toute l'UI : état neutre, settings, et formulaire prospect add/edit/read)
 
 ### Routes API Extension
 
@@ -1348,10 +1346,15 @@ Backend Adonis
     ▼
 Response → Service Worker → chrome.action.setBadgeText() + setBadgeBackgroundColor()
 
-// Sur clic icône :
-Service Worker → chrome.windows.create({ url: 'panel/index.html', type: 'popup' })
-Panel App (panel/App.tsx) → chrome.runtime.sendMessage('GET_PANEL_DATA')
-                         → Service Worker → retourne { found, prospect, scrapedData }
+// Sur clic icône (profil LinkedIn) :
+Chrome ouvre le popup action standard (popup/App.tsx)
+Popup → chrome.storage.session.get(linkedinUrl) → si state sauvegardé → restaure le formulaire
+       → sinon → chrome.runtime.sendMessage('GET_PANEL_DATA')
+               → Service Worker → retourne { found, prospect, scrapedData } (déjà caché)
+// Chaque modification de champ :
+Popup → chrome.storage.session.set({ [linkedinUrl]: formState })
+// Soumission réussie ou navigation vers autre profil :
+Popup/ServiceWorker → chrome.storage.session.remove(linkedinUrl)
 ```
 
 ### Couverture des Requirements
@@ -1372,7 +1375,7 @@ Panel App (panel/App.tsx) → chrome.runtime.sendMessage('GET_PANEL_DATA')
 | NFR68 (Chrome + Firefox) | ✅ | WXT cross-browser build |
 | NFR69 (sécurité stockage) | ✅ | `chrome.storage.local` + règle message passing |
 | NFR70 (token jamais affiché) | ✅ | One-time display, jamais stocké brut |
-| NFR71 (fenêtre reste ouverte) | ✅ | `chrome.windows.create` confirmé |
+| NFR71 (form state persist) | ✅ | `chrome.storage.session` keyed by LinkedIn URL |
 | NFR72 (check < 1s) | ✅ | Index `(user_id, linkedin_url)` |
 | NFR73 (dégradation gracieuse) | ✅ | Badge neutre si serveur inaccessible, pas de crash |
 | NFR74 (SPA navigation) | ✅ | Navigation API primary + MutationObserver fallback |
