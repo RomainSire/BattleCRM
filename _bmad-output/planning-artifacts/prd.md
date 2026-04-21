@@ -927,7 +927,7 @@ Semaines 22-25:
 - **FR66:** Extension detects when the user is viewing a LinkedIn profile page (`linkedin.com/in/*`)
 - **FR67:** Extension silently checks (without user action) if the visited LinkedIn profile already exists as a prospect in BattleCRM, using the LinkedIn URL as unique key
 - **FR68:** Extension icon displays a visual badge indicating prospect status: red "+" badge = not in CRM (invite to add), green "✓" badge = already in CRM
-- **FR69:** Users can open a floating form window pre-filled with data scraped from the LinkedIn profile (first name, last name, title, company, LinkedIn URL)
+- **FR69:** Users can open the extension popup pre-filled with data scraped from the LinkedIn profile (first name, last name, title, company, LinkedIn URL); form state is persisted in `chrome.storage.session` (keyed by normalized LinkedIn URL) so edits survive popup close/reopen cycles; state is automatically cleared when navigating to a different LinkedIn profile
 - **FR70:** If the prospect already exists in CRM, the extension displays a prominent warning and pre-fills the form with the existing CRM data (not the scraped LinkedIn data), offering an update option
 - **FR71:** Users can add a new prospect from the extension — the prospect is automatically assigned to the user's first funnel stage ("Lead qualified")
 - **FR72:** Users can update an existing prospect's information from the extension
@@ -1085,7 +1085,7 @@ Semaines 22-25:
 - **NFR70:** Extension token must never be displayed in the UI after initial creation (only the hash is stored server-side)
 
 **UX & Ergonomics:**
-- **NFR71:** The extension form window must remain open during copy-paste operations on the LinkedIn page (implemented as `chrome.windows.create` standalone window, not a standard browser action popup which closes on outside click)
+- **NFR71:** Extension form state must persist across popup close/reopen cycles for the same LinkedIn profile (implemented via `chrome.storage.session` keyed by normalized LinkedIn URL); the user can click away from the popup to copy-paste from the LinkedIn page and resume editing on reopen with all previous edits intact; state is automatically cleared on profile navigation
 - **NFR72:** Prospect existence check triggered on profile page visit must respond in under 1 second
 
 **Resilience:**

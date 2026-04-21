@@ -567,9 +567,7 @@ claude-sonnet-4-6
 - `apps/extension/src/entrypoints/popup/index.html` — popup HTML
 - `apps/extension/src/entrypoints/popup/main.tsx` — React root mounting
 - `apps/extension/src/entrypoints/popup/App.tsx` — popup stub component
-- `apps/extension/src/entrypoints/panel/index.html` — panel HTML
-- `apps/extension/src/entrypoints/panel/main.tsx` — React root mounting
-- `apps/extension/src/entrypoints/panel/App.tsx` — panel stub component
+- ~~`apps/extension/src/entrypoints/panel/`~~ — **supprimé** : décision architecturale post-story (2026-04-21) — le panel (fenêtre flottante via `chrome.windows.create`) a été abandonné au profit du popup unique avec persistance de form state via `chrome.storage.session`. Voir `architecture.md` et Story 7.6 pour le nouveau modèle.
 - `apps/extension/src/lib/api.ts` — typed API client (loginExtension, logoutExtension, checkProspect, createProspect, updateProspect)
 - `apps/extension/src/lib/storage.ts` — chrome.storage.local wrapper (getStorage, setStorage, clearAuth)
 - `apps/extension/src/lib/linkedin.ts` — scrapeLinkedInProfile stub + normalizeLinkedInUrl
