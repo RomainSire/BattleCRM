@@ -1,0 +1,35 @@
+meta {
+  name: Create Prospect (Extension)
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:3333/api/extension/prospects
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{extensionToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Jean Dupont",
+    "linkedin_url": "https://linkedin.com/in/jeandupont",
+    "company": "Acme Corp",
+    "title": "CTO",
+    "email": "jean.dupont@acme.com",
+    "phone": "+33612345678"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

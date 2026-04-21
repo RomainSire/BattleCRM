@@ -1,0 +1,27 @@
+meta {
+  name: Set Positioning Outcome
+  type: http
+  seq: 3
+}
+
+patch {
+  url: http://localhost:3333/api/prospects/:id/positionings/current/outcome
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "outcome": "won",
+    "stage_id": ""
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

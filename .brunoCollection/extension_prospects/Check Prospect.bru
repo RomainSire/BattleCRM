@@ -1,0 +1,20 @@
+meta {
+  name: Check Prospect
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://localhost:3333/api/extension/prospects/check?linkedin_url=https://linkedin.com/in/jeandupont
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{extensionToken}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

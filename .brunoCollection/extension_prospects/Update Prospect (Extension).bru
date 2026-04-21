@@ -1,0 +1,34 @@
+meta {
+  name: Update Prospect (Extension)
+  type: http
+  seq: 3
+}
+
+patch {
+  url: http://localhost:3333/api/extension/prospects/:id
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{extensionToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "title": "CEO",
+    "company": "New Corp",
+    "email": "jean.dupont@newcorp.com",
+    "phone": "+33699999999",
+    "notes": "Promu en 2026"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

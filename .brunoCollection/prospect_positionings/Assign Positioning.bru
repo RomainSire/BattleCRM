@@ -1,0 +1,26 @@
+meta {
+  name: Assign Positioning
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:3333/api/prospects/:id/positionings
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "positioning_id": ""
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
