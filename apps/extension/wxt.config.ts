@@ -1,8 +1,16 @@
+import { resolve } from 'node:path'
 import { defineConfig } from 'wxt'
 
 export default defineConfig({
   srcDir: 'src',
   modules: ['@wxt-dev/module-react'],
+  vite: () => ({
+    resolve: {
+      alias: {
+        '@': resolve(__dirname, 'src'),
+      },
+    },
+  }),
   manifest: {
     name: 'BattleCRM',
     description: 'BattleCRM browser extension — ajoutez des prospects LinkedIn en un clic',

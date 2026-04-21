@@ -1,6 +1,9 @@
+import { ArrowLeft, LogOut } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import LanguageSelector from './LanguageSelector'
+import { Button } from './ui/button'
+import { Separator } from './ui/separator'
 
 interface SettingsScreenProps {
   email: string
@@ -23,33 +26,43 @@ export default function SettingsScreen({ email, onBack, onLogout }: SettingsScre
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center gap-2 border-b border-gray-200 px-4 py-2">
-        <button
+      <header className="flex items-center gap-2 px-3 py-2.5">
+        <Button
           aria-label={t('settings.back')}
-          className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
           onClick={onBack}
+          size="icon-sm"
           type="button"
+          variant="ghost"
         >
-          ←
-        </button>
-        <span className="text-sm font-bold text-gray-900">{t('settings.title')}</span>
+          <ArrowLeft className="size-4" />
+        </Button>
+        <span className="text-sm font-semibold">{t('settings.title')}</span>
       </header>
 
-      <main className="flex flex-1 flex-col gap-4 px-4 py-6">
-        <p className="text-sm text-gray-700">
-          {t('settings.connectedAs')} <span className="font-medium">{email}</span>
-        </p>
+      <Separator />
+
+      <main className="flex flex-1 flex-col gap-4 px-4 py-4">
+        <div className="flex flex-col gap-0.5">
+          <p className="text-xs text-muted-foreground">{t('settings.connectedAs')}</p>
+          <p className="text-sm font-medium">{email}</p>
+        </div>
+
+        <Separator />
 
         <LanguageSelector />
 
-        <button
-          className="rounded border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+        <Separator />
+
+        <Button
+          className="w-full"
           disabled={loading}
           onClick={handleLogout}
           type="button"
+          variant="destructive"
         >
+          <LogOut className="size-4" />
           {loading ? t('settings.loggingOut') : t('settings.logout')}
-        </button>
+        </Button>
       </main>
     </div>
   )

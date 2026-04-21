@@ -16,9 +16,7 @@ export type UpdateProspectPayload = Partial<
 
 export const prospectsApi = {
   check(linkedinUrl: string): Promise<ExtensionCheckResponse> {
-    return fetchExtensionApi(
-      `/prospects/check?linkedin_url=${encodeURIComponent(linkedinUrl)}`,
-    )
+    return fetchExtensionApi(`/prospects/check?linkedin_url=${encodeURIComponent(linkedinUrl)}`)
   },
 
   create(payload: CreateProspectPayload): Promise<ExtensionProspectData> {

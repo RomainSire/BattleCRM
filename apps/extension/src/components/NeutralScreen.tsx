@@ -1,4 +1,7 @@
+import { ExternalLink, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Button } from './ui/button'
+import { Separator } from './ui/separator'
 
 interface NeutralScreenProps {
   email: string
@@ -15,31 +18,36 @@ export default function NeutralScreen({ email, baseUrl, onSettingsClick }: Neutr
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center justify-between border-b border-gray-200 px-4 py-2">
-        <span className="text-sm font-bold text-gray-900">⚔️ BattleCRM</span>
-        <button
+      <header className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2">
+          <img alt="BattleCRM" className="h-6 w-auto" src="/BattleCRM_logo.svg" />
+          <span className="font-bold text-2xl text-brand-gradient">{t('common.appName')}</span>
+        </div>
+        <Button
           aria-label={t('aria.settings')}
-          className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
           onClick={onSettingsClick}
+          size="icon-sm"
           type="button"
+          variant="ghost"
         >
-          ⚙️
-        </button>
+          <Settings className="size-4" />
+        </Button>
       </header>
 
-      <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-6 text-center">
-        <p className="text-sm text-gray-600">{t('neutral.linkedinHint')}</p>
-        <button
-          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          onClick={openApp}
-          type="button"
-        >
+      <Separator />
+
+      <main className="flex flex-1 flex-col items-center justify-center gap-4 px-5 py-6 text-center">
+        <p className="text-sm text-muted-foreground">{t('neutral.linkedinHint')}</p>
+        <Button onClick={openApp} type="button">
+          <ExternalLink className="size-4" />
           {t('neutral.openApp')}
-        </button>
+        </Button>
       </main>
 
-      <footer className="border-t border-gray-200 px-4 py-2">
-        <p className="text-xs text-gray-400">{t('neutral.connected', { email })}</p>
+      <Separator />
+
+      <footer className="px-4 py-2.5">
+        <p className="text-xs text-muted-foreground">{t('neutral.connected', { email })}</p>
       </footer>
     </div>
   )

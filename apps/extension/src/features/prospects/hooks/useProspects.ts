@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../../../lib/queryKeys'
-import { type CreateProspectPayload, type UpdateProspectPayload, prospectsApi } from '../lib/api'
+import { type CreateProspectPayload, prospectsApi, type UpdateProspectPayload } from '../lib/api'
 
 export function useCheckProspect(linkedinUrl: string | null) {
   return useQuery({
