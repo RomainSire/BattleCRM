@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { type SubmitHandler, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { HttpError, loginExtension } from '../lib/api'
-import { setStorage } from '../lib/storage'
+import { useLoginExtension } from '../features/auth/hooks/useAuth'
+import { HttpError } from '../lib/api'
 
 interface AuthFormProps {
   onSuccess: (email: string) => void
@@ -17,6 +17,7 @@ interface LoginFormValues {
 
 export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
   const { t } = useTranslation()
+  const login = useLoginExtension()
 
   const {
     register,
@@ -34,19 +35,21 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
     }
   }, [initialError, setError])
 
-  const onSubmit: SubmitHandler<LoginFormValues> = async (data) => {
-    try {
-      const tokenName = browser.runtime.getManifest().name
-      const res = await loginExtension(data.baseUrl, data.email, data.password, tokenName)
-      await setStorage({ token: res.token, baseUrl: data.baseUrl, email: data.email })
-      onSuccess(data.email)
-    } catch (err) {
-      if (err instanceof HttpError && err.status === 401) {
-        setError('root', { message: t('auth.errors.invalidCredentials') })
-      } else {
-        setError('root', { message: t('auth.errors.serverUnreachable') })
-      }
-    }
+  const onSubmit: SubmitHandler<LoginFormValues> = (data) => {
+    const tokenName = browser.runtime.getManifest().name
+    login.mutate(
+      { baseUrl: data.baseUrl, email: data.email, password: data.password, tokenName },
+      {
+        onSuccess: ({ email }) => onSuccess(email),
+        onError: (err) => {
+          if (err instanceof HttpError && err.status === 401) {
+            setError('root', { message: t('auth.errors.invalidCredentials') })
+          } else {
+            setError('root', { message: t('auth.errors.serverUnreachable') })
+          }
+        },
+      },
+    )
   }
 
   return (
@@ -111,10 +114,10 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
 
         <button
           className="mt-1 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={isSubmitting}
+          disabled={isSubmitting || login.isPending}
           type="submit"
         >
-          {isSubmitting ? t('auth.submitting') : t('auth.submit')}
+          {isSubmitting || login.isPending ? t('auth.submitting') : t('auth.submit')}
         </button>
       </form>
     </div>
