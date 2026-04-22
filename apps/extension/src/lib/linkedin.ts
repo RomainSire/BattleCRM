@@ -59,6 +59,19 @@ export function scrapeLinkedInProfile(
 }
 
 /**
+ * Returns true if the given URL points to a LinkedIn member profile page (/in/<username>).
+ * Used in both content.ts (navigation filtering) and tests.
+ */
+export function isProfilePage(url: string): boolean {
+  try {
+    const path = new URL(url).pathname
+    return /^\/in\/[^/]/.test(path)
+  } catch {
+    return false
+  }
+}
+
+/**
  * Normalize a LinkedIn profile URL — strips query params, hash, and trailing slash.
  * Used in both content.ts (before sending CHECK_PROSPECT) and background.ts (before API call).
  * Must stay in sync with the backend normalizeLinkedinUrl in extension_prospects_controller.ts.

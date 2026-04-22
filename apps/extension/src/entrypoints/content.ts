@@ -1,4 +1,4 @@
-import { normalizeLinkedInUrl, scrapeLinkedInProfile } from '../lib/linkedin'
+import { isProfilePage, normalizeLinkedInUrl, scrapeLinkedInProfile } from '../lib/linkedin'
 
 // Navigation API is stable in Chrome 102+/Firefox 126+ but not yet in TypeScript's default lib.
 interface NavigateEvent extends Event {
@@ -11,15 +11,6 @@ export default defineContentScript({
   matches: ['*://www.linkedin.com/*'],
   main() {
     let lastCheckedUrl = ''
-
-    function isProfilePage(url: string): boolean {
-      try {
-        const path = new URL(url).pathname
-        return /^\/in\/[^/]/.test(path)
-      } catch {
-        return false
-      }
-    }
 
     function handleUrlChange(rawUrl: string) {
       const normalizedUrl = normalizeLinkedInUrl(rawUrl)
