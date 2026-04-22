@@ -1,6 +1,6 @@
 # Story 7.5: LinkedIn Profile Detection & Badge Update
 
-Status: review
+Status: done
 
 ## Story
 
@@ -189,6 +189,7 @@ So that I know at a glance whether to add a new prospect without opening the ext
   ```
 
 - [x] **2.7** Remove the `biome-ignore` comment from `handleAuthExpired()` and make it a module-level function (no longer unused):
+
   ```typescript
   async function handleAuthExpired(): Promise<void> {
     await clearAuth()
@@ -199,6 +200,31 @@ So that I know at a glance whether to add a new prospect without opening the ext
     }
   }
   ```
+
+- [x] **2.8** Implement `handleRecheckCurrentTab()` and add `RECHECK_CURRENT_TAB` to the message listener:
+  ```typescript
+  // In onMessage.addListener:
+  if (message.type === 'RECHECK_CURRENT_TAB') {
+    handleRecheckCurrentTab().then(() => sendResponse({ ok: true }))
+    return true
+  }
+
+  // Handler:
+  async function handleRecheckCurrentTab(): Promise<void> {
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+    const tab = tabs[0]
+    if (!tab?.id || !tab?.url) return
+    try {
+      const url = new URL(tab.url)
+      if (url.hostname !== 'www.linkedin.com') return
+      if (!/^\/in\/[^/]/.test(url.pathname)) return
+    } catch {
+      return
+    }
+    browser.tabs.sendMessage(tab.id, { type: 'DO_CHECK' }).catch(() => {})
+  }
+  ```
+  > Triggered by the popup after a successful login. Sends `DO_CHECK` to the active LinkedIn profile tab (if any) so the badge updates immediately — without requiring the user to navigate again. Requires the `tabs` permission (Task 4.2).
 
 ### Task 3: content.ts — SPA detection + DOM scraping + message passing (AC1, AC2, AC8, AC9)
 
@@ -274,6 +300,10 @@ So that I know at a glance whether to add a new prospect without opening the ext
   > The `matches` pattern is `*://www.linkedin.com/*` (broader than `*/in/*`) to allow the MutationObserver to catch SPA navigations that start on non-profile pages. URL filtering is done in `isProfilePage()`.
   >
   > The 800ms delay before scraping gives LinkedIn's React renderer time to mount the profile DOM. This is intentional — the DOM is empty immediately after SPA navigation.
+  >
+  > `CLEAR_BADGE` is sent **immediately** when a new profile navigation is detected (before the 800ms delay), so the user never sees a stale badge while the check is in progress.
+  >
+  > The `MutationObserver` is disconnected on `pagehide` to avoid unnecessary memory consumption on full page unloads.
 
 - [x] **3.2** The `NavigateEvent` type may not be in TypeScript's default lib. Add a type-safe cast in the callback:
   ```typescript
@@ -284,10 +314,27 @@ So that I know at a glance whether to add a new prospect without opening the ext
   ```
   Define this interface inside `content.ts` or inline the cast.
 
-### Task 4: wxt.config.ts — Add `action` permission (AC3, AC4, AC5)
+- [x] **3.3** Add `DO_CHECK` message handler in content script (coordinated with `RECHECK_CURRENT_TAB` in background, Task 2.8):
+  ```typescript
+  browser.runtime.onMessage.addListener((message) => {
+    if (message.type === 'DO_CHECK') {
+      lastCheckedUrl = ''
+      handleUrlChange(location.href)
+    }
+  })
+  ```
+  > Resets `lastCheckedUrl` so the deduplication guard doesn't block the re-check, then re-runs the full check flow for the current page URL.
 
-- [x] **4.1** The `chrome.action.setBadgeText()` API requires the `action` permission in MV3 (some environments). Verify the current manifest already uses `action` (WXT adds it automatically for the popup). No manual change needed if WXT injects it — confirm by checking the generated manifest after build.
-  > WXT automatically adds `"action"` to the manifest when a `popup/` entrypoint exists. No explicit permission entry required in `wxt.config.ts`.
+### Task 4: wxt.config.ts — Permissions manifest (AC3, AC4, AC5)
+
+- [x] **4.1** The `chrome.action.setBadgeText()` API requires the `action` permission in MV3 (some environments). WXT automatically adds `"action"` to the manifest when a `popup/` entrypoint exists — no explicit entry required.
+
+- [x] **4.2** Add the `tabs` permission to `wxt.config.ts`:
+  ```diff
+  - permissions: ['storage', 'activeTab', 'scripting'],
+  + permissions: ['storage', 'activeTab', 'scripting', 'tabs'],
+  ```
+  > **Why `tabs` is required:** `handleRecheckCurrentTab()` (Task 2.8 below) calls `browser.tabs.query({ active: true, currentWindow: true })` from the service worker. Without the `tabs` permission, `tab.url` is `undefined` and the re-check silently fails. `activeTab` does not cover service-worker context (it only grants URL access in response to a direct user gesture on the extension icon, not a popup message). The `tabs` permission grants read access to all tabs' URLs — Chrome may display "Read browsing history" to users during installation.
 
 ### Task 5: Verification (AC1–AC10)
 
@@ -305,25 +352,36 @@ So that I know at a glance whether to add a new prospect without opening the ext
 
 ## Dev Notes
 
-### Message Passing Architecture (Content Script → Service Worker)
+### Message Passing Architecture (Content Script ↔ Service Worker)
 
 ```
 linkedin.com tab
   └─ content.ts
        │ Navigation API 'navigate' event (or MutationObserver)
-       │ scrapeLinkedInProfile() → DOM data
+       │ ① CLEAR_BADGE sent immediately (badge clears while check is in flight)
+       │ scrapeLinkedInProfile(normalizedUrl) → DOM data (after 800ms delay)
        └─ browser.runtime.sendMessage({ type: 'CHECK_PROSPECT', linkedinUrl, scrapedData })
                                         OR
                                  { type: 'CLEAR_BADGE', previousUrl }
+                                        OR (receives from background)
+                                 { type: 'DO_CHECK' } → resets lastCheckedUrl, re-runs check
 
 Service Worker (background.ts)
-  └─ CHECK_PROSPECT handler
-       ├─ getStorage() → { token } — checks auth
-       ├─ If no token → setGreyBadge() (no API call)
-       ├─ prospectsApi.check(linkedinUrl) → { found, prospect? }
-       ├─ browser.action.setBadgeText / setBadgeBackgroundColor / setTitle
-       └─ browser.storage.session.set({ [linkedinUrl]: cachedResult })
-            ↑ Used by popup in Story 7.6 via GET_PANEL_DATA message
+  ├─ CHECK_PROSPECT handler
+  │    ├─ getStorage() → { token } — checks auth
+  │    ├─ If no token → setGreyBadge() (no API call)
+  │    ├─ prospectsApi.check(linkedinUrl) → { found, prospect? }
+  │    ├─ browser.action.setBadgeText / setBadgeBackgroundColor / setTitle
+  │    └─ browser.storage.session.set({ [linkedinUrl]: cachedResult })
+  │         ↑ Used by popup in Story 7.6 via GET_PANEL_DATA message
+  └─ RECHECK_CURRENT_TAB handler (triggered by popup after login)
+       ├─ browser.tabs.query({ active: true, currentWindow: true })
+       ├─ Checks tab.hostname === 'www.linkedin.com' AND pathname matches /in/*
+       └─ browser.tabs.sendMessage(tab.id, { type: 'DO_CHECK' })
+
+Popup (useAuth.ts)
+  └─ After successful login: browser.runtime.sendMessage({ type: 'RECHECK_CURRENT_TAB' })
+       → badge updates immediately if user was on a LinkedIn profile
 ```
 
 **Security rule:** Content script NEVER reads `chrome.storage.local`. It never sees the token. All authenticated calls go through the service worker.
@@ -407,9 +465,11 @@ The `biome-ignore lint/correctness/noUnusedVariables: intentional stub` comment 
 
 | Modified file | What changes |
 |---------------|-------------|
-| `apps/extension/src/entrypoints/content.ts` | Full SPA detection + message passing (replaces stub) |
-| `apps/extension/src/lib/linkedin.ts` | Implement `scrapeLinkedInProfile()` (replaces TODO stub) |
-| `apps/extension/src/entrypoints/background.ts` | CHECK_PROSPECT, CLEAR_BADGE, GET_PANEL_DATA handlers; badge helpers; remove biome-ignore |
+| `apps/extension/src/entrypoints/content.ts` | Full SPA detection + message passing (replaces stub); CLEAR_BADGE on new-profile nav; DO_CHECK handler; observer disconnect on pagehide |
+| `apps/extension/src/lib/linkedin.ts` | Implement `scrapeLinkedInProfile(canonicalUrl?)` (replaces TODO stub) |
+| `apps/extension/src/entrypoints/background.ts` | CHECK_PROSPECT, CLEAR_BADGE, GET_PANEL_DATA, RECHECK_CURRENT_TAB handlers; badge helpers; remove biome-ignore |
+| `apps/extension/src/features/auth/hooks/useAuth.ts` | Send RECHECK_CURRENT_TAB after successful login so badge updates immediately |
+| `apps/extension/wxt.config.ts` | Add `tabs` permission (required for `browser.tabs.query` in RECHECK_CURRENT_TAB handler) |
 
 No new files are created in this story.
 
@@ -446,17 +506,27 @@ claude-sonnet-4-6
 
 - Fix: `ExtensionCheckResponse['prospect']` fails TypeScript on discriminated union — replaced with explicit `ExtensionProspectData` import.
 - Fix: `window.navigation` type assertion needed for TypeScript (Navigation API not yet in lib.dom.d.ts TS 6.x).
+- Code review fix: `scrapeLinkedInProfile()` signature changed to accept `canonicalUrl` as optional parameter (eliminates hidden `location.href` dependency, improves testability).
+- Code review fix: `handleRecheckCurrentTab()` now checks `url.hostname === 'www.linkedin.com'` before sending DO_CHECK.
+- Code review fix: `CLEAR_BADGE` sent immediately on new-profile navigation (before 800ms delay) — user no longer sees stale badge while check is in flight.
+- Code review fix: MutationObserver disconnected on `pagehide` event.
+- Code review fix: `console.log` removed from service worker.
+- Code review doc: `tabs` permission, `RECHECK_CURRENT_TAB`/`DO_CHECK` feature, and `useAuth.ts`/`wxt.config.ts` changes now fully documented.
 
 ### Completion Notes List
 
-- Implemented `scrapeLinkedInProfile()` in `lib/linkedin.ts` with multi-selector fallbacks for headline and try/catch for company extraction.
-- Rewrote `background.ts` with `CHECK_PROSPECT`, `CLEAR_BADGE`, `GET_PANEL_DATA` message handlers; `setGreyBadge()` and `clearBadge()` helpers; `CachedCheckResult` type backed by `chrome.storage.session`; `handleAuthExpired()` promoted from stub to active function (biome-ignore removed).
-- Rewrote `content.ts` with Navigation API (primary) + MutationObserver (fallback) + 800ms scrape delay + deduplication; matches pattern broadened to `*://www.linkedin.com/*`.
+- Implemented `scrapeLinkedInProfile(canonicalUrl?)` in `lib/linkedin.ts` with multi-selector fallbacks for headline and try/catch for company extraction.
+- Rewrote `background.ts` with `CHECK_PROSPECT`, `CLEAR_BADGE`, `GET_PANEL_DATA`, `RECHECK_CURRENT_TAB` message handlers; `setGreyBadge()` and `clearBadge()` helpers; `CachedCheckResult` type backed by `chrome.storage.session`; `handleAuthExpired()` promoted from stub to active function (biome-ignore removed).
+- Rewrote `content.ts` with Navigation API (primary) + MutationObserver (fallback) + 800ms scrape delay + deduplication; immediate badge clear on new-profile navigation; `DO_CHECK` handler for post-login re-check; observer disconnected on pagehide; matches pattern broadened to `*://www.linkedin.com/*`.
+- Added `RECHECK_CURRENT_TAB` send in `useAuth.ts` after login, with `handleRecheckCurrentTab()` in background coordinating badge update for the active LinkedIn tab.
+- Added `tabs` permission to `wxt.config.ts` (required for `browser.tabs.query` URL access from service worker context).
 - All ACs verified: type-check 0 errors, Biome 0 errors, `pnpm build:extension` succeeds (background.js 5.39 kB, content.js 5.03 kB).
 - Manual browser testing required for AC5.4 (badge colours, badge clear on non-profile pages).
 
 ### File List
 
-- `apps/extension/src/lib/linkedin.ts` — implemented `scrapeLinkedInProfile()`
-- `apps/extension/src/entrypoints/background.ts` — full rewrite with badge handlers
-- `apps/extension/src/entrypoints/content.ts` — full rewrite with SPA detection
+- `apps/extension/src/lib/linkedin.ts` — implemented `scrapeLinkedInProfile(canonicalUrl?)`
+- `apps/extension/src/entrypoints/background.ts` — full rewrite with badge handlers + RECHECK_CURRENT_TAB
+- `apps/extension/src/entrypoints/content.ts` — full rewrite with SPA detection + DO_CHECK handler + immediate badge clear
+- `apps/extension/src/features/auth/hooks/useAuth.ts` — sends RECHECK_CURRENT_TAB after login
+- `apps/extension/wxt.config.ts` — adds `tabs` permission

@@ -10,8 +10,6 @@ type CachedCheckResult =
   | { found: false; scrapedData: LinkedInScrapedData }
 
 export default defineBackground(() => {
-  console.log('BattleCRM service worker initialized', { id: browser.runtime.id })
-
   browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.type === 'LOGOUT') {
       handleLogout().then(() => sendResponse({ success: true }))
@@ -111,7 +109,9 @@ async function handleRecheckCurrentTab(): Promise<void> {
   const tab = tabs[0]
   if (!tab?.id || !tab?.url) return
   try {
-    if (!/^\/in\/[^/]/.test(new URL(tab.url).pathname)) return
+    const url = new URL(tab.url)
+    if (url.hostname !== 'www.linkedin.com') return
+    if (!/^\/in\/[^/]/.test(url.pathname)) return
   } catch {
     return
   }

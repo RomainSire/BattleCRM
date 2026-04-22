@@ -36,12 +36,17 @@ export default defineContentScript({
 
       // Deduplicate — Navigation API can fire multiple times for the same URL
       if (normalizedUrl === lastCheckedUrl) return
+
+      // Clear badge immediately so the user never sees a stale result while the check is in progress
+      browser.runtime
+        .sendMessage({ type: 'CLEAR_BADGE', previousUrl: lastCheckedUrl || undefined })
+        .catch(() => {})
       lastCheckedUrl = normalizedUrl
 
       // Delay scraping to allow LinkedIn's React renderer time to mount the profile DOM.
       // 800ms covers 99% of connections — too short risks stale data from the previous profile.
       setTimeout(() => {
-        const scrapedData = scrapeLinkedInProfile()
+        const scrapedData = scrapeLinkedInProfile(normalizedUrl)
         browser.runtime
           .sendMessage({ type: 'CHECK_PROSPECT', linkedinUrl: normalizedUrl, scrapedData })
           .catch(() => {})
@@ -67,6 +72,7 @@ export default defineContentScript({
       }
     })
     observer.observe(document.body, { childList: true, subtree: true })
+    window.addEventListener('pagehide', () => observer.disconnect(), { once: true })
 
     // Re-check triggered by background after auth state change (e.g. login)
     browser.runtime.onMessage.addListener((message) => {

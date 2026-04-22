@@ -14,7 +14,9 @@ export interface LinkedInScrapedData {
  * Only called from the content script — never from service worker.
  * Returns empty strings for any field that cannot be safely extracted.
  */
-export function scrapeLinkedInProfile(): LinkedInScrapedData {
+export function scrapeLinkedInProfile(
+  canonicalUrl = normalizeLinkedInUrl(location.href),
+): LinkedInScrapedData {
   const name = document.querySelector('h1')?.textContent?.trim() ?? ''
 
   const headline =
@@ -52,7 +54,7 @@ export function scrapeLinkedInProfile(): LinkedInScrapedData {
     name,
     headline,
     company,
-    canonicalUrl: normalizeLinkedInUrl(location.href),
+    canonicalUrl,
   }
 }
 
