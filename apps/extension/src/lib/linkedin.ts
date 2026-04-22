@@ -15,11 +15,43 @@ export interface LinkedInScrapedData {
  * Returns empty strings for any field that cannot be safely extracted.
  */
 export function scrapeLinkedInProfile(): LinkedInScrapedData {
-  // TODO: implement in Story 7.5
+  const name = document.querySelector('h1')?.textContent?.trim() ?? ''
+
+  const headline =
+    document.querySelector('.text-body-medium.break-words')?.textContent?.trim() ??
+    document.querySelector('[data-generated-suggestion-target]')?.textContent?.trim() ??
+    ''
+
+  // Company: first experience section item — wrapped in try/catch, falls back to '' on any failure.
+  // LinkedIn DOM is fragile and changes without notice — empty string is correct per AC10.
+  let company = ''
+  try {
+    const expSection = document.querySelector(
+      '#experience ~ .pvs-list, #experience + * .pvs-list__item--line-separated',
+    )
+    if (!expSection) {
+      const expHeading = Array.from(document.querySelectorAll('section')).find((s) =>
+        s.querySelector('div[id="experience"]'),
+      )
+      const firstItem = expHeading?.querySelector('.pvs-list__paged-list-item:first-child')
+      const companyEl =
+        firstItem?.querySelector('.t-14.t-normal .visually-hidden') ??
+        firstItem?.querySelector('.t-14.t-normal span[aria-hidden="true"]')
+      company = companyEl?.textContent?.trim() ?? ''
+    } else {
+      const companyEl = expSection.querySelector(
+        '.pvs-list__item--line-separated:first-child span[aria-hidden="true"]:nth-child(2)',
+      )
+      company = companyEl?.textContent?.trim() ?? ''
+    }
+  } catch {
+    company = ''
+  }
+
   return {
-    name: '',
-    headline: '',
-    company: '',
+    name,
+    headline,
+    company,
     canonicalUrl: normalizeLinkedInUrl(location.href),
   }
 }

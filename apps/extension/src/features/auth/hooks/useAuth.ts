@@ -14,6 +14,7 @@ export function useLoginExtension() {
     mutationFn: async ({ baseUrl, email, password, tokenName }: LoginParams) => {
       const res = await authApi.login(baseUrl, email, password, tokenName)
       await setStorage({ token: res.token, baseUrl, email })
+      browser.runtime.sendMessage({ type: 'RECHECK_CURRENT_TAB' }).catch(() => {})
       return { email }
     },
   })
