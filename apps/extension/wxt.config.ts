@@ -14,7 +14,7 @@ export default defineConfig({
   manifest: {
     name: 'BattleCRM',
     description: 'BattleCRM browser extension — ajoutez des prospects LinkedIn en un clic',
-    permissions: ['storage', 'activeTab', 'scripting'],
+    permissions: ['storage', 'activeTab', 'scripting', 'tabs'],
     host_permissions: ['*://www.linkedin.com/*'],
     // Fixed key keeps the extension ID stable across dev reloads.
     // EXTENSION_ORIGINS in .env can remain stable without reconfiguring CORS.

@@ -9,6 +9,8 @@
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
     "type-check": "wxt prepare && tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "biome check .",
     "format": "biome check --write ."
   },
@@ -37,6 +39,7 @@
     "postcss": "^8.5.10",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.8",
+    "vitest": "^4.1.5",
     "wxt": "^0.20.22"
   }
 }
