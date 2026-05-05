@@ -1,27 +1,17 @@
 import type { ExtensionProspectData } from '@battlecrm/shared'
-import { ExternalLink, Pencil } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from './ui/button'
 import { Separator } from './ui/separator'
 
 interface ProspectCardProps {
   prospect: ExtensionProspectData
-  baseUrl: string
   onEdit: () => void
   successMessage?: string
 }
 
-export default function ProspectCard({
-  prospect,
-  baseUrl,
-  onEdit,
-  successMessage,
-}: ProspectCardProps) {
+export default function ProspectCard({ prospect, onEdit, successMessage }: ProspectCardProps) {
   const { t } = useTranslation()
-
-  function handleViewInApp() {
-    browser.tabs.create({ url: `${baseUrl}/prospects/${prospect.id}` })
-  }
 
   return (
     <div className="flex flex-col gap-0">
@@ -60,11 +50,7 @@ export default function ProspectCard({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 px-4 pb-4">
-        <Button className="w-full" onClick={handleViewInApp} type="button">
-          <ExternalLink className="size-4" />
-          {t('prospect.read.viewInApp')}
-        </Button>
+      <div className="px-4 pb-4">
         <Button className="w-full" onClick={onEdit} type="button" variant="outline">
           <Pencil className="size-4" />
           {t('prospect.read.edit')}

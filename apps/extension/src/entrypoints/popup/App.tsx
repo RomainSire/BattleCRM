@@ -104,7 +104,6 @@ export default function App() {
   return (
     <div className="min-h-48 w-72">
       <NeutralScreen
-        baseUrl={baseUrl}
         email={email}
         onSettingsClick={() => setScreen('settings')}
       />

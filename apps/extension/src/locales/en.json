@@ -85,7 +85,6 @@
       "stage": "Stage",
       "email": "Email",
       "phone": "Phone",
-      "viewInApp": "View in BattleCRM ↗",
       "edit": "Edit"
     }
   }
