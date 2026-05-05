@@ -54,5 +54,39 @@
   },
   "common": {
     "appName": "BattleCRM"
+  },
+  "prospect": {
+    "form": {
+      "name": "Full name",
+      "title": "Title / Role",
+      "company": "Company",
+      "companyPlaceholder": "Check on LinkedIn",
+      "email": "Email",
+      "phone": "Phone",
+      "linkedinUrl": "LinkedIn URL",
+      "submitAdd": "Add prospect",
+      "submitEdit": "Update",
+      "submitting": "Saving…",
+      "cancel": "Cancel",
+      "unsavedBanner": "⚠️ Unsaved changes — resume?",
+      "editBanner": "⚠️ Editing",
+      "reset": "Start over",
+      "successAdd": "Prospect added ✓",
+      "successEdit": "✓ Prospect updated",
+      "errors": {
+        "alreadyExists": "This prospect already exists in BattleCRM",
+        "noFunnelStage": "No active funnel stage — create one first",
+        "validation": "Validation error, check your data",
+        "server": "Server error, please try again"
+      }
+    },
+    "read": {
+      "foundBanner": "✓ Already in BattleCRM",
+      "stage": "Stage",
+      "email": "Email",
+      "phone": "Phone",
+      "viewInApp": "View in BattleCRM ↗",
+      "edit": "Edit"
+    }
   }
 }

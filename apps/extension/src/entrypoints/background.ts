@@ -84,7 +84,7 @@ async function handleCheckProspect(
 async function handleClearBadge(previousUrl?: string): Promise<void> {
   await clearBadge()
   if (previousUrl) {
-    await browser.storage.session.remove(previousUrl)
+    await browser.storage.session.remove([previousUrl, `form:${previousUrl}`])
   }
 }
 
