@@ -4,15 +4,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCreateProspect, useUpdateProspect } from '../features/prospects/hooks/useProspects'
 import { HttpError } from '../lib/api'
-import type { LinkedInScrapedData } from '../lib/linkedin'
+import type { LinkedInScrapedData } from '../lib/linkedin' // kept for SCRAPE_PROFILE response type
 import ProspectCard from './ProspectCard'
 import ProspectForm, { type ProspectFormFields } from './ProspectForm'
 import { Button } from './ui/button'
 import { Separator } from './ui/separator'
 
-type CachedCheckResult =
-  | { found: true; prospect: ExtensionProspectData }
-  | { found: false; scrapedData: LinkedInScrapedData }
+type CachedCheckResult = { found: true; prospect: ExtensionProspectData } | { found: false }
 
 type FormSessionState = {
   mode: 'add' | 'edit'
@@ -22,6 +20,30 @@ type FormSessionState = {
 }
 
 type PopupMode = 'loading' | 'add' | 'read' | 'edit' | 'success-add'
+
+async function scrapeFromActiveTab(): Promise<ProspectFormFields> {
+  try {
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+    const tabId = tabs[0]?.id
+    if (!tabId) return emptyFields()
+    const scraped = (await browser.tabs.sendMessage(tabId, {
+      type: 'SCRAPE_PROFILE',
+    })) as LinkedInScrapedData | undefined
+    return {
+      name: scraped?.name ?? '',
+      title: scraped?.headline ?? '',
+      company: scraped?.company ?? '',
+      email: '',
+      phone: '',
+    }
+  } catch {
+    return emptyFields()
+  }
+}
+
+function emptyFields(): ProspectFormFields {
+  return { name: '', title: '', company: '', email: '', phone: '' }
+}
 
 interface ProspectPopupScreenProps {
   linkedinUrl: string
@@ -85,6 +107,7 @@ export default function ProspectPopupScreen({
       })
 
       if (!panelData) {
+        setFormDefaults(await scrapeFromActiveTab())
         setMode('add')
         return
       }
@@ -93,13 +116,7 @@ export default function ProspectPopupScreen({
         setProspect(panelData.prospect)
         setMode('read')
       } else {
-        setFormDefaults({
-          name: panelData.scrapedData.name,
-          title: panelData.scrapedData.headline,
-          company: panelData.scrapedData.company,
-          email: '',
-          phone: '',
-        })
+        setFormDefaults(await scrapeFromActiveTab())
         setMode('add')
       }
     }
@@ -209,19 +226,7 @@ export default function ProspectPopupScreen({
   async function handleReset() {
     await browser.storage.session.remove(formKey)
     setHasUnsavedChanges(false)
-    const panelData: CachedCheckResult | null = await browser.runtime.sendMessage({
-      type: 'GET_PANEL_DATA',
-      linkedinUrl,
-    })
-    if (panelData && !panelData.found) {
-      setFormDefaults({
-        name: panelData.scrapedData.name,
-        title: panelData.scrapedData.headline,
-        company: panelData.scrapedData.company,
-        email: '',
-        phone: '',
-      })
-    }
+    setFormDefaults(await scrapeFromActiveTab())
     setMode('add')
   }
 

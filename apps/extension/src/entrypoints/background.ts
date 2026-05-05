@@ -2,12 +2,9 @@ import type { ExtensionProspectData } from '@battlecrm/shared'
 import { authApi } from '../features/auth/lib/api'
 import { prospectsApi } from '../features/prospects/lib/api'
 import { HttpError } from '../lib/api'
-import type { LinkedInScrapedData } from '../lib/linkedin'
 import { clearAuth, getStorage } from '../lib/storage'
 
-type CachedCheckResult =
-  | { found: true; prospect: ExtensionProspectData }
-  | { found: false; scrapedData: LinkedInScrapedData }
+type CachedCheckResult = { found: true; prospect: ExtensionProspectData } | { found: false }
 
 export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -16,9 +13,7 @@ export default defineBackground(() => {
       return true
     }
     if (message.type === 'CHECK_PROSPECT') {
-      handleCheckProspect(message.linkedinUrl, message.scrapedData).then(() =>
-        sendResponse({ ok: true }),
-      )
+      handleCheckProspect(message.linkedinUrl).then(() => sendResponse({ ok: true }))
       return true
     }
     if (message.type === 'CLEAR_BADGE') {
@@ -48,10 +43,7 @@ async function handleLogout(): Promise<void> {
   await clearAuth()
 }
 
-async function handleCheckProspect(
-  linkedinUrl: string,
-  scrapedData: LinkedInScrapedData,
-): Promise<void> {
+async function handleCheckProspect(linkedinUrl: string): Promise<void> {
   const { token } = await getStorage()
   if (!token) {
     await setGreyBadge()
@@ -69,8 +61,7 @@ async function handleCheckProspect(
       await browser.action.setBadgeText({ text: '+' })
       await browser.action.setBadgeBackgroundColor({ color: '#dc2626' }) // red-600
       await browser.action.setTitle({ title: 'Ajouter ce prospect à BattleCRM' })
-      const cached: CachedCheckResult = { found: false, scrapedData }
-      await browser.storage.session.set({ [linkedinUrl]: cached })
+      await browser.storage.session.set({ [linkedinUrl]: { found: false } })
     }
   } catch (err) {
     if (err instanceof HttpError && err.status === 401) {
