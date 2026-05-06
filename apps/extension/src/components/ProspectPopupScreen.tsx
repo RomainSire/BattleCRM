@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCreateProspect, useUpdateProspect } from '../features/prospects/hooks/useProspects'
 import { HttpError } from '../lib/api'
-import type { LinkedInScrapedData } from '../lib/linkedin'; // kept for SCRAPE_PROFILE response type
+import type { LinkedInScrapedData } from '../lib/linkedin' // kept for SCRAPE_PROFILE response type
 import ProspectCard from './ProspectCard'
 import ProspectForm, { type ProspectFormFields } from './ProspectForm'
 import { Button } from './ui/button'
@@ -47,13 +47,11 @@ function emptyFields(): ProspectFormFields {
 
 interface ProspectPopupScreenProps {
   linkedinUrl: string
-  baseUrl: string
   onSettingsClick: () => void
 }
 
 export default function ProspectPopupScreen({
   linkedinUrl,
-  baseUrl,
   onSettingsClick,
 }: ProspectPopupScreenProps) {
   const { t } = useTranslation()

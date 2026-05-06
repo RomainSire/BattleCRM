@@ -14,15 +14,13 @@ export default function App() {
   const { t } = useTranslation()
   const [screen, setScreen] = useState<Screen>('loading')
   const [email, setEmail] = useState('')
-  const [baseUrl, setBaseUrl] = useState('')
   const [linkedinUrl, setLinkedinUrl] = useState('')
   const [sessionExpiredMessage, setSessionExpiredMessage] = useState<string | undefined>(undefined)
 
   useEffect(() => {
-    getStorage().then(({ token, email: storedEmail, baseUrl: storedBaseUrl }) => {
-      if (token && storedEmail && storedBaseUrl) {
+    getStorage().then(({ token, email: storedEmail }) => {
+      if (token && storedEmail) {
         setEmail(storedEmail)
-        setBaseUrl(storedBaseUrl)
         browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
           const tabUrl = tabs[0]?.url
           if (tabUrl && isProfilePage(tabUrl)) {
@@ -64,7 +62,6 @@ export default function App() {
       await clearAuth()
     }
     setEmail('')
-    setBaseUrl('')
     setLinkedinUrl('')
     setScreen('login')
   }
@@ -93,7 +90,6 @@ export default function App() {
     return (
       <div className="w-72">
         <ProspectPopupScreen
-          baseUrl={baseUrl}
           linkedinUrl={linkedinUrl}
           onSettingsClick={() => setScreen('settings')}
         />
@@ -103,10 +99,7 @@ export default function App() {
 
   return (
     <div className="min-h-48 w-72">
-      <NeutralScreen
-        email={email}
-        onSettingsClick={() => setScreen('settings')}
-      />
+      <NeutralScreen email={email} onSettingsClick={() => setScreen('settings')} />
     </div>
   )
 }
