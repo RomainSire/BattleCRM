@@ -131,9 +131,9 @@ test.describe('NeutralScreen — authenticated popup', () => {
     await clearStorage(page)
   })
 
-  test('shows neutral screen with logo and open-app button', async ({ page }) => {
+  test('shows neutral screen with logo and linkedin hint', async ({ page }) => {
     await expect(page.getByRole('img', { name: 'BattleCRM' })).toBeVisible()
-    await expect(page.getByRole('button', { name: /ouvrir battlecrm|open battlecrm/i })).toBeVisible()
+    await expect(page.getByText(/naviguez vers un profil|navigate to a linkedin/i)).toBeVisible()
   })
 
   test('shows connected email in footer', async ({ page }) => {
@@ -175,7 +175,7 @@ test.describe('SettingsScreen', () => {
 
   test('back button returns to neutral screen', async ({ page }) => {
     await page.getByRole('button', { name: /retour|back/i }).click()
-    await expect(page.getByRole('button', { name: /ouvrir battlecrm|open battlecrm/i })).toBeVisible()
+    await expect(page.getByText(/naviguez vers un profil|navigate to a linkedin/i)).toBeVisible()
   })
 
   test('language selector switches to English', async ({ page }) => {

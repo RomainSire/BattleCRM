@@ -1,20 +1,15 @@
-import { ExternalLink, Settings } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from './ui/button'
 import { Separator } from './ui/separator'
 
 interface NeutralScreenProps {
   email: string
-  baseUrl: string
   onSettingsClick: () => void
 }
 
-export default function NeutralScreen({ email, baseUrl, onSettingsClick }: NeutralScreenProps) {
+export default function NeutralScreen({ email, onSettingsClick }: NeutralScreenProps) {
   const { t } = useTranslation()
-
-  async function openApp() {
-    await browser.tabs.create({ url: baseUrl })
-  }
 
   return (
     <div className="flex h-full flex-col">
@@ -38,10 +33,6 @@ export default function NeutralScreen({ email, baseUrl, onSettingsClick }: Neutr
 
       <main className="flex flex-1 flex-col items-center justify-center gap-4 px-5 py-6 text-center">
         <p className="text-sm text-muted-foreground">{t('neutral.linkedinHint')}</p>
-        <Button onClick={openApp} type="button">
-          <ExternalLink className="size-4" />
-          {t('neutral.openApp')}
-        </Button>
       </main>
 
       <Separator />

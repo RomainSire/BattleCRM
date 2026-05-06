@@ -3,24 +3,33 @@ import { useTranslation } from 'react-i18next'
 import '../../assets/tailwind.css'
 import AuthForm from '../../components/AuthForm'
 import NeutralScreen from '../../components/NeutralScreen'
+import ProspectPopupScreen from '../../components/ProspectPopupScreen'
 import SettingsScreen from '../../components/SettingsScreen'
+import { isProfilePage, normalizeLinkedInUrl } from '../../lib/linkedin'
 import { clearAuth, getStorage } from '../../lib/storage'
 
-type Screen = 'loading' | 'login' | 'neutral' | 'settings'
+type Screen = 'loading' | 'login' | 'neutral' | 'settings' | 'prospect'
 
 export default function App() {
   const { t } = useTranslation()
   const [screen, setScreen] = useState<Screen>('loading')
   const [email, setEmail] = useState('')
-  const [baseUrl, setBaseUrl] = useState('')
+  const [linkedinUrl, setLinkedinUrl] = useState('')
   const [sessionExpiredMessage, setSessionExpiredMessage] = useState<string | undefined>(undefined)
 
   useEffect(() => {
-    getStorage().then(({ token, email: storedEmail, baseUrl: storedBaseUrl }) => {
-      if (token && storedEmail && storedBaseUrl) {
+    getStorage().then(({ token, email: storedEmail }) => {
+      if (token && storedEmail) {
         setEmail(storedEmail)
-        setBaseUrl(storedBaseUrl)
-        setScreen('neutral')
+        browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+          const tabUrl = tabs[0]?.url
+          if (tabUrl && isProfilePage(tabUrl)) {
+            setLinkedinUrl(normalizeLinkedInUrl(tabUrl))
+            setScreen('prospect')
+          } else {
+            setScreen('neutral')
+          }
+        })
       } else {
         setScreen('login')
       }
@@ -50,11 +59,10 @@ export default function App() {
     try {
       await browser.runtime.sendMessage({ type: 'LOGOUT' })
     } catch {
-      // Service worker may not be running (MV3 lifecycle) — clear storage directly
       await clearAuth()
     }
     setEmail('')
-    setBaseUrl('')
+    setLinkedinUrl('')
     setScreen('login')
   }
 
@@ -78,13 +86,20 @@ export default function App() {
     )
   }
 
+  if (screen === 'prospect' && linkedinUrl) {
+    return (
+      <div className="w-72">
+        <ProspectPopupScreen
+          linkedinUrl={linkedinUrl}
+          onSettingsClick={() => setScreen('settings')}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-48 w-72">
-      <NeutralScreen
-        baseUrl={baseUrl}
-        email={email}
-        onSettingsClick={() => setScreen('settings')}
-      />
+      <NeutralScreen email={email} onSettingsClick={() => setScreen('settings')} />
     </div>
   )
 }

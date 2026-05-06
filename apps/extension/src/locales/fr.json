@@ -19,7 +19,6 @@
     }
   },
   "neutral": {
-    "openApp": "Ouvrir BattleCRM ↗",
     "linkedinHint": "Naviguez vers un profil LinkedIn pour capturer un prospect.",
     "connected": "Connecté : {{email}}"
   },
@@ -54,5 +53,38 @@
   },
   "common": {
     "appName": "BattleCRM"
+  },
+  "prospect": {
+    "form": {
+      "name": "Nom complet",
+      "title": "Titre / Poste",
+      "company": "Entreprise",
+      "companyPlaceholder": "Vérifiez sur LinkedIn",
+      "email": "Email",
+      "phone": "Téléphone",
+      "linkedinUrl": "URL LinkedIn",
+      "submitAdd": "Ajouter le prospect",
+      "submitEdit": "Mettre à jour",
+      "submitting": "Enregistrement…",
+      "cancel": "Annuler",
+      "unsavedBanner": "⚠️ Modifications non sauvegardées — reprendre ?",
+      "editBanner": "⚠️ Modification en cours",
+      "reset": "Recommencer",
+      "successAdd": "Prospect ajouté ✓",
+      "successEdit": "✓ Prospect mis à jour",
+      "errors": {
+        "alreadyExists": "Ce prospect existe déjà dans BattleCRM",
+        "noFunnelStage": "Aucune étape de funnel active — créez-en une d'abord",
+        "validation": "Erreur de validation, vérifiez vos données",
+        "server": "Erreur serveur, veuillez réessayer"
+      }
+    },
+    "read": {
+      "foundBanner": "✓ Déjà dans BattleCRM",
+      "stage": "Étape",
+      "email": "Email",
+      "phone": "Tél",
+      "edit": "Modifier"
+    }
   }
 }

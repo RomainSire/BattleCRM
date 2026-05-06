@@ -13,49 +13,123 @@ export interface LinkedInScrapedData {
  * Scrape visible LinkedIn profile data from the current DOM.
  * Only called from the content script — never from service worker.
  * Returns empty strings for any field that cannot be safely extracted.
+ *
+ * LinkedIn obfuscates all CSS class names (e.g. `_9e348bbd`) — never rely on them.
+ * Instead we use `componentkey` attributes (semantic, tied to LinkedIn's component
+ * architecture) and structural heuristics as fallbacks.
  */
 export function scrapeLinkedInProfile(
   canonicalUrl = normalizeLinkedInUrl(location.href),
 ): LinkedInScrapedData {
-  const name = document.querySelector('h1')?.textContent?.trim() ?? ''
+  const topcardSection = document.querySelector('section[componentkey*="Topcard"]')
+  const expSection = document.querySelector('section[componentkey*="ExperienceTopLevelSection"]')
 
-  const headline =
-    document.querySelector('.text-body-medium.break-words')?.textContent?.trim() ??
-    document.querySelector('[data-generated-suggestion-target]')?.textContent?.trim() ??
-    ''
+  // --- NAME ---
+  // Primary: first h2 in the Topcard section.
+  // Fallback 1: aria-label on "Inviter/Invite" connect buttons.
+  // Fallback 2: legacy h1 (old LinkedIn UI, kept for resilience).
+  let name = topcardSection?.querySelector('h2')?.textContent?.trim() ?? ''
 
-  // Company: first experience section item — wrapped in try/catch, falls back to '' on any failure.
-  // LinkedIn DOM is fragile and changes without notice — empty string is correct per AC10.
-  let company = ''
-  try {
-    const expSection = document.querySelector(
-      '#experience ~ .pvs-list, #experience + * .pvs-list__item--line-separated',
+  if (!name) {
+    const inviteEl =
+      document.querySelector('[aria-label*="rejoindre votre réseau"]') ??
+      document.querySelector('[aria-label*="join your network"]')
+    const label = inviteEl?.getAttribute('aria-label') ?? ''
+    const m = label.match(/Inviter (.+?) à rejoindre/) ?? label.match(/Invite (.+?) to connect/)
+    if (m) name = m[1].trim()
+  }
+
+  if (!name) name = document.querySelector('h1')?.textContent?.trim() ?? ''
+
+  // --- HEADLINE ---
+  // In the topcard text-info area, <p> elements appear in order:
+  //   connection-degree (starts with "·")  →  headline  →  company  →  location
+  // We exclude <p> elements inside [role="button"] or <button> (the company-logo block
+  // and action CTAs), then take the first remaining paragraph that is not a degree marker.
+  let headline = ''
+
+  if (topcardSection) {
+    const paras = Array.from(topcardSection.querySelectorAll<HTMLParagraphElement>('p')).filter(
+      (p) => !p.closest('[role="button"]') && !p.closest('button'),
     )
-    if (!expSection) {
-      const expHeading = Array.from(document.querySelectorAll('section')).find((s) =>
-        s.querySelector('div[id="experience"]'),
+
+    headline =
+      paras
+        .find((p) => {
+          const t = p.textContent?.trim() ?? ''
+          return (
+            t.length > 2 &&
+            !t.startsWith('·') &&
+            !t.startsWith('•') &&
+            !/^\d/.test(t) &&
+            !/abonné|follower|Coordonnées|Contact info/i.test(t)
+          )
+        })
+        ?.textContent?.trim() ?? ''
+  }
+
+  // Legacy fallback (old LinkedIn DOM with semantic class names)
+  if (!headline) {
+    headline = document.querySelector('.text-body-medium.break-words')?.textContent?.trim() ?? ''
+  }
+
+  // --- COMPANY ---
+  // Strategy 1: Experience section — first entity-collection-item = most recent employer.
+  //   Within that item, find links to /company/ or /school/ pages; the one that has a <p>
+  //   child (not just a logo <figure>) contains the company name.
+  // Strategy 2: Topcard company-block — link to /company/ or /school/ in the topcard.
+  // Strategy 3: Second clean <p> in topcard text-info area (right after the headline).
+  let company = ''
+
+  try {
+    if (expSection) {
+      const firstItem = expSection.querySelector('[componentkey*="entity-collection-item"]')
+      if (firstItem) {
+        const companyLinks = Array.from(
+          firstItem.querySelectorAll<HTMLAnchorElement>(
+            'a[href*="/company/"], a[href*="/school/"]',
+          ),
+        )
+        for (const link of companyLinks) {
+          const text = link.querySelector('p')?.textContent?.trim() ?? ''
+          if (text.length > 0 && !/^\d/.test(text)) {
+            company = text
+            break
+          }
+        }
+      }
+    }
+
+    if (!company && topcardSection) {
+      company =
+        topcardSection
+          .querySelector<HTMLElement>('a[href*="/company/"] p, a[href*="/school/"] p')
+          ?.textContent?.trim() ?? ''
+    }
+
+    if (!company && topcardSection && headline) {
+      const paras = Array.from(topcardSection.querySelectorAll<HTMLParagraphElement>('p')).filter(
+        (p) => !p.closest('[role="button"]') && !p.closest('button'),
       )
-      const firstItem = expHeading?.querySelector('.pvs-list__paged-list-item:first-child')
-      const companyEl =
-        firstItem?.querySelector('.t-14.t-normal .visually-hidden') ??
-        firstItem?.querySelector('.t-14.t-normal span[aria-hidden="true"]')
-      company = companyEl?.textContent?.trim() ?? ''
-    } else {
-      const companyEl = expSection.querySelector(
-        '.pvs-list__item--line-separated:first-child span[aria-hidden="true"]:nth-child(2)',
-      )
-      company = companyEl?.textContent?.trim() ?? ''
+
+      const hi = paras.findIndex((p) => p.textContent?.trim() === headline)
+      if (hi >= 0 && hi + 1 < paras.length) {
+        const candidate = paras[hi + 1].textContent?.trim() ?? ''
+        if (
+          candidate.length > 1 &&
+          !candidate.startsWith('·') &&
+          !candidate.startsWith('•') &&
+          !/Coordonnées|Contact info/i.test(candidate)
+        ) {
+          company = candidate
+        }
+      }
     }
   } catch {
     company = ''
   }
 
-  return {
-    name,
-    headline,
-    company,
-    canonicalUrl,
-  }
+  return { name, headline, company, canonicalUrl }
 }
 
 /**

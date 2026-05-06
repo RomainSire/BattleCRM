@@ -6,8 +6,6 @@ interface NavigateEvent extends Event {
 }
 
 export default defineContentScript({
-  // Broader pattern (not just /in/*) so the MutationObserver fallback can catch SPA navigations
-  // that start on non-profile LinkedIn pages. URL filtering is done in isProfilePage().
   matches: ['*://www.linkedin.com/*'],
   main() {
     let lastCheckedUrl = ''
@@ -25,24 +23,35 @@ export default defineContentScript({
         return
       }
 
-      // Deduplicate — Navigation API can fire multiple times for the same URL
       if (normalizedUrl === lastCheckedUrl) return
 
-      // Clear badge immediately so the user never sees a stale result while the check is in progress
       browser.runtime
         .sendMessage({ type: 'CLEAR_BADGE', previousUrl: lastCheckedUrl || undefined })
         .catch(() => {})
       lastCheckedUrl = normalizedUrl
 
-      // Delay scraping to allow LinkedIn's React renderer time to mount the profile DOM.
-      // 800ms covers 99% of connections — too short risks stale data from the previous profile.
+      // Small delay so the API check doesn't fire during transient SPA navigations.
+      // No DOM scraping here — scraping is done on-demand when the popup opens,
+      // at which point the profile page is guaranteed to be fully loaded.
       setTimeout(() => {
-        const scrapedData = scrapeLinkedInProfile(normalizedUrl)
         browser.runtime
-          .sendMessage({ type: 'CHECK_PROSPECT', linkedinUrl: normalizedUrl, scrapedData })
+          .sendMessage({ type: 'CHECK_PROSPECT', linkedinUrl: normalizedUrl })
           .catch(() => {})
-      }, 800)
+      }, 300)
     }
+
+    // On-demand scraping: called by the popup via browser.tabs.sendMessage.
+    // At popup-open time the profile DOM is always fully mounted — no timing issues.
+    browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message.type === 'SCRAPE_PROFILE') {
+        sendResponse(scrapeLinkedInProfile(normalizeLinkedInUrl(location.href)))
+        return true
+      }
+      if (message.type === 'DO_CHECK') {
+        lastCheckedUrl = ''
+        handleUrlChange(location.href)
+      }
+    })
 
     // Primary: Navigation API (stable Chrome 102+/Firefox 126+)
     if ('navigation' in window) {
@@ -65,15 +74,6 @@ export default defineContentScript({
     observer.observe(document.body, { childList: true, subtree: true })
     window.addEventListener('pagehide', () => observer.disconnect(), { once: true })
 
-    // Re-check triggered by background after auth state change (e.g. login)
-    browser.runtime.onMessage.addListener((message) => {
-      if (message.type === 'DO_CHECK') {
-        lastCheckedUrl = ''
-        handleUrlChange(location.href)
-      }
-    })
-
-    // Initial load — handle direct navigation to a profile page
     handleUrlChange(location.href)
   },
 })
