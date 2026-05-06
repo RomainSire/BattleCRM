@@ -114,14 +114,14 @@ development_status:
   epic-6-retrospective: optional
 
   # Epic 7: LinkedIn Browser Extension
-  epic-7: in-progress
+  epic-7: done
   7-1-extension-token-authentication-backend: done
   7-2-extension-facing-prospect-api-backend: done
   7-3-extension-app-scaffold: done
   7-4-extension-settings-and-authentication-ui: done
   7-5-linkedin-profile-detection-and-badge-update: done
   7-6-prospect-add-update-floating-window: done
-  epic-7-retrospective: optional
+  epic-7-retrospective: done
 
   # Epic 8: CSV Import (Cold Start)
   epic-8: backlog
