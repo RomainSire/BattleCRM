@@ -1,10 +1,8 @@
-import type { ExtensionProspectData } from '@battlecrm/shared'
 import { authApi } from '../features/auth/lib/api'
 import { prospectsApi } from '../features/prospects/lib/api'
 import { HttpError } from '../lib/api'
 import { clearAuth, getStorage } from '../lib/storage'
-
-type CachedCheckResult = { found: true; prospect: ExtensionProspectData } | { found: false }
+import type { CachedCheckResult } from '../lib/types'
 
 export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {

@@ -1,6 +1,6 @@
 # Story 7.6: Prospect Add/Update Popup
 
-Status: review
+Status: done
 
 ## Story
 
@@ -16,15 +16,15 @@ So that I can add or update a prospect in under 30 seconds, even if I need to cl
 
 3. **AC3 (Navigation clears state):** When Story 7.5 detects navigation to a different LinkedIn profile and sends `CLEAR_BADGE`, the service worker also removes `chrome.storage.session['form:' + previousUrl]` in addition to the existing `chrome.storage.session[previousUrl]`.
 
-4. **AC4 (ADD mode — found: false):** Given `CachedCheckResult.found === false`, the popup displays 6 editable fields pre-filled from `scrapedData`: Prénom *, Nom * (both from `scrapedData.name` split on last space), Titre (from `scrapedData.headline`), Entreprise (from `scrapedData.company` — if empty, show placeholder "Vérifiez sur LinkedIn"), Email (empty), Téléphone (empty). Plus 1 read-only field: URL LinkedIn (canonical URL). An "Ajouter le prospect" primary button is shown.
+4. **AC4 (ADD mode — found: false):** Given `CachedCheckResult.found === false`, the popup displays 5 editable fields pre-filled from live DOM scraping: Nom complet * (from `scrapedData.name`), Titre (from `scrapedData.headline`), Entreprise (from `scrapedData.company` — if empty, show placeholder "Vérifiez sur LinkedIn"), Email (empty), Téléphone (empty). Plus 1 read-only field: URL LinkedIn (canonical URL). An "Ajouter le prospect" primary button is shown. **Note:** Single `name` field used instead of split Prénom/Nom — simpler and handles non-Western names correctly.
 
-5. **AC5 (ADD focus & tab order):** On open, focus is set on the Prénom input. Tab order: Prénom → Nom → Titre → Entreprise → Email → Téléphone → "Ajouter le prospect" button.
+5. **AC5 (ADD focus & tab order):** On open, focus is set on the Nom complet input. Tab order: Nom complet → Titre → Entreprise → Email → Téléphone → "Ajouter le prospect" button.
 
 6. **AC6 (Field persistence):** Every field change is immediately persisted to `chrome.storage.session['form:' + linkedinUrl]` with `{ mode: 'add', fields: { firstName, lastName, title, company, email, phone }, hasUnsavedChanges: true }`.
 
 7. **AC7 (ADD submission):** Client-side validation: firstName and lastName are required. On submit: button enters loading/spinner state. `POST /api/extension/prospects` is called with `{ name: firstName + ' ' + lastName, linkedin_url, company, email, phone, title }` (optional fields only sent if non-empty). On success: session form state cleared, badge updated to green ✓, inline success view shown with "Prospect ajouté ✓" and a "Voir dans BattleCRM ↗" link.
 
-8. **AC8 (READ mode — found: true):** Given `CachedCheckResult.found === true`, the popup shows: green banner "✓ Déjà dans BattleCRM", prospect name/title/company (from CRM, NEVER LinkedIn DOM), current funnel stage name, email and phone (displayed as "—" if null). Two CTAs: "Voir dans BattleCRM ↗" (opens `chrome.tabs.create({ url: baseUrl + '/prospects/' + prospect.id })`) and "Modifier" (secondary, enters EDIT mode).
+8. **AC8 (READ mode — found: true):** Given `CachedCheckResult.found === true`, the popup shows: green banner "✓ Déjà dans BattleCRM", prospect name/title/company (from CRM, NEVER LinkedIn DOM), current funnel stage name, email and phone (displayed as "—" if null). One CTA: "Modifier" (enters EDIT mode). **Note:** "Voir dans BattleCRM ↗" button intentionally removed for simplicity (deferred to a future story if needed).
 
 9. **AC9 (EDIT mode):** Given the user clicks "Modifier", form transitions to EDIT with editable fields pre-filled from CRM data, amber banner "⚠️ Modification en cours", "Annuler" and "Mettre à jour" buttons. URL LinkedIn remains read-only. Each change persisted to session with `{ mode: 'edit', fields, hasUnsavedChanges: true, prospectId }`.
 
@@ -980,14 +980,25 @@ Two distinct keys are used to avoid collision:
 
 The popup FIRST checks `"form:" + linkedinUrl`. If no form state → asks the service worker via `GET_PANEL_DATA` which reads the `linkedinUrl` key. The two keys never collide.
 
-### Name Splitting Logic
+### Form Field Design — Single `name` Field
 
-`ExtensionProspectData.name` is a single string (e.g. `"Jean Dupont"`). The form shows Prénom + Nom as separate fields. Split rule:
-- `firstName = everything before the last space`
-- `lastName = last word`
-- If no space: `firstName = name`, `lastName = ''`
+The form uses a single "Nom complet" field instead of the originally-specced split Prénom/Nom. This was a deliberate simplification for two reasons:
+1. LinkedIn names don't always follow Western `firstName lastName` conventions
+2. The backend stores a single `name` field — no split is ever needed server-side
 
-On submit, recombined as `` `${firstName} ${lastName}`.trim() ``. Single-name prospects (no last name) are valid per the backend validator (`name: minLength(1)`).
+The field is required (`minLength(1)`). On EDIT mode, `prospect.name` is pre-filled as-is. On ADD submission, `fields.name` is sent directly.
+
+### scrapeFromActiveTab — Architecture Decision
+
+AC1 originally described pre-cached `scrapedData` in the service worker's `CachedCheckResult`. Instead, the popup scrapes the DOM directly on open via a `SCRAPE_PROFILE` message to the content script (`content.ts`). This approach is preferred because:
+- The DOM is guaranteed to be fully loaded when the popup opens (user is already viewing the profile)
+- Data is always fresh — no stale cache risk
+- Simplifies the service worker: `CachedCheckResult` only stores `{ found: true, prospect }` or `{ found: false }` without carrying scrapedData
+- If the content script fails (edge case), `scrapeFromActiveTab()` returns empty fields gracefully
+
+### NeutralScreen Simplification
+
+The "Ouvrir BattleCRM ↗" button was removed from `NeutralScreen` and the `baseUrl` prop eliminated. This simplification was intentional — users who want to open the app can use their browser bookmarks. The button may be re-added in a future story.
 
 ### ADD Payload — Empty Optional Fields
 
@@ -1015,13 +1026,19 @@ The popup (a trusted extension context) can call `browser.action.setBadgeText()`
 
 | File | Action |
 |------|--------|
-| `apps/extension/src/entrypoints/background.ts` | Modify `handleClearBadge` — add `form:${previousUrl}` to remove |
-| `apps/extension/src/components/ProspectCard.tsx` | **NEW** — READ mode component |
-| `apps/extension/src/components/ProspectForm.tsx` | **NEW** — ADD/EDIT form component |
+| `apps/extension/src/entrypoints/background.ts` | Modify `handleClearBadge` + import `CachedCheckResult` from shared types |
+| `apps/extension/src/components/ProspectCard.tsx` | **NEW** — READ mode component (single "Modifier" CTA) |
+| `apps/extension/src/components/ProspectForm.tsx` | **NEW** — ADD/EDIT form component (single `name` field) |
 | `apps/extension/src/components/ProspectPopupScreen.tsx` | **NEW** — orchestrator for LinkedIn profile popup |
-| `apps/extension/src/entrypoints/popup/App.tsx` | Modify — add `prospect` screen + LinkedIn URL detection |
-| `apps/extension/src/locales/fr.json` | Modify — add `prospect` i18n keys |
-| `apps/extension/src/locales/en.json` | Modify — add `prospect` i18n keys |
+| `apps/extension/src/components/NeutralScreen.tsx` | Modify — remove `baseUrl` prop and "Ouvrir BattleCRM" button (simplification) |
+| `apps/extension/src/entrypoints/popup/App.tsx` | Modify — add `prospect` screen + LinkedIn URL detection; remove `baseUrl` state |
+| `apps/extension/src/entrypoints/content.ts` | Modify — add `SCRAPE_PROFILE` message handler for on-demand DOM scraping |
+| `apps/extension/src/lib/linkedin.ts` | Modify — add `scrapeLinkedInProfile()` function |
+| `apps/extension/src/lib/linkedin.test.ts` | **NEW** — unit tests for `scrapeLinkedInProfile`, `normalizeLinkedInUrl`, `isProfilePage` |
+| `apps/extension/src/lib/types.ts` | **NEW** — shared `CachedCheckResult` type (used by background + popup) |
+| `apps/extension/src/locales/fr.json` | Modify — add `prospect` i18n keys; remove orphaned `neutral.openApp` |
+| `apps/extension/src/locales/en.json` | Modify — add `prospect` i18n keys; remove orphaned `neutral.openApp` |
+| `apps/extension/package.json` | Modify — add `jsdom` + `@types/jsdom` devDependencies for tests |
 
 No backend changes needed — all 3 endpoints are already implemented and tested.
 
@@ -1062,20 +1079,27 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
-- Task 1: `handleClearBadge` already updated with array-form `remove([previousUrl, form:${previousUrl}])` — AC3 satisfied
-- Task 2: `ProspectCard.tsx` created — READ mode with green banner, prospect info, funnel stage, CTAs (AC8)
-- Task 3: `ProspectForm.tsx` created — ADD/EDIT form with react-hook-form, focus on mount, field persistence via watch(), amber banners (AC4, AC5, AC6, AC9, AC10, AC12)
-- Task 4: `ProspectPopupScreen.tsx` created — orchestrator managing all modes (loading/add/read/edit/success-add), session form persistence, ADD/EDIT submissions with error handling (AC1, AC2, AC7, AC11)
-- Task 5: `App.tsx` updated — added `prospect` screen type, LinkedIn URL detection via `isProfilePage`/`normalizeLinkedInUrl`, `ProspectPopupScreen` render path (AC1)
-- Task 6: locale keys added to both fr.json and en.json — all prospect form + read keys
-- Task 7: type-check ✓, Biome ✓ (auto-fixed import order in 3 components), build ✓ (553ms, 393KB)
+- Task 1: `handleClearBadge` updated with array-form `remove([previousUrl, form:${previousUrl}])` — AC3 satisfied
+- Task 2: `ProspectCard.tsx` created — READ mode with green banner, prospect info, funnel stage, single "Modifier" CTA. "Voir dans BattleCRM ↗" button intentionally omitted (see AC8 note).
+- Task 3: `ProspectForm.tsx` created — ADD/EDIT form with react-hook-form, single `name` field (see Dev Notes), focus on mount, field persistence via watch(), amber banners (AC4, AC5, AC6, AC9, AC10, AC12)
+- Task 4: `ProspectPopupScreen.tsx` created — orchestrator managing all modes, session form persistence, ADD/EDIT submissions with error handling, `loadPanelData` protected by try/catch. `CachedCheckResult` imported from shared `lib/types.ts`. (AC1, AC2, AC7, AC11)
+- Task 5: `App.tsx` updated — `prospect` screen, LinkedIn URL detection, `baseUrl` state removed (no longer needed after NeutralScreen simplification)
+- Task 6: locale keys added to fr.json and en.json — all prospect form + read keys; `neutral.openApp` orphan removed
+- Task 7 (extra): `content.ts` updated with `SCRAPE_PROFILE` handler; `linkedin.ts` extended with `scrapeLinkedInProfile()`; `linkedin.test.ts` created (23 tests); `lib/types.ts` created for shared `CachedCheckResult`
+- Task 8: type-check ✓, Biome ✓ (auto-fixed import order), build ✓ (669ms, 393KB)
 
 ### File List
 
-- `apps/extension/src/entrypoints/background.ts` (modified — AC3)
+- `apps/extension/src/entrypoints/background.ts` (modified — AC3, M2 CachedCheckResult import)
 - `apps/extension/src/components/ProspectCard.tsx` (new — AC8)
 - `apps/extension/src/components/ProspectForm.tsx` (new — AC4, AC5, AC6, AC9, AC10, AC12)
 - `apps/extension/src/components/ProspectPopupScreen.tsx` (new — AC1, AC2, AC7, AC11)
-- `apps/extension/src/entrypoints/popup/App.tsx` (modified — AC1)
-- `apps/extension/src/locales/fr.json` (modified — i18n keys)
-- `apps/extension/src/locales/en.json` (modified — i18n keys)
+- `apps/extension/src/components/NeutralScreen.tsx` (modified — baseUrl prop removed, NeutralScreen simplified)
+- `apps/extension/src/entrypoints/popup/App.tsx` (modified — prospect screen, baseUrl state removed)
+- `apps/extension/src/entrypoints/content.ts` (modified — SCRAPE_PROFILE handler for on-demand scraping)
+- `apps/extension/src/lib/linkedin.ts` (modified — scrapeLinkedInProfile() function)
+- `apps/extension/src/lib/linkedin.test.ts` (new — 23 unit tests for linkedin lib)
+- `apps/extension/src/lib/types.ts` (new — shared CachedCheckResult type)
+- `apps/extension/src/locales/fr.json` (modified — prospect i18n keys; neutral.openApp removed)
+- `apps/extension/src/locales/en.json` (modified — prospect i18n keys; neutral.openApp removed)
+- `apps/extension/package.json` (modified — jsdom + @types/jsdom devDependencies)

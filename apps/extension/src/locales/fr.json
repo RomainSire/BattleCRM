@@ -19,7 +19,6 @@
     }
   },
   "neutral": {
-    "openApp": "Ouvrir BattleCRM ↗",
     "linkedinHint": "Naviguez vers un profil LinkedIn pour capturer un prospect.",
     "connected": "Connecté : {{email}}"
   },

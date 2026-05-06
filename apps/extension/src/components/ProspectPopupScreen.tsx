@@ -1,16 +1,16 @@
 import type { ExtensionProspectData } from '@battlecrm/shared'
-import { Settings } from 'lucide-react'
+import { Loader2, Settings } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCreateProspect, useUpdateProspect } from '../features/prospects/hooks/useProspects'
+import type { CreateProspectPayload } from '../features/prospects/lib/api'
 import { HttpError } from '../lib/api'
-import type { LinkedInScrapedData } from '../lib/linkedin' // kept for SCRAPE_PROFILE response type
+import type { LinkedInScrapedData } from '../lib/linkedin'
+import type { CachedCheckResult } from '../lib/types'
 import ProspectCard from './ProspectCard'
 import ProspectForm, { type ProspectFormFields } from './ProspectForm'
 import { Button } from './ui/button'
 import { Separator } from './ui/separator'
-
-type CachedCheckResult = { found: true; prospect: ExtensionProspectData } | { found: false }
 
 type FormSessionState = {
   mode: 'add' | 'edit'
@@ -75,46 +75,50 @@ export default function ProspectPopupScreen({
 
   useEffect(() => {
     async function loadPanelData() {
-      // 1. Check for saved form state first
-      const sessionResult = await browser.storage.session.get(formKey)
-      const saved = sessionResult[formKey] as FormSessionState | undefined
+      try {
+        // 1. Check for saved form state first
+        const sessionResult = await browser.storage.session.get(formKey)
+        const saved = sessionResult[formKey] as FormSessionState | undefined
 
-      if (saved?.hasUnsavedChanges) {
-        setFormDefaults(saved.fields)
-        setHasUnsavedChanges(true)
+        if (saved?.hasUnsavedChanges) {
+          setFormDefaults(saved.fields)
+          setHasUnsavedChanges(true)
 
-        if (saved.mode === 'edit' && saved.prospectId) {
-          const panelData: CachedCheckResult | null = await browser.runtime.sendMessage({
-            type: 'GET_PANEL_DATA',
-            linkedinUrl,
-          })
-          if (panelData?.found === true) {
-            setProspect(panelData.prospect)
+          if (saved.mode === 'edit' && saved.prospectId) {
+            const panelData: CachedCheckResult | null = await browser.runtime.sendMessage({
+              type: 'GET_PANEL_DATA',
+              linkedinUrl,
+            })
+            if (panelData?.found === true) {
+              setProspect(panelData.prospect)
+            }
+            setMode('edit')
+          } else {
+            setMode('add')
           }
-          setMode('edit')
+          return
+        }
+
+        // 2. No saved form state — get cached check result from service worker
+        const panelData: CachedCheckResult | null = await browser.runtime.sendMessage({
+          type: 'GET_PANEL_DATA',
+          linkedinUrl,
+        })
+
+        if (!panelData) {
+          setFormDefaults(await scrapeFromActiveTab())
+          setMode('add')
+          return
+        }
+
+        if (panelData.found) {
+          setProspect(panelData.prospect)
+          setMode('read')
         } else {
+          setFormDefaults(await scrapeFromActiveTab())
           setMode('add')
         }
-        return
-      }
-
-      // 2. No saved form state — get cached check result from service worker
-      const panelData: CachedCheckResult | null = await browser.runtime.sendMessage({
-        type: 'GET_PANEL_DATA',
-        linkedinUrl,
-      })
-
-      if (!panelData) {
-        setFormDefaults(await scrapeFromActiveTab())
-        setMode('add')
-        return
-      }
-
-      if (panelData.found) {
-        setProspect(panelData.prospect)
-        setMode('read')
-      } else {
-        setFormDefaults(await scrapeFromActiveTab())
+      } catch {
         setMode('add')
       }
     }
@@ -135,21 +139,18 @@ export default function ProspectPopupScreen({
     [formKey, mode, prospect?.id],
   )
 
-  async function handleAddSubmit(fields: ProspectFormFields) {
+  const handleAddSubmit = async (fields: ProspectFormFields) => {
     setServerError(undefined)
     try {
-      const payload: Record<string, string> = {
+      const payload: CreateProspectPayload = {
         name: fields.name,
         linkedin_url: linkedinUrl,
+        ...(fields.company ? { company: fields.company } : {}),
+        ...(fields.email ? { email: fields.email } : {}),
+        ...(fields.phone ? { phone: fields.phone } : {}),
+        ...(fields.title ? { title: fields.title } : {}),
       }
-      if (fields.company) payload.company = fields.company
-      if (fields.email) payload.email = fields.email
-      if (fields.phone) payload.phone = fields.phone
-      if (fields.title) payload.title = fields.title
-
-      const created = await createProspect.mutateAsync(
-        payload as Parameters<typeof createProspect.mutateAsync>[0],
-      )
+      const created = await createProspect.mutateAsync(payload)
 
       await browser.storage.session.remove(formKey)
       await browser.action.setBadgeText({ text: '✓' })
@@ -174,7 +175,7 @@ export default function ProspectPopupScreen({
     }
   }
 
-  async function handleEditSubmit(fields: ProspectFormFields) {
+  const handleEditSubmit = async (fields: ProspectFormFields) => {
     if (!prospect) return
     setServerError(undefined)
     try {
@@ -201,7 +202,7 @@ export default function ProspectPopupScreen({
     }
   }
 
-  function handleEnterEdit() {
+  const handleEnterEdit = () => {
     if (!prospect) return
     setFormDefaults({
       name: prospect.name,
@@ -214,14 +215,14 @@ export default function ProspectPopupScreen({
     setMode('edit')
   }
 
-  async function handleCancelEdit() {
+  const handleCancelEdit = async () => {
     await browser.storage.session.remove(formKey)
     setHasUnsavedChanges(false)
     setServerError(undefined)
     setMode('read')
   }
 
-  async function handleReset() {
+  const handleReset = async () => {
     await browser.storage.session.remove(formKey)
     setHasUnsavedChanges(false)
     setFormDefaults(await scrapeFromActiveTab())
@@ -248,7 +249,11 @@ export default function ProspectPopupScreen({
 
       <Separator />
 
-      {mode === 'loading' && <div className="px-4 py-8" />}
+      {mode === 'loading' && (
+        <div className="flex items-center justify-center px-4 py-8">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      )}
 
       {mode === 'add' && (
         <ProspectForm
