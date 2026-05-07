@@ -1581,10 +1581,12 @@ So that the Performance Matrix can display accurate analytics.
 
 **Acceptance Criteria:**
 
-**Given** a positioning variant is used in interactions
+**Given** a positioning variant is assigned to prospects at a funnel stage
 **When** the analytics service calculates conversion rates
-**Then** it computes: (interactions with positive status at stage N) / (total interactions at stage N)
+**Then** it computes: (prospect_positionings with outcome = 'success' at stage N for positioning X) / (total prospect_positionings at stage N for positioning X)
 **And** rates are calculated per positioning × funnel stage combination
+**And** the conversion signal is `prospect_positionings.outcome = 'success'` — NOT `interaction.status` (field dropped in migration 0010, Story 7.1)
+**And** `prospect_positionings.funnel_stage_id` is used to filter by stage (denormalized from `positioning.funnel_stage_id` at assignment time)
 
 **Given** there are few data points (< 20)
 **When** conversion rates are calculated
@@ -1726,7 +1728,7 @@ So that I can understand the details behind the numbers.
 **When** I click on a conversion rate cell (e.g., "47% (22/47)")
 **Then** I see a drill-down showing the underlying data (FR32):
   - List of prospects at this stage with this positioning
-  - Their interaction outcomes (positive/pending/negative)
+  - Their positioning outcome: `success` / `failed` / in-progress (`prospect_positionings.outcome`) — NOT interaction.status (field dropped in migration 0010)
 
 **Given** I am in drill-down view
 **When** I click on a prospect
