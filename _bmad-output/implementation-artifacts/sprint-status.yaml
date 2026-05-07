@@ -102,8 +102,8 @@ development_status:
   epic-5b-retrospective: done
 
   # Epic 6: Performance Analytics & Battle Management
-  epic-6: backlog
-  6-1-create-battles-database-schema: backlog
+  epic-6: in-progress
+  6-1-create-battles-database-schema: ready-for-dev
   6-2-implement-conversion-rate-calculations: backlog
   6-3-build-dashboard-with-funnel-cards: backlog
   6-4-implement-traffic-light-significance-indicator: backlog
