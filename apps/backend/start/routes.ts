@@ -12,6 +12,7 @@ import { UUID_REGEX } from '#helpers/regex'
 import { middleware } from '#start/kernel'
 
 const AuthController = () => import('#controllers/auth_controller')
+const BattlesController = () => import('#controllers/battles_controller')
 const ExtensionAuthController = () => import('#controllers/extension_auth_controller')
 const ExtensionProspectsController = () => import('#controllers/extension_prospects_controller')
 const FunnelStagesController = () => import('#controllers/funnel_stages_controller')
@@ -57,6 +58,14 @@ router
           .use(middleware.extensionAuth())
       })
       .prefix('/extension')
+
+    // Analytics routes — ALL require auth
+    router
+      .group(() => {
+        router.get('/performance_matrix', [BattlesController, 'performanceMatrix'])
+      })
+      .prefix('/analytics')
+      .use(middleware.auth())
 
     // Funnel stages routes — ALL require auth
     router
