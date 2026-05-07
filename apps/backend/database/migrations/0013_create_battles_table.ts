@@ -18,7 +18,7 @@ export default class extends BaseSchema {
       // battle_number: application-managed, sequential per (user_id, funnel_stage_id)
       table.integer('battle_number').notNullable()
 
-      // status: 'active' | 'closed'
+      // status: 'active' | 'closed' — enforced at DB level via CHECK constraint below
       table.string('status', 10).notNullable()
 
       // winner_id: nullable FK — set when battle is closed and winner confirmed
@@ -30,26 +30,33 @@ export default class extends BaseSchema {
       table.timestamp('created_at').notNullable()
       table.timestamp('updated_at').nullable()
 
+      // Unique battle_number per (user_id, funnel_stage_id) — guards against race conditions in controller
+      table.unique(['user_id', 'funnel_stage_id', 'battle_number'], {
+        indexName: 'uq_battles_number_per_stage',
+      })
+
       // Composite index for filtering by user + stage + status (analytics queries)
       table.index(['user_id', 'funnel_stage_id', 'status'], 'idx_battles_user_stage_status')
     })
 
-    // Partial unique index: only one ACTIVE battle allowed per (user_id, funnel_stage_id).
-    // Standard table.unique() does not support WHERE clauses — raw SQL required.
     this.defer(async (db) => {
+      // Partial unique index: only one ACTIVE battle allowed per (user_id, funnel_stage_id).
+      // Standard table.unique() does not support WHERE clauses — raw SQL required.
       await db.rawQuery(`
         CREATE UNIQUE INDEX uq_battles_one_active_per_stage
         ON battles (user_id, funnel_stage_id)
         WHERE status = 'active'
       `)
+      // Enforce valid status values at DB level
+      await db.rawQuery(`
+        ALTER TABLE battles
+        ADD CONSTRAINT chk_battles_status
+        CHECK (status IN ('active', 'closed'))
+      `)
     })
   }
 
   async down() {
-    this.defer(async (db) => {
-      await db.rawQuery('DROP INDEX IF EXISTS uq_battles_one_active_per_stage')
-    })
-
     this.schema.dropTable('battles')
   }
 }

@@ -1,6 +1,6 @@
 # Story 6.1: Create Battles Database Schema
 
-Status: review
+Status: done
 
 ## Story
 
@@ -234,6 +234,15 @@ claude-sonnet-4-6
 - 7 new functional tests covering: creation (full + minimal), `forUser` isolation, partial unique constraint (active×active rejected, active+closed allowed, different stages allowed), `battle_number` storage.
 - 272 tests pass (265 baseline + 7 new), 0 regressions. Lint clean. Full monorepo type-check clean.
 
+**Code Review Fixes (2026-05-07):**
+- [M1] Added `UNIQUE` index on `(user_id, funnel_stage_id, battle_number)` to prevent duplicate battle numbers from controller race conditions.
+- [M2] Fixed conditional assertion in "different stages" test — `assert.isDefined(stage2)` added before use to fail fast if default stage count changes.
+- [M3] Added story file + sprint-status.yaml to File List.
+- [L1] Removed redundant `DROP INDEX IF EXISTS` from `down()` — `DROP TABLE` drops all associated indexes automatically in PostgreSQL.
+- [L2] Added DB-level `CHECK (status IN ('active', 'closed'))` constraint via raw SQL in `defer` block.
+- [L3] Added status assertion in test 4.7 — verifies one battle is 'active' and one is 'closed', not just count.
+- ⚠️ Migration modified post-run: `ENV_PATH=../../ node ace migration:rollback && ENV_PATH=../../ node ace migration:run` required to apply new constraints.
+
 ### File List
 
 - `packages/shared/src/types/battle.ts` (created)
@@ -242,3 +251,5 @@ claude-sonnet-4-6
 - `apps/backend/database/schema.ts` (auto-modified by migration introspection)
 - `apps/backend/app/models/battle.ts` (created)
 - `apps/backend/tests/functional/battles/schema.spec.ts` (created)
+- `_bmad-output/implementation-artifacts/6-1-create-battles-database-schema.md` (modified — story status updated to review)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified — story status updated to review)

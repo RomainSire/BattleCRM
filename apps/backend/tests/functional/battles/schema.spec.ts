@@ -204,11 +204,12 @@ test.group('Battle schema', (group) => {
       positioningB,
     } = await createUserWithStageAndPositionings(client, 'multi-stage')
 
-    // Get a second stage for this user
+    // Get a second stage for this user — registration creates 3 default stages, assert to fail fast if that changes
     const allStages = await FunnelStage.query()
       .withScopes((s) => s.forUser(user.id))
       .orderBy('position', 'asc')
     const stage2 = allStages[1]
+    assert.isDefined(stage2, 'Expected at least 2 default funnel stages for new user')
 
     const b1 = await Battle.create({
       userId: user.id,
@@ -221,23 +222,19 @@ test.group('Battle schema', (group) => {
     })
 
     // Same user, different stage — should succeed
-    const b2 = stage2
-      ? await Battle.create({
-          userId: user.id,
-          funnelStageId: stage2.id,
-          variantAId: positioningA.id,
-          variantBId: positioningB.id,
-          battleNumber: 1,
-          status: 'active',
-          startedAt: DateTime.now(),
-        })
-      : null
+    const b2 = await Battle.create({
+      userId: user.id,
+      funnelStageId: stage2.id,
+      variantAId: positioningA.id,
+      variantBId: positioningB.id,
+      battleNumber: 1,
+      status: 'active',
+      startedAt: DateTime.now(),
+    })
 
     assert.isDefined(b1.id)
-    if (b2) {
-      assert.isDefined(b2.id)
-      assert.notEqual(b1.id, b2.id)
-    }
+    assert.isDefined(b2.id)
+    assert.notEqual(b1.id, b2.id)
   })
 
   test('active + closed battles for same (user, stage) are allowed', async ({ client, assert }) => {
@@ -274,6 +271,8 @@ test.group('Battle schema', (group) => {
 
     const allBattles = await Battle.query().withScopes((s) => s.forUser(user.id))
     assert.lengthOf(allBattles, 2)
+    const statuses = allBattles.map((b) => b.status).sort()
+    assert.deepEqual(statuses, ['active', 'closed'])
   })
 
   // ===========================
