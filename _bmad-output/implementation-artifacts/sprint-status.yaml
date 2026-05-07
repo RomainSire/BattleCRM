@@ -104,7 +104,7 @@ development_status:
   # Epic 6: Performance Analytics & Battle Management
   epic-6: in-progress
   6-1-create-battles-database-schema: done
-  6-2-implement-conversion-rate-calculations: backlog
+  6-2-implement-conversion-rate-calculations: done
   6-3-build-dashboard-with-funnel-cards: backlog
   6-4-implement-traffic-light-significance-indicator: backlog
   6-5-implement-battle-management: backlog
