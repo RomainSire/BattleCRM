@@ -3,6 +3,7 @@ import type { ConfidenceLevel } from '@battlecrm/shared'
 const ALPHA_PRIOR = 1
 const BETA_PRIOR = 1
 
+// Precondition: 0 ≤ successes ≤ total ≥ 1 — guaranteed by the SQL COUNT() GROUP BY caller.
 export function calculateConversionRate(
   successes: number,
   total: number,

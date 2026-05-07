@@ -107,6 +107,7 @@ test.group('GET /api/analytics/performance_matrix', (group) => {
     assert.equal(cell.numerator, 2)
     assert.equal(cell.denominator, 3)
     assert.approximately(cell.rate, 3 / 5, 0.0001)
+    assert.equal(cell.funnelStageName, stage.name)
     assert.equal(cell.confidenceLevel, 'low')
   })
 
@@ -332,6 +333,44 @@ test.group('GET /api/analytics/performance_matrix', (group) => {
   })
 
   // ===========================
+  // Archived funnel stage still appears
+  // ===========================
+
+  test('archived funnel stage still appears in cells (resolved via withTrashed)', async ({
+    client,
+    assert,
+  }) => {
+    const { user, stage } = await setupUser(client, 'archived-stage')
+    const userId = user.id
+    const stageName = stage.name
+
+    const positioning = await Positioning.create({
+      userId,
+      funnelStageId: stage.id,
+      name: 'Stage Archive Test',
+    })
+    const prospect = await Prospect.create({ userId, funnelStageId: stage.id, name: 'Ivan' })
+    await ProspectPositioning.create({
+      userId,
+      prospectId: prospect.id,
+      positioningId: positioning.id,
+      funnelStageId: stage.id,
+      outcome: 'success',
+    })
+
+    // Soft-delete the stage directly (bypasses application-level deletion guards)
+    await stage.delete()
+
+    const res = await client.get('/api/analytics/performance_matrix').loginAs(user)
+    res.assertStatus(200)
+    const { cells } = res.body()
+
+    assert.lengthOf(cells, 1)
+    assert.equal(cells[0].funnelStageId, stage.id)
+    assert.equal(cells[0].funnelStageName, stageName)
+  })
+
+  // ===========================
   // Multiple cells
   // ===========================
 
@@ -371,6 +410,7 @@ test.group('GET /api/analytics/performance_matrix', (group) => {
     assert.equal(cellA?.positioningName, 'Pos Multi A')
     assert.equal(cellA?.funnelStageId, stage.id)
     assert.equal(cellA?.funnelStageName, stage.name)
+    assert.equal(cellB?.funnelStageName, stage.name)
     assert.equal(cellA?.numerator, 1)
     assert.equal(cellA?.denominator, 1)
     assert.equal(cellB?.numerator, 0)

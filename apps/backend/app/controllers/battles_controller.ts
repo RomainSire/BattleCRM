@@ -5,6 +5,9 @@ import FunnelStage from '#models/funnel_stage'
 import Positioning from '#models/positioning'
 import { calculateConversionRate } from '#services/bayesian_service'
 
+const DELETED_POSITIONING_NAME = 'Positioning supprimé'
+const DELETED_STAGE_NAME = 'Stage supprimé'
+
 export default class BattlesController {
   async performanceMatrix({ auth, response }: HttpContext) {
     const userId = auth.user!.id
@@ -17,7 +20,8 @@ export default class BattlesController {
         COUNT(CASE WHEN outcome = 'success' THEN 1 END) AS successes
       FROM prospect_positionings
       WHERE user_id = ?
-      GROUP BY positioning_id, funnel_stage_id`,
+      GROUP BY positioning_id, funnel_stage_id
+      ORDER BY positioning_id, funnel_stage_id`,
       [userId],
     )
 
@@ -55,9 +59,9 @@ export default class BattlesController {
       const { rate, confidenceLevel } = calculateConversionRate(successes, total)
       return {
         positioningId: row.positioning_id,
-        positioningName: positioningMap.get(row.positioning_id)?.name ?? 'Positioning supprimé',
+        positioningName: positioningMap.get(row.positioning_id)?.name ?? DELETED_POSITIONING_NAME,
         funnelStageId: row.funnel_stage_id,
-        funnelStageName: stageMap.get(row.funnel_stage_id)?.name ?? 'Stage supprimé',
+        funnelStageName: stageMap.get(row.funnel_stage_id)?.name ?? DELETED_STAGE_NAME,
         rate,
         numerator: successes,
         denominator: total,

@@ -1,6 +1,6 @@
 # Story 6.2: Implement Conversion Rate Calculations
 
-Status: review
+Status: done
 
 ## Story
 
@@ -27,9 +27,9 @@ so that the Performance Matrix can display accurate analytics.
   - [x] 2.1 Create `apps/backend/app/serializers/battle.ts` with `serializeBattle(battle: Battle): BattleType`
   - [x] 2.2 Run `pnpm type-check` — TypeScript must enforce the `BattleType` shape
 
-- [x] Task 3: Create `BayesianService` (AC: #1, #2)
+- [x] Task 3: Create Bayesian service (AC: #1, #2)
   - [x] 3.1 Create `apps/backend/app/services/bayesian_service.ts`
-  - [x] 3.2 Implement static `calculateConversionRate(successes: number, total: number): { rate: number; confidenceLevel: ConfidenceLevel }`
+  - [x] 3.2 Export `calculateConversionRate(successes: number, total: number): { rate: number; confidenceLevel: ConfidenceLevel }` as a module-level function (Biome `noStaticOnlyClass` rule prevents a static-only class)
   - [x] 3.3 Formula: `rate = (1 + successes) / (2 + total)` — never NaN, prior pulls toward 0.5
 
 - [x] Task 4: Create `BattlesController` with `performanceMatrix` method (AC: #1, #2, #3)
