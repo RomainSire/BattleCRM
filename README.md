@@ -84,6 +84,12 @@ Key variables:
 - `SUPABASE_URL` / `SUPABASE_ANON_KEY` - From your Supabase project settings
 - `DATABASE_URL` - PostgreSQL connection string
 
+## Browser Extension
+
+BattleCRM includes a Chrome/Firefox extension that detects LinkedIn profiles and lets you add or update prospects without leaving the browser.
+
+→ **[Extension Installation Guide](docs/extension-install.md)**
+
 ## License
 
 Private - All rights reserved.
