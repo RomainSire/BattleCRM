@@ -54,10 +54,28 @@
     }
   },
   "dashboard": {
-    "title": "BattleCRM",
-    "description": "Welcome to your personal CRM",
+    "title": "Dashboard",
+    "description": "Performance overview by funnel stage",
     "logout": "Log out",
-    "loggingOut": "Logging out..."
+    "loggingOut": "Logging out...",
+    "loadError": "Failed to load dashboard.",
+    "noStages": "No funnel stages configured. Go to Settings to set up your funnel.",
+    "noData": "No data for this stage yet.",
+    "noActiveBattle": "No active battle",
+    "battleClosed": "Battle closed — winner: {{winner}}",
+    "activeBattle": "Battle #{{n}} · {{a}} vs {{b}}",
+    "unknownVariant": "Unknown variant",
+    "conversionRates": "Conversion Rates",
+    "battleHistory": "Battle History",
+    "battleHistoryItem": "Battle #{{n}}: {{a}} vs {{b}} → {{winner}}",
+    "noClosedBattles": "No closed battles",
+    "deletedPositioning": "[Deleted positioning]",
+    "trafficLight": {
+      "significant": "Significant",
+      "trending": "Trending",
+      "needData": "Need more data",
+      "tooltip": "Confidence based on sample size (Story 6.4 adds Bayesian P(A>B))"
+    }
   },
   "settings": {
     "title": "Settings",

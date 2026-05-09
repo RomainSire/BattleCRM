@@ -59,6 +59,14 @@ router
       })
       .prefix('/extension')
 
+    // Battles routes — ALL require auth
+    router
+      .group(() => {
+        router.get('/', [BattlesController, 'index'])
+      })
+      .prefix('/battles')
+      .use(middleware.auth())
+
     // Analytics routes — ALL require auth
     router
       .group(() => {

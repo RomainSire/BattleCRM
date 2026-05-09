@@ -2,9 +2,9 @@ export type ConfidenceLevel = 'high' | 'medium' | 'low'
 
 export type ConversionCellType = {
   positioningId: string
-  positioningName: string
+  positioningName: string | null
   funnelStageId: string
-  funnelStageName: string
+  funnelStageName: string | null
   rate: number
   numerator: number
   denominator: number

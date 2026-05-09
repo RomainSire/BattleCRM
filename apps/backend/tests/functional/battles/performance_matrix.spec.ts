@@ -467,4 +467,8 @@ test.group('GET /api/analytics/performance_matrix', (group) => {
     // Bayesian: (1+1)/(2+3) = 2/5 = 0.4
     assert.approximately(cells[0].rate, 2 / 5, 0.0001)
   })
+  // Note: positioningName and funnelStageName can be null (shared type: string | null).
+  // Hard-deleting a referenced positioning is blocked by the FK RESTRICT constraint on
+  // prospect_positionings.positioning_id — the null path is unreachable in normal operation.
+  // The ?? null fallback is defensive code; soft-deleted positionings are found via withTrashed().
 })

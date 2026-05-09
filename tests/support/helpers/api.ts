@@ -183,6 +183,36 @@ export async function createInteraction(
 }
 
 /**
+ * Assign a positioning to a prospect (creates a prospect_positioning).
+ * Requires an authenticated request context.
+ */
+export async function assignPositioning(
+  request: APIRequestContext,
+  prospectId: string,
+  positioningId: string,
+): Promise<void> {
+  const res = await request.post(`${API_URL}/api/prospects/${prospectId}/positionings`, {
+    data: { positioning_id: positioningId },
+  })
+  if (!res.ok()) throw new Error(`assignPositioning failed: ${res.status()} ${await res.text()}`)
+}
+
+/**
+ * Set outcome on the current prospect_positioning.
+ * Requires an authenticated request context.
+ */
+export async function setPositioningOutcome(
+  request: APIRequestContext,
+  prospectId: string,
+  outcome: 'success' | 'failed',
+): Promise<void> {
+  const res = await request.patch(`${API_URL}/api/prospects/${prospectId}/positionings/current/outcome`, {
+    data: { outcome },
+  })
+  if (!res.ok()) throw new Error(`setPositioningOutcome failed: ${res.status()} ${await res.text()}`)
+}
+
+/**
  * Delete all interactions for the authenticated user.
  * Interactions are hard-deleted (no archive/restore).
  * Requires an authenticated request context.
