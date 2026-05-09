@@ -10,7 +10,7 @@ import { calculateConversionRate } from '#services/bayesian_service'
 
 export default class BattlesController {
   async index({ auth, request, response }: HttpContext) {
-    const user = await auth.authenticate()
+    const userId = auth.user!.id
     const funnelStageId = request.qs().funnel_stage_id as string | undefined
 
     if (funnelStageId !== undefined && !UUID_REGEX.test(funnelStageId)) {
@@ -18,7 +18,7 @@ export default class BattlesController {
     }
 
     const query = Battle.query()
-      .withScopes((s) => s.forUser(user.id))
+      .withScopes((s) => s.forUser(userId))
       .orderBy('funnel_stage_id', 'asc')
       .orderBy('battle_number', 'desc')
 

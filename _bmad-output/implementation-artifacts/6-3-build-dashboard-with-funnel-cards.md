@@ -1,6 +1,6 @@
 # Story 6.3: Build Dashboard with Funnel Cards
 
-Status: review
+Status: done
 
 ## Story
 
@@ -415,6 +415,9 @@ claude-sonnet-4-6
 - `apps/frontend/public/locales/fr.json` (modifié — extension clés `dashboard`)
 - `apps/frontend/public/locales/en.json` (modifié — extension clés `dashboard`)
 - `_bmad-output/implementation-artifacts/6-3-build-dashboard-with-funnel-cards.md` (modifié — story mise à jour)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modifié — statut → review)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modifié — statut → done)
 - `tests/e2e/dashboard.spec.ts` (créé — 12 tests E2E Playwright)
 - `tests/support/helpers/api.ts` (modifié — ajout `assignPositioning`, `setPositioningOutcome`)
+- `packages/shared/src/types/performance-matrix.ts` (modifié — `positioningName: string | null`, `funnelStageName: string | null`)
+- `apps/frontend/src/components/ui/accordion.tsx` (créé — shadcn accordion installé)
+- `apps/backend/tests/functional/battles/performance_matrix.spec.ts` (modifié — ajout commentaire FK RESTRICT)

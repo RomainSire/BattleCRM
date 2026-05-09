@@ -66,10 +66,9 @@ test.describe('Dashboard - funnel cards grid', () => {
 
   test('each card shows "No active battle" by default', async ({ page }) => {
     await page.goto('/')
-    const noBattleTexts = page.getByText(/no active battle/i)
-    // One per stage (3 stages seeded)
-    await expect(noBattleTexts.first()).toBeVisible()
-    await expect(await noBattleTexts.count()).toBeGreaterThanOrEqual(3)
+    await expect(page.getByText('Lead qualified')).toBeVisible()
+    // One "No active battle" text per stage (3 stages seeded)
+    await expect(page.getByText(/no active battle/i)).toHaveCount(3)
   })
 
   test('card header has expand/collapse button', async ({ page }) => {
@@ -170,39 +169,37 @@ test.describe('Dashboard - conversion rates with data', () => {
 
   test('card shows positioning name in expanded conversion rates', async ({ page }) => {
     await page.goto('/')
+    await expect(page.getByText(stageName)).toBeVisible()
 
-    // Find and expand the card for the stage with data
-    const stageCard = page.locator('[aria-expanded]', {
+    const trigger = page.locator('[data-slot="accordion-trigger"]', {
       has: page.getByText(stageName),
     })
-    await stageCard.click()
+    await trigger.click()
 
     await expect(page.getByText(positioningName)).toBeVisible()
   })
 
   test('shows sample size in (numerator/denominator) format', async ({ page }) => {
     await page.goto('/')
+    await expect(page.getByText(stageName)).toBeVisible()
 
-    const stageCard = page.locator('[aria-expanded]', {
+    const trigger = page.locator('[data-slot="accordion-trigger"]', {
       has: page.getByText(stageName),
     })
-    await stageCard.click()
+    await trigger.click()
 
     // 1 success / 1 total → Bayesian: (1+1)/(2+1) = 0.667 → 67% (1/1)
     await expect(page.getByText(/\(1\/1\)/)).toBeVisible()
   })
 
-  test('shows traffic light 🔴 when data is insufficient (< 10 prospects)', async ({ page }) => {
+  test('card renders without error when data is insufficient (< 10 prospects)', async ({ page }) => {
     await page.goto('/')
-
-    // With only 1 data point, confidenceLevel = 'low' → red traffic light
-    // No active battle exists, so no traffic light chip is shown yet
-    // (Traffic light only appears on active battles — AC #2)
-    // This test verifies the card renders without error
-    const stageCard = page.locator('[aria-expanded]', {
-      has: page.getByText(stageName),
-    })
-    await expect(stageCard).toBeVisible()
+    await expect(page.getByText(stageName)).toBeVisible()
+    // 1 data point → confidenceLevel = 'low'. No active battle → no traffic light shown.
+    // This test verifies the card renders the stage card without error.
+    await expect(
+      page.locator('[data-slot="accordion-trigger"]', { has: page.getByText(stageName) }),
+    ).toHaveAttribute('data-state', 'closed')
   })
 })
 
