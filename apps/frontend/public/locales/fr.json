@@ -54,10 +54,28 @@
     }
   },
   "dashboard": {
-    "title": "BattleCRM",
-    "description": "Bienvenue dans votre CRM personnel",
+    "title": "Tableau de bord",
+    "description": "Vue de vos performances par étape",
     "logout": "Se déconnecter",
-    "loggingOut": "Déconnexion en cours..."
+    "loggingOut": "Déconnexion en cours...",
+    "loadError": "Impossible de charger le tableau de bord.",
+    "noStages": "Aucune étape configurée. Allez dans Paramètres pour configurer votre tunnel.",
+    "noData": "Aucune donnée pour cette étape.",
+    "noActiveBattle": "Aucune battle active",
+    "battleClosed": "Battle terminée — gagnant : {{winner}}",
+    "activeBattle": "Battle #{{n}} · {{a}} vs {{b}}",
+    "unknownVariant": "Variant inconnu",
+    "conversionRates": "Taux de conversion",
+    "battleHistory": "Historique des battles",
+    "battleHistoryItem": "Battle #{{n}} : {{a}} vs {{b}} → {{winner}}",
+    "noClosedBattles": "Aucune battle terminée",
+    "deletedPositioning": "[Positionnement supprimé]",
+    "trafficLight": {
+      "significant": "Significatif",
+      "trending": "Tendance",
+      "needData": "Données insuffisantes",
+      "tooltip": "Indicateur basé sur la taille d'échantillon (Story 6.4 ajoutera le calcul P(A>B))"
+    }
   },
   "settings": {
     "title": "Paramètres",

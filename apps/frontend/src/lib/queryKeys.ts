@@ -5,6 +5,10 @@ import type {
 } from '@battlecrm/shared'
 
 export const queryKeys = {
+  analytics: {
+    all: ['analytics'] as const,
+    performanceMatrix: () => [...queryKeys.analytics.all, 'performance-matrix'] as const,
+  },
   auth: {
     all: ['auth'] as const,
     me: () => [...queryKeys.auth.all, 'me'] as const,
@@ -32,6 +36,10 @@ export const queryKeys = {
         ? ([...queryKeys.positionings.all, 'list', filters] as const)
         : ([...queryKeys.positionings.all, 'list'] as const),
     prospects: (id: string) => [...queryKeys.positionings.all, 'prospects', id] as const,
+  },
+  battles: {
+    all: ['battles'] as const,
+    list: () => [...queryKeys.battles.all, 'list'] as const,
   },
   interactions: {
     all: ['interactions'] as const,
