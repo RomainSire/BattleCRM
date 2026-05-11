@@ -1,4 +1,4 @@
-import type { BattleType, ConversionCellType, PositioningType } from '@battlecrm/shared'
+import type { BattleType } from '@battlecrm/shared'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -23,8 +23,6 @@ interface CloseBattleDialogProps {
   battle: BattleType
   leadingVariantId: string | null
   disabled: boolean
-  cells: ConversionCellType[]
-  positionings: PositioningType[]
   resolveName: (id: string) => string
 }
 
@@ -55,7 +53,9 @@ export function CloseBattleDialog({
         },
         onError: (error) => {
           const message = error instanceof ApiError ? error.errors[0]?.message : undefined
-          setApiError(message ?? t('dashboard.closeBattleDialog.errorGeneric'))
+          const text = message ?? t('dashboard.closeBattleDialog.errorGeneric')
+          setApiError(text)
+          toast.error(text)
         },
       },
     )

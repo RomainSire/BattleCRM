@@ -214,6 +214,50 @@ test.group('POST /api/battles', (group) => {
     res.assertStatus(409)
   })
 
+  test('variant_a_id belonging to a different stage returns 422', async ({ client }) => {
+    const { user, stage, positioningB } = await setupUser(client, 'store-va-wrong-stage')
+    const otherStage = await FunnelStage.create({
+      userId: user.id,
+      name: 'Other Stage',
+      position: 999,
+    })
+    const crossP = await Positioning.create({
+      userId: user.id,
+      funnelStageId: otherStage.id,
+      name: 'Cross',
+    })
+
+    const res = await client.post('/api/battles').loginAs(user).json({
+      funnel_stage_id: stage.id,
+      variant_a_id: crossP.id,
+      variant_b_id: positioningB.id,
+    })
+
+    res.assertStatus(422)
+  })
+
+  test('variant_b_id belonging to a different stage returns 422', async ({ client }) => {
+    const { user, stage, positioningA } = await setupUser(client, 'store-vb-wrong-stage')
+    const otherStage = await FunnelStage.create({
+      userId: user.id,
+      name: 'Other Stage',
+      position: 999,
+    })
+    const crossP = await Positioning.create({
+      userId: user.id,
+      funnelStageId: otherStage.id,
+      name: 'Cross',
+    })
+
+    const res = await client.post('/api/battles').loginAs(user).json({
+      funnel_stage_id: stage.id,
+      variant_a_id: positioningA.id,
+      variant_b_id: crossP.id,
+    })
+
+    res.assertStatus(422)
+  })
+
   test('user A active battle does not block user B from starting a battle on same stage position', async ({
     client,
     assert,

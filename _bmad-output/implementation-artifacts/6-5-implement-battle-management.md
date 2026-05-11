@@ -51,7 +51,7 @@ so that I can continuously optimize my positioning through A/B testing.
 
 - [x] Task 4: Backend tests for POST /api/battles (AC: #1)
   - [x] 4.1 File: `apps/backend/tests/functional/battles/battles_store.spec.ts`
-  - [x] 4.2 Tests (11 tests, all passing):
+  - [x] 4.2 Tests (12 tests, all passing):
     - 401 unauthenticated
     - 201 creates battle with battleNumber = 1 for first battle
     - 201 creates battle with battleNumber = 2 after previous closed
@@ -60,6 +60,8 @@ so that I can continuously optimize my positioning through A/B testing.
     - 404 funnel_stage_id not owned by user
     - 404 variant_a_id not owned by user
     - 404 variant_b_id not owned by user
+    - 422 variant_a_id belongs to a different funnel stage
+    - 422 variant_b_id belongs to a different funnel stage
     - 409 active battle already exists for stage
     - User isolation: user A's active battle does not block user B
 
@@ -180,6 +182,10 @@ VineJS frontend schemas follow feature-based convention: placed in `src/features
 - `apps/frontend/public/locales/fr.json` — same in French
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` — status updated
 
+### Global VineJS Migration (vine.compile → vine.create)
+
+This story's commit includes a global migration of `vine.compile()` → `vine.create()` across all 8 backend validators and 6 frontend schemas. This was a VineJS API housekeeping change bundled in the same commit. All modified files are listed in the File List above.
+
 ### References
 
 - Epic 6.5 definition: [Source: _bmad-output/planning-artifacts/epics.md#Story 6.5, line 1659]
@@ -218,17 +224,32 @@ claude-sonnet-4-6
 ### File List
 
 - `apps/backend/app/validators/battles.ts` (created)
-- `apps/backend/app/controllers/battles_controller.ts` (modified — `store` and `close` actions)
+- `apps/backend/app/controllers/battles_controller.ts` (modified — `store` and `close` actions; cross-stage variant validation added in code review)
 - `apps/backend/start/routes.ts` (modified — `POST /battles`, `PATCH /battles/:id/close`)
-- `apps/backend/tests/functional/battles/battles_store.spec.ts` (created — 11 tests)
+- `apps/backend/tests/functional/battles/battles_store.spec.ts` (created — 12 tests; 2 cross-stage tests added in code review)
 - `apps/backend/tests/functional/battles/battles_close.spec.ts` (created — 9 tests)
 - `apps/frontend/src/features/dashboard/lib/api.ts` (modified — `start()`, `close()`)
 - `apps/frontend/src/features/dashboard/hooks/useStartBattle.ts` (created)
 - `apps/frontend/src/features/dashboard/hooks/useCloseBattle.ts` (created)
-- `apps/frontend/src/features/dashboard/schemas/battles.ts` (created)
 - `apps/frontend/src/features/dashboard/components/StartBattleDialog.tsx` (created)
-- `apps/frontend/src/features/dashboard/components/CloseBattleDialog.tsx` (created)
-- `apps/frontend/src/features/dashboard/components/FunnelCard.tsx` (modified — Start/Close Battle UI)
+- `apps/frontend/src/features/dashboard/components/CloseBattleDialog.tsx` (created; unused props removed, toast.error added in code review)
+- `apps/frontend/src/features/dashboard/components/FunnelCard.tsx` (modified — Start/Close Battle UI; double getTrafficLight call fixed in code review)
 - `apps/frontend/public/locales/en.json` (modified — battle management i18n keys)
 - `apps/frontend/public/locales/fr.json` (modified — battle management i18n keys)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified — status: review)
+- `apps/backend/app/validators/auth.ts` (modified — vine.compile → vine.create migration)
+- `apps/backend/app/validators/extension_auth.ts` (modified — vine.compile → vine.create migration)
+- `apps/backend/app/validators/extension_prospects.ts` (modified — vine.compile → vine.create migration)
+- `apps/backend/app/validators/funnel_stages.ts` (modified — vine.compile → vine.create migration)
+- `apps/backend/app/validators/interactions.ts` (modified — vine.compile → vine.create migration)
+- `apps/backend/app/validators/positionings.ts` (modified — vine.compile → vine.create migration)
+- `apps/backend/app/validators/prospect_positionings.ts` (modified — vine.compile → vine.create migration)
+- `apps/backend/app/validators/prospects.ts` (modified — vine.compile → vine.create migration)
+- `apps/frontend/src/features/auth/schemas/login.ts` (modified — vine.compile → vine.create migration)
+- `apps/frontend/src/features/auth/schemas/register.ts` (modified — vine.compile → vine.create migration)
+- `apps/frontend/src/features/interactions/schemas/interaction.ts` (modified — vine.compile → vine.create migration)
+- `apps/frontend/src/features/positionings/schemas/positioning.ts` (modified — vine.compile → vine.create migration)
+- `apps/frontend/src/features/prospects/schemas/prospect.ts` (modified — vine.compile → vine.create migration)
+- `apps/frontend/src/features/settings/schemas/funnelStage.ts` (modified — vine.compile → vine.create migration)
+- `.brunoCollection/battles/Start Battle.bru` (created — Bruno HTTP collection)
+- `.brunoCollection/battles/Close Battle.bru` (created — Bruno HTTP collection)

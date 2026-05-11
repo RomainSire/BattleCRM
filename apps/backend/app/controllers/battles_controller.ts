@@ -57,6 +57,11 @@ export default class BattlesController {
     if (!variantA) {
       return response.notFound({ message: 'Variant A not found' })
     }
+    if (variantA.funnelStageId !== payload.funnel_stage_id) {
+      return response.unprocessableEntity({
+        message: 'Variant A does not belong to this funnel stage',
+      })
+    }
 
     const variantB = await Positioning.query()
       .withScopes((s) => s.forUser(userId))
@@ -64,6 +69,11 @@ export default class BattlesController {
       .first()
     if (!variantB) {
       return response.notFound({ message: 'Variant B not found' })
+    }
+    if (variantB.funnelStageId !== payload.funnel_stage_id) {
+      return response.unprocessableEntity({
+        message: 'Variant B does not belong to this funnel stage',
+      })
     }
 
     // Enforce one active battle per stage per user
