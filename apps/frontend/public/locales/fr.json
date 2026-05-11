@@ -69,7 +69,31 @@
     "battleHistory": "Historique des battles",
     "battleHistoryItem": "Battle #{{n}} : {{a}} vs {{b}} → {{winner}}",
     "noClosedBattles": "Aucune battle terminée",
+    "startBattle": "Démarrer une Battle",
+    "startNextBattle": "Battle suivante",
+    "closeBattle": "Clôturer la Battle",
+    "closeBattleDisabledTooltip": "Données insuffisantes pour clôturer",
     "deletedPositioning": "[Positionnement supprimé]",
+    "startBattleDialog": {
+      "title": "Démarrer une Battle",
+      "description": "Sélectionnez deux variantes à comparer pour {{stage}}",
+      "variantA": "Variante A",
+      "variantB": "Variante B",
+      "selectVariant": "Choisir une variante",
+      "submit": "Démarrer",
+      "successToast": "Battle démarrée !",
+      "errorGeneric": "Impossible de démarrer la battle.",
+      "errorSameVariant": "Les variantes doivent être différentes"
+    },
+    "closeBattleDialog": {
+      "title": "Clôturer la Battle",
+      "description": "Confirmez le gagnant de la Battle #{{n}}",
+      "winner": "Gagnant : {{name}}",
+      "confirm": "Clôturer et enregistrer le gagnant",
+      "cancel": "Annuler",
+      "successToast": "Battle clôturée — {{winner}} gagne !",
+      "errorGeneric": "Impossible de clôturer la battle."
+    },
     "trafficLight": {
       "significant": "Significatif",
       "trending": "Tendance",

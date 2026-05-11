@@ -145,7 +145,7 @@ update(id: string, payload: UpdateProspectPayload): Promise<ProspectType> {
 ```typescript
 import vine from '@vinejs/vine'
 
-export const createProspectSchema = vine.compile(
+export const createProspectSchema = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1),
     funnel_stage_id: vine.string().optional(),
@@ -158,7 +158,7 @@ export const createProspectSchema = vine.compile(
   }),
 )
 
-export const updateProspectSchema = vine.compile(
+export const updateProspectSchema = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1),
     company: vine.string().trim().optional(),
@@ -171,7 +171,7 @@ export const updateProspectSchema = vine.compile(
 )
 ```
 
-**Pattern:** Mirrors `apps/frontend/src/features/settings/schemas/funnelStage.ts` — compiled `vine.compile()`. Email validated with `.email()` when provided; all optional fields use `.optional()`. No `.nullable()` on frontend — empty string → undefined is handled in submit handler.
+**Pattern:** Mirrors `apps/frontend/src/features/settings/schemas/funnelStage.ts` — compiled `vine.create()`. Email validated with `.email()` when provided; all optional fields use `.optional()`. No `.nullable()` on frontend — empty string → undefined is handled in submit handler.
 
 ---
 

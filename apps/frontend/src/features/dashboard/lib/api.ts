@@ -11,4 +11,13 @@ export const battlesApi = {
   list() {
     return fetchApi<{ data: BattleType[] }>('/battles')
   },
+  start(data: { funnel_stage_id: string; variant_a_id: string; variant_b_id: string }) {
+    return fetchApi<BattleType>('/battles', { method: 'POST', body: JSON.stringify(data) })
+  },
+  close(id: string, data: { winner_id: string }) {
+    return fetchApi<BattleType>(`/battles/${id}/close`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
 }

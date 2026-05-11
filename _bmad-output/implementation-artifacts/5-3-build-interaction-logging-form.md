@@ -114,7 +114,7 @@ import vine from '@vinejs/vine'
 
 // Frontend schema — validates text fields only.
 // prospect_id, status, positioning_id managed as React state (not in form).
-export const createInteractionSchema = vine.compile(
+export const createInteractionSchema = vine.create(
   vine.object({
     notes: vine.string().trim().optional(),
   }),

@@ -159,7 +159,7 @@ So that the extension can securely access my data without sharing my session coo
   ```typescript
   import vine from '@vinejs/vine'
 
-  export const extensionLoginValidator = vine.compile(
+  export const extensionLoginValidator = vine.create(
     vine.object({
       email: vine.string().trim().email(),
       password: vine.string().minLength(1),

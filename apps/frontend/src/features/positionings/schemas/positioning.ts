@@ -1,6 +1,6 @@
 import vine from '@vinejs/vine'
 
-export const createPositioningSchema = vine.compile(
+export const createPositioningSchema = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1),
     description: vine.string().trim().optional(),
@@ -8,7 +8,7 @@ export const createPositioningSchema = vine.compile(
   }),
 )
 
-export const updatePositioningSchema = vine.compile(
+export const updatePositioningSchema = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1),
     description: vine.string().trim().optional(),

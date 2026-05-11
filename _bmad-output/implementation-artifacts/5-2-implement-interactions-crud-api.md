@@ -131,7 +131,7 @@ Biome import order: `@battlecrm/shared` (`@` scope) → `#models/interaction` (`
 ```typescript
 import vine from '@vinejs/vine'
 
-export const createInteractionValidator = vine.compile(
+export const createInteractionValidator = vine.create(
   vine.object({
     prospect_id: vine.string().uuid(),
     positioning_id: vine.string().uuid().nullable().optional(),
@@ -141,7 +141,7 @@ export const createInteractionValidator = vine.compile(
   }),
 )
 
-export const updateInteractionValidator = vine.compile(
+export const updateInteractionValidator = vine.create(
   vine.object({
     status: vine.enum(['positive', 'pending', 'negative']).optional(),
     notes: vine.string().trim().nullable().optional(),

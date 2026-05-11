@@ -7,9 +7,16 @@ import type {
 import { useTranslation } from 'react-i18next'
 import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { getTrafficLight, type TrafficLightColor } from '../lib/trafficLight'
+import {
+  getTrafficLight,
+  type TrafficLightColor,
+  type TrafficLightResult,
+} from '../lib/trafficLight'
+import { CloseBattleDialog } from './CloseBattleDialog'
+import { StartBattleDialog } from './StartBattleDialog'
 
 interface FunnelCardProps {
   stage: FunnelStageType
@@ -48,17 +55,16 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
 
   const unknownVariant = t('dashboard.unknownVariant')
 
+  const activeBattleTrafficLight: TrafficLightResult | null = activeBattle
+    ? getTrafficLight(cells, activeBattle.variantAId, activeBattle.variantBId, stage.id)
+    : null
+
   function resolveName(id: string) {
     return getPositioningName(id, cells, positionings, unknownVariant)
   }
 
-  function renderTrafficLight(battle: BattleType) {
-    const { color, confidence, leadingVariantId } = getTrafficLight(
-      cells,
-      battle.variantAId,
-      battle.variantBId,
-      stage.id,
-    )
+  function renderTrafficLight(trafficLight: TrafficLightResult) {
+    const { color, confidence, leadingVariantId } = trafficLight
     const { emoji, labelKey } = TRAFFIC_CONFIG[color]
     const tooltipText =
       confidence === null || leadingVariantId === null
@@ -91,8 +97,9 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
     )
   }
 
-  function renderHeaderBattleInfo() {
-    if (activeBattle) {
+  // Text/badges only — rendered INSIDE AccordionTrigger (no buttons)
+  function renderBattleStatus() {
+    if (activeBattle && activeBattleTrafficLight) {
       return (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted-foreground">
@@ -102,7 +109,7 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
               b: resolveName(activeBattle.variantBId),
             })}
           </span>
-          {renderTrafficLight(activeBattle)}
+          {renderTrafficLight(activeBattleTrafficLight)}
         </div>
       )
     }
@@ -119,6 +126,50 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
     return <p className="text-sm text-muted-foreground">{t('dashboard.noActiveBattle')}</p>
   }
 
+  // Action buttons — rendered OUTSIDE AccordionTrigger to avoid button-in-button HTML violation
+  function renderBattleAction() {
+    if (activeBattle && activeBattleTrafficLight) {
+      return (
+        <CloseBattleDialog
+          battle={activeBattle}
+          leadingVariantId={activeBattleTrafficLight.leadingVariantId}
+          disabled={activeBattleTrafficLight.color === 'red'}
+          resolveName={resolveName}
+        />
+      )
+    }
+
+    const lastClosed = closedBattles[0]
+    if (lastClosed?.winnerId) {
+      return (
+        <StartBattleDialog
+          stageId={stage.id}
+          stageName={stage.name}
+          positionings={positionings}
+          initialVariantAId={lastClosed.winnerId}
+          trigger={
+            <Button size="sm" variant="outline">
+              {t('dashboard.startNextBattle')}
+            </Button>
+          }
+        />
+      )
+    }
+
+    return (
+      <StartBattleDialog
+        stageId={stage.id}
+        stageName={stage.name}
+        positionings={positionings}
+        trigger={
+          <Button size="sm" variant="outline">
+            {t('dashboard.startBattle')}
+          </Button>
+        }
+      />
+    )
+  }
+
   function isVariantInActiveBattle(positioningId: string) {
     if (!activeBattle) return false
     return activeBattle.variantAId === positioningId || activeBattle.variantBId === positioningId
@@ -128,12 +179,14 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
     <AccordionItem value={stage.id} className="border-0">
       <Card className="w-full">
         <CardHeader className="pb-2">
+          {/* AccordionTrigger wraps text/badges only — buttons are siblings, not children */}
           <AccordionTrigger className="py-0 hover:no-underline">
             <div className="min-w-0 flex-1 space-y-1 text-left">
               <p className="font-semibold leading-tight">{stage.name}</p>
-              {renderHeaderBattleInfo()}
+              {renderBattleStatus()}
             </div>
           </AccordionTrigger>
+          <div className="mt-1">{renderBattleAction()}</div>
         </CardHeader>
 
         <AccordionContent>

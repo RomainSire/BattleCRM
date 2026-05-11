@@ -139,7 +139,7 @@ export const positioningsApi = {
 ```typescript
 import vine from '@vinejs/vine'
 
-export const createPositioningSchema = vine.compile(
+export const createPositioningSchema = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1),
     description: vine.string().trim().optional(),
@@ -147,7 +147,7 @@ export const createPositioningSchema = vine.compile(
   }),
 )
 
-export const updatePositioningSchema = vine.compile(
+export const updatePositioningSchema = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1),
     description: vine.string().trim().optional(),
@@ -917,7 +917,7 @@ Recent relevant commits:
 1. Create dialog: `AddProspectDialog` pattern — `Dialog` + `DialogTrigger` + `useForm` + `vineResolver` + separate state for Select
 2. Inline edit: `ProspectDetail` pattern — `isEditing` toggle, inline form with Save/Cancel, `useUpdateX` mutation
 3. Mutation hooks: `useProspectMutations` pattern — `useMutation` + `invalidateQueries(queryKeys.X.all)`
-4. VineJS schema: `vine.compile(vine.object({...}))` — separate create/update schemas
+4. VineJS schema: `vine.create(vine.object({...}))` — separate create/update schemas
 5. Error handling: `ApiError` instanceof check → `error.errors[0]?.message` → fallback i18n key
 6. AccordionItem: `value={positioning.id}` — matches the `value` prop in `PositioningsList` Accordion
 

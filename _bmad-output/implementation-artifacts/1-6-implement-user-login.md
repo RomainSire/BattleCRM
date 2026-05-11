@@ -192,7 +192,7 @@ The login VineJS schema should NOT have `minLength(8)` on the password field. On
 // src/features/auth/schemas/login.ts
 import vine from '@vinejs/vine'
 
-export const loginSchema = vine.compile(
+export const loginSchema = vine.create(
   vine.object({
     email: vine.string().email().trim().toLowerCase(),
     password: vine.string(), // No minLength for login!

@@ -1,6 +1,6 @@
 import vine from '@vinejs/vine'
 
-export const extensionLoginValidator = vine.compile(
+export const extensionLoginValidator = vine.create(
   vine.object({
     email: vine.string().trim().toLowerCase().email(),
     password: vine.string().minLength(1),

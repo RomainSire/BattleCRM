@@ -1,6 +1,6 @@
 import vine from '@vinejs/vine'
 
-export const createProspectValidator = vine.compile(
+export const createProspectValidator = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1).maxLength(255),
     company: vine.string().trim().maxLength(255).nullable().optional(),
@@ -13,7 +13,7 @@ export const createProspectValidator = vine.compile(
   }),
 )
 
-export const updateProspectValidator = vine.compile(
+export const updateProspectValidator = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1).maxLength(255).optional(),
     company: vine.string().trim().maxLength(255).nullable().optional(),
