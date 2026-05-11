@@ -102,13 +102,13 @@ So that I can provide real-time duplicate detection and one-click prospect creat
   ```typescript
   import vine from '@vinejs/vine'
 
-  export const extensionCheckValidator = vine.compile(
+  export const extensionCheckValidator = vine.create(
     vine.object({
       linkedin_url: vine.string().trim().minLength(1),
     }),
   )
 
-  export const extensionCreateProspectValidator = vine.compile(
+  export const extensionCreateProspectValidator = vine.create(
     vine.object({
       name: vine.string().trim().minLength(1).maxLength(255),
       linkedin_url: vine.string().trim().maxLength(500), // required — no .optional()
@@ -120,7 +120,7 @@ So that I can provide real-time duplicate detection and one-click prospect creat
     }),
   )
 
-  export const extensionUpdateProspectValidator = vine.compile(
+  export const extensionUpdateProspectValidator = vine.create(
     vine.object({
       name: vine.string().trim().minLength(1).maxLength(255).optional(),
       company: vine.string().trim().maxLength(255).nullable().optional(),

@@ -4,7 +4,7 @@ import vine from '@vinejs/vine'
 // validates empty strings against .email() and fails (optional() only skips undefined).
 // Email format is validated by the HTML input type="email" attribute (client)
 // and by the backend VineJS validator (server).
-export const createProspectSchema = vine.compile(
+export const createProspectSchema = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1),
     company: vine.string().trim().optional(),
@@ -16,7 +16,7 @@ export const createProspectSchema = vine.compile(
   }),
 )
 
-export const updateProspectSchema = vine.compile(
+export const updateProspectSchema = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1),
     company: vine.string().trim().optional(),

@@ -1,12 +1,12 @@
 import vine from '@vinejs/vine'
 
-export const extensionCheckValidator = vine.compile(
+export const extensionCheckValidator = vine.create(
   vine.object({
     linkedin_url: vine.string().trim().url(),
   }),
 )
 
-export const extensionCreateProspectValidator = vine.compile(
+export const extensionCreateProspectValidator = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1).maxLength(255),
     linkedin_url: vine.string().trim().url().maxLength(500),
@@ -18,7 +18,7 @@ export const extensionCreateProspectValidator = vine.compile(
   }),
 )
 
-export const extensionUpdateProspectValidator = vine.compile(
+export const extensionUpdateProspectValidator = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1).maxLength(255).optional(),
     company: vine.string().trim().maxLength(255).nullable().optional(),

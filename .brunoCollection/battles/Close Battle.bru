@@ -1,0 +1,22 @@
+meta {
+  name: Close Battle
+  type: http
+  seq: 4
+}
+
+patch {
+  url: http://localhost:3333/api/battles/{{battleId}}/close
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "winner_id": "{{winnerId}}"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

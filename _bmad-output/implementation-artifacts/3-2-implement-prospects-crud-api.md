@@ -154,7 +154,7 @@ Lucid's `withCount('prospects', ...)` stores the count in `$extras` using snake_
 ```typescript
 import vine from '@vinejs/vine'
 
-export const createProspectValidator = vine.compile(
+export const createProspectValidator = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1).maxLength(255),
     company: vine.string().trim().maxLength(255).nullable().optional(),
@@ -169,7 +169,7 @@ export const createProspectValidator = vine.compile(
   })
 )
 
-export const updateProspectValidator = vine.compile(
+export const updateProspectValidator = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1).maxLength(255).optional(),
     company: vine.string().trim().maxLength(255).nullable().optional(),
@@ -625,7 +625,7 @@ apps/backend/
 | `.firstOrFail()` for 404 on missing/unauthorized | `apps/backend/app/controllers/funnel_stages_controller.ts:87` |
 | `request.qs().include_archived === 'true'` | `apps/backend/app/controllers/funnel_stages_controller.ts:17` |
 | `.withTrashed()` for archived list | `apps/backend/app/controllers/funnel_stages_controller.ts:24` |
-| VineJS vine.compile() pattern | `apps/backend/app/validators/funnel_stages.ts:3` |
+| VineJS vine.create() pattern | `apps/backend/app/validators/funnel_stages.ts:3` |
 | Route group + middleware.auth() | `apps/backend/start/routes.ts:36-46` |
 | UUID_REGEX for route param constraint | `apps/backend/start/routes.ts:13` |
 | Test setup/teardown with email domain cleanup | `apps/backend/tests/functional/funnel_stages/api.spec.ts:10-19` |

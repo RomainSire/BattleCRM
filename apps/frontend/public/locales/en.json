@@ -69,7 +69,31 @@
     "battleHistory": "Battle History",
     "battleHistoryItem": "Battle #{{n}}: {{a}} vs {{b}} → {{winner}}",
     "noClosedBattles": "No closed battles",
+    "startBattle": "Start Battle",
+    "startNextBattle": "Start Next Battle",
+    "closeBattle": "Close Battle",
+    "closeBattleDisabledTooltip": "Not enough data to close",
     "deletedPositioning": "[Deleted positioning]",
+    "startBattleDialog": {
+      "title": "Start Battle",
+      "description": "Select two positioning variants to compare for {{stage}}",
+      "variantA": "Variant A",
+      "variantB": "Variant B",
+      "selectVariant": "Select a variant",
+      "submit": "Start",
+      "successToast": "Battle started!",
+      "errorGeneric": "Failed to start battle.",
+      "errorSameVariant": "Variants must be different"
+    },
+    "closeBattleDialog": {
+      "title": "Close Battle",
+      "description": "Confirm the winner for Battle #{{n}}",
+      "winner": "Winner: {{name}}",
+      "confirm": "Close & Record Winner",
+      "cancel": "Cancel",
+      "successToast": "Battle closed — {{winner}} wins!",
+      "errorGeneric": "Failed to close battle."
+    },
     "trafficLight": {
       "significant": "Significant",
       "trending": "Trending",

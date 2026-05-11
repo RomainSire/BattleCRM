@@ -1,12 +1,14 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
 import type { ConversionCellType } from '@battlecrm/shared'
+import { DateTime } from 'luxon'
 import { UUID_REGEX } from '#helpers/regex'
 import Battle from '#models/battle'
 import FunnelStage from '#models/funnel_stage'
 import Positioning from '#models/positioning'
 import { serializeBattle } from '#serializers/battle'
 import { calculateConversionRate } from '#services/bayesian_service'
+import { closeBattleValidator, createBattleValidator } from '#validators/battles'
 
 export default class BattlesController {
   async index({ auth, request, response }: HttpContext) {
@@ -28,6 +30,101 @@ export default class BattlesController {
 
     const battles = await query
     return response.ok({ data: battles.map(serializeBattle) })
+  }
+
+  async store({ auth, request, response }: HttpContext) {
+    const userId = auth.user!.id
+    const payload = await request.validateUsing(createBattleValidator)
+
+    if (payload.variant_a_id === payload.variant_b_id) {
+      return response.unprocessableEntity({ message: 'Variants must be different' })
+    }
+
+    // Verify funnel stage belongs to user
+    const stage = await FunnelStage.query()
+      .withScopes((s) => s.forUser(userId))
+      .where('id', payload.funnel_stage_id)
+      .first()
+    if (!stage) {
+      return response.notFound({ message: 'Funnel stage not found' })
+    }
+
+    // Verify both variants belong to user (soft-deleted variants excluded)
+    const variantA = await Positioning.query()
+      .withScopes((s) => s.forUser(userId))
+      .where('id', payload.variant_a_id)
+      .first()
+    if (!variantA) {
+      return response.notFound({ message: 'Variant A not found' })
+    }
+
+    const variantB = await Positioning.query()
+      .withScopes((s) => s.forUser(userId))
+      .where('id', payload.variant_b_id)
+      .first()
+    if (!variantB) {
+      return response.notFound({ message: 'Variant B not found' })
+    }
+
+    // Enforce one active battle per stage per user
+    const existingActive = await Battle.query()
+      .withScopes((s) => s.forUser(userId))
+      .where('funnel_stage_id', payload.funnel_stage_id)
+      .where('status', 'active')
+      .first()
+    if (existingActive) {
+      return response.conflict({ message: 'A battle is already active for this stage' })
+    }
+
+    // battleNumber = highest existing battle_number for this (user, stage) + 1
+    const lastBattle = await Battle.query()
+      .withScopes((s) => s.forUser(userId))
+      .where('funnel_stage_id', payload.funnel_stage_id)
+      .orderBy('battle_number', 'desc')
+      .first()
+    const battleNumber = (lastBattle?.battleNumber ?? 0) + 1
+
+    const battle = await Battle.create({
+      userId,
+      funnelStageId: payload.funnel_stage_id,
+      variantAId: payload.variant_a_id,
+      variantBId: payload.variant_b_id,
+      battleNumber,
+      status: 'active',
+      winnerId: null,
+      startedAt: DateTime.now(),
+      closedAt: null,
+    })
+
+    return response.created(serializeBattle(battle))
+  }
+
+  async close({ auth, params, request, response }: HttpContext) {
+    const userId = auth.user!.id
+    const { id } = params
+
+    const battle = await Battle.query()
+      .withScopes((s) => s.forUser(userId))
+      .where('id', id)
+      .first()
+    if (!battle) {
+      return response.notFound({ message: 'Battle not found' })
+    }
+
+    if (battle.status !== 'active') {
+      return response.unprocessableEntity({ message: 'Battle is already closed' })
+    }
+
+    const payload = await request.validateUsing(closeBattleValidator)
+
+    if (payload.winner_id !== battle.variantAId && payload.winner_id !== battle.variantBId) {
+      return response.unprocessableEntity({ message: 'Winner must be one of the battle variants' })
+    }
+
+    battle.merge({ status: 'closed', winnerId: payload.winner_id, closedAt: DateTime.now() })
+    await battle.save()
+
+    return response.ok(serializeBattle(battle))
   }
 
   async performanceMatrix({ auth, response }: HttpContext) {

@@ -66,13 +66,13 @@ So that the frontend (Story 5B.3) can manage positioning per prospect and displa
     ```typescript
     import vine from '@vinejs/vine'
 
-    export const assignPositioningValidator = vine.compile(
+    export const assignPositioningValidator = vine.create(
       vine.object({
         positioning_id: vine.string().uuid(),
       }),
     )
 
-    export const setOutcomeValidator = vine.compile(
+    export const setOutcomeValidator = vine.create(
       vine.object({
         outcome: vine.enum(['success', 'failed']),
       }),

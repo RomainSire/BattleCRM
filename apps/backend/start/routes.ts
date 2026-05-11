@@ -63,6 +63,8 @@ router
     router
       .group(() => {
         router.get('/', [BattlesController, 'index'])
+        router.post('/', [BattlesController, 'store'])
+        router.patch('/:id/close', [BattlesController, 'close']).where('id', UUID_REGEX)
       })
       .prefix('/battles')
       .use(middleware.auth())
