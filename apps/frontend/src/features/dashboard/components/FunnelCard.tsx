@@ -53,8 +53,25 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
   }
 
   function renderTrafficLight(battle: BattleType) {
-    const color = getTrafficLight(cells, battle.variantAId, battle.variantBId, stage.id)
+    const { color, confidence, leadingVariantId } = getTrafficLight(
+      cells,
+      battle.variantAId,
+      battle.variantBId,
+      stage.id,
+    )
     const { emoji, labelKey } = TRAFFIC_CONFIG[color]
+    const tooltipText =
+      confidence === null || leadingVariantId === null
+        ? t('dashboard.trafficLight.tooltipNoData')
+        : color === 'red'
+          ? t('dashboard.trafficLight.tooltipLowConfidence', {
+              confidence: Math.round(confidence * 100),
+              variant: resolveName(leadingVariantId),
+            })
+          : t('dashboard.trafficLight.tooltipWithProb', {
+              confidence: Math.round(confidence * 100),
+              variant: resolveName(leadingVariantId),
+            })
     return (
       <Tooltip>
         <TooltipTrigger asChild>
@@ -68,7 +85,7 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
           </Badge>
         </TooltipTrigger>
         <TooltipContent>
-          <p className="text-xs">{t('dashboard.trafficLight.tooltip')}</p>
+          <p className="text-xs">{tooltipText}</p>
         </TooltipContent>
       </Tooltip>
     )

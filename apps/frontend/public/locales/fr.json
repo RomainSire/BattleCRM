@@ -74,7 +74,9 @@
       "significant": "Significatif",
       "trending": "Tendance",
       "needData": "Données insuffisantes",
-      "tooltip": "Indicateur basé sur la taille d'échantillon (Story 6.4 ajoutera le calcul P(A>B))"
+      "tooltipWithProb": "{{confidence}}% certain que {{variant}} est meilleur(e)",
+      "tooltipLowConfidence": "Tendance vers {{variant}} ({{confidence}}%) — seuil 70% non atteint",
+      "tooltipNoData": "Données insuffisantes (n < 10 par variant)"
     }
   },
   "settings": {
