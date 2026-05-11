@@ -75,6 +75,7 @@
       "trending": "Tendance",
       "needData": "Données insuffisantes",
       "tooltipWithProb": "{{confidence}}% certain que {{variant}} est meilleur(e)",
+      "tooltipLowConfidence": "Tendance vers {{variant}} ({{confidence}}%) — seuil 70% non atteint",
       "tooltipNoData": "Données insuffisantes (n < 10 par variant)"
     }
   },

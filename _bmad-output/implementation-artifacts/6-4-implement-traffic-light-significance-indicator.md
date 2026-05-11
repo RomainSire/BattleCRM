@@ -1,6 +1,6 @@
 # Story 6.4: Implement Traffic Light Significance Indicator
 
-Status: review
+Status: done
 
 ## Story
 
@@ -29,7 +29,7 @@ so that I know if I can trust the conversion data and which variant is winning.
     ```typescript
     export type TrafficLightResult = {
       color: TrafficLightColor
-      confidence: number | null  // 0.0–1.0, max(p, 1-p) — null when n < 10
+      confidence: number | null  // 0.5–1.0 (max(p, 1-p)), or null when n < 10
       leadingVariantId: string | null  // ID of the winning variant, or null
     }
     ```
@@ -72,6 +72,9 @@ so that I know if I can trust the conversion data and which variant is winning.
       "tooltipNoData": "Not enough data (n < 10 per variant)"
     }
     ```
+
+- [ ] Task 5: Review Follow-ups (AI)
+  - [ ] [AI-Review][MEDIUM] Add unit tests for `calculatePAGreaterThanB` (pure function, no test framework needed — use Vitest once scaffolded). Key cases: `(0, 0, 0, 0)` → null (n<10), `(12, 10, 5, 10)` → null (numA > denomA), `(50, 100, 30, 100)` → p > 0.95, `(10, 20, 10, 20)` → p ≈ 0.5 [trafficLight.ts:30]
 
 - [x] Task 4: Run full validation
   - [x] 4.1 `pnpm lint` — Biome clean (auto-fixed poly expression line-break in `trafficLight.ts`)
@@ -315,17 +318,24 @@ claude-sonnet-4-6
 ### Completion Notes List
 
 - `trafficLight.ts` réécrit entièrement : suppression du proxy `confidenceLevel`, ajout de `erf()` (Abramowitz & Stegun), `normalCdf()`, `calculatePAGreaterThanB()` (prior α₀=β₀=1, approximation normale Beta), et `getTrafficLight()` renvoyant `TrafficLightResult { color, confidence, leadingVariantId }`.
-- `FunnelCard.tsx` : `renderTrafficLight()` destructure le nouveau `TrafficLightResult` — tooltip dynamique : `tooltipWithProb` (X% confident [Variant] est meilleur) ou `tooltipNoData` (n < 10).
-- i18n FR/EN : clé `tooltip` remplacée par `tooltipWithProb` + `tooltipNoData` dans les deux fichiers.
+- `FunnelCard.tsx` : `renderTrafficLight()` destructure le nouveau `TrafficLightResult` — tooltip dynamique : `tooltipWithProb` (X% confident [Variant] est meilleur), `tooltipLowConfidence` (rouge non-null, confiance < 70%) ou `tooltipNoData` (n < 10).
+- i18n FR/EN : clé `tooltip` remplacée par `tooltipWithProb` + `tooltipLowConfidence` + `tooltipNoData` dans les deux fichiers.
 - Biome lint : auto-fix de l'expression `poly` sur une ligne (format). 0 erreurs.
 - Type-check monorepo complet (shared, backend, frontend, extension) : 0 erreurs.
 - 290 tests fonctionnels backend : 0 régression (aucun changement backend).
+
+**Code review fixes (claude-sonnet-4-6):**
+- `calculatePAGreaterThanB` : guard ajouté pour `numA > denomA || numB > denomB` → retourne `null` (évite propagation NaN → affichage "NaN%")
+- `calculatePAGreaterThanB` : correction du cas dégénéré `sigma === 0` avec `muA === muB` → retourne 0.5 (était 0, produisait "100% confident B")
+- Seuil 70% : `> 0.70` → `>= 0.70` pour cohérence avec l'AC ("70–95%" inclusif)
+- Tooltip rouge non-null : `tooltipLowConfidence` distinct de `tooltipNoData` (évite label "Données insuffisantes" + tooltip "X% confident" contradictoires)
+- `TrafficLightResult.confidence` : plage documentée corrigée de "0.0–1.0" à "0.5–1.0" (max(p,1-p) ≥ 0.5)
 
 ### File List
 
 - `apps/frontend/src/features/dashboard/lib/trafficLight.ts` (modifié — réécriture complète, Bayesian P(A>B))
 - `apps/frontend/src/features/dashboard/components/FunnelCard.tsx` (modifié — `renderTrafficLight()` utilise `TrafficLightResult`)
-- `apps/frontend/public/locales/fr.json` (modifié — `trafficLight.tooltip` → `tooltipWithProb` + `tooltipNoData`)
+- `apps/frontend/public/locales/fr.json` (modifié — `trafficLight.tooltip` → `tooltipWithProb` + `tooltipLowConfidence` + `tooltipNoData`)
 - `apps/frontend/public/locales/en.json` (modifié — idem)
 - `_bmad-output/implementation-artifacts/6-4-implement-traffic-light-significance-indicator.md` (modifié — story mise à jour)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (modifié — statut → review)

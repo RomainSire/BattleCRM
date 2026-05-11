@@ -34,6 +34,7 @@ export function calculatePAGreaterThanB(
   denomB: number,
 ): number | null {
   if (denomA < MIN_SAMPLE_SIZE || denomB < MIN_SAMPLE_SIZE) return null
+  if (numA > denomA || numB > denomB) return null
 
   const alphaA = PRIOR_ALPHA + numA
   const betaA = PRIOR_BETA + (denomA - numA)
@@ -48,7 +49,7 @@ export function calculatePAGreaterThanB(
   const varB = (alphaB * betaB) / (nB * nB * (nB + 1))
 
   const sigma = Math.sqrt(varA + varB)
-  if (sigma === 0) return muA > muB ? 1 : 0
+  if (sigma === 0) return muA > muB ? 1 : muA < muB ? 0 : 0.5
 
   return normalCdf((muA - muB) / sigma)
 }
@@ -78,7 +79,8 @@ export function getTrafficLight(
 
   const confidence = Math.max(p, 1 - p)
   const leadingVariantId = p >= 0.5 ? variantAId : variantBId
-  const color: TrafficLightColor = confidence > 0.95 ? 'green' : confidence > 0.7 ? 'yellow' : 'red'
+  const color: TrafficLightColor =
+    confidence > 0.95 ? 'green' : confidence >= 0.7 ? 'yellow' : 'red'
 
   return { color, confidence, leadingVariantId }
 }

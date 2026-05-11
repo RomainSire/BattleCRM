@@ -63,10 +63,15 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
     const tooltipText =
       confidence === null || leadingVariantId === null
         ? t('dashboard.trafficLight.tooltipNoData')
-        : t('dashboard.trafficLight.tooltipWithProb', {
-            confidence: Math.round(confidence * 100),
-            variant: resolveName(leadingVariantId),
-          })
+        : color === 'red'
+          ? t('dashboard.trafficLight.tooltipLowConfidence', {
+              confidence: Math.round(confidence * 100),
+              variant: resolveName(leadingVariantId),
+            })
+          : t('dashboard.trafficLight.tooltipWithProb', {
+              confidence: Math.round(confidence * 100),
+              variant: resolveName(leadingVariantId),
+            })
     return (
       <Tooltip>
         <TooltipTrigger asChild>
