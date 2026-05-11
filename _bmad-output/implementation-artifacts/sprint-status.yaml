@@ -106,7 +106,7 @@ development_status:
   6-1-create-battles-database-schema: done
   6-2-implement-conversion-rate-calculations: done
   6-3-build-dashboard-with-funnel-cards: done
-  6-4-implement-traffic-light-significance-indicator: backlog
+  6-4-implement-traffic-light-significance-indicator: review
   6-5-implement-battle-management: backlog
   6-6-build-battle-history-view: backlog
   6-7-implement-performance-matrix-drill-down: backlog
