@@ -69,7 +69,7 @@ export function DrillDownDialog({ cell, children }: DrillDownDialogProps) {
           <DialogTitle>
             {t('dashboard.drillDown.title', {
               name: cell.positioningName ?? t('dashboard.deletedPositioning'),
-              stage: cell.funnelStageName,
+              stage: cell.funnelStageName ?? t('dashboard.deletedStage'),
             })}
           </DialogTitle>
         </DialogHeader>

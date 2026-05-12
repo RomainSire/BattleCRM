@@ -119,7 +119,8 @@
         "failed": "Échoué",
         "inProgress": "En cours"
       }
-    }
+    },
+    "deletedStage": "[Étape supprimée]"
   },
   "settings": {
     "title": "Paramètres",

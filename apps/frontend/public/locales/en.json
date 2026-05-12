@@ -119,7 +119,8 @@
         "failed": "Failed",
         "inProgress": "In progress"
       }
-    }
+    },
+    "deletedStage": "[Deleted stage]"
   },
   "settings": {
     "title": "Settings",

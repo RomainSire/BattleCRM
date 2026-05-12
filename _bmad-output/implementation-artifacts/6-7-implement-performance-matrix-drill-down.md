@@ -1,6 +1,6 @@
 # Story 6.7: Implement Performance Matrix Drill-Down
 
-Status: review
+Status: done
 
 ## Story
 
@@ -278,6 +278,8 @@ claude-sonnet-4-6
 - `apps/frontend/src/features/dashboard/hooks/useDrillDown.ts` (created)
 - `apps/frontend/src/features/dashboard/components/DrillDownDialog.tsx` (created)
 - `apps/frontend/src/features/dashboard/components/FunnelCard.tsx` (modified — DrillDownDialog integration + inner button a11y)
-- `apps/frontend/public/locales/en.json` (modified — `dashboard.drillDown.*` keys)
-- `apps/frontend/public/locales/fr.json` (modified — `dashboard.drillDown.*` keys)
+- `apps/frontend/public/locales/en.json` (modified — `dashboard.drillDown.*` keys + `dashboard.deletedStage`)
+- `apps/frontend/public/locales/fr.json` (modified — `dashboard.drillDown.*` keys + `dashboard.deletedStage`)
+- `tests/e2e/dashboard-drilldown.spec.ts` (created — E2E drill-down tests: 3 suites, 14 tests)
+- `.brunoCollection/positionings/List Prospects for Positioning (by stage).bru` (created — Bruno collection entry for drill-down endpoint)
 - `_bmad-output/implementation-artifacts/6-7-implement-performance-matrix-drill-down.md` (this file)

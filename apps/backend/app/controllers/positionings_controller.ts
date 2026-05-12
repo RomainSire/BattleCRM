@@ -182,7 +182,9 @@ export default class PositioningsController {
     const funnelStageId = request.qs().funnel_stage_id as string | undefined
 
     if (funnelStageId !== undefined && !UUID_REGEX.test(funnelStageId)) {
-      return response.badRequest({ message: 'Invalid funnel_stage_id format' })
+      return response.unprocessableEntity({
+        errors: [{ message: 'validation.uuid', field: 'funnel_stage_id', rule: 'uuid' }],
+      })
     }
 
     // withTrashed() — historical data accessible even if positioning is archived
@@ -199,6 +201,11 @@ export default class PositioningsController {
       .orderBy('created_at', 'desc')
 
     if (funnelStageId) {
+      const stage = await FunnelStage.query()
+        .withScopes((s) => s.forUser(userId))
+        .where('id', funnelStageId)
+        .first()
+      if (!stage) return response.notFound()
       query.where('funnel_stage_id', funnelStageId)
     }
 

@@ -710,7 +710,7 @@ test.group('Positionings API', (group) => {
     assert.equal(response.body().meta.total, 0)
   })
 
-  test('invalid UUID funnel_stage_id → 400', async ({ client, assert }) => {
+  test('invalid UUID funnel_stage_id → 422', async ({ client, assert }) => {
     const user = await registerUser(client, 'drill-bad-uuid')
     const stage = await getUserFirstStage(user.id)
     const p = await createPositioning(user.id, stage.id, 'Bad UUID Pos')
@@ -718,8 +718,23 @@ test.group('Positionings API', (group) => {
     const response = await client
       .get(`/api/positionings/${p.id}/prospects?funnel_stage_id=not-a-uuid`)
       .loginAs(user)
-    response.assertStatus(400)
-    assert.equal(response.body().message, 'Invalid funnel_stage_id format')
+    response.assertStatus(422)
+    const body = response.body()
+    assert.isArray(body.errors)
+    assert.equal(body.errors[0].field, 'funnel_stage_id')
+  })
+
+  test('funnel_stage_id from another user → 404', async ({ client }) => {
+    const userA = await registerUser(client, 'drill-iso-a')
+    const userB = await registerUser(client, 'drill-iso-b')
+    const stageA = await getUserFirstStage(userA.id)
+    const stageB = await getUserFirstStage(userB.id)
+    const p = await createPositioning(userB.id, stageB.id, 'Isolation Pos')
+
+    const response = await client
+      .get(`/api/positionings/${p.id}/prospects?funnel_stage_id=${stageA.id}`)
+      .loginAs(userB)
+    response.assertStatus(404)
   })
 
   test('missing funnel_stage_id → returns all stages (backward compat)', async ({

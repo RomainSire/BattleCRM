@@ -132,7 +132,7 @@ test.describe('Dashboard - Drill-Down Dialog basic flow (6.7)', () => {
     await page.getByRole('button', { name: new RegExp(positioningName) }).first().click()
 
     const dialog = page.getByRole('dialog')
-    await expect(dialog.getByText('Converted')).toBeVisible()
+    await expect(dialog.getByText('Converted', { exact: true })).toBeVisible()
   })
 
   test('dialog closes when pressing Escape', async ({ page }) => {

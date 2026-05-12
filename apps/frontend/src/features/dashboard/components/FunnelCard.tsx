@@ -218,10 +218,11 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
               ) : (
                 <ul className="space-y-3">
                   {stageCells.map((cell) => (
-                    <DrillDownDialog key={cell.positioningId} cell={cell}>
-                      <li
-                        className={`rounded-md p-2 ${isVariantInActiveBattle(cell.positioningId) ? 'bg-muted/50 ring-1 ring-primary/20' : ''}`}
-                      >
+                    <li
+                      key={cell.positioningId}
+                      className={`rounded-md p-2 ${isVariantInActiveBattle(cell.positioningId) ? 'bg-muted/50 ring-1 ring-primary/20' : ''}`}
+                    >
+                      <DrillDownDialog cell={cell}>
                         <button type="button" className="w-full cursor-pointer space-y-1 text-left">
                           <div className="flex items-center justify-between gap-2">
                             <span className="truncate text-sm font-medium">
@@ -241,8 +242,8 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
                             />
                           </div>
                         </button>
-                      </li>
-                    </DrillDownDialog>
+                      </DrillDownDialog>
+                    </li>
                   ))}
                 </ul>
               )}

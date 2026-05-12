@@ -109,7 +109,7 @@ development_status:
   6-4-implement-traffic-light-significance-indicator: done
   6-5-implement-battle-management: done
   6-6-build-battle-history-view: done
-  6-7-implement-performance-matrix-drill-down: review
+  6-7-implement-performance-matrix-drill-down: done
   6-8-add-dashboard-summary-metrics: backlog
   epic-6-retrospective: optional
 
