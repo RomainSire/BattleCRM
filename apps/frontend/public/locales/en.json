@@ -62,12 +62,12 @@
     "noStages": "No funnel stages configured. Go to Settings to set up your funnel.",
     "noData": "No data for this stage yet.",
     "noActiveBattle": "No active battle",
-    "battleClosed": "Battle closed — winner: {{winner}}",
+    "battleClosed": "Battle #{{n}} closed — winner: {{winner}}",
     "activeBattle": "Battle #{{n}} · {{a}} vs {{b}}",
     "unknownVariant": "Unknown variant",
     "conversionRates": "Conversion Rates",
     "battleHistory": "Battle History",
-    "battleHistoryItem": "Battle #{{n}}: {{a}} vs {{b}} → {{winner}}",
+    "battleHistoryItem": "Battle #{{n}}: {{a}} vs {{b}} → {{winner}} ({{rateA}} vs {{rateB}})",
     "noClosedBattles": "No closed battles",
     "startBattle": "Start Battle",
     "startNextBattle": "Start Next Battle",
@@ -93,6 +93,13 @@
       "cancel": "Cancel",
       "successToast": "Battle closed — {{winner}} wins!",
       "errorGeneric": "Failed to close battle."
+    },
+    "battleDetailDialog": {
+      "title": "Battle #{{n}}",
+      "started": "Started: {{date}}",
+      "closed": "Closed: {{date}}",
+      "winner": "Winner",
+      "noData": "No data"
     },
     "trafficLight": {
       "significant": "Significant",

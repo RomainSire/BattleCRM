@@ -15,6 +15,7 @@ import {
   type TrafficLightColor,
   type TrafficLightResult,
 } from '../lib/trafficLight'
+import { BattleDetailDialog } from './BattleDetailDialog'
 import { CloseBattleDialog } from './CloseBattleDialog'
 import { StartBattleDialog } from './StartBattleDialog'
 
@@ -61,6 +62,12 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
 
   function resolveName(id: string) {
     return getPositioningName(id, cells, positionings, unknownVariant)
+  }
+
+  function resolveCellRate(positioningId: string): string {
+    const cell = stageCells.find((c) => c.positioningId === positioningId)
+    if (!cell) return '—'
+    return `${(cell.rate * 100).toFixed(0)}%`
   }
 
   function renderTrafficLight(trafficLight: TrafficLightResult) {
@@ -118,7 +125,10 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
     if (lastClosed?.winnerId) {
       return (
         <p className="text-sm text-muted-foreground">
-          {t('dashboard.battleClosed', { winner: resolveName(lastClosed.winnerId) })}
+          {t('dashboard.battleClosed', {
+            n: lastClosed.battleNumber,
+            winner: resolveName(lastClosed.winnerId),
+          })}
         </p>
       )
     }
@@ -236,14 +246,23 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
                 </h3>
                 <ul className="space-y-1">
                   {closedBattles.map((battle) => (
-                    <li key={battle.id} className="text-sm text-muted-foreground">
-                      {t('dashboard.battleHistoryItem', {
-                        n: battle.battleNumber,
-                        a: resolveName(battle.variantAId),
-                        b: resolveName(battle.variantBId),
-                        winner: battle.winnerId ? resolveName(battle.winnerId) : '—',
-                      })}
-                    </li>
+                    <BattleDetailDialog
+                      key={battle.id}
+                      battle={battle}
+                      cells={cells}
+                      resolveName={resolveName}
+                    >
+                      <li className="cursor-pointer text-sm text-muted-foreground transition-colors hover:text-foreground">
+                        {t('dashboard.battleHistoryItem', {
+                          n: battle.battleNumber,
+                          a: resolveName(battle.variantAId),
+                          b: resolveName(battle.variantBId),
+                          winner: battle.winnerId ? resolveName(battle.winnerId) : '—',
+                          rateA: resolveCellRate(battle.variantAId),
+                          rateB: resolveCellRate(battle.variantBId),
+                        })}
+                      </li>
+                    </BattleDetailDialog>
                   ))}
                 </ul>
               </section>
