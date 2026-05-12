@@ -621,6 +621,153 @@ test.group('Positionings API', (group) => {
   })
 
   // ===========================
+  // GET /api/positionings/:id/prospects?funnel_stage_id — drill-down filter
+  // ===========================
+
+  test('funnel_stage_id filter returns only prospects at that stage', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'drill-filter')
+    const stages = await FunnelStage.query()
+      .withScopes((s) => s.forUser(user.id))
+      .orderBy('position', 'asc')
+    const stage1 = stages[0]
+    const stage2 = stages[1]
+
+    const p = await createPositioning(user.id, stage1.id, 'Drill Positioning')
+
+    const prospect1 = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage1.id,
+      name: 'Alice',
+    })
+    const prospect2 = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage2.id,
+      name: 'Bob',
+    })
+
+    await ProspectPositioning.create({
+      userId: user.id,
+      prospectId: prospect1.id,
+      positioningId: p.id,
+      funnelStageId: stage1.id,
+      outcome: 'success',
+    })
+    await ProspectPositioning.create({
+      userId: user.id,
+      prospectId: prospect2.id,
+      positioningId: p.id,
+      funnelStageId: stage2.id,
+      outcome: 'failed',
+    })
+
+    const response = await client
+      .get(`/api/positionings/${p.id}/prospects?funnel_stage_id=${stage1.id}`)
+      .loginAs(user)
+    response.assertStatus(200)
+
+    const body = response.body()
+    assert.equal(body.data.length, 1)
+    assert.equal(body.meta.total, 1)
+    assert.equal(body.data[0].name, 'Alice')
+    assert.equal(body.data[0].funnelStageId, stage1.id)
+  })
+
+  test('funnel_stage_id filter returns empty list when no prospects at that stage', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'drill-filter-empty')
+    const stages = await FunnelStage.query()
+      .withScopes((s) => s.forUser(user.id))
+      .orderBy('position', 'asc')
+    const stage1 = stages[0]
+    const stage2 = stages[1]
+
+    const p = await createPositioning(user.id, stage1.id, 'Drill Empty')
+
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage1.id,
+      name: 'Carol',
+    })
+    await ProspectPositioning.create({
+      userId: user.id,
+      prospectId: prospect.id,
+      positioningId: p.id,
+      funnelStageId: stage1.id,
+      outcome: null,
+    })
+
+    // Filter by stage2 — no prospects there
+    const response = await client
+      .get(`/api/positionings/${p.id}/prospects?funnel_stage_id=${stage2.id}`)
+      .loginAs(user)
+    response.assertStatus(200)
+    assert.equal(response.body().data.length, 0)
+    assert.equal(response.body().meta.total, 0)
+  })
+
+  test('invalid UUID funnel_stage_id → 400', async ({ client, assert }) => {
+    const user = await registerUser(client, 'drill-bad-uuid')
+    const stage = await getUserFirstStage(user.id)
+    const p = await createPositioning(user.id, stage.id, 'Bad UUID Pos')
+
+    const response = await client
+      .get(`/api/positionings/${p.id}/prospects?funnel_stage_id=not-a-uuid`)
+      .loginAs(user)
+    response.assertStatus(400)
+    assert.equal(response.body().message, 'Invalid funnel_stage_id format')
+  })
+
+  test('missing funnel_stage_id → returns all stages (backward compat)', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'drill-no-filter')
+    const stages = await FunnelStage.query()
+      .withScopes((s) => s.forUser(user.id))
+      .orderBy('position', 'asc')
+    const stage1 = stages[0]
+    const stage2 = stages[1]
+
+    const p = await createPositioning(user.id, stage1.id, 'All Stages Pos')
+
+    const prospect1 = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage1.id,
+      name: 'Dave',
+    })
+    const prospect2 = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage2.id,
+      name: 'Eve',
+    })
+
+    await ProspectPositioning.create({
+      userId: user.id,
+      prospectId: prospect1.id,
+      positioningId: p.id,
+      funnelStageId: stage1.id,
+      outcome: 'success',
+    })
+    await ProspectPositioning.create({
+      userId: user.id,
+      prospectId: prospect2.id,
+      positioningId: p.id,
+      funnelStageId: stage2.id,
+      outcome: null,
+    })
+
+    const response = await client.get(`/api/positionings/${p.id}/prospects`).loginAs(user)
+    response.assertStatus(200)
+    assert.equal(response.body().data.length, 2)
+    assert.equal(response.body().meta.total, 2)
+  })
+
+  // ===========================
   // PATCH /api/positionings/:id/restore
   // ===========================
 

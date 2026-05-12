@@ -175,10 +175,15 @@ export default class PositioningsController {
    * GET /api/positionings/:id/prospects
    * Returns prospects linked to this positioning via prospect_positionings.
    * Includes both active (isActive=true) and historical (isActive=false) assignments.
-   * Replaces Story 4.2 implementation (which used interactions to derive the link).
+   * Optional ?funnel_stage_id=:uuid filter restricts to a specific stage (drill-down).
    */
-  async prospects({ params, response, auth }: HttpContext) {
+  async prospects({ params, request, response, auth }: HttpContext) {
     const userId = auth.user!.id
+    const funnelStageId = request.qs().funnel_stage_id as string | undefined
+
+    if (funnelStageId !== undefined && !UUID_REGEX.test(funnelStageId)) {
+      return response.badRequest({ message: 'Invalid funnel_stage_id format' })
+    }
 
     // withTrashed() — historical data accessible even if positioning is archived
     const positioning = await Positioning.query()
@@ -187,11 +192,17 @@ export default class PositioningsController {
       .where('id', params.id)
       .firstOrFail()
 
-    const pps = await ProspectPositioning.query()
+    const query = ProspectPositioning.query()
       .withScopes((s) => s.forUser(userId))
       .where('positioning_id', positioning.id)
       .preload('prospect', (q) => q.withTrashed())
       .orderBy('created_at', 'desc')
+
+    if (funnelStageId) {
+      query.where('funnel_stage_id', funnelStageId)
+    }
+
+    const pps = await query
 
     return response.ok({
       data: pps.map(serializePositioningLinkedProspect),

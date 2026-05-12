@@ -1,9 +1,18 @@
-import type { BattleType, PerformanceMatrixType } from '@battlecrm/shared'
+import type {
+  BattleType,
+  PerformanceMatrixType,
+  PositioningLinkedProspectType,
+} from '@battlecrm/shared'
 import { fetchApi } from '@/lib/api'
 
 export const analyticsApi = {
   getPerformanceMatrix() {
     return fetchApi<PerformanceMatrixType>('/analytics/performance_matrix')
+  },
+  drillDown(positioningId: string, stageId: string) {
+    return fetchApi<{ data: PositioningLinkedProspectType[]; meta: { total: number } }>(
+      `/positionings/${positioningId}/prospects?funnel_stage_id=${stageId}`,
+    )
   },
 }
 
