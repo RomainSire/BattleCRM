@@ -12,7 +12,7 @@ export default class TestController {
    * Hard-deletes ALL data owned by the authenticated user, bypassing soft-deletes.
    * Deletion order respects FK dependencies:
    * interactions → prospect_stage_transitions → prospect_positionings
-   * → prospects → positionings → funnel_stages
+   * → battles → prospects → positionings → funnel_stages
    *
    * When adding a new table with FK toward prospects/positionings/interactions/funnel_stages,
    * insert its deletion BEFORE the referenced parent table.
@@ -29,6 +29,7 @@ export default class TestController {
       .from('prospect_positionings')
       .whereIn('prospect_id', db.from('prospects').where('user_id', userId).select('id'))
       .delete()
+    await db.from('battles').where('user_id', userId).delete()
     await db.from('prospects').where('user_id', userId).delete()
     await db.from('positionings').where('user_id', userId).delete()
     await db.from('funnel_stages').where('user_id', userId).delete()

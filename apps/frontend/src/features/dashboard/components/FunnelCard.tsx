@@ -15,6 +15,7 @@ import {
   type TrafficLightColor,
   type TrafficLightResult,
 } from '../lib/trafficLight'
+import { BattleDetailDialog } from './BattleDetailDialog'
 import { CloseBattleDialog } from './CloseBattleDialog'
 import { StartBattleDialog } from './StartBattleDialog'
 
@@ -61,6 +62,12 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
 
   function resolveName(id: string) {
     return getPositioningName(id, cells, positionings, unknownVariant)
+  }
+
+  function resolveCellRate(positioningId: string): string {
+    const cell = stageCells.find((c) => c.positioningId === positioningId)
+    if (!cell) return '—'
+    return `${(cell.rate * 100).toFixed(0)}%`
   }
 
   function renderTrafficLight(trafficLight: TrafficLightResult) {
@@ -118,11 +125,20 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
     if (lastClosed?.winnerId) {
       return (
         <p className="text-sm text-muted-foreground">
-          {t('dashboard.battleClosed', { winner: resolveName(lastClosed.winnerId) })}
+          {t('dashboard.battleClosed', {
+            n: lastClosed.battleNumber,
+            winner: resolveName(lastClosed.winnerId),
+          })}
         </p>
       )
     }
-
+    if (lastClosed) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          {t('dashboard.battleClosedNoWinner', { n: lastClosed.battleNumber })}
+        </p>
+      )
+    }
     return <p className="text-sm text-muted-foreground">{t('dashboard.noActiveBattle')}</p>
   }
 
@@ -235,16 +251,29 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
                   {t('dashboard.battleHistory')}
                 </h3>
                 <ul className="space-y-1">
-                  {closedBattles.map((battle) => (
-                    <li key={battle.id} className="text-sm text-muted-foreground">
-                      {t('dashboard.battleHistoryItem', {
-                        n: battle.battleNumber,
-                        a: resolveName(battle.variantAId),
-                        b: resolveName(battle.variantBId),
-                        winner: battle.winnerId ? resolveName(battle.winnerId) : '—',
-                      })}
-                    </li>
-                  ))}
+                  {closedBattles.map((battle) => {
+                    const winnerId = battle.winnerId
+                    const loserId =
+                      winnerId === battle.variantAId ? battle.variantBId : battle.variantAId
+                    return (
+                      <li key={battle.id}>
+                        <BattleDetailDialog battle={battle} cells={cells} resolveName={resolveName}>
+                          <button
+                            type="button"
+                            className="w-full cursor-pointer text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+                          >
+                            {t('dashboard.battleHistoryItem', {
+                              n: battle.battleNumber,
+                              winner: winnerId ? resolveName(winnerId) : '—',
+                              loser: resolveName(loserId),
+                              rateWinner: winnerId ? resolveCellRate(winnerId) : '—',
+                              rateLoser: resolveCellRate(loserId),
+                            })}
+                          </button>
+                        </BattleDetailDialog>
+                      </li>
+                    )
+                  })}
                 </ul>
               </section>
             )}

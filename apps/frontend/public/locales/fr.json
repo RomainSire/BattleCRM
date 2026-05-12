@@ -62,12 +62,13 @@
     "noStages": "Aucune étape configurée. Allez dans Paramètres pour configurer votre tunnel.",
     "noData": "Aucune donnée pour cette étape.",
     "noActiveBattle": "Aucune battle active",
-    "battleClosed": "Battle terminée — gagnant : {{winner}}",
+    "battleClosed": "Battle #{{n}} clôturée — gagnant : {{winner}}",
+    "battleClosedNoWinner": "Battle #{{n}} clôturée",
     "activeBattle": "Battle #{{n}} · {{a}} vs {{b}}",
     "unknownVariant": "Variant inconnu",
     "conversionRates": "Taux de conversion",
     "battleHistory": "Historique des battles",
-    "battleHistoryItem": "Battle #{{n}} : {{a}} vs {{b}} → {{winner}}",
+    "battleHistoryItem": "Battle #{{n}} : {{winner}} a battu {{loser}} ({{rateWinner}} vs {{rateLoser}})",
     "noClosedBattles": "Aucune battle terminée",
     "startBattle": "Démarrer une Battle",
     "startNextBattle": "Battle suivante",
@@ -93,6 +94,13 @@
       "cancel": "Annuler",
       "successToast": "Battle clôturée — {{winner}} gagne !",
       "errorGeneric": "Impossible de clôturer la battle."
+    },
+    "battleDetailDialog": {
+      "title": "Battle #{{n}}",
+      "started": "Démarrée le : {{date}}",
+      "closed": "Clôturée le : {{date}}",
+      "winner": "Gagnant",
+      "noData": "Aucune donnée"
     },
     "trafficLight": {
       "significant": "Significatif",
