@@ -1,6 +1,6 @@
 # Story 6.5: Implement Battle Management
 
-Status: review
+Status: done
 
 ## Story
 
