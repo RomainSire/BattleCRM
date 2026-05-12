@@ -249,3 +249,38 @@ export async function resetProspects(request: APIRequestContext): Promise<void> 
     await request.delete(`${API_URL}/api/prospects/${p.id}`)
   }
 }
+
+/**
+ * Create a battle for a funnel stage.
+ * Requires an authenticated request context.
+ */
+export async function createBattle(
+  request: APIRequestContext,
+  data: { funnel_stage_id: string; variant_a_id: string; variant_b_id: string },
+): Promise<{
+  id: string
+  battleNumber: number
+  variantAId: string
+  variantBId: string
+  funnelStageId: string
+  status: string
+}> {
+  const res = await request.post(`${API_URL}/api/battles`, { data })
+  if (!res.ok()) throw new Error(`createBattle failed: ${res.status()} ${await res.text()}`)
+  return res.json()
+}
+
+/**
+ * Close a battle by recording the winner.
+ * Requires an authenticated request context.
+ */
+export async function closeBattle(
+  request: APIRequestContext,
+  battleId: string,
+  winnerId: string,
+): Promise<void> {
+  const res = await request.patch(`${API_URL}/api/battles/${battleId}/close`, {
+    data: { winner_id: winnerId },
+  })
+  if (!res.ok()) throw new Error(`closeBattle failed: ${res.status()} ${await res.text()}`)
+}
