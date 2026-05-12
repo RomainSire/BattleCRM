@@ -1,6 +1,6 @@
 # Story 6.6: Build Battle History View
 
-Status: review
+Status: done
 
 ## Story
 
@@ -191,15 +191,25 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
-- `BattleDetailDialog.tsx` created: pure-display Dialog component showing battle number, start/close dates, winner badge, and both variant rates from current `cells` data. `DialogTrigger asChild` wraps the `children` prop (list item).
-- `FunnelCard.tsx` updated: added `resolveCellRate()` helper; history items wrapped with `BattleDetailDialog`; `rateA`/`rateB` interpolated in `battleHistoryItem` translation; `renderBattleStatus()` closed-battle branch now passes `n: lastClosed.battleNumber` for AC3.
-- i18n: `battleHistoryItem` and `battleClosed` updated in EN + FR; `battleDetailDialog.*` section added to both locales.
+- `BattleDetailDialog.tsx` created: pure-display Dialog component showing battle number, start/close dates, winner badge (Lucide Trophy icon), and both variant rates from current `cells` data. `DialogTrigger asChild` wraps the `children` prop.
+- `FunnelCard.tsx` updated: added `resolveCellRate()` helper; history items wrapped with `BattleDetailDialog`; winner-first ordering (`winner`/`loser`/`rateWinner`/`rateLoser`) in `battleHistoryItem` translation; `renderBattleStatus()` closed-battle branch passes `n: lastClosed.battleNumber` for AC3; added `battleClosedNoWinner` fallback for edge case.
+- History trigger uses `<li><button>` pattern (Biome a11y compliant, natively keyboard-focusable).
+- i18n: `battleHistoryItem` updated to `winner beat loser (rateWinner vs rateLoser)` format in EN + FR; `battleClosed`, `battleClosedNoWinner`, `battleDetailDialog.*` keys added.
 - `pnpm lint` ✅ (Biome, 0 fixes), `pnpm type-check` ✅ (0 errors across 4 workspaces).
+
+### Code Review Fixes (AI-Review)
+
+- **H1** fixed: `battleHistoryItem` now computes `winnerId`/`loserId` and passes `winner`/`loser`/`rateWinner`/`rateLoser` in winner-first order (AC1 "winner first" compliance).
+- **M1** fixed: clickable list items use `<li><button type="button">` — natively keyboard-navigable, passes Biome a11y rules.
+- **M2** fixed: `children: ReactNode` with `import type { ReactNode } from 'react'` — consistent with project pattern (StartBattleDialog, AddInteractionDialog).
+- **L1** fixed: `🏆` replaced with `<Trophy aria-hidden="true" />` from Lucide.
+- **L2** fixed: added `battleClosedNoWinner` guard in `renderBattleStatus()` for closed battles without a winner.
+- **L3** fixed: `battleHistoryItem` format changed from `→ winner` to `winner beat loser` (matches AC1 example).
 
 ### File List
 
 - `apps/frontend/src/features/dashboard/components/BattleDetailDialog.tsx` (created)
-- `apps/frontend/src/features/dashboard/components/FunnelCard.tsx` (modified — resolveCellRate helper, BattleDetailDialog integration, renderBattleStatus n param)
-- `apps/frontend/public/locales/en.json` (modified — battleHistoryItem, battleClosed, battleDetailDialog keys)
-- `apps/frontend/public/locales/fr.json` (modified — battleHistoryItem, battleClosed, battleDetailDialog keys)
+- `apps/frontend/src/features/dashboard/components/FunnelCard.tsx` (modified — resolveCellRate helper, BattleDetailDialog integration, winner-first battleHistoryItem, renderBattleStatus n param + noWinner fallback)
+- `apps/frontend/public/locales/en.json` (modified — battleHistoryItem, battleClosed, battleClosedNoWinner, battleDetailDialog keys)
+- `apps/frontend/public/locales/fr.json` (modified — battleHistoryItem, battleClosed, battleClosedNoWinner, battleDetailDialog keys)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified — status: review)

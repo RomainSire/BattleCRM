@@ -132,7 +132,13 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
         </p>
       )
     }
-
+    if (lastClosed) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          {t('dashboard.battleClosedNoWinner', { n: lastClosed.battleNumber })}
+        </p>
+      )
+    }
     return <p className="text-sm text-muted-foreground">{t('dashboard.noActiveBattle')}</p>
   }
 
@@ -245,25 +251,29 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
                   {t('dashboard.battleHistory')}
                 </h3>
                 <ul className="space-y-1">
-                  {closedBattles.map((battle) => (
-                    <BattleDetailDialog
-                      key={battle.id}
-                      battle={battle}
-                      cells={cells}
-                      resolveName={resolveName}
-                    >
-                      <li className="cursor-pointer text-sm text-muted-foreground transition-colors hover:text-foreground">
-                        {t('dashboard.battleHistoryItem', {
-                          n: battle.battleNumber,
-                          a: resolveName(battle.variantAId),
-                          b: resolveName(battle.variantBId),
-                          winner: battle.winnerId ? resolveName(battle.winnerId) : '—',
-                          rateA: resolveCellRate(battle.variantAId),
-                          rateB: resolveCellRate(battle.variantBId),
-                        })}
+                  {closedBattles.map((battle) => {
+                    const winnerId = battle.winnerId
+                    const loserId =
+                      winnerId === battle.variantAId ? battle.variantBId : battle.variantAId
+                    return (
+                      <li key={battle.id}>
+                        <BattleDetailDialog battle={battle} cells={cells} resolveName={resolveName}>
+                          <button
+                            type="button"
+                            className="w-full cursor-pointer text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+                          >
+                            {t('dashboard.battleHistoryItem', {
+                              n: battle.battleNumber,
+                              winner: winnerId ? resolveName(winnerId) : '—',
+                              loser: resolveName(loserId),
+                              rateWinner: winnerId ? resolveCellRate(winnerId) : '—',
+                              rateLoser: resolveCellRate(loserId),
+                            })}
+                          </button>
+                        </BattleDetailDialog>
                       </li>
-                    </BattleDetailDialog>
-                  ))}
+                    )
+                  })}
                 </ul>
               </section>
             )}

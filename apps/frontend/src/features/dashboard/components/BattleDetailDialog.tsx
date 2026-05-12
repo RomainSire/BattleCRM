@@ -1,4 +1,6 @@
 import type { BattleType, ConversionCellType } from '@battlecrm/shared'
+import { Trophy } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -13,7 +15,7 @@ interface BattleDetailDialogProps {
   battle: BattleType
   cells: ConversionCellType[]
   resolveName: (id: string) => string
-  children: React.ReactNode
+  children: ReactNode
 }
 
 export function BattleDetailDialog({
@@ -76,9 +78,13 @@ export function BattleDetailDialog({
                 key={variantId}
                 className="flex items-center justify-between rounded-md border px-3 py-2"
               >
-                <span className={`text-sm ${variantId === battle.winnerId ? 'font-semibold' : ''}`}>
+                <span
+                  className={`flex items-center gap-1 text-sm ${variantId === battle.winnerId ? 'font-semibold' : ''}`}
+                >
                   {resolveName(variantId)}
-                  {variantId === battle.winnerId && ' 🏆'}
+                  {variantId === battle.winnerId && (
+                    <Trophy className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  )}
                 </span>
                 <span className="text-sm tabular-nums text-muted-foreground">
                   {formatRate(variantId)}
