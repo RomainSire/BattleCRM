@@ -109,7 +109,18 @@
       "tooltipWithProb": "{{confidence}}% confident {{variant}} is better",
       "tooltipLowConfidence": "Trending toward {{variant}} ({{confidence}}%) — 70% threshold not met",
       "tooltipNoData": "Not enough data (n < 10 per variant)"
-    }
+    },
+    "drillDown": {
+      "title": "{{name}} — {{stage}}",
+      "rate": "{{rate}}% ({{n}}/{{total}})",
+      "noProspects": "No prospects for this cell",
+      "outcomes": {
+        "success": "Converted",
+        "failed": "Failed",
+        "inProgress": "In progress"
+      }
+    },
+    "deletedStage": "[Deleted stage]"
   },
   "settings": {
     "title": "Settings",

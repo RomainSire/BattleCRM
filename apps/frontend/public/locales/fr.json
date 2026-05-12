@@ -109,7 +109,18 @@
       "tooltipWithProb": "{{confidence}}% certain que {{variant}} est meilleur(e)",
       "tooltipLowConfidence": "Tendance vers {{variant}} ({{confidence}}%) — seuil 70% non atteint",
       "tooltipNoData": "Données insuffisantes (n < 10 par variant)"
-    }
+    },
+    "drillDown": {
+      "title": "{{name}} — {{stage}}",
+      "rate": "{{rate}} % ({{n}}/{{total}})",
+      "noProspects": "Aucun prospect pour cette cellule",
+      "outcomes": {
+        "success": "Converti",
+        "failed": "Échoué",
+        "inProgress": "En cours"
+      }
+    },
+    "deletedStage": "[Étape supprimée]"
   },
   "settings": {
     "title": "Paramètres",

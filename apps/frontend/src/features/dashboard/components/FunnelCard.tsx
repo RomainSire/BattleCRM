@@ -17,6 +17,7 @@ import {
 } from '../lib/trafficLight'
 import { BattleDetailDialog } from './BattleDetailDialog'
 import { CloseBattleDialog } from './CloseBattleDialog'
+import { DrillDownDialog } from './DrillDownDialog'
 import { StartBattleDialog } from './StartBattleDialog'
 
 interface FunnelCardProps {
@@ -219,25 +220,29 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
                   {stageCells.map((cell) => (
                     <li
                       key={cell.positioningId}
-                      className={`space-y-1 rounded-md p-2 ${isVariantInActiveBattle(cell.positioningId) ? 'bg-muted/50 ring-1 ring-primary/20' : ''}`}
+                      className={`rounded-md p-2 ${isVariantInActiveBattle(cell.positioningId) ? 'bg-muted/50 ring-1 ring-primary/20' : ''}`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm font-medium">
-                          {cell.positioningName ?? t('dashboard.deletedPositioning')}
-                        </span>
-                        <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
-                          {(cell.rate * 100).toFixed(0)}%{' '}
-                          <span className="text-xs">
-                            ({cell.numerator}/{cell.denominator})
-                          </span>
-                        </span>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-muted">
-                        <div
-                          className="h-2 rounded-full bg-primary transition-all"
-                          style={{ width: `${(cell.rate * 100).toFixed(1)}%` }}
-                        />
-                      </div>
+                      <DrillDownDialog cell={cell}>
+                        <button type="button" className="w-full cursor-pointer space-y-1 text-left">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate text-sm font-medium">
+                              {cell.positioningName ?? t('dashboard.deletedPositioning')}
+                            </span>
+                            <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                              {(cell.rate * 100).toFixed(0)}%{' '}
+                              <span className="text-xs">
+                                ({cell.numerator}/{cell.denominator})
+                              </span>
+                            </span>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-muted">
+                            <div
+                              className="h-2 rounded-full bg-primary transition-all"
+                              style={{ width: `${(cell.rate * 100).toFixed(1)}%` }}
+                            />
+                          </div>
+                        </button>
+                      </DrillDownDialog>
                     </li>
                   ))}
                 </ul>
