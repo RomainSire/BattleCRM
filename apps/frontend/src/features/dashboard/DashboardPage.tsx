@@ -1,11 +1,21 @@
+import type { DashboardSummaryType } from '@battlecrm/shared'
 import { useTranslation } from 'react-i18next'
 import { Accordion } from '@/components/ui/accordion'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePositionings } from '@/features/positionings/hooks/usePositionings'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
+import { DashboardSummary } from './components/DashboardSummary'
 import { FunnelCard } from './components/FunnelCard'
 import { useBattles } from './hooks/useBattles'
+import { useDashboardSummary } from './hooks/useDashboardSummary'
 import { usePerformanceMatrix } from './hooks/usePerformanceMatrix'
+
+const EMPTY_SUMMARY: DashboardSummaryType = {
+  totalActiveProspects: 0,
+  prospectsByStage: [],
+  interactionsThisWeek: 0,
+  interactionsThisMonth: 0,
+}
 
 export function DashboardPage() {
   const { t } = useTranslation()
@@ -22,6 +32,11 @@ export function DashboardPage() {
     isLoading: positioningsLoading,
     isError: positioningsError,
   } = usePositionings({ include_archived: true })
+  const {
+    data: summaryData,
+    isLoading: summaryLoading,
+    isError: summaryError,
+  } = useDashboardSummary()
 
   const isLoading = stagesLoading || matrixLoading || battlesLoading || positioningsLoading
   const isError = stagesError || matrixError || battlesError || positioningsError
@@ -30,10 +45,18 @@ export function DashboardPage() {
   const cells = matrixData?.cells ?? []
   const battles = battlesData?.data ?? []
   const positionings = positioningsData?.data ?? []
+  const summary = summaryData ?? EMPTY_SUMMARY
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t('dashboard.title')}</h1>
+
+      <DashboardSummary
+        summary={summary}
+        cells={cells}
+        isLoading={summaryLoading}
+        isError={summaryError}
+      />
 
       {isLoading && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

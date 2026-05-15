@@ -120,7 +120,19 @@
         "inProgress": "In progress"
       }
     },
-    "deletedStage": "[Deleted stage]"
+    "deletedStage": "[Deleted stage]",
+    "summary": {
+      "totalActiveProspects": "Active prospects",
+      "interactionsThisWeek": "Interactions this week",
+      "interactionsThisMonth": "This month",
+      "bestPerforming": "Top positioning",
+      "bestPerformingNone": "—",
+      "funnelOverview": "Funnel overview",
+      "emptyProspects": "Add prospects to get started",
+      "emptyPositionings": "Create positionings to start A/B testing",
+      "emptyInteractions": "Log interactions to see conversion data",
+      "loadError": "Unable to load summary data."
+    }
   },
   "settings": {
     "title": "Settings",

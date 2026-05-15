@@ -56,7 +56,7 @@ test.describe('Dashboard - Drill-Down Dialog basic flow (6.7)', () => {
 
   test('clicking a cell in Conversion Rates opens the drill-down dialog', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText(stageName)).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: stageName })).toBeVisible()
 
     const trigger = page.locator('[data-slot="accordion-trigger"]', {
       has: page.getByText(stageName),
@@ -71,7 +71,7 @@ test.describe('Dashboard - Drill-Down Dialog basic flow (6.7)', () => {
 
   test('dialog title shows positioning name and stage name', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText(stageName)).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: stageName })).toBeVisible()
 
     const trigger = page.locator('[data-slot="accordion-trigger"]', {
       has: page.getByText(stageName),
@@ -91,7 +91,7 @@ test.describe('Dashboard - Drill-Down Dialog basic flow (6.7)', () => {
 
   test('dialog shows rate summary with percentage and sample size', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText(stageName)).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: stageName })).toBeVisible()
 
     const trigger = page.locator('[data-slot="accordion-trigger"]', {
       has: page.getByText(stageName),
@@ -107,7 +107,7 @@ test.describe('Dashboard - Drill-Down Dialog basic flow (6.7)', () => {
 
   test('dialog lists the prospect who was assigned this positioning', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText(stageName)).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: stageName })).toBeVisible()
 
     const trigger = page.locator('[data-slot="accordion-trigger"]', {
       has: page.getByText(stageName),
@@ -122,7 +122,7 @@ test.describe('Dashboard - Drill-Down Dialog basic flow (6.7)', () => {
 
   test('prospect row shows "Converted" badge for success outcome', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText(stageName)).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: stageName })).toBeVisible()
 
     const trigger = page.locator('[data-slot="accordion-trigger"]', {
       has: page.getByText(stageName),
@@ -137,7 +137,7 @@ test.describe('Dashboard - Drill-Down Dialog basic flow (6.7)', () => {
 
   test('dialog closes when pressing Escape', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText(stageName)).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: stageName })).toBeVisible()
 
     const trigger = page.locator('[data-slot="accordion-trigger"]', {
       has: page.getByText(stageName),
@@ -204,7 +204,7 @@ test.describe('Dashboard - Drill-Down Dialog multiple outcomes (6.7)', () => {
 
   test('dialog shows all three prospects', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText(stageName)).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: stageName })).toBeVisible()
 
     const trigger = page.locator('[data-slot="accordion-trigger"]', {
       has: page.getByText(stageName),
@@ -296,7 +296,7 @@ test.describe('Dashboard - Drill-Down prospect link navigates to /prospects (6.7
 
   test('clicking a prospect link in the dialog navigates to /prospects', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText(stageName)).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: stageName })).toBeVisible()
 
     const trigger = page.locator('[data-slot="accordion-trigger"]', {
       has: page.getByText(stageName),

@@ -120,7 +120,19 @@
         "inProgress": "En cours"
       }
     },
-    "deletedStage": "[Étape supprimée]"
+    "deletedStage": "[Étape supprimée]",
+    "summary": {
+      "totalActiveProspects": "Prospects actifs",
+      "interactionsThisWeek": "Interactions cette semaine",
+      "interactionsThisMonth": "Ce mois-ci",
+      "bestPerforming": "Top positionnement",
+      "bestPerformingNone": "—",
+      "funnelOverview": "Vue d'ensemble du funnel",
+      "emptyProspects": "Ajoutez des prospects pour commencer",
+      "emptyPositionings": "Créez des positionnements pour démarrer l'A/B testing",
+      "emptyInteractions": "Enregistrez des interactions pour voir les données de conversion",
+      "loadError": "Impossible de charger les métriques de synthèse."
+    }
   },
   "settings": {
     "title": "Paramètres",

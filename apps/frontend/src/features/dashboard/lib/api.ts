@@ -1,5 +1,6 @@
 import type {
   BattleType,
+  DashboardSummaryType,
   PerformanceMatrixType,
   PositioningLinkedProspectType,
 } from '@battlecrm/shared'
@@ -8,6 +9,10 @@ import { fetchApi } from '@/lib/api'
 export const analyticsApi = {
   getPerformanceMatrix() {
     return fetchApi<PerformanceMatrixType>('/analytics/performance_matrix')
+  },
+  getSummary() {
+    const tz = encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)
+    return fetchApi<DashboardSummaryType>(`/analytics/summary?tz=${tz}`)
   },
   drillDown(positioningId: string, stageId: string) {
     return fetchApi<{ data: PositioningLinkedProspectType[]; meta: { total: number } }>(

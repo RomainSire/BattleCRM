@@ -1,0 +1,16 @@
+meta {
+  name: Summary
+  type: http
+  seq: 2
+}
+
+get {
+  url: http://localhost:3333/api/analytics/summary?tz=Europe%2FParis
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -59,14 +59,14 @@ test.describe('Dashboard - funnel cards grid', () => {
   test('shows one card per funnel stage', async ({ page }) => {
     await page.goto('/')
     // resetFunnelStages creates: Lead qualified, Linkedin connection, First contact
-    await expect(page.getByText('Lead qualified')).toBeVisible()
-    await expect(page.getByText('Linkedin connection')).toBeVisible()
-    await expect(page.getByText('First contact')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: 'Linkedin connection' })).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: 'First contact' })).toBeVisible()
   })
 
   test('each card shows "No active battle" by default', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
     // One "No active battle" text per stage (3 stages seeded)
     await expect(page.getByText(/no active battle/i)).toHaveCount(3)
   })
@@ -74,7 +74,7 @@ test.describe('Dashboard - funnel cards grid', () => {
   test('card header has expand/collapse button', async ({ page }) => {
     await page.goto('/')
     // Wait for data to load
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
     // Each card has a shadcn AccordionTrigger with data-slot="accordion-trigger"
     const triggers = page.locator('[data-slot="accordion-trigger"]')
     await expect(triggers).toHaveCount(3)
@@ -86,7 +86,7 @@ test.describe('Dashboard - funnel cards grid', () => {
 
   test('clicking a card expands it and shows "Conversion Rates" section', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
 
     const firstTrigger = page.locator('[data-slot="accordion-trigger"]').first()
     await firstTrigger.click()
@@ -97,7 +97,7 @@ test.describe('Dashboard - funnel cards grid', () => {
 
   test('clicking an expanded card collapses it', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
 
     const firstTrigger = page.locator('[data-slot="accordion-trigger"]').first()
 
@@ -110,7 +110,7 @@ test.describe('Dashboard - funnel cards grid', () => {
 
   test('only one card is expanded at a time', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
 
     const triggers = page.locator('[data-slot="accordion-trigger"]')
 
@@ -125,7 +125,7 @@ test.describe('Dashboard - funnel cards grid', () => {
 
   test('expanded card shows "No data yet" when no performance data exists', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
 
     await page.locator('[data-slot="accordion-trigger"]').first().click()
     await expect(page.getByText(/no data for this stage yet/i)).toBeVisible()
@@ -169,7 +169,7 @@ test.describe('Dashboard - conversion rates with data', () => {
 
   test('card shows positioning name in expanded conversion rates', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText(stageName)).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: stageName })).toBeVisible()
 
     const trigger = page.locator('[data-slot="accordion-trigger"]', {
       has: page.getByText(stageName),
@@ -181,7 +181,7 @@ test.describe('Dashboard - conversion rates with data', () => {
 
   test('shows sample size in (numerator/denominator) format', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText(stageName)).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: stageName })).toBeVisible()
 
     const trigger = page.locator('[data-slot="accordion-trigger"]', {
       has: page.getByText(stageName),
@@ -194,7 +194,7 @@ test.describe('Dashboard - conversion rates with data', () => {
 
   test('card renders without error when data is insufficient (< 10 prospects)', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText(stageName)).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: stageName })).toBeVisible()
     // 1 data point → confidenceLevel = 'low'. No active battle → no traffic light shown.
     // This test verifies the card renders the stage card without error.
     await expect(
