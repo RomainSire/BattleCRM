@@ -1,11 +1,13 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
-import type { ConversionCellType } from '@battlecrm/shared'
+import type { ConversionCellType, DashboardSummaryType } from '@battlecrm/shared'
 import { DateTime } from 'luxon'
 import { UUID_REGEX } from '#helpers/regex'
 import Battle from '#models/battle'
 import FunnelStage from '#models/funnel_stage'
+import Interaction from '#models/interaction'
 import Positioning from '#models/positioning'
+import Prospect from '#models/prospect'
 import { serializeBattle } from '#serializers/battle'
 import { calculateConversionRate } from '#services/bayesian_service'
 import { closeBattleValidator, createBattleValidator } from '#validators/battles'
@@ -198,5 +200,59 @@ export default class BattlesController {
     })
 
     return response.ok({ cells })
+  }
+
+  async summary({ auth, request, response }: HttpContext) {
+    const userId = auth.user!.id
+
+    // Compute week/month boundaries in the client's local timezone so Monday
+    // 00:30 Europe/Paris is not miscounted as "last week" due to UTC offset.
+    const tzParam = request.qs().tz as string | undefined
+    const localNow = DateTime.now().setZone(tzParam ?? 'UTC')
+    const safeNow = localNow.isValid ? localNow : DateTime.now().setZone('UTC')
+    const weekStart = safeNow.startOf('week').toUTC()
+    const monthStart = safeNow.startOf('month').toUTC()
+
+    const [stages, totalRow, countRows, weekRow, monthRow] = await Promise.all([
+      FunnelStage.query()
+        .withScopes((s) => s.forUser(userId))
+        .orderBy('position', 'asc'),
+      Prospect.query()
+        .withScopes((s) => s.forUser(userId))
+        .count('* as total')
+        .first(),
+      Prospect.query()
+        .withScopes((s) => s.forUser(userId))
+        .select('funnel_stage_id')
+        .count('* as total')
+        .groupBy('funnel_stage_id'),
+      Interaction.query()
+        .withScopes((s) => s.forUser(userId))
+        .where('created_at', '>=', weekStart.toISO()!)
+        .count('* as total')
+        .first(),
+      Interaction.query()
+        .withScopes((s) => s.forUser(userId))
+        .where('created_at', '>=', monthStart.toISO()!)
+        .count('* as total')
+        .first(),
+    ])
+
+    const countMap = new Map(countRows.map((r) => [r.funnelStageId, Number(r.$extras.total ?? 0)]))
+
+    const prospectsByStage = stages.map((s) => ({
+      stageId: s.id,
+      stageName: s.name,
+      count: countMap.get(s.id) ?? 0,
+    }))
+
+    const body: DashboardSummaryType = {
+      totalActiveProspects: Number(totalRow?.$extras.total ?? 0),
+      prospectsByStage,
+      interactionsThisWeek: Number(weekRow?.$extras.total ?? 0),
+      interactionsThisMonth: Number(monthRow?.$extras.total ?? 0),
+    }
+
+    return response.ok(body)
   }
 }

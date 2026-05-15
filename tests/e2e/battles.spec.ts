@@ -43,13 +43,13 @@ test.describe('Dashboard - Start Battle flow (6.5)', () => {
 
   test('"Start Battle" button is visible when no active battle', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
     await expect(page.getByRole('button', { name: 'Start Battle' }).first()).toBeVisible()
   })
 
   test('clicking "Start Battle" opens the dialog with variant selects', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
 
     await page.getByRole('button', { name: 'Start Battle' }).first().click()
 
@@ -65,7 +65,7 @@ test.describe('Dashboard - Start Battle flow (6.5)', () => {
     page,
   }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
 
     await page.getByRole('button', { name: 'Start Battle' }).first().click()
 
@@ -90,7 +90,7 @@ test.describe('Dashboard - Start Battle flow (6.5)', () => {
   test('active battle status line includes both variant names', async ({ page }) => {
     // Previous test already created Battle #1 — reload to see the result
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
     await expect(page.getByText(/Pitch Alpha/)).toBeVisible()
     await expect(page.getByText(/Pitch Beta/)).toBeVisible()
   })
@@ -130,7 +130,7 @@ test.describe('Dashboard - active battle + Traffic Light red (6.4, 6.5)', () => 
 
   test('status line shows active battle number and variant names', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
     await expect(page.getByText(/Battle #1/)).toBeVisible()
     await expect(page.getByText(/Pitch Alpha/)).toBeVisible()
     await expect(page.getByText(/Pitch Beta/)).toBeVisible()
@@ -138,19 +138,19 @@ test.describe('Dashboard - active battle + Traffic Light red (6.4, 6.5)', () => 
 
   test('traffic light badge shows "Need more data" with insufficient data', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
     await expect(page.getByText('Need more data')).toBeVisible()
   })
 
   test('"Close Battle" button is disabled when traffic light is red', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
     await expect(page.getByRole('button', { name: 'Close Battle' })).toBeDisabled()
   })
 
   test('hovering the disabled "Close Battle" button shows tooltip', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
 
     // The button is wrapped in a Tooltip span that intercepts pointer events.
     // Use force:true to hover past the pointer-events-none on the disabled button.
@@ -212,7 +212,7 @@ test.describe('Dashboard - Traffic Light green + Close Battle (6.4, 6.5)', () =>
 
   test('traffic light badge shows "Significant" with sufficient data', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
     await expect(page.getByText('Significant')).toBeVisible()
   })
 
@@ -228,7 +228,7 @@ test.describe('Dashboard - Traffic Light green + Close Battle (6.4, 6.5)', () =>
 
   test('"Close Battle" button is enabled when traffic light is green', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
     await expect(page.getByRole('button', { name: 'Close Battle' })).toBeEnabled()
   })
 
@@ -236,7 +236,7 @@ test.describe('Dashboard - Traffic Light green + Close Battle (6.4, 6.5)', () =>
     page,
   }) => {
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
 
     await page.getByRole('button', { name: 'Close Battle' }).click()
 
@@ -255,7 +255,7 @@ test.describe('Dashboard - Traffic Light green + Close Battle (6.4, 6.5)', () =>
   test('"Start Next Battle" button appears after closing a battle', async ({ page }) => {
     // Previous test closed the battle — reload to see the result
     await page.goto('/')
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
     await expect(page.getByRole('button', { name: 'Start Next Battle' })).toBeVisible()
   })
 })
@@ -303,7 +303,7 @@ test.describe('Dashboard - Battle History + Detail Dialog (6.6)', () => {
 
   test('expanding a card with closed battles shows "Battle History" section', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText(stageName)).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: stageName })).toBeVisible()
 
     const trigger = page.locator('[data-slot="accordion-trigger"]', {
       has: page.getByText(stageName),

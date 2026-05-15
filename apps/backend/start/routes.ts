@@ -73,6 +73,7 @@ router
     router
       .group(() => {
         router.get('/performance_matrix', [BattlesController, 'performanceMatrix'])
+        router.get('/summary', [BattlesController, 'summary'])
       })
       .prefix('/analytics')
       .use(middleware.auth())

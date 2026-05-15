@@ -8,6 +8,7 @@ export const queryKeys = {
   analytics: {
     all: ['analytics'] as const,
     performanceMatrix: () => [...queryKeys.analytics.all, 'performance-matrix'] as const,
+    summary: () => [...queryKeys.analytics.all, 'summary'] as const,
     drillDown: (positioningId: string, stageId: string) =>
       [...queryKeys.analytics.all, 'drill-down', positioningId, stageId] as const,
   },
