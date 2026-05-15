@@ -102,7 +102,7 @@ development_status:
   epic-5b-retrospective: done
 
   # Epic 6: Performance Analytics & Battle Management
-  epic-6: in-progress
+  epic-6: done
   6-1-create-battles-database-schema: done
   6-2-implement-conversion-rate-calculations: done
   6-3-build-dashboard-with-funnel-cards: done
@@ -111,7 +111,7 @@ development_status:
   6-6-build-battle-history-view: done
   6-7-implement-performance-matrix-drill-down: done
   6-8-add-dashboard-summary-metrics: done
-  epic-6-retrospective: optional
+  epic-6-retrospective: done
 
   # Epic 7: LinkedIn Browser Extension
   epic-7: done
