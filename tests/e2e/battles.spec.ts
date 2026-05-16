@@ -347,6 +347,7 @@ test.describe('Dashboard - Battle History + Detail Dialog (6.6)', () => {
     await page.getByRole('button', { name: /beat/ }).first().click()
 
     const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
     await expect(dialog.getByRole('heading', { name: /Battle #1/ })).toBeVisible()
   })
 
@@ -360,6 +361,7 @@ test.describe('Dashboard - Battle History + Detail Dialog (6.6)', () => {
     await page.getByRole('button', { name: /beat/ }).first().click()
 
     const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
     await expect(dialog.getByText(/Started:/)).toBeVisible()
   })
 
@@ -373,6 +375,7 @@ test.describe('Dashboard - Battle History + Detail Dialog (6.6)', () => {
     await page.getByRole('button', { name: /beat/ }).first().click()
 
     const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
     await expect(dialog.getByText('Winner:')).toBeVisible()
     await expect(dialog.getByText(winnerName).last()).toBeVisible()
   })
@@ -387,6 +390,7 @@ test.describe('Dashboard - Battle History + Detail Dialog (6.6)', () => {
     await page.getByRole('button', { name: /beat/ }).first().click()
 
     const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
     // Both variant names appear in the variant rows section
     const variantRows = dialog.locator('.rounded-md.border')
     await expect(variantRows).toHaveCount(2)

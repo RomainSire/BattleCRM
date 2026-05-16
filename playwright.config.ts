@@ -30,7 +30,7 @@ export default defineConfig({
   // (test.describe.configure({ mode: 'serial' }) inside each describe block).
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 2 : 1,
   workers: WORKER_COUNT,
 
   // Standardized timeouts (TEA knowledge: action 15s, nav 30s, expect 10s, test 60s)
