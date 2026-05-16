@@ -178,7 +178,7 @@ pnpm update i18next-http-backend --recursive
 
 | Package | Actuel | Cible | Status |
 |---|---|---|---|
-| `i18next-http-backend` (frontend) | 3.0.4 | 4.0.0 | ⬜ |
+| `i18next-http-backend` (frontend) | 3.0.4 | 4.0.0 | ✅ |
 
 ---
 
@@ -225,5 +225,5 @@ pnpm update @types/node --recursive
 | G3c — i18n | 2 packages | 🟢 Faible | ✅ |
 | G3d — TanStack + Vine | 3 packages | 🟢 Faible | ✅ |
 | G3e — shadcn CLI | 1 package | 🟢 Nul | ✅ |
-| G4a — i18next-http-backend | 1 package | 🟠 Moyen (grep avant) | ⬜ |
+| G4a — i18next-http-backend | 1 package | 🟠 Moyen (grep avant) | ✅ |
 | G4b — @types/node | 1 package | 🟠 Moyen (type-check après) | ⬜ |
