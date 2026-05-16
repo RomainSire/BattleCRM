@@ -76,11 +76,11 @@ pnpm update tailwindcss @tailwindcss/vite @tailwindcss/postcss tailwind-merge --
 
 | Package | Actuel | Cible | Status |
 |---|---|---|---|
-| `tailwindcss` (frontend) | 4.2.2 | 4.3.0 | ⬜ |
-| `tailwindcss` dev (extension) | 4.2.2 | 4.3.0 | ⬜ |
-| `@tailwindcss/vite` (frontend) | 4.2.2 | 4.3.0 | ⬜ |
-| `@tailwindcss/postcss` dev (extension) | 4.2.2 | 4.3.0 | ⬜ |
-| `tailwind-merge` (frontend + extension) | 3.5.0 | 3.6.0 | ⬜ |
+| `tailwindcss` (frontend) | 4.2.2 | 4.3.0 | ✅ |
+| `tailwindcss` dev (extension) | 4.2.2 | 4.3.0 | ✅ |
+| `@tailwindcss/vite` (frontend) | 4.2.2 | 4.3.0 | ✅ |
+| `@tailwindcss/postcss` dev (extension) | 4.2.2 | 4.3.0 | ✅ |
+| `tailwind-merge` (frontend + extension) | 3.5.0 | 3.6.0 | ✅ |
 
 ---
 
@@ -95,9 +95,9 @@ pnpm update react-hook-form react-router lucide-react --recursive
 
 | Package | Actuel | Cible | Notes | Status |
 |---|---|---|---|---|
-| `react-hook-form` (frontend + extension) | 7.72.1 | 7.76.0 | Aucun breaking change notable entre ces versions | ⬜ |
-| `react-router` (frontend) | 7.14.1 | 7.15.1 | APIs `unstable_*` stabilisées (ex: `unstable_mask` → `mask`). Ne casse que si on utilisait ces APIs expérimentales — notre usage est standard (`<Outlet />`, guards), donc safe | ⬜ |
-| `lucide-react` (frontend + extension) | 1.8.0 | 1.16.0 | Icons additives. Certaines icônes peuvent être renommées entre 8 et 16 mineurs — faire `pnpm type-check` pour détecter | ⬜ |
+| `react-hook-form` (frontend + extension) | 7.72.1 | 7.76.0 | Aucun breaking change notable entre ces versions | ✅ |
+| `react-router` (frontend) | 7.14.1 | 7.15.1 | APIs `unstable_*` stabilisées (ex: `unstable_mask` → `mask`). Ne casse que si on utilisait ces APIs expérimentales — notre usage est standard (`<Outlet />`, guards), donc safe | ✅ |
+| `lucide-react` (frontend + extension) | 1.8.0 | 1.16.0 | Icons additives. Certaines icônes peuvent être renommées entre 8 et 16 mineurs — faire `pnpm type-check` pour détecter | ✅ |
 
 ---
 
@@ -112,8 +112,8 @@ pnpm update i18next react-i18next --recursive
 
 | Package | Actuel | Cible | Notes | Status |
 |---|---|---|---|---|
-| `i18next` (frontend + extension) | 26.0.5 | 26.2.0 | Minor bugfixes | ⬜ |
-| `react-i18next` (frontend + extension) | 17.0.3 | 17.0.8 | Minor patches | ⬜ |
+| `i18next` (frontend + extension) | 26.0.5 | 26.2.0 | Minor bugfixes | ✅ |
+| `react-i18next` (frontend + extension) | 17.0.3 | 17.0.8 | Minor patches | ✅ |
 
 ---
 
@@ -128,9 +128,9 @@ pnpm update @tanstack/react-query @tanstack/react-query-devtools @vinejs/vine --
 
 | Package | Actuel | Cible | Notes | Status |
 |---|---|---|---|---|
-| `@tanstack/react-query` (frontend + extension) | 5.99.0 | 5.100.10 | Patches only, aucun breaking change | ⬜ |
-| `@tanstack/react-query-devtools` (frontend) | 5.99.0 | 5.100.10 | Idem | ⬜ |
-| `@vinejs/vine` (backend + frontend) | 4.3.1 | 4.4.0 | Additive : `vine.create()`, `partial()`, global date transforms. Aucun breaking change | ⬜ |
+| `@tanstack/react-query` (frontend + extension) | 5.99.0 | 5.100.10 | Patches only, aucun breaking change | ✅ |
+| `@tanstack/react-query-devtools` (frontend) | 5.99.0 | 5.100.10 | Idem | ✅ |
+| `@vinejs/vine` (backend + frontend) | 4.3.1 | 4.4.0 | Additive : `vine.create()`, `partial()`, global date transforms. Aucun breaking change | ✅ |
 
 ---
 
@@ -147,7 +147,7 @@ pnpm update shadcn --recursive
 
 | Package | Actuel | Cible | Notes | Status |
 |---|---|---|---|---|
-| `shadcn` (frontend + extension) | 4.2.0 | 4.7.0 | CLI seulement — les composants générés sont inchangés | ⬜ |
+| `shadcn` (frontend + extension) | 4.2.0 | 4.7.0 | CLI seulement — les composants générés sont inchangés | ✅ |
 
 ---
 
@@ -220,10 +220,10 @@ pnpm update @types/node --recursive
 |---|---|---|---|
 | G1 — Tooling patchs | 9 packages | 🟢 Nul | ✅ |
 | G2 — Runtime patchs | 3 packages | 🟢 Très faible | ✅ |
-| G3a — Tailwind | 5 packages | 🟡 Faible (vérif visuelle) | ⬜ |
-| G3b — React ecosystem | 3 packages | 🟡 Faible | ⬜ |
-| G3c — i18n | 2 packages | 🟢 Faible | ⬜ |
-| G3d — TanStack + Vine | 3 packages | 🟢 Faible | ⬜ |
-| G3e — shadcn CLI | 1 package | 🟢 Nul | ⬜ |
+| G3a — Tailwind | 5 packages | 🟡 Faible (vérif visuelle) | ✅ |
+| G3b — React ecosystem | 3 packages | 🟡 Faible | ✅ |
+| G3c — i18n | 2 packages | 🟢 Faible | ✅ |
+| G3d — TanStack + Vine | 3 packages | 🟢 Faible | ✅ |
+| G3e — shadcn CLI | 1 package | 🟢 Nul | ✅ |
 | G4a — i18next-http-backend | 1 package | 🟠 Moyen (grep avant) | ⬜ |
 | G4b — @types/node | 1 package | 🟠 Moyen (type-check après) | ⬜ |

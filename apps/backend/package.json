@@ -56,7 +56,7 @@
     "@adonisjs/lucid": "^22.4.2",
     "@adonisjs/session": "^8.1.0",
     "@battlecrm/shared": "workspace:*",
-    "@vinejs/vine": "^4.3.1",
+    "@vinejs/vine": "^4.4.0",
     "luxon": "^3.7.2",
     "pg": "^8.20.0",
     "reflect-metadata": "^0.2.2"
