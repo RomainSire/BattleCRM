@@ -210,7 +210,7 @@ pnpm update @types/node --recursive
 
 | Package | Actuel | Cible | Status |
 |---|---|---|---|
-| `@types/node` (backend + frontend + root) | 24.12.2 | 25.8.0 | ⬜ |
+| `@types/node` (backend + frontend + root) | 24.12.2 | 25.8.0 | ✅ |
 
 ---
 
@@ -226,4 +226,4 @@ pnpm update @types/node --recursive
 | G3d — TanStack + Vine | 3 packages | 🟢 Faible | ✅ |
 | G3e — shadcn CLI | 1 package | 🟢 Nul | ✅ |
 | G4a — i18next-http-backend | 1 package | 🟠 Moyen (grep avant) | ✅ |
-| G4b — @types/node | 1 package | 🟠 Moyen (type-check après) | ⬜ |
+| G4b — @types/node | 1 package | 🟠 Moyen (type-check après) | ✅ |
