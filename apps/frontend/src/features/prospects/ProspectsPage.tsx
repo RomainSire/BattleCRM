@@ -1,8 +1,3 @@
-import type { ProspectType } from '@battlecrm/shared'
-import { LayoutGrid, List } from 'lucide-react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router'
 import {
   Drawer,
   DrawerContent,
@@ -12,6 +7,11 @@ import {
 } from '@/components/ui/drawer'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import type { ProspectType } from '@battlecrm/shared'
+import { LayoutGrid, List } from 'lucide-react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router'
 import { AddProspectDialog } from './components/AddProspectDialog'
 import { ProspectDetail } from './components/ProspectDetail'
 import { ProspectsKanbanView } from './components/ProspectsKanbanView'
@@ -26,13 +26,19 @@ export function ProspectsPage() {
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>(
     localStorage.getItem(PROSPECTS_VIEW_KEY) === 'kanban' ? 'kanban' : 'list',
   )
+  // Cached on click so the drawer opens immediately with full content.
+  // useProspect fetches fresh data in the background and replaces it silently.
+  const [cachedProspect, setCachedProspect] = useState<ProspectType | null>(null)
 
   const selectedProspectId = searchParams.get('prospect')
 
-  const { data: selectedProspect, isLoading: prospectLoading } = useProspect(
+  const { data: freshProspect, isLoading: prospectLoading } = useProspect(
     selectedProspectId ?? '',
     { enabled: !!selectedProspectId },
   )
+
+  // Fresh API data takes precedence; fall back to cached click data while loading
+  const selectedProspect = freshProspect ?? cachedProspect
 
   function handleViewChange(v: string) {
     if (!v) return
@@ -42,10 +48,12 @@ export function ProspectsPage() {
   }
 
   function openDetail(prospect: ProspectType) {
+    setCachedProspect(prospect)
     setSearchParams({ prospect: prospect.id })
   }
 
   function closeDetail() {
+    setCachedProspect(null)
     setSearchParams({}, { replace: true })
   }
 
@@ -89,25 +97,25 @@ export function ProspectsPage() {
         open={!!selectedProspectId}
         onOpenChange={(open) => !open && closeDetail()}
       >
-        <DrawerContent className="overflow-y-auto" style={{ maxWidth: '560px' }}>
+        <DrawerContent className="w-180 max-w-[100vw] overflow-y-auto">
           <DrawerHeader>
-            <DrawerTitle>{selectedProspect?.name ?? (prospectLoading ? '...' : '')}</DrawerTitle>
+            <DrawerTitle>{selectedProspect?.name ?? ''}</DrawerTitle>
             <DrawerDescription className="sr-only">
               {t('prospects.drawerDescription')}
             </DrawerDescription>
           </DrawerHeader>
-          {prospectLoading ? (
-            <div className="space-y-3 px-4 py-4">
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-            </div>
-          ) : selectedProspect ? (
+          {selectedProspect ? (
             <ProspectDetail
               key={selectedProspectId}
               prospect={selectedProspect}
               onClose={closeDetail}
             />
+          ) : prospectLoading ? (
+            <div className="space-y-3 px-4 py-4">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
           ) : null}
         </DrawerContent>
       </Drawer>
