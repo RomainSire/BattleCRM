@@ -14,7 +14,11 @@ export interface EditFormValues {
   notes: string
 }
 
-export function useInteractionEdit(interaction: InteractionType, isExpanded: boolean) {
+export function useInteractionEdit(
+  interaction: InteractionType,
+  isExpanded: boolean,
+  callbacks?: { onDeleteSuccess?: () => void },
+) {
   const { t } = useTranslation()
 
   const [isEditing, setIsEditing] = useState(false)
@@ -103,7 +107,10 @@ export function useInteractionEdit(interaction: InteractionType, isExpanded: boo
   function handleDelete() {
     setDeleteError(null)
     deleteInteraction.mutate(interaction.id, {
-      onSuccess: () => toast.success(t('interactions.toast.deleted')),
+      onSuccess: () => {
+        toast.success(t('interactions.toast.deleted'))
+        callbacks?.onDeleteSuccess?.()
+      },
       onError: (error) => {
         const message = error instanceof ApiError ? error.errors[0]?.message : undefined
         setDeleteError(message ?? t('interactions.toast.deleteFailed'))

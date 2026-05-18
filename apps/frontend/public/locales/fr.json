@@ -313,6 +313,7 @@
   "positionings": {
     "title": "Positionnements",
     "description": "Gérez vos variantes de positionnement par étape du funnel.",
+    "drawerDescription": "Détail du positionnement",
     "addPositioning": "Ajouter un positionnement",
     "edit": "Modifier",
     "archive": "Archiver",
@@ -380,6 +381,7 @@
   "interactions": {
     "title": "Interactions",
     "description": "Gérez vos interactions avec vos prospects.",
+    "drawerDescription": "Détail de l'interaction",
     "addInteraction": "Journaliser une interaction",
     "noPositioning": "Sans positionnement",
     "fields": {

@@ -9,6 +9,10 @@ import type {
 import { fetchApi } from '@/lib/api'
 
 export const positioningsApi = {
+  get(id: string): Promise<PositioningType> {
+    return fetchApi<PositioningType>(`/positionings/${id}`)
+  },
+
   list(filters?: PositioningsFilterType): Promise<PositioningListResponse> {
     const params = new URLSearchParams()
     if (filters?.funnel_stage_id) {

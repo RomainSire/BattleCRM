@@ -1,4 +1,4 @@
-import type { InteractionsFilterType } from '@battlecrm/shared'
+import type { InteractionsFilterType, InteractionType } from '@battlecrm/shared'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
@@ -24,13 +24,16 @@ import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { useInteractions } from '../hooks/useInteractions'
 import { InteractionRow } from './InteractionRow'
 
-export function InteractionsList() {
+interface Props {
+  onOpenDetail: (interaction: InteractionType) => void
+}
+
+export function InteractionsList({ onOpenDetail }: Props) {
   const { t } = useTranslation()
 
   const [filters, setFilters] = useState<InteractionsFilterType>({})
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
-  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const { data, isLoading, isError } = useInteractions(
     Object.keys(filters).length > 0 ? filters : undefined,
@@ -45,7 +48,6 @@ export function InteractionsList() {
 
   const allInteractions = data?.data ?? []
   const filtered = allInteractions.filter((i) => {
-    // Compare date strings directly (YYYY-MM-DD) to avoid UTC/local timezone ambiguity
     const dateStr = i.interactionDate.slice(0, 10)
     if (dateFrom && dateStr < dateFrom) return false
     if (dateTo && dateStr > dateTo) return false
@@ -54,10 +56,6 @@ export function InteractionsList() {
 
   const hasActiveFilters = Object.keys(filters).length > 0 || dateFrom !== '' || dateTo !== ''
 
-  function toggleExpanded(id: string) {
-    setExpandedId((prev) => (prev === id ? null : id))
-  }
-
   function handleProspectFilter(value: string) {
     if (value === 'all') {
       const { prospect_id: _p, ...rest } = filters
@@ -65,7 +63,6 @@ export function InteractionsList() {
     } else {
       setFilters((prev) => ({ ...prev, prospect_id: value }))
     }
-    setExpandedId(null)
   }
 
   function handlePositioningFilter(value: string) {
@@ -75,7 +72,6 @@ export function InteractionsList() {
     } else {
       setFilters((prev) => ({ ...prev, positioning_id: value }))
     }
-    setExpandedId(null)
   }
 
   function handleStageFilter(value: string) {
@@ -85,29 +81,24 @@ export function InteractionsList() {
     } else {
       setFilters((prev) => ({ ...prev, funnel_stage_id: value }))
     }
-    setExpandedId(null)
   }
 
   function clearAllFilters() {
     setFilters({})
     setDateFrom('')
     setDateTo('')
-    setExpandedId(null)
   }
 
   if (isError) {
     return <p className="text-sm text-destructive">{t('interactions.loadError')}</p>
   }
 
-  // Shared style for compact header selects
   const headerSelectTrigger =
     'h-7 w-full border-input/60 bg-background/60 px-2 text-xs shadow-none focus:ring-0'
 
   return (
     <div className="space-y-3">
-      {/* Slim top bar: Positioning filter + Clear */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* Positioning — secondary filter, no dedicated column */}
         <Select value={filters.positioning_id ?? 'all'} onValueChange={handlePositioningFilter}>
           <SelectTrigger className="h-8 w-44 text-sm">
             <SelectValue placeholder={t('interactions.filters.allPositionings')} />
@@ -135,14 +126,10 @@ export function InteractionsList() {
         )}
       </div>
 
-      {/* Table — always rendered, skeleton during loading */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent align-top">
-              <TableHead className="w-8 pr-0" />
-
-              {/* Date + date range filter */}
               <TableHead className="min-w-[210px]">
                 <div className="flex flex-col gap-1 py-0.5">
                   <span className="text-xs font-medium">{t('interactions.detail.date')}</span>
@@ -150,27 +137,20 @@ export function InteractionsList() {
                     <input
                       type="date"
                       value={dateFrom}
-                      onChange={(e) => {
-                        setDateFrom(e.target.value)
-                        setExpandedId(null)
-                      }}
+                      onChange={(e) => setDateFrom(e.target.value)}
                       className="h-7 w-[96px] rounded-md border border-input/60 bg-background/60 px-2 text-xs"
                     />
                     <span className="text-xs text-muted-foreground">→</span>
                     <input
                       type="date"
                       value={dateTo}
-                      onChange={(e) => {
-                        setDateTo(e.target.value)
-                        setExpandedId(null)
-                      }}
+                      onChange={(e) => setDateTo(e.target.value)}
                       className="h-7 w-[96px] rounded-md border border-input/60 bg-background/60 px-2 text-xs"
                     />
                   </div>
                 </div>
               </TableHead>
 
-              {/* Prospect filter */}
               <TableHead>
                 <div className="flex flex-col gap-1 py-0.5">
                   <span className="text-xs font-medium">{t('interactions.fields.prospect')}</span>
@@ -190,7 +170,6 @@ export function InteractionsList() {
                 </div>
               </TableHead>
 
-              {/* Stage filter */}
               <TableHead>
                 <div className="flex flex-col gap-1 py-0.5">
                   <span className="text-xs font-medium">{t('prospects.columns.stage')}</span>
@@ -222,9 +201,6 @@ export function InteractionsList() {
               ['s0', 's1', 's2', 's3', 's4'].map((key) => (
                 <TableRow key={key}>
                   <TableCell>
-                    <Skeleton className="h-4 w-4" />
-                  </TableCell>
-                  <TableCell>
                     <Skeleton className="h-4 w-24" />
                   </TableCell>
                   <TableCell>
@@ -240,7 +216,7 @@ export function InteractionsList() {
               ))
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
+                <TableCell colSpan={4} className="py-12 text-center text-muted-foreground">
                   {t('interactions.empty')}
                 </TableCell>
               </TableRow>
@@ -249,8 +225,7 @@ export function InteractionsList() {
                 <InteractionRow
                   key={interaction.id}
                   interaction={interaction}
-                  isExpanded={expandedId === interaction.id}
-                  onToggle={() => toggleExpanded(interaction.id)}
+                  onOpenDetail={onOpenDetail}
                 />
               ))
             )}

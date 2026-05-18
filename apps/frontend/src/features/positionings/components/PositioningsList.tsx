@@ -1,3 +1,4 @@
+import type { PositioningType } from '@battlecrm/shared'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
@@ -23,10 +24,13 @@ import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { usePositionings } from '../hooks/usePositionings'
 import { PositioningRow } from './PositioningRow'
 
-export function PositioningsList() {
+interface Props {
+  onOpenDetail: (positioning: PositioningType) => void
+}
+
+export function PositioningsList({ onOpenDetail }: Props) {
   const { t } = useTranslation()
   const [activeStageFilter, setActiveStageFilter] = useState<string | undefined>(undefined)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
 
   const activeFilters = {
@@ -57,17 +61,11 @@ export function PositioningsList() {
     } else {
       setActiveStageFilter(value)
     }
-    setExpandedId(null)
   }
 
   function clearFilters() {
     setActiveStageFilter(undefined)
     setShowArchived(false)
-    setExpandedId(null)
-  }
-
-  function toggleExpanded(id: string) {
-    setExpandedId((prev) => (prev === id ? null : id))
   }
 
   if (isLoading) {
@@ -86,16 +84,12 @@ export function PositioningsList() {
 
   return (
     <div className="space-y-4">
-      {/* Top bar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <Switch
             id="show-archived-positionings"
             checked={showArchived}
-            onCheckedChange={(checked) => {
-              setShowArchived(checked)
-              setExpandedId(null)
-            }}
+            onCheckedChange={setShowArchived}
           />
           <Label htmlFor="show-archived-positionings" className="cursor-pointer text-sm">
             {t('positionings.showArchived')}
@@ -112,7 +106,6 @@ export function PositioningsList() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent align-top">
-              <TableHead className="w-8 pr-0" />
               <TableHead>{t('positionings.columns.name')}</TableHead>
               <TableHead className="w-40">
                 <div className="flex flex-col gap-1 py-0.5">
@@ -138,7 +131,7 @@ export function PositioningsList() {
           <TableBody>
             {positionings.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="py-12 text-center text-muted-foreground">
+                <TableCell colSpan={3} className="py-12 text-center text-muted-foreground">
                   {activeStageFilter ? t('positionings.emptyFiltered') : t('positionings.empty')}
                 </TableCell>
               </TableRow>
@@ -147,8 +140,7 @@ export function PositioningsList() {
                 <PositioningRow
                   key={positioning.id}
                   positioning={positioning}
-                  isExpanded={expandedId === positioning.id}
-                  onToggle={() => toggleExpanded(positioning.id)}
+                  onOpenDetail={onOpenDetail}
                 />
               ))
             )}
