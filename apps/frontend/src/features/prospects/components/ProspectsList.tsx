@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import type { ProspectType } from '@battlecrm/shared'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -22,12 +24,13 @@ import {
 } from '@/components/ui/table'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { useProspects } from '../hooks/useProspects'
+import { ProspectDetail } from './ProspectDetail'
 import { ProspectRow } from './ProspectRow'
 
 export function ProspectsList() {
   const { t } = useTranslation()
   const [activeStageFilter, setActiveStageFilter] = useState<string | undefined>(undefined)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [selectedProspect, setSelectedProspect] = useState<ProspectType | null>(null)
   const [showArchived, setShowArchived] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -54,6 +57,14 @@ export function ProspectsList() {
 
   const stageMap = new Map(stages.map((s) => [s.id, s.name]))
 
+  const liveSelectedProspect = useMemo(
+    () =>
+      selectedProspect
+        ? (prospects.find((p) => p.id === selectedProspect.id) ?? selectedProspect)
+        : null,
+    [selectedProspect, prospects],
+  )
+
   const hasActiveFilters = !!activeStageFilter || showArchived
 
   const headerSelectTrigger =
@@ -65,17 +76,13 @@ export function ProspectsList() {
     } else {
       setActiveStageFilter(value)
     }
-    setExpandedId(null)
+    setSelectedProspect(null)
   }
 
   function clearFilters() {
     setActiveStageFilter(undefined)
     setShowArchived(false)
-    setExpandedId(null)
-  }
-
-  function toggleExpanded(id: string) {
-    setExpandedId((prev) => (prev === id ? null : id))
+    setSelectedProspect(null)
   }
 
   if (isLoading) {
@@ -110,7 +117,7 @@ export function ProspectsList() {
             checked={showArchived}
             onCheckedChange={(checked) => {
               setShowArchived(checked)
-              setExpandedId(null)
+              setSelectedProspect(null)
             }}
           />
           <Label htmlFor="show-archived" className="cursor-pointer text-sm">
@@ -128,7 +135,6 @@ export function ProspectsList() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent align-top">
-              <TableHead className="w-8 pr-0" />
               <TableHead>{t('prospects.columns.name')}</TableHead>
               <TableHead>{t('prospects.columns.company')}</TableHead>
               <TableHead>
@@ -156,7 +162,7 @@ export function ProspectsList() {
           <TableBody>
             {filteredProspects.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
                   {searchQuery.trim()
                     ? t('prospects.emptySearch')
                     : activeStageFilter
@@ -170,8 +176,7 @@ export function ProspectsList() {
                   key={prospect.id}
                   prospect={prospect}
                   stageName={stageMap.get(prospect.funnelStageId)}
-                  isExpanded={expandedId === prospect.id}
-                  onToggle={() => toggleExpanded(prospect.id)}
+                  onOpenDetail={setSelectedProspect}
                 />
               ))
             )}
@@ -184,6 +189,25 @@ export function ProspectsList() {
           {t('prospects.count', { count: prospectsData.meta.total })}
         </p>
       )}
+
+      <Drawer
+        direction="right"
+        open={!!selectedProspect}
+        onOpenChange={(open) => !open && setSelectedProspect(null)}
+      >
+        <DrawerContent className="overflow-y-auto" style={{ maxWidth: '560px' }}>
+          <DrawerHeader>
+            <DrawerTitle>{liveSelectedProspect?.name}</DrawerTitle>
+          </DrawerHeader>
+          {liveSelectedProspect && (
+            <ProspectDetail
+              key={selectedProspect!.id}
+              prospect={liveSelectedProspect}
+              onClose={() => setSelectedProspect(null)}
+            />
+          )}
+        </DrawerContent>
+      </Drawer>
     </div>
   )
 }
