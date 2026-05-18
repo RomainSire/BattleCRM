@@ -80,9 +80,8 @@ test.describe('Interactions - Prospect Timeline', () => {
   // ── Helper: expand a prospect row in the prospects list ──────────────────────
 
   async function expandProspect(page: Page, name: string) {
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: name })
-    await row.click()
-    await expect(row).toHaveAttribute('aria-expanded', 'true')
+    await page.locator('tr').filter({ hasText: name }).click()
+    await expect(page).toHaveURL(/[?&]prospect=/)
   }
 
   // ── Display ──────────────────────────────────────────────────────────────────
@@ -215,8 +214,9 @@ test.describe('Interactions - Prospect Timeline', () => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
     await page.getByText('Log Interaction').click()
-    await expect(page.getByRole('dialog')).toBeVisible()
-    await expect(page.getByRole('dialog')).toContainText('TL Timeline Prospect')
+    // The drawer (role="dialog") is already open — scope to the interaction dialog specifically
+    await expect(page.locator('[data-slot="dialog-content"]')).toBeVisible()
+    await expect(page.locator('[data-slot="dialog-content"]')).toContainText('TL Timeline Prospect')
   })
 
   // ── Empty state ────────────────────────────────────────────────────────────────
@@ -266,7 +266,7 @@ test.describe('Interactions - Prospect Timeline', () => {
     await page.goto('/prospects')
     // Show archived to make the prospect visible
     await page.getByRole('switch', { name: /show archived/i }).click()
-    await page.locator('tr[aria-expanded]').filter({ hasText: 'TL Archived Prospect' }).click()
+    await page.locator('tr').filter({ hasText: 'TL Archived Prospect' }).click()
     // "Log Interaction" button must NOT be present in the timeline section
     await expect(page.getByRole('button', { name: /log interaction/i })).not.toBeVisible()
     await context.close()

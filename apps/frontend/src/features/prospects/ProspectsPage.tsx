@@ -3,7 +3,13 @@ import { LayoutGrid, List } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { AddProspectDialog } from './components/AddProspectDialog'
@@ -86,6 +92,9 @@ export function ProspectsPage() {
         <DrawerContent className="overflow-y-auto" style={{ maxWidth: '560px' }}>
           <DrawerHeader>
             <DrawerTitle>{selectedProspect?.name ?? (prospectLoading ? '...' : '')}</DrawerTitle>
+            <DrawerDescription className="sr-only">
+              {t('prospects.drawerDescription')}
+            </DrawerDescription>
           </DrawerHeader>
           {prospectLoading ? (
             <div className="space-y-3 px-4 py-4">

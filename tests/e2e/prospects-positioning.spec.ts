@@ -74,9 +74,8 @@ test.describe('Prospects - Positioning Section', () => {
   })
 
   async function expandProspect(page: Page, name: string) {
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: name })
-    await row.click()
-    await expect(row).toHaveAttribute('aria-expanded', 'true')
+    await page.locator('tr').filter({ hasText: name }).click()
+    await expect(page).toHaveURL(/[?&]prospect=/)
   }
 
   // ── AC1: Alert indicator ──────────────────────────────────────────────────────

@@ -187,6 +187,7 @@
   "prospects": {
     "title": "Prospects",
     "description": "Gérez vos contacts de prospection.",
+    "drawerDescription": "Détail du prospect",
     "loadError": "Impossible de charger les prospects. Veuillez réessayer.",
     "empty": "Aucun prospect pour le moment.",
     "emptyFiltered": "Aucun prospect dans cette étape.",

@@ -187,6 +187,7 @@
   "prospects": {
     "title": "Prospects",
     "description": "Manage your prospecting contacts.",
+    "drawerDescription": "Prospect detail",
     "loadError": "Failed to load prospects. Please try again.",
     "empty": "No prospects yet.",
     "emptyFiltered": "No prospects in this stage.",
