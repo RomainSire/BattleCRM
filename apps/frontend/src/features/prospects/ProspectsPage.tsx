@@ -1,3 +1,8 @@
+import type { ProspectType } from '@battlecrm/shared'
+import { LayoutGrid, List } from 'lucide-react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router'
 import {
   Drawer,
   DrawerContent,
@@ -7,11 +12,6 @@ import {
 } from '@/components/ui/drawer'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import type { ProspectType } from '@battlecrm/shared'
-import { LayoutGrid, List } from 'lucide-react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router'
 import { AddProspectDialog } from './components/AddProspectDialog'
 import { ProspectDetail } from './components/ProspectDetail'
 import { ProspectsKanbanView } from './components/ProspectsKanbanView'
