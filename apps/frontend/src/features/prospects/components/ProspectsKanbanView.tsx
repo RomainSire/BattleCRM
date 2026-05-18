@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,7 +16,6 @@ import { useSetPositioningOutcome } from '../hooks/useProspectPositioningMutatio
 import { useProspects } from '../hooks/useProspects'
 import { KanbanCard } from './KanbanCard'
 import { KanbanColumn } from './KanbanColumn'
-import { ProspectDetail } from './ProspectDetail'
 
 function groupBy<T>(arr: T[], key: (item: T) => string): Record<string, T[]> {
   return arr.reduce(
@@ -37,11 +35,14 @@ interface OutcomePopupState {
   fromStageId: string
 }
 
-export function ProspectsKanbanView() {
+interface ProspectsKanbanViewProps {
+  onOpenDetail: (prospect: ProspectType) => void
+}
+
+export function ProspectsKanbanView({ onOpenDetail }: ProspectsKanbanViewProps) {
   const { t } = useTranslation()
   const [showArchived, setShowArchived] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedProspect, setSelectedProspect] = useState<ProspectType | null>(null)
   const [activeProspect, setActiveProspect] = useState<ProspectType | null>(null)
   const [optimisticOverrides, setOptimisticOverrides] = useState<Record<string, string>>({})
   const [outcomePopup, setOutcomePopup] = useState<OutcomePopupState | null>(null)
@@ -86,16 +87,6 @@ export function ProspectsKanbanView() {
         optimisticOverrides[p.id] ? { ...p, funnelStageId: optimisticOverrides[p.id] } : p,
       ),
     [allProspects, optimisticOverrides],
-  )
-
-  // Keep selectedProspect in sync with live server data so ProspectDetail always sees fresh
-  // funnelStageId + activePositioning after a stage change or positioning mutation.
-  const liveSelectedProspect = useMemo(
-    () =>
-      selectedProspect
-        ? (prospectsWithOverrides.find((p) => p.id === selectedProspect.id) ?? selectedProspect)
-        : null,
-    [selectedProspect, prospectsWithOverrides],
   )
 
   // Client-side search filter (name + company per AC5)
@@ -215,7 +206,7 @@ export function ProspectsKanbanView() {
               key={stage.id}
               stage={stage}
               prospects={prospectsByStage[stage.id] ?? []}
-              onOpenDetail={setSelectedProspect}
+              onOpenDetail={onOpenDetail}
               stageHasPositionings={stagesWithPositionings.has(stage.id)}
             />
           ))}
@@ -269,26 +260,6 @@ export function ProspectsKanbanView() {
           </div>
         </div>
       )}
-
-      {/* Prospect detail drawer */}
-      <Drawer
-        direction="right"
-        open={!!selectedProspect}
-        onOpenChange={(open) => !open && setSelectedProspect(null)}
-      >
-        <DrawerContent className="overflow-y-auto" style={{ maxWidth: '560px' }}>
-          <DrawerHeader>
-            <DrawerTitle>{liveSelectedProspect?.name}</DrawerTitle>
-          </DrawerHeader>
-          {liveSelectedProspect && (
-            <ProspectDetail
-              key={selectedProspect!.id}
-              prospect={liveSelectedProspect}
-              onClose={() => setSelectedProspect(null)}
-            />
-          )}
-        </DrawerContent>
-      </Drawer>
     </div>
   )
 }

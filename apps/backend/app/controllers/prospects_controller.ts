@@ -95,6 +95,7 @@ export default class ProspectsController {
 
     const prospect = await Prospect.query()
       .withScopes((s) => s.forUser(userId))
+      .withTrashed()
       .where('id', params.id)
       .firstOrFail()
 

@@ -1,17 +1,31 @@
+import type { ProspectType } from '@battlecrm/shared'
 import { LayoutGrid, List } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router'
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
+import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { AddProspectDialog } from './components/AddProspectDialog'
+import { ProspectDetail } from './components/ProspectDetail'
 import { ProspectsKanbanView } from './components/ProspectsKanbanView'
 import { ProspectsList } from './components/ProspectsList'
+import { useProspect } from './hooks/useProspect'
 
 const PROSPECTS_VIEW_KEY = 'prospects-view-mode'
 
 export function ProspectsPage() {
   const { t } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>(
     localStorage.getItem(PROSPECTS_VIEW_KEY) === 'kanban' ? 'kanban' : 'list',
+  )
+
+  const selectedProspectId = searchParams.get('prospect')
+
+  const { data: selectedProspect, isLoading: prospectLoading } = useProspect(
+    selectedProspectId ?? '',
+    { enabled: !!selectedProspectId },
   )
 
   function handleViewChange(v: string) {
@@ -19,6 +33,14 @@ export function ProspectsPage() {
     const mode = v as 'list' | 'kanban'
     localStorage.setItem(PROSPECTS_VIEW_KEY, mode)
     setViewMode(mode)
+  }
+
+  function openDetail(prospect: ProspectType) {
+    setSearchParams({ prospect: prospect.id })
+  }
+
+  function closeDetail() {
+    setSearchParams({}, { replace: true })
   }
 
   return (
@@ -48,7 +70,38 @@ export function ProspectsPage() {
         </div>
       </header>
 
-      <section>{viewMode === 'list' ? <ProspectsList /> : <ProspectsKanbanView />}</section>
+      <section>
+        {viewMode === 'list' ? (
+          <ProspectsList onOpenDetail={openDetail} />
+        ) : (
+          <ProspectsKanbanView onOpenDetail={openDetail} />
+        )}
+      </section>
+
+      <Drawer
+        direction="right"
+        open={!!selectedProspectId}
+        onOpenChange={(open) => !open && closeDetail()}
+      >
+        <DrawerContent className="overflow-y-auto" style={{ maxWidth: '560px' }}>
+          <DrawerHeader>
+            <DrawerTitle>{selectedProspect?.name ?? (prospectLoading ? '...' : '')}</DrawerTitle>
+          </DrawerHeader>
+          {prospectLoading ? (
+            <div className="space-y-3 px-4 py-4">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
+          ) : selectedProspect ? (
+            <ProspectDetail
+              key={selectedProspectId}
+              prospect={selectedProspect}
+              onClose={closeDetail}
+            />
+          ) : null}
+        </DrawerContent>
+      </Drawer>
     </div>
   )
 }
