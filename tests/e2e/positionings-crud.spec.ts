@@ -49,12 +49,9 @@ test.describe('Positionings - Create & Edit', () => {
   test('submitting create form without a name shows a validation error', async ({ page }) => {
     await page.goto('/positionings')
     await page.getByRole('button', { name: /add positioning/i }).click()
-    // Clear the name field and submit
     await page.locator('#positioning-name').clear()
     await page.getByRole('button', { name: /^create$/i }).click()
-    // FieldError renders as role="alert"
     await expect(page.getByRole('alert').first()).toBeVisible()
-    // Dialog stays open
     await expect(page.getByRole('dialog')).toBeVisible()
   })
 
@@ -71,17 +68,14 @@ test.describe('Positionings - Create & Edit', () => {
 
     await dialog.getByRole('button', { name: /^create$/i }).click()
 
-    // Dialog closes on success
     await expect(page.getByRole('dialog')).not.toBeVisible()
-    // Toast success
     await expect(page.getByText(/positioning created/i)).toBeVisible()
-    // New positioning appears in list
     await expect(page.getByText('New Positioning E2E')).toBeVisible()
   })
 
   test('created positioning is assigned to a funnel stage by default', async ({ page }) => {
     await page.goto('/positionings')
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'New Positioning E2E' })
+    const row = page.locator('tr').filter({ hasText: 'New Positioning E2E' })
     await expect(row).toContainText('Lead qualified')
   })
 
@@ -89,34 +83,23 @@ test.describe('Positionings - Create & Edit', () => {
 
   test('expanded active positioning shows "Edit" button', async ({ page }) => {
     await page.goto('/positionings')
-    await page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'Initial Positioning' })
-      .click()
+    await page.locator('tr').filter({ hasText: 'Initial Positioning' }).click()
     await expect(page.getByRole('button', { name: /^edit$/i })).toBeVisible()
   })
 
   test('clicking Edit opens inline form pre-filled with current values', async ({ page }) => {
     await page.goto('/positionings')
-    await page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'Initial Positioning' })
-      .click()
+    await page.locator('tr').filter({ hasText: 'Initial Positioning' }).click()
     await page.getByRole('button', { name: /^edit$/i }).click()
 
-    // Save button appears (edit mode active)
     await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible()
-    // Name field is pre-filled
     const nameInput = page.locator('input[id^="edit-name-"]')
     await expect(nameInput).toHaveValue('Initial Positioning')
   })
 
   test('cancel edit returns to read-only without saving changes', async ({ page }) => {
     await page.goto('/positionings')
-    await page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'Initial Positioning' })
-      .click()
+    await page.locator('tr').filter({ hasText: 'Initial Positioning' }).click()
     await page.getByRole('button', { name: /^edit$/i }).click()
 
     const nameInput = page.locator('input[id^="edit-name-"]')
@@ -125,18 +108,14 @@ test.describe('Positionings - Create & Edit', () => {
 
     await page.getByRole('button', { name: /cancel/i }).click()
 
-    // Edit form gone, original name still shown
     await expect(page.getByRole('button', { name: /^save$/i })).not.toBeVisible()
-    await expect(page.getByText('Initial Positioning')).toBeVisible()
+    await expect(page.locator('[data-slot="drawer-title"]')).toContainText('Initial Positioning')
     await expect(page.getByText('Should Not Be Saved')).not.toBeVisible()
   })
 
   test('saving edit updates the positioning name — toast success', async ({ page }) => {
     await page.goto('/positionings')
-    await page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'Initial Positioning' })
-      .click()
+    await page.locator('tr').filter({ hasText: 'Initial Positioning' }).click()
     await page.getByRole('button', { name: /^edit$/i }).click()
 
     const nameInput = page.locator('input[id^="edit-name-"]')
@@ -152,10 +131,8 @@ test.describe('Positionings - Create & Edit', () => {
     await page.getByRole('button', { name: /^save$/i }).click()
     await updateResponse
 
-    // Toast success
     await expect(page.getByText(/positioning updated/i)).toBeVisible()
-    // Read-only view restored with new name
-    await expect(page.getByText('Updated Positioning Name')).toBeVisible()
+    await expect(page.locator('[data-slot="drawer-title"]')).toContainText('Updated Positioning Name')
     await expect(page.getByRole('button', { name: /^edit$/i })).toBeVisible()
   })
 })

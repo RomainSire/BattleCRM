@@ -60,7 +60,6 @@ export default class PositioningsController {
 
     const positioning = await Positioning.query()
       .withScopes((s) => s.forUser(userId))
-      .withTrashed()
       .where('id', params.id)
       .preload('funnelStage', (q) => q.withTrashed())
       .firstOrFail()

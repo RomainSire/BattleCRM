@@ -1,8 +1,8 @@
 /**
  * Positionings - List View E2E tests (Story 4.3)
  *
- * Covers: navigation, list display, stage filter pills, row expand/collapse,
- *         expanded detail panel (stage, description, linked prospects, interactions),
+ * Covers: navigation, list display, stage filter, row click opens drawer,
+ *         drawer detail panel (stage, description, linked prospects, interactions),
  *         empty state, empty-filtered state.
  * All tests run as authenticated user.
  *
@@ -67,7 +67,6 @@ test.describe('Positionings - List View', () => {
 
   test('shows funnel stage filter select', async ({ page }) => {
     await page.goto('/positionings')
-    // Stage filter is a combobox (Select) in the table header
     await expect(page.getByRole('combobox')).toBeVisible()
   })
 
@@ -113,65 +112,58 @@ test.describe('Positionings - List View', () => {
     await expect(page.getByText('CV Beta')).toBeVisible()
   })
 
-  // ── Row expand / collapse ───────────────────────────────────────────────────
+  // ── Row click opens drawer ───────────────────────────────────────────────────
 
-  test('clicking a row expands the detail panel', async ({ page }) => {
+  test('clicking a row opens the detail drawer', async ({ page }) => {
     await page.goto('/positionings')
-    const rowBtn = page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' })
-    await expect(rowBtn).toHaveAttribute('aria-expanded', 'false')
-    await rowBtn.click()
-    await expect(rowBtn).toHaveAttribute('aria-expanded', 'true')
+    await page.locator('tr').filter({ hasText: 'CV Alpha' }).click()
+    await expect(page).toHaveURL(/[?&]positioning=/)
+    await expect(page.getByRole('dialog')).toBeVisible()
   })
 
-  test('clicking an expanded row collapses it', async ({ page }) => {
+  test('pressing Escape closes the detail drawer', async ({ page }) => {
     await page.goto('/positionings')
-    const rowBtn = page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' })
-    await rowBtn.click()
-    await expect(rowBtn).toHaveAttribute('aria-expanded', 'true')
-    await rowBtn.click()
-    await expect(rowBtn).toHaveAttribute('aria-expanded', 'false')
+    await page.locator('tr').filter({ hasText: 'CV Alpha' }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).not.toBeVisible()
   })
 
-  test('only one row can be expanded at a time', async ({ page }) => {
+  test('clicking another row updates the drawer content', async ({ page }) => {
     await page.goto('/positionings')
-    const alphaRow = page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' })
-    const betaRow = page.locator('tr[aria-expanded]').filter({ hasText: 'CV Beta' })
-
-    await alphaRow.click()
-    await expect(alphaRow).toHaveAttribute('aria-expanded', 'true')
-
-    await betaRow.click()
-    await expect(alphaRow).toHaveAttribute('aria-expanded', 'false')
-    await expect(betaRow).toHaveAttribute('aria-expanded', 'true')
+    await page.locator('tr').filter({ hasText: 'CV Alpha' }).click()
+    await expect(page.locator('[data-slot="drawer-title"]')).toContainText('CV Alpha')
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).not.toBeVisible()
+    await page.locator('tr').filter({ hasText: 'CV Beta' }).click()
+    await expect(page.locator('[data-slot="drawer-title"]')).toContainText('CV Beta')
   })
 
-  // ── Expanded detail panel ───────────────────────────────────────────────────
+  // ── Detail panel ────────────────────────────────────────────────────────────
 
-  test('expanded row shows funnel stage name as badge', async ({ page }) => {
+  test('drawer shows funnel stage name as badge', async ({ page }) => {
     await page.goto('/positionings')
-    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).click()
-    // Stage badge appears in the expanded detail panel (dl section)
-    await expect(page.getByText('Lead qualified').first()).toBeVisible()
+    await page.locator('tr').filter({ hasText: 'CV Alpha' }).click()
+    await expect(page.getByRole('dialog').getByText('Lead qualified')).toBeVisible()
   })
 
-  test('expanded row shows full description and content', async ({ page }) => {
+  test('drawer shows full description and content', async ({ page }) => {
     await page.goto('/positionings')
-    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).click()
-    // Scope to the expanded content cell (td with colspan) to avoid ambiguity with the description column
-    const expandedContent = page.locator('td[colspan]').first()
-    await expect(expandedContent.getByText('Alpha description')).toBeVisible()
-    await expect(expandedContent.getByText('Alpha content')).toBeVisible()
+    await page.locator('tr').filter({ hasText: 'CV Alpha' }).click()
+    const drawer = page.locator('[data-slot="drawer-content"]')
+    await expect(drawer.getByText('Alpha description')).toBeVisible()
+    await expect(drawer.getByText('Alpha content')).toBeVisible()
   })
 
-  test('expanded row shows "Linked Prospects" section title', async ({ page }) => {
+  test('drawer shows "Linked Prospects" section title', async ({ page }) => {
     await page.goto('/positionings')
-    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).click()
+    await page.locator('tr').filter({ hasText: 'CV Alpha' }).click()
     await expect(page.getByText(/linked prospects/i)).toBeVisible()
   })
 
-  test('expanded row shows Interactions section with empty state', async ({ page }) => {
+  test('drawer shows Interactions section with empty state', async ({ page }) => {
     await page.goto('/positionings')
-    await page.locator('tr[aria-expanded]').filter({ hasText: 'CV Alpha' }).click()
+    await page.locator('tr').filter({ hasText: 'CV Alpha' }).click()
     await expect(page.getByText(/no interactions linked to this positioning/i)).toBeVisible()
   })
 
@@ -179,7 +171,6 @@ test.describe('Positionings - List View', () => {
 
   test('shows "No positionings for this stage" when filter matches nothing', async ({ page }) => {
     await page.goto('/positionings')
-    // Filter by "First contact" stage — no positionings seeded there
     await page.getByRole('combobox').click()
     await page.getByRole('option', { name: 'First contact' }).click()
     await expect(page.getByText(/no positionings for this stage/i)).toBeVisible()
