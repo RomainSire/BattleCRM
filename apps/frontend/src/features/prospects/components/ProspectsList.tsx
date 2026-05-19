@@ -1,3 +1,4 @@
+import type { ProspectType } from '@battlecrm/shared'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
@@ -24,10 +25,13 @@ import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { useProspects } from '../hooks/useProspects'
 import { ProspectRow } from './ProspectRow'
 
-export function ProspectsList() {
+interface ProspectsListProps {
+  onOpenDetail: (prospect: ProspectType) => void
+}
+
+export function ProspectsList({ onOpenDetail }: ProspectsListProps) {
   const { t } = useTranslation()
   const [activeStageFilter, setActiveStageFilter] = useState<string | undefined>(undefined)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -65,17 +69,11 @@ export function ProspectsList() {
     } else {
       setActiveStageFilter(value)
     }
-    setExpandedId(null)
   }
 
   function clearFilters() {
     setActiveStageFilter(undefined)
     setShowArchived(false)
-    setExpandedId(null)
-  }
-
-  function toggleExpanded(id: string) {
-    setExpandedId((prev) => (prev === id ? null : id))
   }
 
   if (isLoading) {
@@ -105,14 +103,7 @@ export function ProspectsList() {
           aria-label={t('prospects.searchPlaceholder')}
         />
         <div className="flex items-center gap-2">
-          <Switch
-            id="show-archived"
-            checked={showArchived}
-            onCheckedChange={(checked) => {
-              setShowArchived(checked)
-              setExpandedId(null)
-            }}
-          />
+          <Switch id="show-archived" checked={showArchived} onCheckedChange={setShowArchived} />
           <Label htmlFor="show-archived" className="cursor-pointer text-sm">
             {t('prospects.showArchived')}
           </Label>
@@ -128,7 +119,6 @@ export function ProspectsList() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent align-top">
-              <TableHead className="w-8 pr-0" />
               <TableHead>{t('prospects.columns.name')}</TableHead>
               <TableHead>{t('prospects.columns.company')}</TableHead>
               <TableHead>
@@ -156,7 +146,7 @@ export function ProspectsList() {
           <TableBody>
             {filteredProspects.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
                   {searchQuery.trim()
                     ? t('prospects.emptySearch')
                     : activeStageFilter
@@ -170,8 +160,7 @@ export function ProspectsList() {
                   key={prospect.id}
                   prospect={prospect}
                   stageName={stageMap.get(prospect.funnelStageId)}
-                  isExpanded={expandedId === prospect.id}
-                  onToggle={() => toggleExpanded(prospect.id)}
+                  onOpenDetail={onOpenDetail}
                 />
               ))
             )}

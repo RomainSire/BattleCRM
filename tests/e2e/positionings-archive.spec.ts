@@ -29,19 +29,13 @@ test.describe('Positionings - Archive & Restore', () => {
 
   test('expanded active positioning shows Archive button', async ({ page }) => {
     await page.goto('/positionings')
-    await page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'To Be Archived' })
-      .click()
+    await page.locator('tr').filter({ hasText: 'To Be Archived' }).click()
     await expect(page.getByRole('button', { name: /^archive$/i })).toBeVisible()
   })
 
   test('clicking Archive opens a confirmation dialog', async ({ page }) => {
     await page.goto('/positionings')
-    await page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'To Be Archived' })
-      .click()
+    await page.locator('tr').filter({ hasText: 'To Be Archived' }).click()
     await page.getByRole('button', { name: /^archive$/i }).click()
     await expect(page.getByRole('alertdialog')).toBeVisible()
     await expect(page.getByRole('alertdialog')).toContainText('To Be Archived')
@@ -49,25 +43,19 @@ test.describe('Positionings - Archive & Restore', () => {
 
   test('cancelling the archive dialog keeps the positioning in the list', async ({ page }) => {
     await page.goto('/positionings')
-    await page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'To Be Archived' })
-      .click()
+    await page.locator('tr').filter({ hasText: 'To Be Archived' }).click()
     await page.getByRole('button', { name: /^archive$/i }).click()
     await expect(page.getByRole('alertdialog')).toBeVisible()
     await page.getByRole('button', { name: /cancel/i }).click()
     await expect(page.getByRole('alertdialog')).not.toBeVisible()
-    await expect(page.getByText('To Be Archived')).toBeVisible()
+    await expect(page.locator('table').getByText('To Be Archived')).toBeVisible()
   })
 
   test('confirming archive removes positioning from active list — toast success', async ({
     page,
   }) => {
     await page.goto('/positionings')
-    await page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'To Be Archived' })
-      .click()
+    await page.locator('tr').filter({ hasText: 'To Be Archived' }).click()
     await page.getByRole('button', { name: /^archive$/i }).click()
     await expect(page.getByRole('alertdialog')).toBeVisible()
 
@@ -82,9 +70,7 @@ test.describe('Positionings - Archive & Restore', () => {
 
     await expect(page.getByText(/positioning archived/i)).toBeVisible()
     await expect(page.getByRole('alertdialog')).not.toBeVisible()
-    // Positioning no longer in default (active) list
     await expect(page.locator('table').getByText('To Be Archived')).not.toBeVisible()
-    // Other positioning unaffected
     await expect(page.getByText('Active Positioning')).toBeVisible()
   })
 
@@ -99,7 +85,7 @@ test.describe('Positionings - Archive & Restore', () => {
 
   test('toggling "Show archived" ON reveals archived positioning', async ({ page }) => {
     await page.goto('/positionings')
-    await expect(page.getByText('To Be Archived')).not.toBeVisible()
+    await expect(page.locator('table').getByText('To Be Archived')).not.toBeVisible()
     await page.getByRole('switch', { name: /show archived/i }).click()
     await expect(page.getByText('To Be Archived')).toBeVisible()
   })
@@ -109,7 +95,7 @@ test.describe('Positionings - Archive & Restore', () => {
   test('archived positioning has "Archived" badge in the row', async ({ page }) => {
     await page.goto('/positionings')
     await page.getByRole('switch', { name: /show archived/i }).click()
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'To Be Archived' })
+    const row = page.locator('tr').filter({ hasText: 'To Be Archived' })
     await expect(row.getByText('Archived', { exact: true })).toBeVisible()
   })
 
@@ -118,11 +104,7 @@ test.describe('Positionings - Archive & Restore', () => {
   test('archived positioning shows Restore button (no Archive button)', async ({ page }) => {
     await page.goto('/positionings')
     await page.getByRole('switch', { name: /show archived/i }).click()
-    await page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'To Be Archived' })
-      .click()
-    // Restore visible, Archive not rendered for archived positionings
+    await page.locator('tr').filter({ hasText: 'To Be Archived' }).click()
     await expect(page.getByRole('button', { name: /^restore$/i })).toBeVisible()
     await expect(page.getByRole('button', { name: /^archive$/i })).not.toBeVisible()
   })
@@ -130,10 +112,7 @@ test.describe('Positionings - Archive & Restore', () => {
   test('restore brings positioning back to active list — toast success', async ({ page }) => {
     await page.goto('/positionings')
     await page.getByRole('switch', { name: /show archived/i }).click()
-    await page
-      .locator('tr[aria-expanded]')
-      .filter({ hasText: 'To Be Archived' })
-      .click()
+    await page.locator('tr').filter({ hasText: 'To Be Archived' }).click()
 
     const restoreResponse = page.waitForResponse(
       (resp) => resp.url().includes('/restore') && resp.status() === 200,
@@ -143,8 +122,11 @@ test.describe('Positionings - Archive & Restore', () => {
 
     await expect(page.getByText(/positioning restored/i)).toBeVisible()
 
-    // Toggle archived OFF — restored positioning should be visible in active list
+    // Close drawer before clicking the switch (overlay blocks it)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).not.toBeVisible()
+
     await page.getByRole('switch', { name: /show archived/i }).click()
-    await expect(page.getByText('To Be Archived')).toBeVisible()
+    await expect(page.locator('table').getByText('To Be Archived')).toBeVisible()
   })
 })

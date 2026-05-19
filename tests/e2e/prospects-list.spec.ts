@@ -134,37 +134,30 @@ test.describe('Prospects - List View', () => {
     await expect(page.getByText(/no prospects match your search/i)).toBeVisible()
   })
 
-  // ── Row expand / collapse ───────────────────────────────────────────────────
+  // ── Row click → drawer ──────────────────────────────────────────────────────
 
-  test('clicking a row expands the detail panel', async ({ page }) => {
+  test('clicking a row opens the detail drawer', async ({ page }) => {
     await page.goto('/prospects')
-    const rowBtn = page.locator('tr[aria-expanded]').filter({ hasText: 'Alice Martin' })
-    await expect(rowBtn).toHaveAttribute('aria-expanded', 'false')
-    await rowBtn.click()
-    await expect(rowBtn).toHaveAttribute('aria-expanded', 'true')
+    await page.locator('tr').filter({ hasText: 'Alice Martin' }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await expect(page.getByRole('dialog')).toContainText('Alice Martin')
   })
 
-  test('clicking an expanded row collapses it', async ({ page }) => {
+  test('pressing Escape closes the detail drawer', async ({ page }) => {
     await page.goto('/prospects')
-    const rowBtn = page.locator('tr[aria-expanded]').filter({ hasText: 'Alice Martin' })
-    await rowBtn.click()
-    await expect(rowBtn).toHaveAttribute('aria-expanded', 'true')
-    await rowBtn.click()
-    await expect(rowBtn).toHaveAttribute('aria-expanded', 'false')
+    await page.locator('tr').filter({ hasText: 'Alice Martin' }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).not.toBeVisible()
   })
 
-  test('only one row can be expanded at a time', async ({ page }) => {
+  test('clicking another row updates the drawer content', async ({ page }) => {
     await page.goto('/prospects')
-    const aliceRow = page.locator('tr[aria-expanded]').filter({ hasText: 'Alice Martin' })
-    const bobRow = page.locator('tr[aria-expanded]').filter({ hasText: 'Bob Dupont' })
-
-    await aliceRow.click()
-    await expect(aliceRow).toHaveAttribute('aria-expanded', 'true')
-
-    await bobRow.click()
-    // Alice collapses, Bob expands
-    await expect(aliceRow).toHaveAttribute('aria-expanded', 'false')
-    await expect(bobRow).toHaveAttribute('aria-expanded', 'true')
+    await page.locator('tr').filter({ hasText: 'Alice Martin' }).click()
+    await expect(page.getByRole('dialog')).toContainText('Alice Martin')
+    await page.keyboard.press('Escape')
+    await page.locator('tr').filter({ hasText: 'Bob Dupont' }).click()
+    await expect(page.getByRole('dialog')).toContainText('Bob Dupont')
   })
 
   // ── Empty state ─────────────────────────────────────────────────────────────

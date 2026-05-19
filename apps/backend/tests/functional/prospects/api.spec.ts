@@ -222,6 +222,26 @@ test.group('Prospects API', (group) => {
     response.assertStatus(404)
   })
 
+  test('GET /api/prospects/:id returns archived prospect with deletedAt set', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'get-show-archived')
+    const stage = await getFirstStage(user.id)
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'Archived Show Prospect',
+    })
+    await prospect.delete()
+
+    const response = await client.get(`/api/prospects/${prospect.id}`).loginAs(user)
+
+    response.assertStatus(200)
+    assert.equal(response.body().id, prospect.id)
+    assert.isNotNull(response.body().deletedAt)
+  })
+
   // ===========================
   // POST /api/prospects
   // ===========================

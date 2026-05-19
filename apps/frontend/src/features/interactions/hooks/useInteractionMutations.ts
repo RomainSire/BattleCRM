@@ -24,11 +24,11 @@ export function useUpdateInteraction() {
     mutationFn: ({ id, payload }: { id: string; payload: UpdateInteractionPayload }) =>
       interactionsApi.update(id, payload),
     onSuccess: (updated, { id }) => {
-      // Inject updated data directly into all interaction list variants
       queryClient.setQueriesData<InteractionListResponse>(
         { queryKey: queryKeys.interactions.list() },
         (old) => (old ? { ...old, data: old.data.map((i) => (i.id === id ? updated : i)) } : old),
       )
+      queryClient.setQueryData(queryKeys.interactions.detail(id), updated)
     },
   })
 }

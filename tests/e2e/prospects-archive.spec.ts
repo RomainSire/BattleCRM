@@ -29,7 +29,7 @@ test.describe('Prospects - Archive & Restore', () => {
   test('expanded active prospect shows Archive button', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('tr[aria-expanded]')
+      .locator('tr')
       .filter({ hasText: 'To Be Archived' })
       .click()
     // Archive trigger button has aria-label="Archive To Be Archived" → use [aria-label^="Archive"]
@@ -39,7 +39,7 @@ test.describe('Prospects - Archive & Restore', () => {
   test('clicking Archive opens a confirmation dialog', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('tr[aria-expanded]')
+      .locator('tr')
       .filter({ hasText: 'To Be Archived' })
       .click()
     await page.locator('[aria-label^="Archive"]').first().click()
@@ -50,20 +50,20 @@ test.describe('Prospects - Archive & Restore', () => {
   test('cancelling the archive dialog keeps the prospect in the list', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('tr[aria-expanded]')
+      .locator('tr')
       .filter({ hasText: 'To Be Archived' })
       .click()
     await page.locator('[aria-label^="Archive"]').first().click()
     await expect(page.getByRole('alertdialog')).toBeVisible()
     await page.getByRole('button', { name: /cancel/i }).click()
     await expect(page.getByRole('alertdialog')).not.toBeVisible()
-    await expect(page.getByText('To Be Archived')).toBeVisible()
+    await expect(page.locator('table').getByText('To Be Archived')).toBeVisible()
   })
 
   test('confirming archive removes prospect from active list — toast success', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('tr[aria-expanded]')
+      .locator('tr')
       .filter({ hasText: 'To Be Archived' })
       .click()
     await page.locator('[aria-label^="Archive"]').first().click()
@@ -110,7 +110,7 @@ test.describe('Prospects - Archive & Restore', () => {
     await page.getByRole('switch', { name: /show archived/i }).click()
     // The accordion row for "To Be Archived" should contain the badge text
     // exact: true to avoid matching "Archived" inside the prospect name "To Be Archived"
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'To Be Archived' })
+    const row = page.locator('tr').filter({ hasText: 'To Be Archived' })
     await expect(row.getByText('Archived', { exact: true })).toBeVisible()
   })
 
@@ -120,7 +120,7 @@ test.describe('Prospects - Archive & Restore', () => {
     await page.goto('/prospects')
     await page.getByRole('switch', { name: /show archived/i }).click()
     await page
-      .locator('tr[aria-expanded]')
+      .locator('tr')
       .filter({ hasText: 'To Be Archived' })
       .click()
     // Restore visible, Archive trigger not rendered for archived prospects
@@ -132,7 +132,7 @@ test.describe('Prospects - Archive & Restore', () => {
     await page.goto('/prospects')
     await page.locator('#show-archived').click()
     await page
-      .locator('tr[aria-expanded]')
+      .locator('tr')
       .filter({ hasText: 'To Be Archived' })
       .click()
 
@@ -144,8 +144,12 @@ test.describe('Prospects - Archive & Restore', () => {
 
     await expect(page.getByText(/prospect restored/i)).toBeVisible()
 
+    // Close the drawer before interacting with the page (overlay blocks clicks)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).not.toBeVisible()
+
     // Toggle archived OFF — restored prospect should be visible in active list
     await page.locator('#show-archived').click()
-    await expect(page.getByText('To Be Archived')).toBeVisible()
+    await expect(page.locator('table').getByText('To Be Archived')).toBeVisible()
   })
 })

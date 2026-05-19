@@ -1,6 +1,7 @@
 import type { ExtensionProspectData } from '@battlecrm/shared'
-import { Pencil } from 'lucide-react'
+import { ExternalLink, Pencil } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { getStorage } from '../lib/storage'
 import { Button } from './ui/button'
 import { Separator } from './ui/separator'
 
@@ -12,6 +13,13 @@ interface ProspectCardProps {
 
 export default function ProspectCard({ prospect, onEdit, successMessage }: ProspectCardProps) {
   const { t } = useTranslation()
+
+  async function handleViewInApp() {
+    const { baseUrl, frontendUrl } = await getStorage()
+    const appUrl = frontendUrl || baseUrl
+    if (!appUrl) return
+    browser.tabs.create({ url: `${appUrl}/prospects?prospect=${prospect.id}` })
+  }
 
   return (
     <div className="flex flex-col gap-0">
@@ -50,10 +58,14 @@ export default function ProspectCard({ prospect, onEdit, successMessage }: Prosp
         </div>
       </div>
 
-      <div className="px-4 pb-4">
-        <Button className="w-full" onClick={onEdit} type="button" variant="outline">
+      <div className="flex gap-2 px-4 pb-4">
+        <Button className="flex-1" onClick={onEdit} type="button" variant="outline">
           <Pencil className="size-4" />
           {t('prospect.read.edit')}
+        </Button>
+        <Button className="flex-1" onClick={handleViewInApp} type="button" variant="outline">
+          <ExternalLink className="size-4" />
+          {t('prospect.read.viewInApp')}
         </Button>
       </div>
     </div>

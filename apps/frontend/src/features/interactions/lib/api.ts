@@ -8,6 +8,10 @@ import type {
 import { fetchApi } from '@/lib/api'
 
 export const interactionsApi = {
+  get(id: string): Promise<InteractionType> {
+    return fetchApi<InteractionType>(`/interactions/${id}`)
+  },
+
   list(filters?: InteractionsFilterType): Promise<InteractionListResponse> {
     const params = new URLSearchParams()
     if (filters?.prospect_id) params.set('prospect_id', filters.prospect_id)

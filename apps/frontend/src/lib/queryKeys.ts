@@ -38,6 +38,7 @@ export const queryKeys = {
       filters && Object.keys(filters).length > 0
         ? ([...queryKeys.positionings.all, 'list', filters] as const)
         : ([...queryKeys.positionings.all, 'list'] as const),
+    detail: (id: string) => [...queryKeys.positionings.all, 'detail', id] as const,
     prospects: (id: string) => [...queryKeys.positionings.all, 'prospects', id] as const,
   },
   battles: {
@@ -50,5 +51,6 @@ export const queryKeys = {
       filters && Object.keys(filters).length > 0
         ? ([...queryKeys.interactions.all, 'list', filters] as const)
         : ([...queryKeys.interactions.all, 'list'] as const),
+    detail: (id: string) => [...queryKeys.interactions.all, 'detail', id] as const,
   },
 }

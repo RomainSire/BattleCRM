@@ -81,7 +81,7 @@ test.describe('Prospects - Create & Edit', () => {
   test('created prospect is assigned to a funnel stage by default', async ({ page }) => {
     await page.goto('/prospects')
     // "New Prospect E2E" was created in previous test — it should show a stage name (not "—")
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'New Prospect E2E' })
+    const row = page.locator('tr').filter({ hasText: 'New Prospect E2E' })
     // The row should show a stage name — beforeAll seeds "Lead qualified" as the first stage
     await expect(row).toContainText('Lead qualified')
   })
@@ -91,7 +91,7 @@ test.describe('Prospects - Create & Edit', () => {
   test('expanded active prospect shows "Edit" button', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('tr[aria-expanded]')
+      .locator('tr')
       .filter({ hasText: 'Initial Prospect' })
       .click()
     await expect(page.getByRole('button', { name: /^edit/i })).toBeVisible()
@@ -100,7 +100,7 @@ test.describe('Prospects - Create & Edit', () => {
   test('clicking Edit opens inline form pre-filled with current values', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('tr[aria-expanded]')
+      .locator('tr')
       .filter({ hasText: 'Initial Prospect' })
       .click()
     await page.getByRole('button', { name: /^edit/i }).click()
@@ -115,7 +115,7 @@ test.describe('Prospects - Create & Edit', () => {
   test('cancel edit returns to read-only without saving changes', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('tr[aria-expanded]')
+      .locator('tr')
       .filter({ hasText: 'Initial Prospect' })
       .click()
     await page.getByRole('button', { name: /^edit/i }).click()
@@ -126,16 +126,16 @@ test.describe('Prospects - Create & Edit', () => {
 
     await page.getByRole('button', { name: /cancel/i }).click()
 
-    // Edit form gone, original name still shown
+    // Edit form gone, original name still shown in the drawer (read-only mode)
     await expect(page.getByRole('button', { name: /^save$/i })).not.toBeVisible()
-    await expect(page.getByText('Initial Prospect')).toBeVisible()
+    await expect(page.locator('table').getByText('Initial Prospect')).toBeVisible()
     await expect(page.getByText('Should Not Be Saved')).not.toBeVisible()
   })
 
   test('saving edit updates the prospect name — toast success', async ({ page }) => {
     await page.goto('/prospects')
     await page
-      .locator('tr[aria-expanded]')
+      .locator('tr')
       .filter({ hasText: 'Initial Prospect' })
       .click()
     await page.getByRole('button', { name: /^edit/i }).click()
@@ -155,8 +155,8 @@ test.describe('Prospects - Create & Edit', () => {
 
     // Toast success
     await expect(page.getByText(/prospect updated/i)).toBeVisible()
-    // Read-only view restored with new name
-    await expect(page.getByText('Updated Prospect Name')).toBeVisible()
+    // Read-only view restored with new name (visible in both table row and drawer title)
+    await expect(page.locator('table').getByText('Updated Prospect Name')).toBeVisible()
     await expect(page.getByRole('button', { name: /^edit/i })).toBeVisible()
   })
 })

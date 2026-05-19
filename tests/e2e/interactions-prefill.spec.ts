@@ -58,14 +58,12 @@ test.describe('Interactions - Pre-fill & Quick Actions', () => {
     await expect(page.getByRole('dialog')).toContainText('Pre-fill Prospect')
   })
 
-  test('"+" button does NOT expand the prospect row', async ({ page }) => {
+  test('"+" button does NOT open the prospect drawer', async ({ page }) => {
     await page.goto('/prospects')
-    const row = page.locator('tr[aria-expanded]').filter({ hasText: 'Pre-fill Prospect' })
-    await expect(row).toHaveAttribute('aria-expanded', 'false')
     await page.getByRole('button', { name: 'Log Interaction' }).first().click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    // Row must still be collapsed
-    await expect(row).toHaveAttribute('aria-expanded', 'false')
+    // Prospect drawer must NOT be open — URL must not carry ?prospect=
+    await expect(page).not.toHaveURL(/[?&]prospect=/)
     await page.keyboard.press('Escape')
   })
 
@@ -148,7 +146,7 @@ test.describe('Interactions - Pre-fill & Quick Actions', () => {
     await page.getByRole('switch', { name: /show archived/i }).click()
 
     const archivedRow = page
-      .locator('tr[aria-expanded]')
+      .locator('tr')
       .filter({ hasText: 'Archived Quick Action' })
     await expect(archivedRow).toBeVisible()
     await expect(

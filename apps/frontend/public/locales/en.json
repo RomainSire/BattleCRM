@@ -187,6 +187,7 @@
   "prospects": {
     "title": "Prospects",
     "description": "Manage your prospecting contacts.",
+    "drawerDescription": "Prospect detail",
     "loadError": "Failed to load prospects. Please try again.",
     "empty": "No prospects yet.",
     "emptyFiltered": "No prospects in this stage.",
@@ -312,6 +313,7 @@
   "positionings": {
     "title": "Positionings",
     "description": "Manage your positioning variants per funnel stage.",
+    "drawerDescription": "Positioning detail",
     "addPositioning": "Add Positioning",
     "edit": "Edit",
     "archive": "Archive",
@@ -379,6 +381,7 @@
   "interactions": {
     "title": "Interactions",
     "description": "Manage your interactions with your prospects.",
+    "drawerDescription": "Interaction detail",
     "addInteraction": "Log Interaction",
     "noPositioning": "No positioning",
     "fields": {
