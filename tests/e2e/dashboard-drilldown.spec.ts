@@ -9,6 +9,7 @@
  * Each suite calls hardResetTestData in beforeAll for a clean slate.
  */
 
+import type { Page } from '@playwright/test'
 import { expect, test } from '../support/fixtures'
 import {
   assignPositioning,
@@ -263,11 +264,12 @@ test.describe('Dashboard - Drill-Down Dialog multiple outcomes (6.7)', () => {
 
 // ── Suite 3: Prospect link navigation ────────────────────────────────────────
 
-test.describe('Dashboard - Drill-Down prospect link navigates to /prospects (6.7)', () => {
+test.describe('Dashboard - Drill-Down prospect link opens drawer (6.7)', () => {
   test.describe.configure({ mode: 'serial' })
 
   let stageName: string
   let positioningName: string
+  let prospectId: string
 
   test.beforeAll(async ({ browser, workerStorageState }) => {
     const context = await browser.newContext({ storageState: workerStorageState })
@@ -288,29 +290,34 @@ test.describe('Dashboard - Drill-Down prospect link navigates to /prospects (6.7
       name: 'Dave Navigator',
       funnel_stage_id: stage.id,
     })
+    prospectId = prospect.id
 
     await assignPositioning(context.request, prospect.id, positioning.id)
 
     await context.close()
   })
 
-  test('clicking a prospect link in the dialog navigates to /prospects', async ({ page }) => {
+  async function openDialog(page: Page) {
     await page.goto('/')
-    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: stageName })).toBeVisible()
-
+    await expect(
+      page.locator('[data-slot="accordion-trigger"]', { hasText: stageName }),
+    ).toBeVisible()
     const trigger = page.locator('[data-slot="accordion-trigger"]', {
       has: page.getByText(stageName),
     })
     await trigger.click()
-
     await page.getByRole('button', { name: new RegExp(positioningName) }).first().click()
+    await expect(page.getByRole('dialog').getByText('Dave Navigator')).toBeVisible()
+  }
 
-    const dialog = page.getByRole('dialog')
-    await expect(dialog.getByText('Dave Navigator')).toBeVisible()
+  test('clicking a prospect link navigates to /prospects?prospect=<id>', async ({ page }) => {
+    await openDialog(page)
+    await page.getByRole('dialog').getByRole('link', { name: 'Dave Navigator' }).click()
+    await expect(page).toHaveURL(`/prospects?prospect=${prospectId}`)
+  })
 
-    // Click the prospect link
-    await dialog.getByRole('link', { name: 'Dave Navigator' }).click()
-
-    await expect(page).toHaveURL('/prospects')
+  test('navigating with ?prospect=<id> opens the prospect drawer', async ({ page }) => {
+    await page.goto(`/prospects?prospect=${prospectId}`)
+    await expect(page.getByRole('heading', { name: 'Dave Navigator' })).toBeVisible()
   })
 })

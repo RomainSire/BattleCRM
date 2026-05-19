@@ -185,6 +185,33 @@ test.describe('SettingsScreen', () => {
     await page.getByRole('button', { name: 'FR' }).click()
   })
 
+  test('frontend URL field saves value to storage', async ({ page }) => {
+    const frontendUrlInput = page.getByLabel(/url frontend|frontend url/i)
+    await frontendUrlInput.fill('http://localhost:5173')
+    await page.getByRole('button', { name: /sauver|save/i }).click()
+
+    // Button shows checkmark feedback
+    await expect(page.getByRole('button', { name: '✓' })).toBeVisible()
+
+    // Value is persisted in chrome.storage.local
+    const stored = await page.evaluate(() => {
+      const { chrome } = globalThis as ChromeGlobal
+      return new Promise<Record<string, unknown>>((resolve) => {
+        chrome.storage.local.get(['frontendUrl'], resolve)
+      })
+    })
+    expect(stored.frontendUrl).toBe('http://localhost:5173')
+  })
+
+  test('frontend URL field is pre-filled from storage on open', async ({ page, extensionId }) => {
+    await setStorage(page, { token, baseUrl: API_URL, email: E2E_EMAIL, frontendUrl: 'http://localhost:5173' })
+    await page.reload()
+    await page.getByRole('button', { name: /paramètres|settings/i }).click()
+    await expect(page.getByRole('button', { name: /se déconnecter|sign out/i })).toBeVisible()
+
+    await expect(page.getByLabel(/url frontend|frontend url/i)).toHaveValue('http://localhost:5173')
+  })
+
   test('logout calls API, clears storage, and shows login form', async ({ page }) => {
     await page.getByRole('button', { name: /se déconnecter|sign out/i }).click()
 
