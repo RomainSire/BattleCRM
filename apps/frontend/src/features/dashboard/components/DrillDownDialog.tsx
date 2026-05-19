@@ -106,7 +106,7 @@ export function DrillDownDialog({ cell, children }: DrillDownDialogProps) {
               {prospects.map((prospect) => (
                 <li key={prospect.id} className="flex items-center justify-between gap-2">
                   <Link
-                    to="/prospects"
+                    to={`/prospects?prospect=${prospect.id}`}
                     className="text-sm font-medium text-primary underline-offset-4 hover:underline"
                   >
                     {prospect.name}
