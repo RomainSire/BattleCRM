@@ -179,7 +179,9 @@ test.describe('Prospects - Positioning Section', () => {
     await page
       .getByRole('combobox', { name: /change funnel stage for PP InProgress Prospect/i })
       .click()
-    await page.getByRole('option', { name: 'Linkedin connection' }).click()
+    const listbox = page.getByRole('listbox')
+    await expect(listbox).toBeVisible()
+    await listbox.getByRole('option', { name: 'Linkedin connection' }).click()
     // Non-blocking outcome prompt appears immediately (stage change proceeds regardless)
     await expect(page.getByText(/how did/i)).toBeVisible()
     await expect(page.getByRole('button', { name: /skip/i })).toBeVisible()
