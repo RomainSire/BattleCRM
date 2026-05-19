@@ -29,6 +29,12 @@
     "language": {
       "label": "Langue"
     },
+    "frontendUrl": {
+      "label": "URL Frontend (optionnel)",
+      "hint": "À renseigner uniquement si le frontend tourne sur un port différent (ex: dev local).",
+      "placeholder": "http://localhost:5173",
+      "save": "Sauver"
+    },
     "logout": "Se déconnecter",
     "loggingOut": "Déconnexion…"
   },
@@ -84,7 +90,8 @@
       "stage": "Étape",
       "email": "Email",
       "phone": "Tél",
-      "edit": "Modifier"
+      "edit": "Modifier",
+      "viewInApp": "Voir dans l'app"
     }
   }
 }

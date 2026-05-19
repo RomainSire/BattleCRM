@@ -1,8 +1,11 @@
 import { ArrowLeft, LogOut } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getStorage, setStorage } from '../lib/storage'
 import LanguageSelector from './LanguageSelector'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
 import { Separator } from './ui/separator'
 
 interface SettingsScreenProps {
@@ -14,6 +17,14 @@ interface SettingsScreenProps {
 export default function SettingsScreen({ email, onBack, onLogout }: SettingsScreenProps) {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
+  const [frontendUrl, setFrontendUrl] = useState('')
+  const [frontendUrlSaved, setFrontendUrlSaved] = useState(false)
+
+  useEffect(() => {
+    getStorage().then(({ frontendUrl: saved }) => {
+      setFrontendUrl(saved ?? '')
+    })
+  }, [])
 
   async function handleLogout() {
     setLoading(true)
@@ -22,6 +33,12 @@ export default function SettingsScreen({ email, onBack, onLogout }: SettingsScre
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleSaveFrontendUrl() {
+    await setStorage({ frontendUrl: frontendUrl.trim() || undefined })
+    setFrontendUrlSaved(true)
+    setTimeout(() => setFrontendUrlSaved(false), 2000)
   }
 
   return (
@@ -45,6 +62,25 @@ export default function SettingsScreen({ email, onBack, onLogout }: SettingsScre
         <div className="flex flex-col gap-0.5">
           <p className="text-xs text-muted-foreground">{t('settings.connectedAs')}</p>
           <p className="text-sm font-medium">{email}</p>
+        </div>
+
+        <Separator />
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="frontendUrl">{t('settings.frontendUrl.label')}</Label>
+          <p className="text-xs text-muted-foreground">{t('settings.frontendUrl.hint')}</p>
+          <div className="flex gap-2">
+            <Input
+              id="frontendUrl"
+              onChange={(e) => setFrontendUrl(e.target.value)}
+              placeholder={t('settings.frontendUrl.placeholder')}
+              type="text"
+              value={frontendUrl}
+            />
+            <Button onClick={handleSaveFrontendUrl} size="sm" type="button" variant="outline">
+              {frontendUrlSaved ? '✓' : t('settings.frontendUrl.save')}
+            </Button>
+          </div>
         </div>
 
         <Separator />
