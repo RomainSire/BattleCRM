@@ -21,6 +21,7 @@ import {
 import { usePositionings } from '@/features/positionings/hooks/usePositionings'
 import { useProspects } from '@/features/prospects/hooks/useProspects'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
+import { toLocalDateInput } from '@/lib/dates'
 import { useInteractions } from '../hooks/useInteractions'
 import { InteractionRow } from './InteractionRow'
 
@@ -48,7 +49,7 @@ export function InteractionsList({ onOpenDetail }: Props) {
 
   const allInteractions = data?.data ?? []
   const filtered = allInteractions.filter((i) => {
-    const dateStr = i.interactionDate.slice(0, 10)
+    const dateStr = toLocalDateInput(i.interactionDate)
     if (dateFrom && dateStr < dateFrom) return false
     if (dateTo && dateStr > dateTo) return false
     return true

@@ -8,8 +8,8 @@ export function serializeFunnelStage(stage: FunnelStage): FunnelStageType {
     name: stage.name,
     position: stage.position,
     prospectCount: Number(stage.$extras.prospects_count ?? 0),
-    createdAt: stage.createdAt.toISO()!,
-    updatedAt: stage.updatedAt?.toISO() ?? stage.createdAt.toISO()!,
-    deletedAt: stage.deletedAt?.toISO() ?? null,
+    createdAt: stage.createdAt.toUTC().toISO()!,
+    updatedAt: stage.updatedAt?.toUTC().toISO() ?? stage.createdAt.toUTC().toISO()!,
+    deletedAt: stage.deletedAt?.toUTC().toISO() ?? null,
   }
 }

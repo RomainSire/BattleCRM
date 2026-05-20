@@ -11,9 +11,9 @@ export function serializeBattle(battle: Battle): BattleType {
     battleNumber: battle.battleNumber,
     status: battle.status,
     winnerId: battle.winnerId,
-    startedAt: battle.startedAt.toISO()!,
-    closedAt: battle.closedAt?.toISO() ?? null,
-    createdAt: battle.createdAt.toISO()!,
-    updatedAt: battle.updatedAt?.toISO() ?? null,
+    startedAt: battle.startedAt.toUTC().toISO()!,
+    closedAt: battle.closedAt?.toUTC().toISO() ?? null,
+    createdAt: battle.createdAt.toUTC().toISO()!,
+    updatedAt: battle.updatedAt?.toUTC().toISO() ?? null,
   }
 }

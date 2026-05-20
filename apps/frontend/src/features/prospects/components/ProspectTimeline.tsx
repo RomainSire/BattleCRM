@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { AddInteractionDialog } from '@/features/interactions/components/AddInteractionDialog'
 import { TimelineItem } from '@/features/interactions/components/TimelineItem'
 import { useInteractions } from '@/features/interactions/hooks/useInteractions'
+import { formatDate, getTimestamp } from '@/lib/dates'
 import { useProspectStageTransitions } from '../hooks/useProspectStageTransitions'
 
 type TimelineEvent =
@@ -48,14 +49,14 @@ export function ProspectTimeline({ prospectId, isArchived }: ProspectTimelinePro
       ...interactions.map(
         (i): TimelineEvent => ({
           kind: 'interaction',
-          date: new Date(i.interactionDate).getTime(),
+          date: getTimestamp(i.interactionDate),
           data: i,
         }),
       ),
       ...transitions.map(
         (tr): TimelineEvent => ({
           kind: 'transition',
-          date: new Date(tr.transitionedAt).getTime(),
+          date: getTimestamp(tr.transitionedAt),
           data: tr,
         }),
       ),
@@ -134,9 +135,7 @@ export function ProspectTimeline({ prospectId, isArchived }: ProspectTimelinePro
                       {/* aligns with ChevronRight in TimelineItem */}
                       <ArrowRight className="mt-0.5 size-4 shrink-0 text-muted-foreground/40" />
                       <span>
-                        <span className="mr-2">
-                          {new Date(tr.transitionedAt).toLocaleDateString()}
-                        </span>
+                        <span className="mr-2">{formatDate(tr.transitionedAt)}</span>
                         {tr.fromStageName ?? t('prospects.initialStage')}
                         {' → '}
                         {tr.toStageName}

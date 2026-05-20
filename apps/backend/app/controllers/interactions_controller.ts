@@ -127,8 +127,8 @@ export default class InteractionsController {
       funnelStageId: prospect.funnelStageId,
       notes: payload.notes ?? null,
       interactionDate: payload.interaction_date
-        ? DateTime.fromISO(payload.interaction_date)
-        : DateTime.now(),
+        ? DateTime.fromISO(payload.interaction_date).toUTC()
+        : DateTime.now().toUTC(),
     })
 
     // Reload with full preloads for serializer
@@ -167,7 +167,7 @@ export default class InteractionsController {
       interaction.positioningId = payload.positioning_id ?? null
     }
     if (payload.interaction_date !== undefined) {
-      interaction.interactionDate = DateTime.fromISO(payload.interaction_date)
+      interaction.interactionDate = DateTime.fromISO(payload.interaction_date).toUTC()
     }
     await interaction.save()
 

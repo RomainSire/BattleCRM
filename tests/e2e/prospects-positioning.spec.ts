@@ -158,7 +158,9 @@ test.describe('Prospects - Positioning Section', () => {
   }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'PP Assign Prospect')
-    await page.getByTestId('positioning-edit-btn').click()
+    const editBtn = page.getByTestId('positioning-edit-btn')
+    await expect(editBtn).toBeVisible()
+    await editBtn.click()
     // Full controls now visible
     await expect(page.getByRole('button', { name: /change positioning/i })).toBeVisible()
     // Click "Change positioning" → reassign select appears
@@ -176,9 +178,12 @@ test.describe('Prospects - Positioning Section', () => {
     await page.goto('/prospects')
     await expandProspect(page, 'PP InProgress Prospect')
     // Change the funnel stage using the stage select in ProspectDetail
-    await page
-      .getByRole('combobox', { name: /change funnel stage for PP InProgress Prospect/i })
-      .click()
+    // Wait for stages to load (disabled while useFunnelStages() is pending)
+    const stageCombobox = page.getByRole('combobox', {
+      name: /change funnel stage for PP InProgress Prospect/i,
+    })
+    await expect(stageCombobox).toBeEnabled()
+    await stageCombobox.click()
     const listbox = page.getByRole('listbox')
     await expect(listbox).toBeVisible()
     await listbox.getByRole('option', { name: 'Linkedin connection' }).click()

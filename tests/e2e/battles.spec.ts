@@ -344,7 +344,9 @@ test.describe('Dashboard - Battle History + Detail Dialog (6.6)', () => {
     })
     await trigger.click()
 
-    await page.getByRole('button', { name: /beat/ }).first().click()
+    const beatButton = page.getByRole('button', { name: /beat/ }).first()
+    await expect(beatButton).toBeVisible()
+    await beatButton.click()
 
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
@@ -358,7 +360,9 @@ test.describe('Dashboard - Battle History + Detail Dialog (6.6)', () => {
     })
     await trigger.click()
 
-    await page.getByRole('button', { name: /beat/ }).first().click()
+    const beatButton = page.getByRole('button', { name: /beat/ }).first()
+    await expect(beatButton).toBeVisible()
+    await beatButton.click()
 
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
@@ -372,7 +376,9 @@ test.describe('Dashboard - Battle History + Detail Dialog (6.6)', () => {
     })
     await trigger.click()
 
-    await page.getByRole('button', { name: /beat/ }).first().click()
+    const beatButton = page.getByRole('button', { name: /beat/ }).first()
+    await expect(beatButton).toBeVisible()
+    await beatButton.click()
 
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
@@ -387,7 +393,9 @@ test.describe('Dashboard - Battle History + Detail Dialog (6.6)', () => {
     })
     await trigger.click()
 
-    await page.getByRole('button', { name: /beat/ }).first().click()
+    const beatButton = page.getByRole('button', { name: /beat/ }).first()
+    await expect(beatButton).toBeVisible()
+    await beatButton.click()
 
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
