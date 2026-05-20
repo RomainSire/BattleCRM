@@ -15,8 +15,8 @@ export function serializePositioning(positioning: Positioning): PositioningType 
     name: positioning.name,
     description: positioning.description,
     content: positioning.content,
-    createdAt: positioning.createdAt.toISO()!,
-    updatedAt: positioning.updatedAt?.toISO() ?? null,
-    deletedAt: positioning.deletedAt?.toISO() ?? null,
+    createdAt: positioning.createdAt.toUTC().toISO()!,
+    updatedAt: positioning.updatedAt?.toUTC().toISO() ?? null,
+    deletedAt: positioning.deletedAt?.toUTC().toISO() ?? null,
   }
 }

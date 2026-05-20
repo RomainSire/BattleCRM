@@ -24,9 +24,9 @@ export function serializeProspect(
     title: prospect.title,
     notes: prospect.notes,
     funnelStageId: prospect.funnelStageId,
-    createdAt: prospect.createdAt.toISO()!,
-    updatedAt: prospect.updatedAt?.toISO() ?? prospect.createdAt.toISO()!,
-    deletedAt: prospect.deletedAt?.toISO() ?? null,
+    createdAt: prospect.createdAt.toUTC().toISO()!,
+    updatedAt: prospect.updatedAt?.toUTC().toISO() ?? prospect.createdAt.toUTC().toISO()!,
+    deletedAt: prospect.deletedAt?.toUTC().toISO() ?? null,
     activePositioning,
   }
 }
@@ -62,6 +62,6 @@ export function serializeTransition(t: ProspectStageTransition): StageTransition
     fromStageName: t.fromStage?.name ?? null,
     toStageId: t.toStageId,
     toStageName: t.toStage?.name ?? 'Unknown stage',
-    transitionedAt: t.transitionedAt.toISO()!,
+    transitionedAt: t.transitionedAt.toUTC().toISO()!,
   }
 }

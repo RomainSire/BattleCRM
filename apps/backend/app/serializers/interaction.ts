@@ -19,8 +19,8 @@ export function serializeInteraction(interaction: Interaction): InteractionType 
     positioningId: interaction.positioningId,
     positioningName: positioning?.name ?? null,
     notes: interaction.notes,
-    interactionDate: interaction.interactionDate.toISO()!,
-    createdAt: interaction.createdAt.toISO()!,
-    updatedAt: interaction.updatedAt?.toISO() ?? null,
+    interactionDate: interaction.interactionDate.toUTC().toISO()!,
+    createdAt: interaction.createdAt.toUTC().toISO()!,
+    updatedAt: interaction.updatedAt?.toUTC().toISO() ?? null,
   }
 }

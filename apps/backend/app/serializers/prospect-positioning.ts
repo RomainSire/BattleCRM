@@ -13,7 +13,7 @@ export function serializeProspectPositioning(pp: ProspectPositioning): ProspectP
     positioningId: pp.positioningId,
     funnelStageId: pp.funnelStageId,
     outcome: pp.outcome,
-    createdAt: pp.createdAt.toISO()!,
+    createdAt: pp.createdAt.toUTC().toISO()!,
   }
 }
 
@@ -32,7 +32,7 @@ export function serializeProspectPositioningDetail(
     funnelStageId: pp.funnelStageId,
     funnelStageName: pp.funnelStage?.name ?? 'Stage supprimé',
     outcome: pp.outcome,
-    createdAt: pp.createdAt.toISO()!,
+    createdAt: pp.createdAt.toUTC().toISO()!,
     isActive: pp.funnelStageId === prospectFunnelStageId,
   }
 }
@@ -51,8 +51,8 @@ export function serializePositioningLinkedProspect(
     name: pp.prospect.name,
     funnelStageId: pp.funnelStageId,
     outcome: pp.outcome,
-    createdAt: pp.createdAt.toISO()!,
+    createdAt: pp.createdAt.toUTC().toISO()!,
     isActive: pp.funnelStageId === pp.prospect.funnelStageId,
-    deletedAt: pp.prospect.deletedAt?.toISO() ?? null,
+    deletedAt: pp.prospect.deletedAt?.toUTC().toISO() ?? null,
   }
 }
