@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { usePositionings } from '@/features/positionings/hooks/usePositionings'
 import { ApiError } from '@/lib/api'
+import { localDateInputToISO, toLocalDateInput } from '@/lib/dates'
 import { i18nMessagesProvider } from '@/lib/validation'
 import { updateInteractionSchema } from '../schemas/interaction'
 import { useDeleteInteraction, useUpdateInteraction } from './useInteractionMutations'
@@ -27,7 +28,7 @@ export function useInteractionEdit(
   const [editPositioningId, setEditPositioningId] = useState<string>(
     interaction.positioningId ?? 'none',
   )
-  const [editDate, setEditDate] = useState<string>(interaction.interactionDate.slice(0, 10))
+  const [editDate, setEditDate] = useState<string>(toLocalDateInput(interaction.interactionDate))
 
   const update = useUpdateInteraction()
   const deleteInteraction = useDeleteInteraction()
@@ -62,7 +63,7 @@ export function useInteractionEdit(
     if (!isEditing) {
       reset({ notes: interaction.notes ?? '' })
       setEditPositioningId(interaction.positioningId ?? 'none')
-      setEditDate(interaction.interactionDate.slice(0, 10))
+      setEditDate(toLocalDateInput(interaction.interactionDate))
     }
   }, [interaction, isEditing, reset])
 
@@ -88,7 +89,7 @@ export function useInteractionEdit(
         payload: {
           positioning_id: editPositioningId === 'none' ? null : editPositioningId,
           notes: values.notes.trim() || null,
-          interaction_date: editDate || undefined,
+          interaction_date: editDate ? localDateInputToISO(editDate) : undefined,
         },
       },
       {

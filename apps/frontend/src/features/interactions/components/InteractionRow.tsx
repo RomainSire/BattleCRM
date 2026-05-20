@@ -1,6 +1,7 @@
 import type { InteractionType } from '@battlecrm/shared'
 import { Badge } from '@/components/ui/badge'
 import { TableCell, TableRow } from '@/components/ui/table'
+import { formatDate } from '@/lib/dates'
 
 interface InteractionRowProps {
   interaction: InteractionType
@@ -17,7 +18,7 @@ export function InteractionRow({ interaction, onOpenDetail }: InteractionRowProp
   return (
     <TableRow onClick={() => onOpenDetail(interaction)} className="cursor-pointer">
       <TableCell className="text-sm text-muted-foreground">
-        {new Date(interaction.interactionDate).toLocaleDateString()}
+        {formatDate(interaction.interactionDate)}
       </TableCell>
 
       <TableCell className="font-medium">{interaction.prospectName}</TableCell>

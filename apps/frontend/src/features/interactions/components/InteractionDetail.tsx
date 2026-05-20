@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
+import { formatDateTime } from '@/lib/dates'
 import { useInteractionEdit } from '../hooks/useInteractionEdit'
 
 interface Props {
@@ -160,7 +161,7 @@ export function InteractionDetail({ interaction, onClose }: Props) {
 
           <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
             <span className="text-muted-foreground">{t('interactions.detail.date')}</span>
-            <span>{new Date(interaction.interactionDate).toLocaleString()}</span>
+            <span>{formatDateTime(interaction.interactionDate)}</span>
 
             <span className="text-muted-foreground">{t('interactions.detail.positioning')}</span>
             <span>{interaction.positioningName ?? t('interactions.noPositioning')}</span>

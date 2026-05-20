@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
+import { formatDate, formatDateTime } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { useInteractionEdit } from '../hooks/useInteractionEdit'
 
@@ -72,7 +73,7 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
         />
         <div className="min-w-0 flex-1">
           <span className="text-muted-foreground text-xs">
-            {new Date(interaction.interactionDate).toLocaleDateString()}
+            {formatDate(interaction.interactionDate)}
             {interaction.positioningName && <> · {interaction.positioningName}</>}
           </span>
           {interaction.notes && (
@@ -199,7 +200,7 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
 
               <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
                 <span className="text-muted-foreground">{t('interactions.detail.date')}</span>
-                <span>{new Date(interaction.interactionDate).toLocaleString()}</span>
+                <span>{formatDateTime(interaction.interactionDate)}</span>
 
                 <span className="text-muted-foreground">
                   {t('interactions.detail.positioning')}

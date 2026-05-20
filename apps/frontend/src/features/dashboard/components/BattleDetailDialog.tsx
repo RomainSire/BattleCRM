@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { formatDate } from '@/lib/dates'
 
 interface BattleDetailDialogProps {
   battle: BattleType
@@ -51,13 +52,13 @@ export function BattleDetailDialog({
           <div className="space-y-1 text-sm text-muted-foreground">
             <p>
               {t('dashboard.battleDetailDialog.started', {
-                date: new Date(battle.startedAt).toLocaleDateString(),
+                date: formatDate(battle.startedAt),
               })}
             </p>
             {battle.closedAt && (
               <p>
                 {t('dashboard.battleDetailDialog.closed', {
-                  date: new Date(battle.closedAt).toLocaleDateString(),
+                  date: formatDate(battle.closedAt),
                 })}
               </p>
             )}
