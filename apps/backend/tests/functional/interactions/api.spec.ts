@@ -527,4 +527,25 @@ test.group('Interactions API', (group) => {
     const response = await client.delete(`/api/interactions/${interaction.id}`).loginAs(userB)
     response.assertStatus(404)
   })
+
+  // ===========================
+  // UTC Z-suffix — non-regression
+  // ===========================
+
+  test('GET /api/interactions — dates have Z UTC suffix', async ({ client, assert }) => {
+    const user = await registerUser(client, 'tz-z-suffix')
+    const stage = await getUserFirstStage(user.id)
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'TZ prospect',
+    })
+    await createInteraction(user.id, prospect.id)
+
+    const response = await client.get('/api/interactions').loginAs(user)
+    response.assertStatus(200)
+    const item = response.body().data[0]
+    assert.match(item.interactionDate, /Z$/, 'interactionDate should be UTC with Z suffix')
+    assert.match(item.createdAt, /Z$/, 'createdAt should be UTC with Z suffix')
+  })
 })
