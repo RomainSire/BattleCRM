@@ -10,6 +10,7 @@
 |
 */
 
+process.env.TZ = 'UTC'
 process.env.NODE_ENV = 'test'
 process.env.SESSION_DRIVER = 'memory'
 
