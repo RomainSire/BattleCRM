@@ -7,6 +7,13 @@
     "save": "Save",
     "edit": "Edit"
   },
+  "table": {
+    "noResults": "No results.",
+    "rowCount": "{{count}} result(s)",
+    "page": "Page {{current}} / {{total}}",
+    "previous": "Previous",
+    "next": "Next"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "settings": "Settings",
@@ -329,14 +336,17 @@
     "empty": "No positionings yet.",
     "emptyFiltered": "No positionings for this stage.",
     "clearFilter": "Clear filter",
+    "clearFilters": "Clear filters",
     "filters": {
-      "allStages": "All stages"
+      "allStages": "All stages",
+      "search": "Search..."
     },
     "count": "{{count}} positioning(s)",
     "columns": {
       "name": "Name",
       "stage": "Funnel Stage",
-      "description": "Description"
+      "description": "Description",
+      "createdAt": "Created"
     },
     "fields": {
       "name": "Name",
