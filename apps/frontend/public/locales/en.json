@@ -200,6 +200,7 @@
     "emptyFiltered": "No prospects in this stage.",
     "emptySearch": "No prospects match your search.",
     "clearFilter": "Clear filter",
+    "clearFilters": "Clear filters",
     "filters": {
       "allStages": "All stages"
     },
@@ -427,6 +428,7 @@
     "loadError": "Failed to load interactions.",
     "empty": "No interactions logged yet.",
     "filters": {
+      "search": "Search...",
       "allProspects": "All prospects",
       "allPositionings": "All positionings",
       "allStages": "All stages",

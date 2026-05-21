@@ -1,29 +1,11 @@
-import type { InteractionsFilterType, InteractionType } from '@battlecrm/shared'
-import { useState } from 'react'
+import type { InteractionType } from '@battlecrm/shared'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { DataTable } from '@/components/ui/data-table'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { usePositionings } from '@/features/positionings/hooks/usePositionings'
-import { useProspects } from '@/features/prospects/hooks/useProspects'
-import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
-import { toLocalDateInput } from '@/lib/dates'
 import { useInteractions } from '../hooks/useInteractions'
-import { InteractionRow } from './InteractionRow'
+import { getInteractionsColumns } from './columns'
+import { InteractionsTableToolbar } from './InteractionsTableToolbar'
 
 interface Props {
   onOpenDetail: (interaction: InteractionType) => void
@@ -32,213 +14,31 @@ interface Props {
 export function InteractionsList({ onOpenDetail }: Props) {
   const { t } = useTranslation()
 
-  const [filters, setFilters] = useState<InteractionsFilterType>({})
-  const [dateFrom, setDateFrom] = useState<string>('')
-  const [dateTo, setDateTo] = useState<string>('')
+  const { data, isLoading, isError } = useInteractions()
 
-  const { data, isLoading, isError } = useInteractions(
-    Object.keys(filters).length > 0 ? filters : undefined,
-  )
-  const { data: stagesData } = useFunnelStages()
-  const { data: prospectsData } = useProspects()
-  const { data: positioningsData } = usePositionings()
+  const interactions = data?.data ?? []
+  const columns = useMemo(() => getInteractionsColumns(t), [t])
 
-  const stages = stagesData?.data ?? []
-  const prospects = prospectsData?.data ?? []
-  const positionings = positioningsData?.data ?? []
-
-  const allInteractions = data?.data ?? []
-  const filtered = allInteractions.filter((i) => {
-    const dateStr = toLocalDateInput(i.interactionDate)
-    if (dateFrom && dateStr < dateFrom) return false
-    if (dateTo && dateStr > dateTo) return false
-    return true
-  })
-
-  const hasActiveFilters = Object.keys(filters).length > 0 || dateFrom !== '' || dateTo !== ''
-
-  function handleProspectFilter(value: string) {
-    if (value === 'all') {
-      const { prospect_id: _p, ...rest } = filters
-      setFilters(rest)
-    } else {
-      setFilters((prev) => ({ ...prev, prospect_id: value }))
-    }
-  }
-
-  function handlePositioningFilter(value: string) {
-    if (value === 'all') {
-      const { positioning_id: _p, ...rest } = filters
-      setFilters(rest)
-    } else {
-      setFilters((prev) => ({ ...prev, positioning_id: value }))
-    }
-  }
-
-  function handleStageFilter(value: string) {
-    if (value === 'all') {
-      const { funnel_stage_id: _s, ...rest } = filters
-      setFilters(rest)
-    } else {
-      setFilters((prev) => ({ ...prev, funnel_stage_id: value }))
-    }
-  }
-
-  function clearAllFilters() {
-    setFilters({})
-    setDateFrom('')
-    setDateTo('')
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {['s0', 's1', 's2', 's3', 's4'].map((key) => (
+          <Skeleton key={key} className="h-12 w-full" />
+        ))}
+      </div>
+    )
   }
 
   if (isError) {
     return <p className="text-sm text-destructive">{t('interactions.loadError')}</p>
   }
 
-  const headerSelectTrigger =
-    'h-7 w-full border-input/60 bg-background/60 px-2 text-xs shadow-none focus:ring-0'
-
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <Select value={filters.positioning_id ?? 'all'} onValueChange={handlePositioningFilter}>
-          <SelectTrigger className="h-8 w-44 text-sm">
-            <SelectValue placeholder={t('interactions.filters.allPositionings')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('interactions.filters.allPositionings')}</SelectItem>
-            {positionings.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {hasActiveFilters && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={clearAllFilters}
-            className="h-8"
-          >
-            {t('interactions.filters.clearFilters')}
-          </Button>
-        )}
-      </div>
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent align-top">
-              <TableHead className="min-w-[210px]">
-                <div className="flex flex-col gap-1 py-0.5">
-                  <span className="text-xs font-medium">{t('interactions.detail.date')}</span>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="date"
-                      value={dateFrom}
-                      onChange={(e) => setDateFrom(e.target.value)}
-                      className="h-7 w-[96px] rounded-md border border-input/60 bg-background/60 px-2 text-xs"
-                    />
-                    <span className="text-xs text-muted-foreground">→</span>
-                    <input
-                      type="date"
-                      value={dateTo}
-                      onChange={(e) => setDateTo(e.target.value)}
-                      className="h-7 w-[96px] rounded-md border border-input/60 bg-background/60 px-2 text-xs"
-                    />
-                  </div>
-                </div>
-              </TableHead>
-
-              <TableHead>
-                <div className="flex flex-col gap-1 py-0.5">
-                  <span className="text-xs font-medium">{t('interactions.fields.prospect')}</span>
-                  <Select value={filters.prospect_id ?? 'all'} onValueChange={handleProspectFilter}>
-                    <SelectTrigger className={headerSelectTrigger}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t('interactions.filters.allProspects')}</SelectItem>
-                      {prospects.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </TableHead>
-
-              <TableHead>
-                <div className="flex flex-col gap-1 py-0.5">
-                  <span className="text-xs font-medium">{t('prospects.columns.stage')}</span>
-                  <Select
-                    value={filters.funnel_stage_id ?? 'all'}
-                    onValueChange={handleStageFilter}
-                  >
-                    <SelectTrigger className={headerSelectTrigger}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t('interactions.filters.allStages')}</SelectItem>
-                      {stages.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </TableHead>
-
-              <TableHead>{t('interactions.fields.notes')}</TableHead>
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            {isLoading ? (
-              ['s0', 's1', 's2', 's3', 's4'].map((key) => (
-                <TableRow key={key}>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-32" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-48" />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="py-12 text-center text-muted-foreground">
-                  {t('interactions.empty')}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtered.map((interaction) => (
-                <InteractionRow
-                  key={interaction.id}
-                  interaction={interaction}
-                  onOpenDetail={onOpenDetail}
-                />
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {data && !isLoading && (
-        <p className="text-right text-xs text-muted-foreground">
-          {filtered.length} / {data.meta.total}
-        </p>
-      )}
-    </div>
+    <DataTable
+      columns={columns}
+      data={interactions}
+      onRowClick={onOpenDetail}
+      toolbar={(table) => <InteractionsTableToolbar table={table} />}
+    />
   )
 }

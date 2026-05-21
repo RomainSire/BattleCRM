@@ -1,4 +1,4 @@
-import type { PositioningType } from '@battlecrm/shared'
+import type { ProspectType } from '@battlecrm/shared'
 import type { Table } from '@tanstack/react-table'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -8,22 +8,24 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 
-interface PositioningsTableToolbarProps {
-  table: Table<PositioningType>
+interface ProspectsTableToolbarProps {
+  table: Table<ProspectType>
   showArchived: boolean
   onShowArchivedChange: (value: boolean) => void
 }
 
-export function PositioningsTableToolbar({
+export function ProspectsTableToolbar({
   table,
   showArchived,
   onShowArchivedChange,
-}: PositioningsTableToolbarProps) {
+}: ProspectsTableToolbarProps) {
   const { t } = useTranslation()
 
-  const stageColumn = table.getColumn('funnelStageName')
+  const stageColumn = table.getColumn('stage')
   const stageFilterValue = stageColumn?.getFilterValue() as string | undefined
-  const stageOptions = Array.from(stageColumn?.getFacetedUniqueValues()?.keys() ?? []).sort()
+  const stageOptions = Array.from(stageColumn?.getFacetedUniqueValues()?.keys() ?? [])
+    .filter(Boolean)
+    .sort()
 
   const hasActiveFilters =
     (table.getState().globalFilter ?? '') !== '' ||
@@ -39,7 +41,7 @@ export function PositioningsTableToolbar({
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Input
-        placeholder={t('positionings.filters.search')}
+        placeholder={t('prospects.searchPlaceholder')}
         value={table.getState().globalFilter ?? ''}
         onChange={(e) => table.setGlobalFilter(e.target.value)}
         className="h-8 w-full max-w-xs"
@@ -49,18 +51,18 @@ export function PositioningsTableToolbar({
         options={stageOptions}
         value={stageFilterValue}
         onChange={(val) => stageColumn?.setFilterValue(val)}
-        placeholder={t('positionings.filters.allStages')}
+        placeholder={t('prospects.filters.allStages')}
         emptyLabel={t('table.noResults')}
       />
 
       <div className="flex items-center gap-2">
         <Switch
-          id="show-archived-positionings"
+          id="show-archived-prospects"
           checked={showArchived}
           onCheckedChange={onShowArchivedChange}
         />
-        <Label htmlFor="show-archived-positionings" className="cursor-pointer text-sm">
-          {t('positionings.showArchived')}
+        <Label htmlFor="show-archived-prospects" className="cursor-pointer text-sm">
+          {t('prospects.showArchived')}
         </Label>
       </div>
 
@@ -73,7 +75,7 @@ export function PositioningsTableToolbar({
           className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
           <X />
-          {t('positionings.clearFilters')}
+          {t('prospects.clearFilters')}
         </Button>
       )}
     </div>
