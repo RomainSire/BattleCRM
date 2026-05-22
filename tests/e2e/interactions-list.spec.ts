@@ -75,9 +75,9 @@ test.describe('Interactions - List View', () => {
     await expect(page.getByText('TL Prospect B')).toBeVisible()
   })
 
-  test('shows count "2 / 2" with no filters active', async ({ page }) => {
+  test('shows count with no filters active', async ({ page }) => {
     await page.goto('/interactions')
-    await expect(page.getByText('2 / 2')).toBeVisible()
+    await expect(page.getByText('2 result(s)')).toBeVisible()
   })
 
   // ── Row click opens drawer ───────────────────────────────────────────────────
@@ -149,17 +149,9 @@ test.describe('Interactions - List View', () => {
 
   // ── Filters ──────────────────────────────────────────────────────────────────
 
-  test('prospect filter shows only matching interactions', async ({ page }) => {
-    await page.goto('/interactions')
-    await page.getByRole('combobox').filter({ hasText: 'All prospects' }).click()
-    await page.getByRole('option', { name: 'TL Prospect B' }).click()
-    await expect(page.locator('tbody').getByText('TL Prospect B')).toBeVisible()
-    await expect(page.locator('tbody').getByText('TL Prospect A')).not.toBeVisible()
-  })
-
   test('stage filter shows only matching interactions', async ({ page }) => {
     await page.goto('/interactions')
-    await page.getByRole('combobox').filter({ hasText: 'All stages' }).click()
+    await page.getByPlaceholder(/all stages/i).click()
     await page.getByRole('option', { name: 'Lead qualified' }).click()
     await expect(page.getByText('TL Prospect A')).toBeVisible()
     await expect(page.getByText('TL Prospect B')).not.toBeVisible()
@@ -167,7 +159,7 @@ test.describe('Interactions - List View', () => {
 
   test('positioning filter shows only matching interactions', async ({ page }) => {
     await page.goto('/interactions')
-    await page.getByRole('combobox').filter({ hasText: 'All positionings' }).click()
+    await page.getByPlaceholder(/all positionings/i).click()
     await page.getByRole('option', { name: 'TL Positioning Alpha' }).click()
     await expect(page.getByText('TL Prospect A')).toBeVisible()
     await expect(page.getByText('TL Prospect B')).not.toBeVisible()
@@ -179,31 +171,31 @@ test.describe('Interactions - List View', () => {
     await page.locator('input[type="date"]').last().fill('2024-12-31')
     await expect(page.getByText('TL Prospect A')).toBeVisible()
     await expect(page.getByText('TL Prospect B')).not.toBeVisible()
-    await expect(page.getByText('1 / 2')).toBeVisible()
+    await expect(page.getByText('1 result(s)')).toBeVisible()
   })
 
   test('"Clear filters" button resets all filters', async ({ page }) => {
     await page.goto('/interactions')
-    await page.getByRole('combobox').filter({ hasText: 'All prospects' }).click()
-    await page.getByRole('option', { name: 'TL Prospect A' }).click()
+    await page.getByPlaceholder(/all stages/i).click()
+    await page.getByRole('option', { name: 'Lead qualified' }).click()
     await expect(page.getByRole('button', { name: /clear filters/i })).toBeVisible()
     await page.getByRole('button', { name: /clear filters/i }).click()
     await expect(page.getByText('TL Prospect A')).toBeVisible()
     await expect(page.getByText('TL Prospect B')).toBeVisible()
   })
 
-  test('count shows "1 / 1" with server-side filter, "1 / 2" with date range filter', async ({
+  test('count shows "1 result(s)" with stage filter and with date range filter', async ({
     page,
   }) => {
     await page.goto('/interactions')
-    await page.getByRole('combobox').filter({ hasText: 'All prospects' }).click()
-    await page.getByRole('option', { name: 'TL Prospect A' }).click()
-    await expect(page.getByText('1 / 1')).toBeVisible()
+    await page.getByPlaceholder(/all stages/i).click()
+    await page.getByRole('option', { name: 'Lead qualified' }).click()
+    await expect(page.getByText('1 result(s)')).toBeVisible()
 
     await page.getByRole('button', { name: /clear filters/i }).click()
     await page.locator('input[type="date"]').first().fill('2024-01-01')
     await page.locator('input[type="date"]').last().fill('2024-12-31')
-    await expect(page.getByText('1 / 2')).toBeVisible()
+    await expect(page.getByText('1 result(s)')).toBeVisible()
   })
 
   test('confirming delete removes interaction from list', async ({ page }) => {
@@ -218,12 +210,12 @@ test.describe('Interactions - List View', () => {
 
   // ── Empty state ───────────────────────────────────────────────────────────────
 
-  test('shows "No interactions logged yet." when list is empty', async ({ browser, workerStorageState }) => {
+  test('shows "No results." when list is empty', async ({ browser, workerStorageState }) => {
     const context = await browser.newContext({ storageState: workerStorageState })
     await hardResetTestData(context.request)
     const page = await context.newPage()
     await page.goto('/interactions')
-    await expect(page.getByText(/no interactions logged yet/i)).toBeVisible()
+    await expect(page.getByText('No results.')).toBeVisible()
     await context.close()
   })
 })

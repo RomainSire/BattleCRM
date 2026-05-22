@@ -130,7 +130,7 @@ test.describe('Prospects - Archive & Restore', () => {
 
   test('restore brings prospect back to active list — toast success', async ({ page }) => {
     await page.goto('/prospects')
-    await page.locator('#show-archived').click()
+    await page.getByRole('switch', { name: /show archived/i }).click()
     await page
       .locator('tr')
       .filter({ hasText: 'To Be Archived' })
@@ -149,7 +149,7 @@ test.describe('Prospects - Archive & Restore', () => {
     await expect(page.getByRole('dialog')).not.toBeVisible()
 
     // Toggle archived OFF — restored prospect should be visible in active list
-    await page.locator('#show-archived').click()
+    await page.getByRole('switch', { name: /show archived/i }).click()
     await expect(page.locator('table').getByText('To Be Archived')).toBeVisible()
   })
 })

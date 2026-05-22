@@ -7,6 +7,13 @@
     "save": "Save",
     "edit": "Edit"
   },
+  "table": {
+    "noResults": "No results.",
+    "rowCount": "{{count}} result(s)",
+    "page": "Page {{current}} / {{total}}",
+    "previous": "Previous",
+    "next": "Next"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "settings": "Settings",
@@ -193,6 +200,7 @@
     "emptyFiltered": "No prospects in this stage.",
     "emptySearch": "No prospects match your search.",
     "clearFilter": "Clear filter",
+    "clearFilters": "Clear filters",
     "filters": {
       "allStages": "All stages"
     },
@@ -329,14 +337,17 @@
     "empty": "No positionings yet.",
     "emptyFiltered": "No positionings for this stage.",
     "clearFilter": "Clear filter",
+    "clearFilters": "Clear filters",
     "filters": {
-      "allStages": "All stages"
+      "allStages": "All stages",
+      "search": "Search..."
     },
     "count": "{{count}} positioning(s)",
     "columns": {
       "name": "Name",
       "stage": "Funnel Stage",
-      "description": "Description"
+      "description": "Description",
+      "createdAt": "Created"
     },
     "fields": {
       "name": "Name",
@@ -417,6 +428,7 @@
     "loadError": "Failed to load interactions.",
     "empty": "No interactions logged yet.",
     "filters": {
+      "search": "Search...",
       "allProspects": "All prospects",
       "allPositionings": "All positionings",
       "allStages": "All stages",

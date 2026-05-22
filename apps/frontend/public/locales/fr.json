@@ -7,6 +7,13 @@
     "save": "Enregistrer",
     "edit": "Modifier"
   },
+  "table": {
+    "noResults": "Aucun résultat.",
+    "rowCount": "{{count}} résultat(s)",
+    "page": "Page {{current}} / {{total}}",
+    "previous": "Précédent",
+    "next": "Suivant"
+  },
   "nav": {
     "dashboard": "Tableau de bord",
     "settings": "Paramètres",
@@ -193,6 +200,7 @@
     "emptyFiltered": "Aucun prospect dans cette étape.",
     "emptySearch": "Aucun prospect ne correspond à votre recherche.",
     "clearFilter": "Effacer le filtre",
+    "clearFilters": "Effacer les filtres",
     "filters": {
       "allStages": "Toutes les étapes"
     },
@@ -329,14 +337,17 @@
     "empty": "Aucun positionnement pour le moment.",
     "emptyFiltered": "Aucun positionnement pour cette étape.",
     "clearFilter": "Effacer le filtre",
+    "clearFilters": "Effacer les filtres",
     "filters": {
-      "allStages": "Toutes les étapes"
+      "allStages": "Toutes les étapes",
+      "search": "Rechercher..."
     },
     "count": "{{count}} positionnement(s)",
     "columns": {
       "name": "Nom",
       "stage": "Étape du funnel",
-      "description": "Description"
+      "description": "Description",
+      "createdAt": "Créé le"
     },
     "fields": {
       "name": "Nom",
@@ -417,6 +428,7 @@
     "loadError": "Impossible de charger les interactions.",
     "empty": "Aucune interaction enregistrée.",
     "filters": {
+      "search": "Rechercher...",
       "allProspects": "Tous les prospects",
       "allPositionings": "Tous les positionnements",
       "allStages": "Toutes les étapes",

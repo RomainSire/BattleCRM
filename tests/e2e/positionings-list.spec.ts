@@ -81,7 +81,7 @@ test.describe('Positionings - List View', () => {
     await page.goto('/positionings')
     await page.getByRole('combobox').click()
     await page.getByRole('option', { name: 'Lead qualified' }).click()
-    await expect(page.getByRole('combobox')).toContainText('Lead qualified')
+    await expect(page.getByRole('combobox')).toHaveValue('Lead qualified')
   })
 
   test('stage filter shows only matching positionings', async ({ page }) => {
@@ -102,13 +102,12 @@ test.describe('Positionings - List View', () => {
     await expect(page.getByText('CV Beta')).toBeVisible()
   })
 
-  test('selecting "All stages" in the select resets the filter', async ({ page }) => {
+  test('clearing the stage filter shows all positionings', async ({ page }) => {
     await page.goto('/positionings')
     await page.getByRole('combobox').click()
     await page.getByRole('option', { name: 'Lead qualified' }).click()
     await expect(page.getByText('CV Beta')).not.toBeVisible()
-    await page.getByRole('combobox').click()
-    await page.getByRole('option', { name: /all stages/i }).click()
+    await page.locator('[data-slot="combobox-clear"]').click()
     await expect(page.getByText('CV Beta')).toBeVisible()
   })
 
@@ -169,11 +168,10 @@ test.describe('Positionings - List View', () => {
 
   // ── Empty states ────────────────────────────────────────────────────────────
 
-  test('shows "No positionings for this stage" when filter matches nothing', async ({ page }) => {
+  test('shows "No results." when filter matches nothing', async ({ page }) => {
     await page.goto('/positionings')
-    await page.getByRole('combobox').click()
-    await page.getByRole('option', { name: 'First contact' }).click()
-    await expect(page.getByText(/no positionings for this stage/i)).toBeVisible()
+    await page.getByPlaceholder('Search...').fill('zzz-no-match')
+    await expect(page.getByText('No results.')).toBeVisible()
   })
 
   // ── Destructive: isolated context (must run LAST — wipes beforeAll data) ──────
@@ -183,7 +181,7 @@ test.describe('Positionings - List View', () => {
     await hardResetTestData(context.request)
     const page = await context.newPage()
     await page.goto('/positionings')
-    await expect(page.getByText(/no positionings yet/i)).toBeVisible()
+    await expect(page.getByText('No results.')).toBeVisible()
     await context.close()
   })
 })
