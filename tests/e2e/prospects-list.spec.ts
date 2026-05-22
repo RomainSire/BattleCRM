@@ -84,7 +84,7 @@ test.describe('Prospects - List View', () => {
     await page.goto('/prospects')
     await page.getByRole('combobox').click()
     await page.getByRole('option', { name: 'Lead qualified' }).click()
-    await expect(page.getByRole('combobox')).toContainText('Lead qualified')
+    await expect(page.getByRole('combobox')).toHaveValue('Lead qualified')
   })
 
   test('stage filter shows only matching prospects', async ({ page }) => {
@@ -108,14 +108,13 @@ test.describe('Prospects - List View', () => {
     await expect(page.getByText('Bob Dupont')).toBeVisible()
   })
 
-  test('selecting "All stages" in the select resets the filter', async ({ page }) => {
+  test('clearing the stage filter shows all prospects', async ({ page }) => {
     await page.goto('/prospects')
     await page.getByRole('combobox').click()
     await page.getByRole('option', { name: 'Lead qualified' }).click()
     await expect(page.getByText('Bob Dupont')).not.toBeVisible()
-    // Select "All stages" to reset
-    await page.getByRole('combobox').click()
-    await page.getByRole('option', { name: /all stages/i }).click()
+    // Click the X button on the combobox to clear the filter
+    await page.locator('[data-slot="combobox-clear"]').click()
     await expect(page.getByText('Bob Dupont')).toBeVisible()
   })
 
@@ -131,7 +130,7 @@ test.describe('Prospects - List View', () => {
   test('search with no results shows empty search state', async ({ page }) => {
     await page.goto('/prospects')
     await page.getByRole('searchbox', { name: /search prospects/i }).fill('zzz-no-match')
-    await expect(page.getByText(/no prospects match your search/i)).toBeVisible()
+    await expect(page.getByText('No results.')).toBeVisible()
   })
 
   // ── Row click → drawer ──────────────────────────────────────────────────────
@@ -168,7 +167,7 @@ test.describe('Prospects - List View', () => {
     await hardResetTestData(context.request)
     const page = await context.newPage()
     await page.goto('/prospects')
-    await expect(page.getByText(/no prospects yet/i)).toBeVisible()
+    await expect(page.getByText('No results.')).toBeVisible()
     await context.close()
   })
 })

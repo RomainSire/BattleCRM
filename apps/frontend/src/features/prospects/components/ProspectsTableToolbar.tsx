@@ -41,6 +41,8 @@ export function ProspectsTableToolbar({
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Input
+        type="search"
+        aria-label={t('prospects.searchPlaceholder')}
         placeholder={t('prospects.searchPlaceholder')}
         value={table.getState().globalFilter ?? ''}
         onChange={(e) => table.setGlobalFilter(e.target.value)}
