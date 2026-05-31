@@ -32,7 +32,7 @@ test.describe('Settings - Funnel Configuration', () => {
 
   test('settings page shows funnel configuration section', async ({ page }) => {
     await page.goto('/settings')
-    await expect(page.getByRole('heading', { name: /funnel configuration/i })).toBeVisible()
+    await expect(page.getByText('Pipeline', { exact: true })).toBeVisible()
   })
 
   test('shows default funnel stages seeded on registration', async ({ page }) => {

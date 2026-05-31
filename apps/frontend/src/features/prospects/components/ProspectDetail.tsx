@@ -80,6 +80,7 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [archiveError, setArchiveError] = useState<string | null>(null)
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false)
   const [restoreError, setRestoreError] = useState<string | null>(null)
   const [stageError, setStageError] = useState<string | null>(null)
   const [showOutcomePrompt, setShowOutcomePrompt] = useState(false)
@@ -360,7 +361,7 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
                 {t('prospects.restore')}
               </Button>
             ) : (
-              <AlertDialog>
+              <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
                 <AlertDialogTrigger asChild>
                   <Button
                     type="button"

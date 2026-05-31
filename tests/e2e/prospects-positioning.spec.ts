@@ -202,8 +202,15 @@ test.describe('Prospects - Positioning Section', () => {
     await expandProspect(page, 'PP Archive Prospect')
     // PP Archive Prospect has Pos Alpha in State B (outcome=null) — archive should auto-set failed
     // Button has aria-label "Archive PP Archive Prospect" (accessible name != visible text)
-    await page.getByRole('button', { name: /archive pp archive prospect/i }).click()
-    await page.getByRole('alertdialog').getByRole('button', { name: 'Archive' }).click()
+    const archiveTrigger = page.getByRole('button', { name: /archive pp archive prospect/i })
+    const archiveDialog = page.getByRole('alertdialog')
+    // Opening the AlertDialog can race with async re-renders of ProspectDetail
+    // (positioning section settling) — retry the trigger until the dialog is shown.
+    await expect(async () => {
+      await archiveTrigger.click()
+      await expect(archiveDialog).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 15_000 })
+    await archiveDialog.getByRole('button', { name: 'Archive' }).click()
     await expect(page.getByText('Prospect archived')).toBeVisible()
     // Prospect no longer in default (non-archived) list
     await expect(

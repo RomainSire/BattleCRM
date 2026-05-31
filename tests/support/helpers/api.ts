@@ -271,6 +271,25 @@ export async function createBattle(
 }
 
 /**
+ * Change the authenticated user's password via API.
+ * Requires an authenticated request context (session cookie).
+ */
+export async function changePassword(
+  request: APIRequestContext,
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  const res = await request.put(`${API_URL}/api/auth/password`, {
+    data: {
+      currentPassword,
+      newPassword,
+      newPasswordConfirmation: newPassword,
+    },
+  })
+  if (!res.ok()) throw new Error(`changePassword failed: ${res.status()} ${await res.text()}`)
+}
+
+/**
  * Close a battle by recording the winner.
  * Requires an authenticated request context.
  */
