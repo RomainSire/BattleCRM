@@ -27,7 +27,9 @@ export function SettingsPage() {
           <div className="space-y-3">
             <div>
               <p className="text-sm font-medium">{t('settings.appearance.title')}</p>
-              <p className="text-sm text-muted-foreground">{t('settings.appearance.description')}</p>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.appearance.description')}
+              </p>
             </div>
             <ToggleGroup
               type="single"
