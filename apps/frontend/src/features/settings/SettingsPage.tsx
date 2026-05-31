@@ -1,7 +1,10 @@
 import { Moon, Sun, SunMoon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { setTheme, useTheme } from '@/lib/theme'
+import { ChangePasswordDialog } from './components/ChangePasswordDialog'
 import { FunnelStageList } from './components/FunnelStageList'
 
 export function SettingsPage() {
@@ -9,54 +12,81 @@ export function SettingsPage() {
   const { theme } = useTheme()
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <header>
         <h1 className="text-3xl font-bold">{t('settings.title')}</h1>
         <p className="text-muted-foreground">{t('settings.description')}</p>
       </header>
 
-      <section>
-        <h2 className="mb-1 text-xl font-semibold">{t('settings.appearance.title')}</h2>
-        <p className="mb-3 text-sm text-muted-foreground">{t('settings.appearance.description')}</p>
-        <ToggleGroup
-          type="single"
-          value={theme}
-          onValueChange={(v) => v && setTheme(v as 'light' | 'dark' | 'system')}
-        >
-          <ToggleGroupItem value="system" className="gap-2">
-            <SunMoon className="size-4" />
-            {t('settings.appearance.themes.system')}
-          </ToggleGroupItem>
-          <ToggleGroupItem value="light" className="gap-2">
-            <Sun className="size-4" />
-            {t('settings.appearance.themes.light')}
-          </ToggleGroupItem>
-          <ToggleGroupItem value="dark" className="gap-2">
-            <Moon className="size-4" />
-            {t('settings.appearance.themes.dark')}
-          </ToggleGroupItem>
-        </ToggleGroup>
-      </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('settings.preferences.title')}</CardTitle>
+          <CardDescription>{t('settings.preferences.description')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-medium">{t('settings.appearance.title')}</p>
+              <p className="text-sm text-muted-foreground">{t('settings.appearance.description')}</p>
+            </div>
+            <ToggleGroup
+              type="single"
+              value={theme}
+              onValueChange={(v) => v && setTheme(v as 'light' | 'dark' | 'system')}
+            >
+              <ToggleGroupItem value="system" className="gap-2">
+                <SunMoon className="size-4" />
+                {t('settings.appearance.themes.system')}
+              </ToggleGroupItem>
+              <ToggleGroupItem value="light" className="gap-2">
+                <Sun className="size-4" />
+                {t('settings.appearance.themes.light')}
+              </ToggleGroupItem>
+              <ToggleGroupItem value="dark" className="gap-2">
+                <Moon className="size-4" />
+                {t('settings.appearance.themes.dark')}
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
 
-      <section>
-        <h2 className="mb-1 text-xl font-semibold">{t('settings.language.title')}</h2>
-        <p className="mb-3 text-sm text-muted-foreground">{t('settings.language.description')}</p>
-        <ToggleGroup
-          type="single"
-          value={i18n.language}
-          onValueChange={(v) => v && i18n.changeLanguage(v)}
-        >
-          <ToggleGroupItem value="fr">Français</ToggleGroupItem>
-          <ToggleGroupItem value="en">English</ToggleGroupItem>
-        </ToggleGroup>
-      </section>
+          <Separator />
 
-      <section>
-        <h2 className="mb-3 text-xl font-semibold">{t('settings.funnelConfig.title')}</h2>
-        <div className="max-w-md">
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-medium">{t('settings.language.title')}</p>
+              <p className="text-sm text-muted-foreground">{t('settings.language.description')}</p>
+            </div>
+            <ToggleGroup
+              type="single"
+              value={i18n.language}
+              onValueChange={(v) => v && i18n.changeLanguage(v)}
+            >
+              <ToggleGroupItem value="fr">Français</ToggleGroupItem>
+              <ToggleGroupItem value="en">English</ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('settings.pipeline.title')}</CardTitle>
+          <CardDescription>{t('settings.pipeline.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
           <FunnelStageList />
-        </div>
-      </section>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('settings.account.title')}</CardTitle>
+          <CardDescription>{t('settings.account.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChangePasswordDialog />
+        </CardContent>
+      </Card>
     </div>
   )
 }

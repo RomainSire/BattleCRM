@@ -26,4 +26,15 @@ export const authApi = {
   logout() {
     return fetchApi<{ message: string }>('/auth/logout', { method: 'POST' })
   },
+
+  changePassword(data: {
+    currentPassword: string
+    newPassword: string
+    newPasswordConfirmation: string
+  }) {
+    return fetchApi<{ message: string }>('/auth/password', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  },
 }

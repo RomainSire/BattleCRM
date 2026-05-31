@@ -49,6 +49,9 @@
       "goToLogin": "Aller à la connexion"
     },
     "notAuthenticated": "Non authentifié",
+    "changePassword": {
+      "invalidCurrentPassword": "Mot de passe actuel incorrect"
+    },
     "fields": {
       "email": "E-mail",
       "password": "Mot de passe",
@@ -144,6 +147,10 @@
   "settings": {
     "title": "Paramètres",
     "description": "Configurez votre pipeline de prospection.",
+    "preferences": {
+      "title": "Préférences",
+      "description": "Apparence et langue."
+    },
     "appearance": {
       "title": "Apparence",
       "description": "Choisissez le thème de l'interface.",
@@ -157,8 +164,25 @@
       "title": "Langue",
       "description": "Choisissez la langue de l'interface."
     },
-    "funnelConfig": {
-      "title": "Configuration du tunnel de vente"
+    "pipeline": {
+      "title": "Pipeline",
+      "description": "Configurez les étapes de votre tunnel."
+    },
+    "account": {
+      "title": "Compte",
+      "description": "Accès et sécurité."
+    },
+    "security": {
+      "changePassword": {
+        "trigger": "Changer le mot de passe",
+        "description": "Saisissez votre mot de passe actuel puis choisissez un nouveau.",
+        "currentPassword": "Mot de passe actuel",
+        "newPassword": "Nouveau mot de passe",
+        "confirmPassword": "Confirmer le nouveau mot de passe",
+        "submit": "Confirmer",
+        "submitting": "Enregistrement...",
+        "success": "Mot de passe modifié avec succès"
+      }
     }
   },
   "funnelStages": {
