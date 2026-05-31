@@ -1,11 +1,12 @@
 import { errors as authErrors } from '@adonisjs/auth'
 import type { HttpContext } from '@adonisjs/core/http'
+import hash from '@adonisjs/core/services/hash'
 import db from '@adonisjs/lucid/services/db'
 import type { AuthResponse, UserType } from '@battlecrm/shared'
 import User from '#models/user'
 import { seedDefaultStages } from '#services/funnel_stage_service'
 import env from '#start/env'
-import { loginValidator, registerValidator } from '#validators/auth'
+import { changePasswordValidator, loginValidator, registerValidator } from '#validators/auth'
 
 export default class AuthController {
   /**
@@ -101,5 +102,32 @@ export default class AuthController {
   async logout({ auth, response }: HttpContext) {
     await auth.use('web').logout()
     return response.ok({ message: 'Logged out' })
+  }
+
+  /**
+   * Change the authenticated user's password
+   * Verifies current password before applying the new one
+   */
+  async changePassword({ request, response, auth }: HttpContext) {
+    const user = auth.user!
+    const data = await request.validateUsing(changePasswordValidator)
+
+    const isValid = await hash.verify(user.password, data.currentPassword)
+    if (!isValid) {
+      return response.badRequest({
+        errors: [
+          {
+            message: 'auth.changePassword.invalidCurrentPassword',
+            field: 'currentPassword',
+            rule: 'invalid',
+          },
+        ],
+      })
+    }
+
+    user.password = data.newPassword
+    await user.save()
+
+    return response.ok({ message: 'Password changed' })
   }
 }
