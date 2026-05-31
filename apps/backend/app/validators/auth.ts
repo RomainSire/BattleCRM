@@ -19,3 +19,14 @@ export const loginValidator = vine.create(
     password: vine.string(),
   }),
 )
+
+/**
+ * Validator for password change
+ */
+export const changePasswordValidator = vine.create(
+  vine.object({
+    currentPassword: vine.string(),
+    newPassword: vine.string().minLength(8),
+    newPasswordConfirmation: vine.string().sameAs('newPassword'),
+  }),
+)

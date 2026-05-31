@@ -49,6 +49,9 @@
       "goToLogin": "Go to login"
     },
     "notAuthenticated": "Not authenticated",
+    "changePassword": {
+      "invalidCurrentPassword": "Current password is incorrect"
+    },
     "fields": {
       "email": "Email",
       "password": "Password",
@@ -144,6 +147,10 @@
   "settings": {
     "title": "Settings",
     "description": "Configure your prospecting pipeline.",
+    "preferences": {
+      "title": "Preferences",
+      "description": "Appearance and language."
+    },
     "appearance": {
       "title": "Appearance",
       "description": "Choose the interface theme.",
@@ -157,8 +164,25 @@
       "title": "Language",
       "description": "Choose the interface language."
     },
-    "funnelConfig": {
-      "title": "Funnel Configuration"
+    "pipeline": {
+      "title": "Pipeline",
+      "description": "Configure your funnel stages."
+    },
+    "account": {
+      "title": "Account",
+      "description": "Access and security."
+    },
+    "security": {
+      "changePassword": {
+        "trigger": "Change password",
+        "description": "Enter your current password, then choose a new one.",
+        "currentPassword": "Current password",
+        "newPassword": "New password",
+        "confirmPassword": "Confirm new password",
+        "submit": "Confirm",
+        "submitting": "Saving...",
+        "success": "Password changed successfully"
+      }
     }
   },
   "funnelStages": {
