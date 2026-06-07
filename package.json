@@ -10,7 +10,9 @@
     "url": "https://github.com/RomainSire/BattleCRM.git"
   },
   "scripts": {
+    "predev": "pnpm shared:build",
     "dev": "pnpm -r --parallel dev",
+    "predev:extension": "pnpm shared:build",
     "build": "pnpm -r build",
     "lint": "biome check .",
     "format": "biome check --write .",

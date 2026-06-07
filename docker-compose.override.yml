@@ -1,0 +1,7 @@
+# Local development overrides — NOT versioned (see .gitignore).
+# Publishes the Postgres port on the host so the backend running
+# locally (pnpm dev) can reach it on localhost:5432.
+services:
+  postgres:
+    ports:
+      - "${DB_PORT:-5432}:5432"
