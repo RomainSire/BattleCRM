@@ -15,11 +15,27 @@ import { getStorageStatePath, WORKER_COUNT } from '../playwright.config'
 const API_URL = process.env.E2E_API_URL || 'http://localhost:3333'
 const TEST_PASSWORD = process.env.E2E_TEST_PASSWORD || 'E2eTestPwd123!'
 
+// Dedicated user for the explicit login/logout tests in auth.spec.ts. It is kept
+// separate from the worker-session users so those tests can log in/out freely
+// without invalidating any worker's shared storageState.
+const DEDICATED_EMAIL = process.env.E2E_TEST_EMAIL || 'e2e-test@battlecrm.test'
+
 function workerEmail(n: number) {
   return `e2e-worker-${n}@battlecrm.test`
 }
 
 setup('create authenticated sessions', async ({ browser }) => {
+  // Ensure the dedicated login-test user exists (idempotent — 422 = already there).
+  const dedicatedContext = await browser.newContext()
+  const dedicatedRegister = await dedicatedContext.request.post(`${API_URL}/api/auth/register`, {
+    data: { email: DEDICATED_EMAIL, password: TEST_PASSWORD, password_confirmation: TEST_PASSWORD },
+  })
+  if (!dedicatedRegister.ok() && dedicatedRegister.status() !== 422) {
+    const body = await dedicatedRegister.text()
+    throw new Error(`Dedicated user registration failed (${dedicatedRegister.status()}): ${body}`)
+  }
+  await dedicatedContext.close()
+
   for (let n = 0; n < WORKER_COUNT; n++) {
     const email = workerEmail(n)
     const authFile = getStorageStatePath(n)

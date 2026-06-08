@@ -85,11 +85,11 @@ test.group('POST /api/auth/forgot-password', (group) => {
     })
   })
 
-  test('falls back to French when no locale is provided', async ({ client }) => {
+  test('falls back to English when no locale is provided', async ({ client }) => {
     await client.post('/api/auth/forgot-password').json({ email: TEST_EMAIL })
 
     fakeMailer.mails.assertSent(ResetPasswordNotification, (mail) => {
-      mail.message.assertSubject('Réinitialisation de votre mot de passe BattleCRM')
+      mail.message.assertSubject('Reset your BattleCRM password')
       return true
     })
   })
