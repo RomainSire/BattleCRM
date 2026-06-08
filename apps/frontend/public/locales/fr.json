@@ -34,7 +34,27 @@
       "submit": "Se connecter",
       "submitting": "Connexion en cours...",
       "invalidCredentials": "Email ou mot de passe invalide",
-      "createAccount": "Créer un compte"
+      "createAccount": "Créer un compte",
+      "forgotPassword": "Mot de passe oublié ?"
+    },
+    "forgotPassword": {
+      "title": "Mot de passe oublié",
+      "description": "Saisissez votre adresse e-mail pour recevoir un lien de réinitialisation.",
+      "submit": "Envoyer le lien",
+      "submitting": "Envoi en cours...",
+      "emailSent": "Si un compte existe pour cette adresse, un e-mail de réinitialisation vient d'être envoyé.",
+      "backToLogin": "Retour à la connexion"
+    },
+    "resetPassword": {
+      "title": "Réinitialiser le mot de passe",
+      "description": "Choisissez un nouveau mot de passe pour votre compte.",
+      "submit": "Réinitialiser",
+      "submitting": "Réinitialisation...",
+      "success": "Mot de passe réinitialisé avec succès. Vous pouvez vous connecter.",
+      "invalidToken": "Ce lien de réinitialisation est invalide ou a expiré.",
+      "missingToken": "Lien de réinitialisation invalide ou incomplet.",
+      "requestNewLink": "Demander un nouveau lien",
+      "backToLogin": "Retour à la connexion"
     },
     "register": {
       "title": "Inscription",
@@ -55,6 +75,7 @@
     "fields": {
       "email": "E-mail",
       "password": "Mot de passe",
+      "newPassword": "Nouveau mot de passe",
       "confirmPassword": "Confirmer le mot de passe"
     },
     "placeholders": {

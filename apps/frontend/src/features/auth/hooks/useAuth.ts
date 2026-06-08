@@ -67,6 +67,25 @@ export function useChangePassword() {
 }
 
 /**
+ * Request a password-reset email for the given address
+ */
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (email: string) => authApi.forgotPassword(email),
+  })
+}
+
+/**
+ * Reset the password using a token received by email
+ */
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (data: { token: string; password: string; passwordConfirmation: string }) =>
+      authApi.resetPassword(data),
+  })
+}
+
+/**
  * Log out the current user and clear all auth-related queries
  */
 export function useLogout() {

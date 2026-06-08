@@ -43,6 +43,25 @@ export async function logout(request: APIRequestContext): Promise<void> {
   await request.post(`${API_URL}/api/auth/logout`)
 }
 
+/**
+ * Mint a raw password-reset token for the given email (test-only route).
+ * Creates the user if it does not exist. Returns the raw token to embed in the
+ * /reset-password link. Requires E2E_TEST_ROUTES_ENABLED=true on the backend.
+ */
+export async function createPasswordResetToken(
+  request: APIRequestContext,
+  email: string,
+): Promise<string> {
+  const res = await request.post(`${API_URL}/api/test/reset-token`, {
+    data: { email },
+  })
+  if (!res.ok()) {
+    throw new Error(`createPasswordResetToken failed: ${res.status()} ${await res.text()}`)
+  }
+  const body = await res.json()
+  return body.token as string
+}
+
 /** Check health. Useful to verify backend is running before tests. */
 export async function checkHealth(request: APIRequestContext): Promise<boolean> {
   try {

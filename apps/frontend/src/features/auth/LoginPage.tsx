@@ -78,9 +78,13 @@ export function LoginPage() {
             placeholder={t('auth.fields.password')}
           />
 
+          <Button type="submit" disabled={login.isPending}>
+            {login.isPending ? t('auth.login.submitting') : t('auth.login.submit')}
+          </Button>
+
           <div className="flex items-center justify-between">
-            <Button type="submit" disabled={login.isPending}>
-              {login.isPending ? t('auth.login.submitting') : t('auth.login.submit')}
+            <Button variant="link" asChild className="h-auto p-0 text-sm">
+              <Link to="/forgot-password">{t('auth.login.forgotPassword')}</Link>
             </Button>
             {registrationStatus?.allowed && (
               <Button variant="link" asChild>
