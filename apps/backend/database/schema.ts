@@ -145,6 +145,21 @@ export class InteractionSchema extends BaseModel {
   declare userId: string
 }
 
+export class PasswordResetTokenSchema extends BaseModel {
+  static $columns = ['createdAt', 'expiresAt', 'id', 'token', 'userId'] as const
+  $columns = PasswordResetTokenSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column({ isPrimary: true })
+  declare id: string
+  @column()
+  declare token: string
+  @column()
+  declare userId: string
+}
+
 export class PositioningSchema extends BaseModel {
   static $columns = [
     'content',

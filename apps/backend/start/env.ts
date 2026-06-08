@@ -65,4 +65,19 @@ export default await Env.create(new URL('../', import.meta.url), {
   |----------------------------------------------------------
   */
   ALLOW_REGISTRATION: Env.schema.boolean(),
+
+  /*
+  |----------------------------------------------------------
+  | Variables for sending emails (Gmail SMTP)
+  |----------------------------------------------------------
+  */
+  GMAIL_USER: Env.schema.string(),
+  GMAIL_APP_PASSWORD: Env.schema.string(),
+
+  /*
+  |----------------------------------------------------------
+  | Public frontend URL (used to build email links)
+  |----------------------------------------------------------
+  */
+  FRONTEND_URL: Env.schema.string(),
 })

@@ -3,8 +3,10 @@ import { AuthLayout } from '@/components/layouts/AuthLayout'
 import { GuestLayout } from '@/components/layouts/GuestLayout'
 import { AuthGuard } from '@/features/auth/components/AuthGuard'
 import { GuestGuard } from '@/features/auth/components/GuestGuard'
+import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { InteractionsPage } from '@/features/interactions/InteractionsPage'
 import { PositioningsPage } from '@/features/positionings/PositioningsPage'
@@ -28,6 +30,8 @@ export function AppRouter() {
           <Route element={<GuestLayout />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

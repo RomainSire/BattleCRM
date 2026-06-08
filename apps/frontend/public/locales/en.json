@@ -34,7 +34,27 @@
       "submit": "Sign In",
       "submitting": "Signing in...",
       "invalidCredentials": "Invalid email or password",
-      "createAccount": "Create an account"
+      "createAccount": "Create an account",
+      "forgotPassword": "Forgot password?"
+    },
+    "forgotPassword": {
+      "title": "Forgot password",
+      "description": "Enter your email address to receive a reset link.",
+      "submit": "Send link",
+      "submitting": "Sending...",
+      "emailSent": "If an account exists for that address, a reset email has just been sent.",
+      "backToLogin": "Back to login"
+    },
+    "resetPassword": {
+      "title": "Reset password",
+      "description": "Choose a new password for your account.",
+      "submit": "Reset",
+      "submitting": "Resetting...",
+      "success": "Password reset successfully. You can now sign in.",
+      "invalidToken": "This reset link is invalid or has expired.",
+      "missingToken": "Invalid or incomplete reset link.",
+      "requestNewLink": "Request a new link",
+      "backToLogin": "Back to login"
     },
     "register": {
       "title": "Register",
@@ -55,6 +75,7 @@
     "fields": {
       "email": "Email",
       "password": "Password",
+      "newPassword": "New Password",
       "confirmPassword": "Confirm Password"
     },
     "placeholders": {
