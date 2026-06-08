@@ -1,4 +1,5 @@
 import vine from '@vinejs/vine'
+import { SUPPORTED_LOCALES } from '#mails/reset_password_notification'
 
 /**
  * Validator for user registration data
@@ -37,6 +38,8 @@ export const changePasswordValidator = vine.create(
 export const forgotPasswordValidator = vine.create(
   vine.object({
     email: vine.string().email().trim().toLowerCase(),
+    // UI language, sent by the frontend so the email matches the user's locale.
+    locale: vine.enum(SUPPORTED_LOCALES).optional(),
   }),
 )
 

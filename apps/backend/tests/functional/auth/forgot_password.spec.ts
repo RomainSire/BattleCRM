@@ -66,4 +66,39 @@ test.group('POST /api/auth/forgot-password', (group) => {
 
     response.assertStatus(422)
   })
+
+  test('sends the email in French when locale is "fr"', async ({ client }) => {
+    await client.post('/api/auth/forgot-password').json({ email: TEST_EMAIL, locale: 'fr' })
+
+    fakeMailer.mails.assertSent(ResetPasswordNotification, (mail) => {
+      mail.message.assertSubject('Réinitialisation de votre mot de passe BattleCRM')
+      return true
+    })
+  })
+
+  test('sends the email in English when locale is "en"', async ({ client }) => {
+    await client.post('/api/auth/forgot-password').json({ email: TEST_EMAIL, locale: 'en' })
+
+    fakeMailer.mails.assertSent(ResetPasswordNotification, (mail) => {
+      mail.message.assertSubject('Reset your BattleCRM password')
+      return true
+    })
+  })
+
+  test('falls back to French when no locale is provided', async ({ client }) => {
+    await client.post('/api/auth/forgot-password').json({ email: TEST_EMAIL })
+
+    fakeMailer.mails.assertSent(ResetPasswordNotification, (mail) => {
+      mail.message.assertSubject('Réinitialisation de votre mot de passe BattleCRM')
+      return true
+    })
+  })
+
+  test('returns 422 for an unsupported locale', async ({ client }) => {
+    const response = await client
+      .post('/api/auth/forgot-password')
+      .json({ email: TEST_EMAIL, locale: 'de' })
+
+    response.assertStatus(422)
+  })
 })

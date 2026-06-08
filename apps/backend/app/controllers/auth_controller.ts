@@ -146,13 +146,13 @@ export default class AuthController {
    * the response is identical whether or not the email matches an account.
    */
   async forgotPassword({ request, response }: HttpContext) {
-    const { email } = await request.validateUsing(forgotPasswordValidator)
+    const { email, locale } = await request.validateUsing(forgotPasswordValidator)
 
     const user = await User.findBy('email', email)
     if (user) {
       const rawToken = await generateResetToken(user)
       const resetUrl = `${env.get('FRONTEND_URL')}/reset-password?token=${rawToken}`
-      await mail.send(new ResetPasswordNotification(user.email, resetUrl))
+      await mail.send(new ResetPasswordNotification(user.email, resetUrl, locale))
     }
 
     return response.ok({ message: 'auth.forgotPassword.emailSent' })

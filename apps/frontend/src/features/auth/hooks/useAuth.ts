@@ -71,7 +71,8 @@ export function useChangePassword() {
  */
 export function useForgotPassword() {
   return useMutation({
-    mutationFn: (email: string) => authApi.forgotPassword(email),
+    mutationFn: ({ email, locale }: { email: string; locale: string }) =>
+      authApi.forgotPassword(email, locale),
   })
 }
 

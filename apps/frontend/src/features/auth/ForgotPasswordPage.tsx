@@ -15,7 +15,7 @@ interface ForgotPasswordFormValues {
 }
 
 export function ForgotPasswordPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const forgotPassword = useForgotPassword()
   const [submitted, setSubmitted] = useState(false)
 
@@ -27,9 +27,14 @@ export function ForgotPasswordPage() {
   function onSubmit(data: ForgotPasswordFormValues) {
     // Always show the same confirmation regardless of whether the email exists
     // (server responds identically to prevent account enumeration).
-    forgotPassword.mutate(data.email, {
-      onSettled: () => setSubmitted(true),
-    })
+    // Normalize to a supported locale so the backend email matches the UI language.
+    const locale = (i18n.resolvedLanguage ?? i18n.language).startsWith('fr') ? 'fr' : 'en'
+    forgotPassword.mutate(
+      { email: data.email, locale },
+      {
+        onSettled: () => setSubmitted(true),
+      },
+    )
   }
 
   if (submitted) {

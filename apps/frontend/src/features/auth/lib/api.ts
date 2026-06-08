@@ -38,10 +38,10 @@ export const authApi = {
     })
   },
 
-  forgotPassword(email: string) {
+  forgotPassword(email: string, locale: string) {
     return fetchApi<{ message: string }>('/auth/forgot-password', {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, locale }),
     })
   },
 
