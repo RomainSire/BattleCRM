@@ -54,6 +54,7 @@
     "@adonisjs/core": "^7.3.2",
     "@adonisjs/cors": "^3.0.0",
     "@adonisjs/lucid": "^22.4.2",
+    "@adonisjs/mail": "^10.3.0",
     "@adonisjs/session": "^8.1.0",
     "@battlecrm/shared": "workspace:*",
     "@vinejs/vine": "^4.4.0",

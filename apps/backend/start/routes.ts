@@ -34,6 +34,8 @@ router
         router.get('/registration-status', [AuthController, 'registrationStatus'])
         router.post('/register', [AuthController, 'register']).use(middleware.guest())
         router.post('/login', [AuthController, 'login']).use(middleware.guest())
+        router.post('/forgot-password', [AuthController, 'forgotPassword']).use(middleware.guest())
+        router.post('/reset-password', [AuthController, 'resetPassword']).use(middleware.guest())
         router.get('/me', [AuthController, 'me']).use(middleware.auth())
         router.post('/logout', [AuthController, 'logout']).use(middleware.auth())
         router.put('/password', [AuthController, 'changePassword']).use(middleware.auth())
@@ -149,4 +151,6 @@ router
 // NOT registered in production.
 if (process.env.E2E_TEST_ROUTES_ENABLED === 'true') {
   router.delete('/api/test/reset', [TestController, 'reset']).use(middleware.auth())
+  // Guest route — mints a raw password-reset token for the reset-flow E2E test.
+  router.post('/api/test/reset-token', [TestController, 'createResetToken'])
 }

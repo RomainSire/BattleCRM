@@ -2,11 +2,20 @@ import { errors as authErrors } from '@adonisjs/auth'
 import type { HttpContext } from '@adonisjs/core/http'
 import hash from '@adonisjs/core/services/hash'
 import db from '@adonisjs/lucid/services/db'
+import mail from '@adonisjs/mail/services/main'
 import type { AuthResponse, UserType } from '@battlecrm/shared'
+import ResetPasswordNotification from '#mails/reset_password_notification'
 import User from '#models/user'
 import { seedDefaultStages } from '#services/funnel_stage_service'
+import { consumeToken, generateResetToken } from '#services/password_reset_service'
 import env from '#start/env'
-import { changePasswordValidator, loginValidator, registerValidator } from '#validators/auth'
+import {
+  changePasswordValidator,
+  forgotPasswordValidator,
+  loginValidator,
+  registerValidator,
+  resetPasswordValidator,
+} from '#validators/auth'
 
 export default class AuthController {
   /**
@@ -129,5 +138,44 @@ export default class AuthController {
     await user.save()
 
     return response.ok({ message: 'Password changed' })
+  }
+
+  /**
+   * Request a password-reset email.
+   * Always returns a generic success response to prevent account enumeration:
+   * the response is identical whether or not the email matches an account.
+   */
+  async forgotPassword({ request, response }: HttpContext) {
+    const { email } = await request.validateUsing(forgotPasswordValidator)
+
+    const user = await User.findBy('email', email)
+    if (user) {
+      const rawToken = await generateResetToken(user)
+      const resetUrl = `${env.get('FRONTEND_URL')}/reset-password?token=${rawToken}`
+      await mail.send(new ResetPasswordNotification(user.email, resetUrl))
+    }
+
+    return response.ok({ message: 'auth.forgotPassword.emailSent' })
+  }
+
+  /**
+   * Reset a password using a single-use token received by email.
+   * The token is consumed (deleted) on every attempt, valid or not.
+   */
+  async resetPassword({ request, response }: HttpContext) {
+    const data = await request.validateUsing(resetPasswordValidator)
+
+    const userId = await consumeToken(data.token)
+    if (!userId) {
+      return response.badRequest({
+        errors: [{ message: 'auth.resetPassword.invalidToken', rule: 'invalid' }],
+      })
+    }
+
+    const user = await User.findOrFail(userId)
+    user.password = data.password
+    await user.save()
+
+    return response.ok({ message: 'auth.resetPassword.success' })
   }
 }

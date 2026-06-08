@@ -30,3 +30,23 @@ export const changePasswordValidator = vine.create(
     newPasswordConfirmation: vine.string().sameAs('newPassword'),
   }),
 )
+
+/**
+ * Validator for requesting a password-reset email
+ */
+export const forgotPasswordValidator = vine.create(
+  vine.object({
+    email: vine.string().email().trim().toLowerCase(),
+  }),
+)
+
+/**
+ * Validator for resetting a password from a reset token
+ */
+export const resetPasswordValidator = vine.create(
+  vine.object({
+    token: vine.string(),
+    password: vine.string().minLength(8),
+    passwordConfirmation: vine.string().sameAs('password'),
+  }),
+)
