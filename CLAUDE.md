@@ -1,100 +1,87 @@
 # BattleCRM — Guide pour Claude Code
 
+> Ce fichier est la **source de vérité** pour tout agent travaillant sur ce repo, sans
+> dépendre du contexte BMAD. Lis-le en entier avant de coder une feature.
+
 ## 1. Architecture du projet
 
-Monorepo **pnpm** avec 3 applications et 1 package partagé :
+Monorepo **pnpm** (workspaces) avec 3 applications et 1 package partagé :
 
 ```
 battlecrm/
 ├── apps/
-│   ├── backend/       # AdonisJS 6 (API REST, auth, BDD)
+│   ├── backend/       # AdonisJS 6 (API REST, auth, BDD PostgreSQL)
 │   ├── frontend/      # React 19 + Vite 8 (SPA)
 │   └── extension/     # Extension Chrome (WXT + React)
 ├── packages/
 │   └── shared/        # @battlecrm/shared — types TypeScript partagés (.d.ts only)
+├── tests/
+│   ├── e2e/           # Playwright (frontend) — projet chromium
+│   └── e2e-extension/ # Playwright (extension) — projet extension
+├── .brunoCollection/  # Collection HTTP Bruno (un dossier par ressource d'API)
 ├── docker-compose.yml # 3 services : postgres, backend, frontend
+├── playwright.config.ts
 └── biome.json         # Linter/formatter global (Biome v2)
 ```
+
+Le `.env` est **à la racine du monorepo** (pas dans `apps/backend`). D'où le préfixe
+`ENV_PATH=../../` obligatoire devant toute commande `node ace`.
 
 ### Backend (`apps/backend`)
 
 - **Framework** : AdonisJS 6 + Lucid ORM v22 (PostgreSQL)
 - **Auth** : Session native AdonisJS (scrypt, cookies httpOnly) — PAS Supabase
-- **Validation** : VineJS v4
+- **Validation** : VineJS v4 (`vine.create()`, pas `vine.compile()`)
 - **Tests** : Japa (`tests/unit/`, `tests/functional/`)
-- **ORM** : Lucid v22 — les réponses JSON sont en **camelCase** (comportement par défaut Lucid, pas snake_case)
+- **Sérialisation JSON** : Lucid renvoie du **camelCase** par défaut (`funnelStageId`, pas `funnel_stage_id`)
 
 Import aliases (définis dans `package.json#imports`) :
 ```
-#controllers/*   → app/controllers/
-#models/*        → app/models/
-#serializers/*   → app/serializers/
-#validators/*    → app/validators/
-#middleware/*    → app/middleware/
-#mixins/*        → app/mixins/
-#helpers/*       → app/helpers/
-#services/*      → app/services/
-#start/*         → start/
-#database/*      → database/
+#controllers/*  #models/*  #serializers/*  #validators/*  #middleware/*
+#mixins/*  #helpers/*  #services/*  #start/*  #database/*
 ```
+⚠️ Utiliser `#start/kernel` (PAS `#kernel`).
 
-**Modèles Lucid :**
-- `User`, `FunnelStage`, `Prospect` (SoftDeletes), `ProspectStageTransition`
-- `Positioning`, `ProspectPositioning`, `Interaction`, `Battle`
+**Modèles Lucid :** `User`, `FunnelStage`, `Prospect` (SoftDeletes), `ProspectStageTransition`,
+`Positioning` (SoftDeletes), `ProspectPositioning`, `Interaction`, `Battle` (PAS de SoftDeletes).
 
-**Sérialisation :** fonctions `serializeX()` dans `app/serializers/` retournant les types de `@battlecrm/shared`.
+**Couche par requête** : `Controller → Validator (Vine) → Model (Lucid) → Serializer → type @battlecrm/shared`.
 
 ### Frontend (`apps/frontend`)
 
-- **React 19** + **Vite 8** + **TypeScript**
+- **React 19** + **Vite 8** + **TypeScript strict**
 - **Routing** : React Router v7 (layout routes pour guards `AuthGuard`/`GuestGuard` via `<Outlet />`)
-- **State serveur** : TanStack Query v5
-- **Formulaires** : react-hook-form v7 + VineJS (validation côté client)
+- **State serveur** : TanStack Query v5 (hooks `useX` dans `features/*/hooks/`, clés dans `lib/queryKeys.ts`)
+- **Formulaires** : react-hook-form v7 + VineJS (validation côté client, schemas dans `features/*/schemas/`)
 - **UI** : shadcn/ui (Radix) + Tailwind CSS v4
 - **Drag & drop** : dnd-kit
-- **i18n** : react-i18next
+- **i18n** : react-i18next — locales dans `apps/frontend/public/locales/{fr,en}.json`
 
-Organisation par features : `src/features/{auth,dashboard,prospects,positionings,interactions,settings}/`
-
-Composants shadcn installés : `accordion`, `button`, `input`, `label`, `field`, `text-field`, `dialog`, `card`, `skeleton`, `separator`, `alert-dialog`, `sonner`, `password-input`, `textarea`, `select`, `command`, `popover`, `scroll-area`, `switch`, `toggle-group`, `button-group`, `drawer`, `badge`, `tooltip`.
-
-Custom : `phone-input.tsx` (`@/components/ui/phone-input`) via `react-phone-number-input`, format E.164.
+Organisation **par feature** : `src/features/{auth,dashboard,prospects,positionings,interactions,settings}/`
+avec sous-dossiers `components/`, `hooks/`, `lib/`, `schemas/`.
 
 ### Extension (`apps/extension`)
 
 - **Framework** : [WXT](https://wxt.dev/) + React 19 + TypeScript
-- **UI** : shadcn/ui + Tailwind CSS v4 (via `@tailwindcss/postcss` — PAS `@tailwindcss/vite`, conflit Vite 7/8)
-- **i18n** : react-i18next, locales dans `src/locales/fr.json` + `en.json`
-- **Tests** : Vitest (unitaires uniquement) — E2E extension via Playwright (`pnpm test:e2e:extension`)
-- **`tsconfig.json` standalone** — ne pas utiliser `extends: .wxt/tsconfig.json` (incompatibilité Vite 7/esbuild)
-- **`browser.*`** est auto-importé par WXT dans tous les contextes (pas besoin d'import manuel)
-- **Auth** : tokens d'accès (SHA-256, pas bcrypt) — migration écrite manuellement (`0011_create_auth_access_tokens_table.ts`)
-
-Structure `src/` :
-```
-entrypoints/
-├── popup/         # Unique point d'entrée UI (chrome.windows.create abandonné)
-├── background.ts  # Service worker
-└── content.ts     # Content script LinkedIn
-features/
-├── auth/
-└── prospects/
-locales/
-├── fr.json
-└── en.json
-```
-
-Persistance d'état : `chrome.storage.session` (clé = URL LinkedIn normalisée) — survit au close/reopen du popup, flushé sur navigation vers un autre profil.
+- **UI** : shadcn/ui + Tailwind via `@tailwindcss/postcss` (PAS `@tailwindcss/vite` — conflit Vite 7/8)
+- **i18n** : react-i18next, locales `src/locales/{fr,en}.json`
+- **Tests** : Vitest (unitaires) ; E2E via Playwright (`tests/e2e-extension/`)
+- **`tsconfig.json` standalone** — NE PAS `extends: .wxt/tsconfig.json` (incompat Vite 7/esbuild)
+- **`browser.*`** est auto-importé par WXT partout (pas d'import `webextension-polyfill`)
+- **Auth** : tokens d'accès Bearer (SHA-256) — PAS les cookies de session
+- **Entrypoint unique** : tout passe par `popup/` (pas de `chrome.windows.create`)
+- Persistance d'état formulaire : `chrome.storage.session` (clé = URL LinkedIn normalisée)
 
 ### Package partagé (`packages/shared`)
 
-Types TypeScript uniquement (`emitDeclarationOnly: true`). Ajouter tout nouveau type d'entité ici **avant** de coder le contrôleur backend.
+Types TypeScript **uniquement** (`emitDeclarationOnly: true`), un fichier par entité dans
+`src/types/`. **Toujours ajouter le type ici AVANT de coder le contrôleur backend.**
 
 ### Infrastructure
 
-- **Base de données** : PostgreSQL via Docker (`docker compose up postgres -d` depuis la racine)
-- **Pas de RLS**, pas de Supabase, pas de `DB_SSL`
-- Après un `docker compose up postgres -d` sur un volume vierge : `ENV_PATH=../../ node ace migration:run`
+- PostgreSQL via Docker : `docker compose up postgres -d` (depuis la racine)
+- Pas de RLS, pas de Supabase, pas de `DB_SSL`
+- Sur un volume vierge : `cd apps/backend && ENV_PATH=../../ node ace migration:run`
 
 ---
 
@@ -103,54 +90,45 @@ Types TypeScript uniquement (`emitDeclarationOnly: true`). Ajouter tout nouveau 
 ### Racine (monorepo)
 
 ```bash
-pnpm dev                  # Démarre backend + frontend en parallèle
-pnpm build                # Build toutes les apps
+pnpm dev                  # backend + frontend en parallèle (build shared d'abord)
+pnpm build                # build toutes les apps
 pnpm lint                 # Biome check (lecture seule)
-pnpm format               # Biome check --write (auto-fix)
+pnpm format               # Biome check --write (auto-fix sûr)
 pnpm lint:fix             # Biome check --write --unsafe
-pnpm type-check           # Build shared puis tsc --noEmit sur tout
-pnpm test                 # Lance tous les tests (hors E2E)
-pnpm test:e2e             # Playwright chromium (NE PAS lancer automatiquement)
-pnpm test:e2e:ui          # Playwright avec UI
-pnpm test:e2e:extension   # Playwright extension
-pnpm shared:build         # Build le package partagé
-pnpm check:all            # lint + type-check + backend tests + build extension + E2E
+pnpm type-check           # build shared puis tsc --noEmit partout
+pnpm test                 # tous les tests unitaires/fonctionnels (hors E2E)
+pnpm test:e2e             # Playwright chromium      ⚠️ NE PAS lancer automatiquement
+pnpm test:e2e:extension   # Playwright extension     ⚠️ NE PAS lancer automatiquement
+pnpm shared:build         # build le package partagé
+pnpm check:all            # lint + type-check + backend tests + build extension + E2E (CI complète)
 ```
 
-### Backend (`apps/backend`)
-
-Toutes les commandes `node ace` requièrent le préfixe **`ENV_PATH=../../`** (monorepo, `.env` à la racine).
+### Backend (`apps/backend`) — préfixe `ENV_PATH=../../` obligatoire
 
 ```bash
-ENV_PATH=../../ node ace serve --hmr          # Dev avec hot reload
-ENV_PATH=../../ node ace test                  # Tous les tests Japa
-ENV_PATH=../../ node ace test unit             # Tests unitaires uniquement
-ENV_PATH=../../ node ace test functional       # Tests fonctionnels uniquement
-ENV_PATH=../../ node ace migration:run         # Appliquer les migrations
-ENV_PATH=../../ node ace migration:rollback    # Rollback
-ENV_PATH=../../ node ace make:migration name   # Créer une migration
-ENV_PATH=../../ node ace make:model name       # Créer un modèle
-ENV_PATH=../../ node ace make:controller name  # Créer un contrôleur
+ENV_PATH=../../ node ace serve --hmr           # dev hot reload
+ENV_PATH=../../ node ace test                  # tous les tests Japa
+ENV_PATH=../../ node ace test functional       # fonctionnels uniquement
+ENV_PATH=../../ node ace test unit             # unitaires uniquement
+ENV_PATH=../../ node ace test functional --files=X.spec.ts   # un seul fichier
+ENV_PATH=../../ node ace migration:run         # appliquer les migrations
+ENV_PATH=../../ node ace migration:rollback    # rollback (dev uniquement)
+ENV_PATH=../../ node ace make:migration name   # créer une NOUVELLE migration
+ENV_PATH=../../ node ace make:model name
+ENV_PATH=../../ node ace make:controller name
 ```
 
-### Frontend (`apps/frontend`)
+### Frontend / Extension
 
 ```bash
-pnpm --filter @battlecrm/frontend dev          # Dev Vite
-pnpm --filter @battlecrm/frontend type-check   # tsc --noEmit
-```
-
-### Extension (`apps/extension`)
-
-```bash
-pnpm dev:extension          # WXT dev (Chrome)
-pnpm build:extension        # WXT build (Chrome)
-pnpm --filter @battlecrm/extension build:firefox  # Build Firefox
-pnpm --filter @battlecrm/extension zip            # Zip pour publication
+pnpm --filter @battlecrm/frontend type-check
+pnpm --filter @battlecrm/extension test          # Vitest (run)
 pnpm --filter @battlecrm/extension type-check     # wxt prepare + tsc --noEmit
-pnpm --filter @battlecrm/extension test           # Vitest (run)
-pnpm --filter @battlecrm/extension test:watch     # Vitest (watch)
+pnpm dev:extension                                # WXT dev (Chrome)
 ```
+
+> Toujours passer par les scripts `package.json`. **Ne jamais** `npx <outil>` pour un outil
+> déjà présent dans le workspace (biome, tsc, playwright, vitest, ace…).
 
 ---
 
@@ -158,95 +136,133 @@ pnpm --filter @battlecrm/extension test:watch     # Vitest (watch)
 
 ### Général
 
-- **Linter/Formatter** : Biome v2 — PAS ESLint, PAS Prettier
-- Biome trie les imports alphabétiquement : packages `@` scoped → aliases `#` → imports relatifs
-- Auto-fix : `pnpm biome check --write .`
-- **TypeScript strict** partout
+- **Linter/Formatter** : Biome v2 — PAS ESLint, PAS Prettier. Auto-fix : `pnpm format`.
+- Biome trie les imports : packages `@`-scoped → aliases `#` → imports relatifs.
+- **TypeScript strict** partout.
 
 ### Backend
 
-- Toujours créer le type dans `packages/shared/src/types/` en premier
-- Toujours créer un `serializeX()` dans `app/serializers/` retournant le type partagé
-- **Champs nullable** : toujours assigner explicitement (`model.field = payload.field ?? null`) — ne jamais laisser `undefined` en mémoire
-- **UUID en query param** : valider avec regex UUID avant d'utiliser dans une requête Lucid (sinon PostgreSQL lève une erreur 500)
-- **`withCount()`** : le résultat est dans `$extras`, mapper manuellement avec `Number($extras.count ?? 0)`
-- **SoftDeletes + sous-ressources** : ajouter `.withTrashed()` quand un parent archivé doit rester accessible
-- **Tests fonctionnels** : utiliser `loginAs(user)` du plugin Japa AdonisJS ; ne pas mocker la BDD (tests d'intégration réels)
-- `assert.isDefined(model.id)` plutôt que `assert.property(model, 'id')` (instances Lucid)
-- Pour tester `null` après création : recharger avec `await Model.findOrFail(id)` avant d'asserter
+- Type partagé dans `packages/shared/src/types/` **en premier**, puis serializer, puis contrôleur.
+- Toujours un `serializeX()` dans `app/serializers/` retournant le type partagé.
+- **Isolation par user** : TOUTE requête sur une ressource utilise le scope `forUser(userId)`.
+  C'est le mécanisme de sécurité central — ne jamais l'oublier.
+- **Champs nullable** : assigner explicitement (`model.field = payload.field ?? null`) — jamais `undefined`.
+- **UUID en query/param** : valider avec `UUID_REGEX` (`#helpers/regex`) avant de passer à Lucid sur
+  une colonne UUID (sinon PostgreSQL → 500). En **param de route**, préférer `.where('id', UUID_REGEX)`
+  (un id non-UUID renvoie alors 404, pas besoin de check manuel dans le contrôleur).
+- **`withCount()`** : résultat dans `$extras`, mapper avec `Number($extras.count ?? 0)`.
+- **SoftDeletes + sous-ressources** : `.withTrashed()` quand un parent archivé doit rester accessible.
+- Conventions HTTP : `response.ok({ message })` pour un DELETE, `response.created(...)` pour un POST,
+  `response.notFound/unprocessableEntity/conflict/badRequest` pour les erreurs métier.
 
 ### Frontend
 
-- **HTML sémantique** : `<main>`, `<header>`, `<section>`, `<nav>` — pas de `<div>` générique quand un élément sémantique existe
-- **Toujours** préférer les composants shadcn aux éléments HTML bruts
-- **Pattern formulaire** : `Label` (shadcn) pour les labels, `FieldError` (de `@/components/ui/field`) pour les erreurs
-- **Phone input** : utiliser `Controller` de react-hook-form (pas `register`), `defaultCountry="FR"`
-- `SelectTrigger` nécessite `className="w-full"` pour s'étirer en pleine largeur
-- `credentials: 'include'` sur **tous** les appels `fetch` (cookies de session)
-- Types API importés depuis `@battlecrm/shared` directement (pas de ré-exports dans les features)
-- **Lucid sérialise en camelCase** : utiliser `funnelStageId` (pas `funnel_stage_id`) dans les réponses
+- **HTML sémantique** : `<main>`, `<header>`, `<section>`, `<nav>` plutôt que `<div>` générique.
+- **Toujours** préférer les composants shadcn aux éléments HTML bruts.
+- **Formulaires** : `Label` (shadcn) + `FieldError` (de `@/components/ui/field`) ; phone input via
+  `Controller` (pas `register`), `defaultCountry="FR"`, format E.164.
+- `SelectTrigger` nécessite `className="w-full"` pour s'étirer.
+- `credentials: 'include'` sur **tous** les `fetch` (cookies de session) — utiliser `fetchApi` de `@/lib/api`.
+- Types API importés depuis `@battlecrm/shared` directement (pas de ré-export par feature).
+- Réponses Lucid en **camelCase** (`funnelStageId`).
+- shadcn Tooltip ne se déclenche pas sur un bouton `disabled` → wrapper le bouton dans un `<span>`.
 
 ### Extension
 
-- **Tailwind** : utiliser `@tailwindcss/postcss` (PAS `@tailwindcss/vite` — conflit Vite 7/8)
-- **`tsconfig.json`** : standalone, ne pas `extends: .wxt/tsconfig.json`
-- **APIs browser** : `browser.*` est auto-importé par WXT — ne pas importer `webextension-polyfill` manuellement
-- **État formulaire** : persister via `chrome.storage.session` avec la clé = URL LinkedIn normalisée ; flusher sur changement de profil
-- **Entrypoint unique** : tout passe par `popup/` — ne pas créer de panels ou nouvelles fenêtres (`chrome.windows.create` abandonné)
-- **Auth** : utiliser les tokens d'accès (SHA-256) — PAS les cookies de session (contexte extension ≠ navigateur standard)
-- **Types API** : importer depuis `@battlecrm/shared` comme pour le frontend
-
-### Tests
-
-- Cycle **red-green-refactor** : écrire le test qui échoue d'abord, puis l'implémentation
-- Backend : Japa (fonctionnels + unitaires) — E2E frontend : Playwright — Extension : Vitest (unitaires)
-- Tests E2E Playwright : NE PAS lancer automatiquement — demander à Romain
-- **Ne jamais mentir sur les tests** : les tests doivent exister et passer à 100%
+- Tailwind via `@tailwindcss/postcss` ; `tsconfig.json` standalone ; `browser.*` auto-importé.
+- Auth Bearer (tokens SHA-256), pas de cookies de session.
+- État formulaire persisté via `chrome.storage.session` (clé = URL LinkedIn normalisée), flushé au
+  changement de profil. Types API depuis `@battlecrm/shared`.
 
 ---
 
-## 4. Ce qu'il ne faut pas faire
+## 4. Ce qu'il FAUT faire (workflow par dev)
 
-- **Ne jamais** utiliser `npx <tool>` pour un outil déjà dans le workspace — toujours passer par les scripts `package.json`
-- **Ne jamais** lancer les tests E2E automatiquement — demander à Romain (trop lents, lancer manuellement)
-- **Ne pas** utiliser Supabase Auth SDK, Supabase RLS, ou `DB_SSL`
-- **Ne pas** utiliser ESLint ou Prettier — Biome v2 uniquement
-- **Ne pas** omettre `ENV_PATH=../../` devant les commandes `node ace`
-- **Ne pas** utiliser `#kernel` comme alias — utiliser `#start/kernel`
-- **Ne pas** utiliser `assert.property(model, 'id')` sur des instances Lucid — utiliser `assert.isDefined(model.id)`
-- **Ne pas** mocker la base de données dans les tests fonctionnels — tests d'intégration réels obligatoires
-- **Ne pas** passer un UUID non validé directement à Lucid `.where()` sur une colonne UUID (erreur PostgreSQL 500)
-- **Ne pas** oublier `.withTrashed()` quand un endpoint de sous-ressource doit accéder à un parent archivé
-- **Ne pas** faire de `git push --force` sans confirmation explicite de Romain
-- **Ne pas** committer sans y être explicitement invité
+Pour **chaque** feature/fix, l'agent doit, dans cet ordre :
+
+1. **Comprendre l'existant d'abord** — lire le code réel concerné avant d'écrire quoi que ce soit.
+2. **Type partagé** : ajouter/mettre à jour le type dans `packages/shared/src/types/` AVANT le backend.
+3. **TDD red-green-refactor** : écrire le test qui échoue **d'abord**, puis l'implémentation.
+4. **Tests adéquats et réels** :
+   - Backend → Japa fonctionnels dans `apps/backend/tests/functional/<ressource>/` (auth, happy path,
+     règles métier, ownership/isolation user, 404/422). Tests d'**intégration réels** : `loginAs(user)`,
+     **jamais** de mock de la BDD.
+   - Logique pure → Japa unitaires (`tests/unit/`). Extension → Vitest.
+   - Parcours utilisateur critique → Playwright E2E (`tests/e2e/`), **à écrire** mais **pas à lancer**
+     automatiquement (lent — demander à Romain de les lancer).
+5. **Mettre à jour la collection Bruno** : pour tout nouvel endpoint ou endpoint modifié, ajouter/éditer
+   le `.bru` dans `.brunoCollection/<ressource>/` (incrémenter le `seq`, suivre le format des fichiers voisins).
+6. **i18n** : toute string UI ajoutée doit l'être dans **`fr.json` ET `en.json`** (frontend et/ou extension).
+7. **Sérialiseur** : tout nouveau champ exposé passe par `serializeX()`.
+8. **Validation finale obligatoire avant de rendre la main** :
+   `pnpm lint` → propre, `pnpm type-check` → 0 erreur, et la suite de tests concernée **verte à 100%**
+   (`ENV_PATH=../../ node ace test functional` pour le backend). 0 régression.
+9. **Documenter** brièvement ce qui a été fait et les fichiers touchés dans la réponse.
 
 ---
 
-## 5. Contexte métier
+## 5. Ce que l'agent NE PEUT PAS faire
 
-**BattleCRM** est un CRM personnel pour la **recherche d'emploi** avec des capacités de **A/B testing** (les "Battles").
+- **Ne jamais committer ni push** — c'est **toujours** Romain qui s'en charge. L'agent peut préparer/stager
+  et décrire le travail, mais `git commit` / `git push` sont interdits sauf demande explicite et ponctuelle.
+  Jamais de `git push --force` sans confirmation.
+- **Ne jamais modifier une migration existante** (`apps/backend/database/migrations/00XX_*.ts` déjà
+  appliquée). Pour tout changement de schéma → **créer une NOUVELLE migration** numérotée à la suite
+  (`make:migration`). Les migrations passées sont immuables.
+- **Ne jamais installer/ajouter/mettre à jour une dépendance** (`pnpm add`, bump de version, nouveau package)
+  **sans demander** l'accord de Romain au préalable.
+- **Ne jamais lancer les tests E2E automatiquement** (Playwright) — trop lents, les demander à Romain.
+- **Ne pas mentir sur les tests** : ils doivent réellement exister et passer à 100%.
+- **Ne pas** utiliser Supabase (Auth SDK, RLS) ni `DB_SSL`.
+- **Ne pas** utiliser ESLint ni Prettier — Biome v2 uniquement.
+- **Ne pas** oublier `ENV_PATH=../../` devant les commandes `node ace`.
+- **Ne pas** utiliser `npx` pour un outil déjà dans le workspace.
+- **Ne pas** mocker la BDD dans les tests fonctionnels (intégration réelle obligatoire).
+- **Ne pas** passer un UUID non validé à Lucid `.where()` sur une colonne UUID (erreur 500).
+- **Ne pas** oublier `.withTrashed()` quand un endpoint de sous-ressource doit atteindre un parent archivé.
+- **Ne pas** supprimer/écraser un fichier qu'on n'a pas créé sans avoir vérifié son contenu d'abord.
 
-### Concept clé : le "Battle"
+---
 
-L'utilisateur teste différentes **Positionings** (façons de se présenter : message, angle, accroche) auprès de ses **Prospects** (contacts professionnels). Il mesure quel Positioning génère le plus d'interactions positives. C'est le mécanisme central de "battle" entre variantes.
+## 6. Contexte métier
+
+**BattleCRM** est un CRM personnel pour la **recherche d'emploi** avec des capacités d'**A/B testing**
+(les « Battles »).
+
+### Concept clé : le « Battle »
+
+L'utilisateur teste différentes **Positionings** (façons de se présenter : titre, message, angle) auprès
+de ses **Prospects** (contacts professionnels). Il mesure quel Positioning génère le plus d'interactions
+positives. Le « Battle » est le mécanisme central de comparaison entre deux variantes pour une étape du funnel.
 
 ### Entités principales
 
 | Entité | Rôle |
 |---|---|
-| `User` | Propriétaire de toutes les données (isolation totale par user) |
-| `FunnelStage` | Étape du funnel de recherche (ex: "Cible", "Contacté", "Entretien") |
+| `User` | Propriétaire de toutes les données (isolation totale par user via scope `forUser`) |
+| `FunnelStage` | Étape du funnel (ex : « Cible », « Contacté », « Entretien »), ordonnée par `position` |
 | `Prospect` | Contact LinkedIn/email à cibler (SoftDeletes pour archivage) |
 | `ProspectStageTransition` | Historique des changements d'étape d'un prospect |
-| `Positioning` | Variante de présentation à tester (titre, message, angle) |
+| `Positioning` | Variante de présentation à tester (SoftDeletes) |
 | `ProspectPositioning` | Jonction Prospect ↔ Positioning avec `outcome` (`pending`/`success`/`failure`) |
-| `Interaction` | Log d'une interaction avec un prospect (message envoyé, réponse reçue, etc.) |
-| `Battle` | Comparaison de performance entre plusieurs Positionings |
+| `Interaction` | Log d'une interaction avec un prospect |
+| `Battle` | Comparaison A/B de deux Positionings sur un stage. `status` = `active`/`closed`. PAS de SoftDeletes. |
+
+### Règles Battle
+
+- Une seule battle **active** par `(user, funnel_stage)` — contrainte unique partielle en DB.
+- `battleNumber` = `MAX(battle_number)+1` par `(user, stage)`, calculé applicativement (pas de séquence).
+- **Clôturer** une battle (`PATCH /battles/:id/close`) désigne un gagnant (`winnerId`, `status='closed'`),
+  bloqué tant que le feu est rouge (données insuffisantes, n<10/variant — voir `bayesian_service`/`trafficLight`).
+- **Annuler** une battle (`DELETE /battles/:id`) supprime physiquement une battle active sans gagnant,
+  libérant son `battleNumber`. Possible à tout moment.
 
 ### Signal de succès
 
-`prospect_positionings.outcome = 'success'` est **le signal métier clé** indiquant qu'un Positioning a fonctionné avec un Prospect. (L'ancien `interaction.status` a été supprimé en migration `0010`.)
+`prospect_positionings.outcome = 'success'` est **le signal métier clé** indiquant qu'un Positioning a
+fonctionné avec un Prospect. (L'ancien `interaction.status` a été supprimé en migration `0010`.)
 
 ### Extension Chrome
 
-Permet de capturer des prospects directement depuis LinkedIn. Un seul entrypoint `popup/`. L'état du formulaire est persisté via `chrome.storage.session` (clé = URL LinkedIn normalisée) pour survivre au close/reopen du popup.
+Capture des prospects directement depuis LinkedIn. Entrypoint unique `popup/`. État de formulaire persisté
+via `chrome.storage.session` pour survivre au close/reopen du popup.
