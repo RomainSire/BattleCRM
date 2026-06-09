@@ -5,6 +5,7 @@
  * Suite 2: Active battle display + Traffic Light insufficient data (6.4, 6.5)
  * Suite 3: Traffic Light green + Close Battle flow (6.4, 6.5)
  * Suite 4: Battle History + Detail Dialog (6.6)
+ * Suite 5: Cancel Battle flow (delete active battle, no winner)
  *
  * Tests run serially within each suite (shared worker user — state must be predictable).
  * Each suite runs hardResetTestData in beforeAll to start from a clean slate.
@@ -404,5 +405,109 @@ test.describe('Dashboard - Battle History + Detail Dialog (6.6)', () => {
     await expect(variantRows).toHaveCount(2)
     // No data for either variant since no prospects were set up
     await expect(dialog.getByText('No data')).toHaveCount(2)
+  })
+})
+
+// ── Suite 5: Cancel Battle flow ──────────────────────────────────────────────
+
+test.describe('Dashboard - Cancel Battle flow', () => {
+  test.describe.configure({ mode: 'serial' })
+
+  let stageName: string
+
+  test.beforeAll(async ({ browser, workerStorageState }) => {
+    const context = await browser.newContext({ storageState: workerStorageState })
+    await hardResetTestData(context.request)
+    await resetFunnelStages(context.request)
+
+    const stages = await getFunnelStages(context.request)
+    const stage = stages[0]
+    stageName = stage.name
+
+    const posA = await createPositioning(context.request, {
+      name: 'Pitch Alpha',
+      funnel_stage_id: stage.id,
+    })
+    const posB = await createPositioning(context.request, {
+      name: 'Pitch Beta',
+      funnel_stage_id: stage.id,
+    })
+
+    // No prospect data → traffic light 🔴, but Cancel must stay available regardless.
+    await createBattle(context.request, {
+      funnel_stage_id: stage.id,
+      variant_a_id: posA.id,
+      variant_b_id: posB.id,
+    })
+
+    await context.close()
+  })
+
+  test('"Cancel Battle" button is visible and enabled on an active battle', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Cancel Battle' })).toBeEnabled()
+  })
+
+  test('clicking "Cancel Battle" opens the confirmation dialog', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
+
+    await page.getByRole('button', { name: 'Cancel Battle' }).click()
+
+    const alertDialog = page.getByRole('alertdialog')
+    await expect(alertDialog).toBeVisible()
+    await expect(alertDialog.getByText('Cancel Battle #1?')).toBeVisible()
+    await expect(alertDialog.getByText(/permanently deleted/i)).toBeVisible()
+  })
+
+  test('clicking "Back" dismisses the dialog without cancelling the battle', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
+
+    await page.getByRole('button', { name: 'Cancel Battle' }).click()
+
+    const alertDialog = page.getByRole('alertdialog')
+    await expect(alertDialog).toBeVisible()
+    await alertDialog.getByRole('button', { name: 'Back' }).click()
+
+    await expect(alertDialog).not.toBeVisible()
+    // Battle still active
+    await expect(page.getByText(/Battle #1/)).toBeVisible()
+  })
+
+  test('confirming cancellation deletes the battle and restores "Start Battle"', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
+
+    await page.getByRole('button', { name: 'Cancel Battle' }).click()
+
+    const alertDialog = page.getByRole('alertdialog')
+    await expect(alertDialog).toBeVisible()
+    // The confirm button shares the "Cancel Battle" label — scope it to the dialog.
+    await alertDialog.getByRole('button', { name: 'Cancel Battle' }).click()
+
+    await expect(alertDialog).not.toBeVisible()
+    // The cancelled stage falls back to "No active battle" + "Start Battle".
+    // Scope to this stage's card: after cancellation every stage shows "No active battle".
+    const stageCard = page.locator('[data-slot="accordion-trigger"]', {
+      has: page.getByText(stageName),
+    })
+    await expect(stageCard.getByText('No active battle')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Start Battle' }).first()).toBeVisible()
+  })
+
+  test('cancelled battle leaves no Battle History entry', async ({ page }) => {
+    await page.goto('/')
+    const trigger = page.locator('[data-slot="accordion-trigger"]', {
+      has: page.getByText(stageName),
+    })
+    await expect(trigger).toBeVisible()
+    await trigger.click()
+
+    // Cancellation is a hard-delete — nothing should appear in Battle History.
+    await expect(page.getByText('Battle History')).not.toBeVisible()
   })
 })
