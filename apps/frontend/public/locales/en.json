@@ -105,6 +105,7 @@
     "startNextBattle": "Start Next Battle",
     "closeBattle": "Close Battle",
     "closeBattleDisabledTooltip": "Not enough data to close",
+    "cancelBattle": "Cancel Battle",
     "deletedPositioning": "[Deleted positioning]",
     "startBattleDialog": {
       "title": "Start Battle",
@@ -125,6 +126,14 @@
       "cancel": "Cancel",
       "successToast": "Battle closed — {{winner}} wins!",
       "errorGeneric": "Failed to close battle."
+    },
+    "cancelBattleDialog": {
+      "title": "Cancel Battle #{{n}}?",
+      "description": "This battle will be permanently deleted, with no winner and no history. This action cannot be undone.",
+      "confirm": "Cancel Battle",
+      "cancel": "Back",
+      "successToast": "Battle cancelled.",
+      "errorGeneric": "Failed to cancel battle."
     },
     "battleDetailDialog": {
       "title": "Battle #{{n}}",

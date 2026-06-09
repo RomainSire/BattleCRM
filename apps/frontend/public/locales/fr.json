@@ -105,6 +105,7 @@
     "startNextBattle": "Battle suivante",
     "closeBattle": "Clôturer la Battle",
     "closeBattleDisabledTooltip": "Données insuffisantes pour clôturer",
+    "cancelBattle": "Annuler la Battle",
     "deletedPositioning": "[Positionnement supprimé]",
     "startBattleDialog": {
       "title": "Démarrer une Battle",
@@ -125,6 +126,14 @@
       "cancel": "Annuler",
       "successToast": "Battle clôturée — {{winner}} gagne !",
       "errorGeneric": "Impossible de clôturer la battle."
+    },
+    "cancelBattleDialog": {
+      "title": "Annuler la Battle #{{n}} ?",
+      "description": "Cette battle sera définitivement supprimée, sans gagnant ni historique. Action irréversible.",
+      "confirm": "Annuler la Battle",
+      "cancel": "Retour",
+      "successToast": "Battle annulée.",
+      "errorGeneric": "Impossible d'annuler la battle."
     },
     "battleDetailDialog": {
       "title": "Battle #{{n}}",

@@ -16,6 +16,7 @@ import {
   type TrafficLightResult,
 } from '../lib/trafficLight'
 import { BattleDetailDialog } from './BattleDetailDialog'
+import { CancelBattleDialog } from './CancelBattleDialog'
 import { CloseBattleDialog } from './CloseBattleDialog'
 import { DrillDownDialog } from './DrillDownDialog'
 import { StartBattleDialog } from './StartBattleDialog'
@@ -147,12 +148,15 @@ export function FunnelCard({ stage, cells, battles, positionings }: FunnelCardPr
   function renderBattleAction() {
     if (activeBattle && activeBattleTrafficLight) {
       return (
-        <CloseBattleDialog
-          battle={activeBattle}
-          leadingVariantId={activeBattleTrafficLight.leadingVariantId}
-          disabled={activeBattleTrafficLight.color === 'red'}
-          resolveName={resolveName}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <CloseBattleDialog
+            battle={activeBattle}
+            leadingVariantId={activeBattleTrafficLight.leadingVariantId}
+            disabled={activeBattleTrafficLight.color === 'red'}
+            resolveName={resolveName}
+          />
+          <CancelBattleDialog battle={activeBattle} />
+        </div>
       )
     }
 

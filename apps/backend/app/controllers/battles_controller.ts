@@ -139,6 +139,28 @@ export default class BattlesController {
     return response.ok(serializeBattle(battle))
   }
 
+  async destroy({ auth, params, response }: HttpContext) {
+    const userId = auth.user!.id
+    const { id } = params
+
+    const battle = await Battle.query()
+      .withScopes((s) => s.forUser(userId))
+      .where('id', id)
+      .first()
+    if (!battle) {
+      return response.notFound({ message: 'Battle not found' })
+    }
+
+    if (battle.status !== 'active') {
+      return response.unprocessableEntity({ message: 'Only an active battle can be cancelled' })
+    }
+
+    // Hard-delete — no SoftDeletes on Battle. Frees the battleNumber for the stage.
+    await battle.delete()
+
+    return response.ok({ message: 'Battle cancelled' })
+  }
+
   async performanceMatrix({ auth, response }: HttpContext) {
     const userId = auth.user!.id
 
