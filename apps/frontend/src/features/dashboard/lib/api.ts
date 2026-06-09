@@ -34,4 +34,7 @@ export const battlesApi = {
       body: JSON.stringify(data),
     })
   },
+  cancel(id: string) {
+    return fetchApi<{ message: string }>(`/battles/${id}`, { method: 'DELETE' })
+  },
 }

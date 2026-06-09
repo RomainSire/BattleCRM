@@ -1,0 +1,16 @@
+meta {
+  name: Cancel Battle
+  type: http
+  seq: 5
+}
+
+delete {
+  url: http://localhost:3333/api/battles/{{battleId}}
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
