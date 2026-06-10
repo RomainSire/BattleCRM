@@ -11,6 +11,7 @@
  * Each suite runs hardResetTestData in beforeAll to start from a clean slate.
  */
 
+import type { Locator, Page } from '@playwright/test'
 import { expect, test } from '../support/fixtures'
 import {
   assignPositioning,
@@ -23,6 +24,37 @@ import {
   resetFunnelStages,
   setPositioningOutcome,
 } from '../support/helpers/api'
+
+/**
+ * Expands `stageName`'s funnel card and opens the Battle Detail Dialog for its
+ * first closed battle (the "… beat …" history item). Returns the dialog locator.
+ *
+ * Hardening against a layout-shift flake: the history button lives inside the
+ * Radix AccordionContent, which animates its height open. A click fired before
+ * the content settles can be swallowed (pointerdown/up land on a moving target)
+ * and the dialog never opens. We retry the click until the dialog is actually
+ * visible, so the test no longer depends on animation timing.
+ */
+async function openFirstBattleDetailDialog(page: Page, stageName: string): Promise<Locator> {
+  await page.goto('/')
+
+  const trigger = page.locator('[data-slot="accordion-trigger"]', {
+    has: page.getByText(stageName),
+  })
+  await expect(trigger).toBeVisible()
+  await trigger.click()
+
+  const beatButton = page.getByRole('button', { name: /beat/ }).first()
+  await expect(beatButton).toBeVisible()
+
+  const dialog = page.getByRole('dialog')
+  await expect(async () => {
+    await beatButton.click()
+    await expect(dialog).toBeVisible({ timeout: 2000 })
+  }).toPass({ timeout: 15000 })
+
+  return dialog
+}
 
 // ── Suite 1: Start Battle flow ───────────────────────────────────────────────
 
@@ -327,79 +359,28 @@ test.describe('Dashboard - Battle History + Detail Dialog (6.6)', () => {
   })
 
   test('clicking a history item opens the Battle Detail Dialog', async ({ page }) => {
-    await page.goto('/')
-    const trigger = page.locator('[data-slot="accordion-trigger"]', {
-      has: page.getByText(stageName),
-    })
-    await trigger.click()
-
-    await page.getByRole('button', { name: /beat/ }).first().click()
-
-    await expect(page.getByRole('dialog')).toBeVisible()
+    const dialog = await openFirstBattleDetailDialog(page, stageName)
+    await expect(dialog).toBeVisible()
   })
 
   test('detail dialog shows "Battle #1" as title', async ({ page }) => {
-    await page.goto('/')
-    const trigger = page.locator('[data-slot="accordion-trigger"]', {
-      has: page.getByText(stageName),
-    })
-    await trigger.click()
-
-    const beatButton = page.getByRole('button', { name: /beat/ }).first()
-    await expect(beatButton).toBeVisible()
-    await beatButton.click()
-
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
+    const dialog = await openFirstBattleDetailDialog(page, stageName)
     await expect(dialog.getByRole('heading', { name: /Battle #1/ })).toBeVisible()
   })
 
   test('detail dialog shows start date', async ({ page }) => {
-    await page.goto('/')
-    const trigger = page.locator('[data-slot="accordion-trigger"]', {
-      has: page.getByText(stageName),
-    })
-    await trigger.click()
-
-    const beatButton = page.getByRole('button', { name: /beat/ }).first()
-    await expect(beatButton).toBeVisible()
-    await beatButton.click()
-
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
+    const dialog = await openFirstBattleDetailDialog(page, stageName)
     await expect(dialog.getByText(/Started:/)).toBeVisible()
   })
 
   test('detail dialog shows winner badge', async ({ page }) => {
-    await page.goto('/')
-    const trigger = page.locator('[data-slot="accordion-trigger"]', {
-      has: page.getByText(stageName),
-    })
-    await trigger.click()
-
-    const beatButton = page.getByRole('button', { name: /beat/ }).first()
-    await expect(beatButton).toBeVisible()
-    await beatButton.click()
-
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
+    const dialog = await openFirstBattleDetailDialog(page, stageName)
     await expect(dialog.getByText('Winner:')).toBeVisible()
     await expect(dialog.getByText(winnerName).last()).toBeVisible()
   })
 
   test('detail dialog shows both variant rows', async ({ page }) => {
-    await page.goto('/')
-    const trigger = page.locator('[data-slot="accordion-trigger"]', {
-      has: page.getByText(stageName),
-    })
-    await trigger.click()
-
-    const beatButton = page.getByRole('button', { name: /beat/ }).first()
-    await expect(beatButton).toBeVisible()
-    await beatButton.click()
-
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
+    const dialog = await openFirstBattleDetailDialog(page, stageName)
     // Both variant names appear in the variant rows section
     const variantRows = dialog.locator('.rounded-md.border')
     await expect(variantRows).toHaveCount(2)

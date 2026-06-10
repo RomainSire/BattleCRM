@@ -12,6 +12,7 @@ import { UUID_REGEX } from '#helpers/regex'
 import { middleware } from '#start/kernel'
 
 const AuthController = () => import('#controllers/auth_controller')
+const BackupController = () => import('#controllers/backup_controller')
 const BattlesController = () => import('#controllers/battles_controller')
 const ExtensionAuthController = () => import('#controllers/extension_auth_controller')
 const ExtensionProspectsController = () => import('#controllers/extension_prospects_controller')
@@ -61,6 +62,15 @@ router
           .use(middleware.extensionAuth())
       })
       .prefix('/extension')
+
+    // Backup routes — ALL require auth (export/import des données du user)
+    router
+      .group(() => {
+        router.get('/export', [BackupController, 'export'])
+        router.post('/import', [BackupController, 'import'])
+      })
+      .prefix('/backup')
+      .use(middleware.auth())
 
     // Battles routes — ALL require auth
     router

@@ -1,0 +1,33 @@
+meta {
+  name: Import
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:3333/api/backup/import
+  body: multipartForm
+  auth: inherit
+}
+
+body:multipart-form {
+  file: @file(/absolute/path/to/battlecrm-export.json.gz)
+}
+
+docs {
+  Restaure l'intégralité des données de l'utilisateur authentifié depuis un
+  fichier d'export (`.json.gz`), par REMPLACEMENT TOTAL (opération destructive,
+  atomique).
+
+  Body : `multipart/form-data`, champ `file` = le fichier exporté.
+  ⚠️ Remplacer le chemin `@file(...)` ci-dessus par le chemin absolu d'un
+  fichier obtenu via l'endpoint Export.
+
+  Réponses : `200 { message }` ; `400` (gzip/JSON corrompu) ;
+  `422` (fichier manquant/trop gros, ou enveloppe `format`/`version`/structure invalide).
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

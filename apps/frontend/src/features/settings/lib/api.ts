@@ -1,5 +1,5 @@
 import type { FunnelStageListResponse, FunnelStageType } from '@battlecrm/shared'
-import { fetchApi } from '@/lib/api'
+import { fetchApi, fetchBlob } from '@/lib/api'
 
 export const funnelStagesApi = {
   list() {
@@ -30,6 +30,23 @@ export const funnelStagesApi = {
     return fetchApi<FunnelStageListResponse>('/funnel_stages/reorder', {
       method: 'PUT',
       body: JSON.stringify({ order }),
+    })
+  },
+}
+
+export const backupApi = {
+  /** Download the full account backup as a gzip blob (`.json.gz`). */
+  export() {
+    return fetchBlob('/backup/export')
+  },
+
+  /** Restore the account from a backup file (destructive, total replacement). */
+  import(file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return fetchApi<{ message: string }>('/backup/import', {
+      method: 'POST',
+      body: formData,
     })
   },
 }

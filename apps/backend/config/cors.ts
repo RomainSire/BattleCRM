@@ -26,7 +26,10 @@ const corsConfig = defineConfig({
   },
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH'],
   headers: true,
-  exposeHeaders: [],
+  // `Content-Disposition` must be explicitly exposed so the browser can read the
+  // dated backup filename (e.g. battlecrm-export-2026-06-10.json.gz) from a
+  // cross-origin download response; otherwise the frontend falls back to a generic name.
+  exposeHeaders: ['content-disposition'],
   credentials: true,
   maxAge: 90,
 })
