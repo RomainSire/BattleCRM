@@ -1,4 +1,5 @@
 export type * from './types/auth.js'
+export type * from './types/backup.js'
 export type * from './types/battle.js'
 export type * from './types/dashboard-summary.js'
 export type * from './types/extension.js'
