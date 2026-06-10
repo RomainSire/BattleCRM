@@ -213,6 +213,36 @@
         "submitting": "Saving...",
         "success": "Password changed successfully"
       }
+    },
+    "backup": {
+      "title": "Data & backup",
+      "description": "Export or restore all of your data.",
+      "export": {
+        "title": "Export my data",
+        "description": "Download a .json.gz file containing your entire CRM.",
+        "trigger": "Export",
+        "submitting": "Exporting...",
+        "success": "Export downloaded",
+        "error": "Export failed"
+      },
+      "import": {
+        "title": "Import / Restore",
+        "description": "Restore your data from an export file. This action will permanently replace your current data.",
+        "trigger": "Import a file",
+        "dialogTitle": "Import / Restore my data",
+        "dialogDescription": "Select an export file (.json.gz) to restore your account.",
+        "fileLabel": "Backup file (.json.gz)",
+        "chooseFile": "Choose a file",
+        "noFile": "No file selected",
+        "removeFile": "Remove file",
+        "warning": "⚠ This action will PERMANENTLY replace all of your current data with the file's contents. It cannot be undone.",
+        "confirmWord": "RESTORE",
+        "confirmLabel": "Type \"{{word}}\" to confirm",
+        "submit": "Restore my data",
+        "submitting": "Restoring...",
+        "success": "Data restored successfully",
+        "error": "Import failed"
+      }
     }
   },
   "funnelStages": {

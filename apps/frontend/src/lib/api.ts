@@ -45,11 +45,13 @@ export function translateError(error: ApiErrorDetail): string {
  * @returns Parsed JSON response from the API if successful, or throws an ApiError if the response is not ok
  */
 export async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
+  // FormData uploads must keep the browser-generated multipart boundary header.
+  const isFormData = options?.body instanceof FormData
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
     credentials: 'include',
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...options?.headers,
     },
   })
@@ -61,4 +63,29 @@ export async function fetchApi<T>(path: string, options?: RequestInit): Promise<
   }
 
   return response.json() as Promise<T>
+}
+
+/**
+ * Fetch a binary response (e.g. a file download) as a Blob.
+ * Returns the blob plus the filename parsed from the `Content-Disposition` header.
+ */
+export async function fetchBlob(
+  path: string,
+  options?: RequestInit,
+): Promise<{ blob: Blob; filename: string | null }> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    credentials: 'include',
+  })
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    const errors = body?.errors ?? [{ message: body?.message ?? 'An error occurred' }]
+    throw new ApiError(response.status, errors)
+  }
+
+  const blob = await response.blob()
+  const disposition = response.headers.get('Content-Disposition')
+  const filename = disposition?.match(/filename="?([^"]+)"?/)?.[1] ?? null
+  return { blob, filename }
 }

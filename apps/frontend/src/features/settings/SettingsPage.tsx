@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { setTheme, useTheme } from '@/lib/theme'
+import { BackupSection } from './components/BackupSection'
 import { ChangePasswordDialog } from './components/ChangePasswordDialog'
 import { FunnelStageList } from './components/FunnelStageList'
 
@@ -87,6 +88,16 @@ export function SettingsPage() {
         </CardHeader>
         <CardContent>
           <ChangePasswordDialog />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('settings.backup.title')}</CardTitle>
+          <CardDescription>{t('settings.backup.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <BackupSection />
         </CardContent>
       </Card>
     </div>
