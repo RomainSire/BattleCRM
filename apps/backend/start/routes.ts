@@ -67,6 +67,7 @@ router
     router
       .group(() => {
         router.get('/export', [BackupController, 'export'])
+        router.post('/import', [BackupController, 'import'])
       })
       .prefix('/backup')
       .use(middleware.auth())
