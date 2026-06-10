@@ -1,0 +1,24 @@
+meta {
+  name: Export
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://localhost:3333/api/backup/export
+  body: none
+  auth: inherit
+}
+
+docs {
+  Exporte l'intégralité des données de l'utilisateur authentifié dans un
+  fichier gzip téléchargeable (`battlecrm-export-<date>.json.gz`).
+
+  Réponse : `200` binaire `application/gzip` + en-tête `Content-Disposition`
+  (attachment). Pour récupérer le fichier, utiliser « Save Response » dans Bruno.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
