@@ -81,6 +81,12 @@ jobs:
       - name: Run migrations
         run: cd apps/backend && ENV_PATH=../../ node ace migration:run --force
 
+      # `migration:run` régénère apps/backend/database/schema.ts (fichier versionné)
+      # en version non formatée → ferait planter `biome check`. Le schéma applique
+      # les mêmes migrations : on restaure la version commitée (déjà formatée).
+      - name: Restore generated schema.ts (formatting only)
+        run: git checkout -- apps/backend/database/schema.ts
+
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
