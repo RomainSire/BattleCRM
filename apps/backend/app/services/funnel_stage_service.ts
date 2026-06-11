@@ -2,15 +2,12 @@ import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import FunnelStage from '#models/funnel_stage'
 
 export const DEFAULT_FUNNEL_STAGES = [
-  'Lead qualified',
-  'Linkedin connection',
-  'First contact',
-  'Resume sent',
-  'ENS interview',
-  'Client interview',
-  'Technical tests',
-  'Offer negotiation',
-  'Contract signed',
+  'Prospect → À contacter',
+  'Approche → CV à envoyer',
+  'Qualif ESN → Entretien à décrocher',
+  'Qualif client → Entretien à obtenir',
+  'Closing → Proposition en cours',
+  'GG chef !',
 ] as const
 
 /**
