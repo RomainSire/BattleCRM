@@ -28,6 +28,8 @@ export default class ProspectsController {
     const query = Prospect.query()
       .withScopes((s) => s.forUser(userId))
       .orderBy('updated_at', 'desc')
+      // Tiebreaker: keep a stable order when two prospects share the same updated_at
+      .orderBy('id', 'desc')
 
     if (includeArchived) {
       query.withTrashed()

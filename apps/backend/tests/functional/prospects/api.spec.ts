@@ -69,11 +69,17 @@ test.group('Prospects API', (group) => {
     const user = await registerUser(client, 'get-list')
     const stage = await getFirstStage(user.id)
 
-    // Create Alice first, then Bob
     const alice = await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'Alice' })
-    await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'Bob' })
-    // Touch Alice after Bob so she gets the most recent updated_at
-    await alice.merge({ company: 'Updated' }).save()
+    const bob = await Prospect.create({ userId: user.id, funnelStageId: stage.id, name: 'Bob' })
+
+    // Force distinct, deterministic updated_at values. Creating + touching within the
+    // same millisecond (fast CI) can tie updated_at, making the DESC order ambiguous and
+    // the test flaky. Write the column directly to bypass the model's autoUpdate timestamp.
+    const now = DateTime.now()
+    await Prospect.query()
+      .where('id', bob.id)
+      .update({ updated_at: now.minus({ minutes: 1 }).toSQL() })
+    await Prospect.query().where('id', alice.id).update({ updated_at: now.toSQL() })
 
     const response = await client.get('/api/prospects').loginAs(user)
 
