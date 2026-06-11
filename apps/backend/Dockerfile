@@ -1,28 +1,36 @@
 # Build context: monorepo root (.)
-FROM node:20-alpine AS base
+# Node 24: required by @poppinss/ts-exec (needs Node's native "module-typescript"
+# format detection for `node ace build` — absent on Node 20). Matches local dev.
+FROM node:24-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
-# Install dependencies
-FROM base AS deps
-WORKDIR /app
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY apps/backend/package.json ./apps/backend/
-RUN pnpm install --frozen-lockfile --filter @battlecrm/backend
-
-# Build stage
+# Build stage: install workspace deps + build shared, then the backend.
+# deps and build are kept in a SINGLE stage on purpose: copying pnpm's
+# symlinked node_modules across stages breaks the .pnpm store (tsc not found).
 FROM base AS build
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/backend/node_modules ./apps/backend/node_modules
+# Manifests needed to resolve the workspace + the shared package
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY apps/backend/package.json ./apps/backend/
+# `...` => install @battlecrm/backend AND its workspace deps (shared).
+# --include-workspace-root brings in the root devDeps (typescript) needed to build shared.
+RUN pnpm install --frozen-lockfile --filter @battlecrm/backend... --include-workspace-root
+COPY packages/shared ./packages/shared
 COPY apps/backend ./apps/backend
+# 1) build shared types (generates packages/shared/dist)
+RUN pnpm --filter @battlecrm/shared build
+# 2) build the backend (Ace) — the ts-exec loader now resolves correctly
 WORKDIR /app/apps/backend
 RUN node ace build
 
 # Production stage
-FROM node:20-alpine AS production
+FROM node:24-alpine AS production
 WORKDIR /app
 COPY --from=build /app/apps/backend/build .
-RUN npm install --omit=dev
+# @battlecrm/shared is a types-only workspace package (no runtime code). It is not
+# needed at runtime and npm can't resolve the `workspace:` protocol — drop it before install.
+RUN npm pkg delete "dependencies.@battlecrm/shared" && npm install --omit=dev
 ENV NODE_ENV=production
 EXPOSE 3333
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
