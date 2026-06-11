@@ -2,10 +2,12 @@ import type { ApiClient } from '@japa/api-client'
 import { test } from '@japa/runner'
 import FunnelStage from '#models/funnel_stage'
 import User from '#models/user'
+import { DEFAULT_FUNNEL_STAGES } from '#services/funnel_stage_service'
 
 type StageDto = { id: string; position: number }
 
 const TEST_EMAIL_DOMAIN = '@test-funnel-api.com'
+const MAX_STAGES = 15
 
 test.group('FunnelStages API', (group) => {
   // Clean up before the group runs to handle leftover data from previously failed runs
@@ -152,9 +154,10 @@ test.group('FunnelStages API', (group) => {
   }) => {
     const user = await registerUser(client, 'post-max-stages')
 
-    // User starts with 9 default stages (seeded on registration in Story 2.1).
-    // Add 6 more to reach the 15-stage limit.
-    for (let i = 1; i <= 6; i++) {
+    // User starts with the default stages seeded on registration (Story 2.1).
+    // Add as many as needed to reach the 15-stage limit (FR40).
+    const extraToAdd = MAX_STAGES - DEFAULT_FUNNEL_STAGES.length
+    for (let i = 1; i <= extraToAdd; i++) {
       const res = await client
         .post('/api/funnel_stages')
         .loginAs(user)

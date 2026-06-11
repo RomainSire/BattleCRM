@@ -58,14 +58,14 @@ test.describe('Prospects - Kanban Board View', () => {
     // Stage filter select disappears; column headers appear
     await expect(page.getByRole('combobox')).not.toBeVisible()
     // Kanban columns render stage names as headings
-    await expect(page.getByText('Lead qualified').first()).toBeVisible()
+    await expect(page.getByText('Prospect → À contacter').first()).toBeVisible()
   })
 
   test('kanban board shows all 3 funnel stage columns', async ({ page }) => {
     await page.getByRole('radio', { name: 'Kanban' }).click()
-    await expect(page.getByText('Lead qualified').first()).toBeVisible()
-    await expect(page.getByText('Linkedin connection').first()).toBeVisible()
-    await expect(page.getByText('First contact').first()).toBeVisible()
+    await expect(page.getByText('Prospect → À contacter').first()).toBeVisible()
+    await expect(page.getByText('Approche → CV à envoyer').first()).toBeVisible()
+    await expect(page.getByText('Qualif ESN → Entretien à décrocher').first()).toBeVisible()
   })
 
   // ── Prospect cards ──────────────────────────────────────────────────────────
@@ -138,13 +138,13 @@ test.describe('Prospects - Kanban Board View', () => {
   test('kanban view mode persists across page reload (localStorage)', async ({ page }) => {
     await page.getByRole('radio', { name: 'Kanban' }).click()
     // Verify we're in kanban mode
-    await expect(page.getByText('Lead qualified').first()).toBeVisible()
+    await expect(page.getByText('Prospect → À contacter').first()).toBeVisible()
     // Reload without clearing localStorage
     await page.reload()
     // Should still be in kanban mode
-    await expect(page.getByText('Lead qualified').first()).toBeVisible()
+    await expect(page.getByText('Prospect → À contacter').first()).toBeVisible()
     await expect(
-      page.getByRole('button', { name: 'Lead qualified' }),
+      page.getByRole('button', { name: 'Prospect → À contacter' }),
     ).not.toBeVisible()
   })
 

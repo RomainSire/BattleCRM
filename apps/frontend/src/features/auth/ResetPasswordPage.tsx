@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
+import { AppLogo } from '@/components/common/AppLogo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { TextField } from '@/components/ui/text-field'
@@ -56,7 +57,8 @@ export function ResetPasswordPage() {
   if (!token) {
     return (
       <Card className="w-full max-w-md">
-        <CardHeader>
+        <CardHeader className="flex flex-col items-center gap-2 text-center">
+          <AppLogo size="lg" className="mb-2" />
           <CardTitle>{t('auth.resetPassword.title')}</CardTitle>
           <CardDescription>{t('auth.resetPassword.missingToken')}</CardDescription>
         </CardHeader>
@@ -71,7 +73,8 @@ export function ResetPasswordPage() {
 
   return (
     <Card className="w-full max-w-md">
-      <CardHeader>
+      <CardHeader className="flex flex-col items-center gap-2 text-center">
+        <AppLogo size="lg" className="mb-2" />
         <CardTitle>{t('auth.resetPassword.title')}</CardTitle>
         <CardDescription>{t('auth.resetPassword.description')}</CardDescription>
       </CardHeader>

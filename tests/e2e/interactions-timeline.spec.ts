@@ -103,8 +103,10 @@ test.describe('Interactions - Prospect Timeline', () => {
   test('timeline shows stage transitions', async ({ page }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'TL Timeline Prospect')
-    // Stage transition renders as "From → To" — look for the arrow
-    await expect(page.getByText(/lead qualified.*→|→.*linkedin connection/i).first()).toBeVisible()
+    // Stage transition renders as "From → To" (stages[0] → stages[1])
+    await expect(
+      page.getByText(/Prospect → À contacter.*Approche → CV à envoyer/).first(),
+    ).toBeVisible()
   })
 
   // ── TimelineItem expand / collapse ────────────────────────────────────────────

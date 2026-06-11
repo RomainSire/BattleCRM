@@ -23,7 +23,7 @@ test.describe('Prospects - List View', () => {
     await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
     const stages = await getFunnelStages(context.request)
-    // Alice in stage 0 (Lead qualified), Bob in stage 1 (Linkedin connection)
+    // Alice in stage 0 (Prospect → À contacter), Bob in stage 1 (Approche → CV à envoyer)
     await createProspect(context.request, {
       name: 'Alice Martin',
       company: 'Acme Corp',
@@ -83,24 +83,24 @@ test.describe('Prospects - List View', () => {
   test('selecting a stage filter updates the select value', async ({ page }) => {
     await page.goto('/prospects')
     await page.getByRole('combobox').click()
-    await page.getByRole('option', { name: 'Lead qualified' }).click()
-    await expect(page.getByRole('combobox')).toHaveValue('Lead qualified')
+    await page.getByRole('option', { name: 'Prospect → À contacter' }).click()
+    await expect(page.getByRole('combobox')).toHaveValue('Prospect → À contacter')
   })
 
   test('stage filter shows only matching prospects', async ({ page }) => {
     await page.goto('/prospects')
     await page.getByRole('combobox').click()
-    await page.getByRole('option', { name: 'Lead qualified' }).click()
-    // Alice is in Lead qualified — should be visible
+    await page.getByRole('option', { name: 'Prospect → À contacter' }).click()
+    // Alice is in Prospect → À contacter — should be visible
     await expect(page.getByText('Alice Martin')).toBeVisible()
-    // Bob is in Linkedin connection — should not be visible
+    // Bob is in Approche → CV à envoyer — should not be visible
     await expect(page.getByText('Bob Dupont')).not.toBeVisible()
   })
 
   test('"Clear filter" button resets the stage filter', async ({ page }) => {
     await page.goto('/prospects')
     await page.getByRole('combobox').click()
-    await page.getByRole('option', { name: 'Lead qualified' }).click()
+    await page.getByRole('option', { name: 'Prospect → À contacter' }).click()
     await expect(page.getByRole('button', { name: /clear filter/i })).toBeVisible()
     await page.getByRole('button', { name: /clear filter/i }).click()
     // Both prospects visible again
@@ -111,7 +111,7 @@ test.describe('Prospects - List View', () => {
   test('clearing the stage filter shows all prospects', async ({ page }) => {
     await page.goto('/prospects')
     await page.getByRole('combobox').click()
-    await page.getByRole('option', { name: 'Lead qualified' }).click()
+    await page.getByRole('option', { name: 'Prospect → À contacter' }).click()
     await expect(page.getByText('Bob Dupont')).not.toBeVisible()
     // Click the X button on the combobox to clear the filter
     await page.locator('[data-slot="combobox-clear"]').click()

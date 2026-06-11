@@ -82,8 +82,8 @@ test.describe('Prospects - Create & Edit', () => {
     await page.goto('/prospects')
     // "New Prospect E2E" was created in previous test — it should show a stage name (not "—")
     const row = page.locator('tr').filter({ hasText: 'New Prospect E2E' })
-    // The row should show a stage name — beforeAll seeds "Lead qualified" as the first stage
-    await expect(row).toContainText('Lead qualified')
+    // The row should show a stage name — beforeAll seeds "Prospect → À contacter" as the first stage
+    await expect(row).toContainText('Prospect → À contacter')
   })
 
   // ── Edit ────────────────────────────────────────────────────────────────────
@@ -121,6 +121,9 @@ test.describe('Prospects - Create & Edit', () => {
     await page.getByRole('button', { name: /^edit/i }).click()
 
     const nameInput = page.getByRole('textbox', { name: /^name/i })
+    // Wait for the edit form to settle (mounted + pre-filled) before mutating,
+    // otherwise a background refetch can remount the input mid-interaction.
+    await expect(nameInput).toHaveValue('Initial Prospect')
     await nameInput.clear()
     await nameInput.fill('Should Not Be Saved')
 
@@ -141,6 +144,9 @@ test.describe('Prospects - Create & Edit', () => {
     await page.getByRole('button', { name: /^edit/i }).click()
 
     const nameInput = page.getByRole('textbox', { name: /^name/i })
+    // Wait for the edit form to settle (mounted + pre-filled) before mutating,
+    // otherwise a background refetch can remount the input mid-interaction.
+    await expect(nameInput).toHaveValue('Initial Prospect')
     await nameInput.clear()
     await nameInput.fill('Updated Prospect Name')
 

@@ -76,7 +76,7 @@ test.describe('Positionings - Create & Edit', () => {
   test('created positioning is assigned to a funnel stage by default', async ({ page }) => {
     await page.goto('/positionings')
     const row = page.locator('tr').filter({ hasText: 'New Positioning E2E' })
-    await expect(row).toContainText('Lead qualified')
+    await expect(row).toContainText('Prospect → À contacter')
   })
 
   // ── Edit ────────────────────────────────────────────────────────────────────
@@ -103,6 +103,9 @@ test.describe('Positionings - Create & Edit', () => {
     await page.getByRole('button', { name: /^edit$/i }).click()
 
     const nameInput = page.locator('input[id^="edit-name-"]')
+    // Wait for the edit form to settle (mounted + pre-filled) before mutating,
+    // otherwise a background refetch can remount the input mid-interaction.
+    await expect(nameInput).toHaveValue('Initial Positioning')
     await nameInput.clear()
     await nameInput.fill('Should Not Be Saved')
 
@@ -119,6 +122,9 @@ test.describe('Positionings - Create & Edit', () => {
     await page.getByRole('button', { name: /^edit$/i }).click()
 
     const nameInput = page.locator('input[id^="edit-name-"]')
+    // Wait for the edit form to settle (mounted + pre-filled) before mutating,
+    // otherwise a background refetch can remount the input mid-interaction.
+    await expect(nameInput).toHaveValue('Initial Positioning')
     await nameInput.clear()
     await nameInput.fill('Updated Positioning Name')
 

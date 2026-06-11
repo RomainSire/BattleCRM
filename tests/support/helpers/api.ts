@@ -96,7 +96,7 @@ export async function resetFunnelStages(request: APIRequestContext): Promise<voi
   for (const stage of body.data ?? []) {
     await request.delete(`${API_URL}/api/funnel_stages/${stage.id}`)
   }
-  for (const name of ['Lead qualified', 'Linkedin connection', 'First contact']) {
+  for (const name of ['Prospect → À contacter', 'Approche → CV à envoyer', 'Qualif ESN → Entretien à décrocher']) {
     await request.post(`${API_URL}/api/funnel_stages`, { data: { name } })
   }
 }

@@ -58,10 +58,10 @@ test.describe('Dashboard - funnel cards grid', () => {
 
   test('shows one card per funnel stage', async ({ page }) => {
     await page.goto('/')
-    // resetFunnelStages creates: Lead qualified, Linkedin connection, First contact
+    // resetFunnelStages creates: Prospect → À contacter, Approche → CV à envoyer, Qualif ESN → Entretien à décrocher
     await expect(page.locator('[data-slot="accordion-trigger"]').first()).toBeVisible()
-    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: 'Linkedin connection' })).toBeVisible()
-    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: 'First contact' })).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: 'Approche → CV à envoyer' })).toBeVisible()
+    await expect(page.locator('[data-slot="accordion-trigger"]', { hasText: 'Qualif ESN → Entretien à décrocher' })).toBeVisible()
   })
 
   test('each card shows "No active battle" by default', async ({ page }) => {
