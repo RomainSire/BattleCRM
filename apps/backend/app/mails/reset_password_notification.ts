@@ -2,7 +2,7 @@ import { BaseMail } from '@adonisjs/mail'
 import { TOKEN_TTL_MINUTES } from '#services/password_reset_service'
 
 /** Locales supported for transactional emails — mirrors the frontend's `supportedLngs`. */
-export const SUPPORTED_LOCALES = ['fr', 'en'] as const
+export const SUPPORTED_LOCALES = ['fr', 'en', 'ja'] as const
 export type Locale = (typeof SUPPORTED_LOCALES)[number]
 
 /** Default locale used when the request does not carry one. */
@@ -60,6 +60,30 @@ const translations: Record<Locale, { subject: string; html: (resetUrl: string) =
         </p>
         <p style="font-size: 14px; color: #666;">
           If you didn't request this, simply ignore this email.
+        </p>
+      </div>
+    `,
+  },
+  ja: {
+    subject: 'BattleCRM のパスワード再設定',
+    html: (resetUrl) => `
+      <div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; color: #1a1a1a;">
+        <h1 style="font-size: 20px;">パスワードの再設定</h1>
+        <p>BattleCRM のパスワード再設定がリクエストされました。</p>
+        <p>下のボタンをクリックして新しいパスワードを設定してください:</p>
+        <p style="margin: 24px 0;">
+          <a href="${resetUrl}"
+             style="background: #1a1a1a; color: #fff; padding: 12px 20px; border-radius: 8px; text-decoration: none; display: inline-block;">
+            パスワードを再設定する
+          </a>
+        </p>
+        <p style="font-size: 14px; color: #666;">
+          このリンクは ${TOKEN_TTL_MINUTES} 分間有効です。ボタンが機能しない場合は、
+          次のアドレスをブラウザにコピー＆ペーストしてください:<br />
+          <a href="${resetUrl}">${resetUrl}</a>
+        </p>
+        <p style="font-size: 14px; color: #666;">
+          このリクエストに心当たりがない場合は、このメールを無視してください。
         </p>
       </div>
     `,

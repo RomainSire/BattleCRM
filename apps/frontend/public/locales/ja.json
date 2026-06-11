@@ -1,0 +1,543 @@
+{
+  "common": {
+    "appName": "BattleCRM",
+    "loading": "読み込み中...",
+    "error": "エラーが発生しました",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "edit": "編集"
+  },
+  "table": {
+    "noResults": "結果がありません。",
+    "rowCount": "{{count}} 件の結果",
+    "page": "ページ {{current}} / {{total}}",
+    "previous": "前へ",
+    "next": "次へ"
+  },
+  "nav": {
+    "dashboard": "ダッシュボード",
+    "settings": "設定",
+    "prospects": "見込み客",
+    "positionings": "ポジショニング",
+    "interactions": "やり取り",
+    "userMenu": {
+      "label": "ユーザーメニュー"
+    },
+    "mobileMenu": {
+      "label": "メニューを開く"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "ログイン",
+      "description": "BattleCRM にサインイン",
+      "submit": "サインイン",
+      "submitting": "サインインしています...",
+      "invalidCredentials": "メールアドレスまたはパスワードが正しくありません",
+      "createAccount": "アカウントを作成",
+      "forgotPassword": "パスワードをお忘れですか？"
+    },
+    "forgotPassword": {
+      "title": "パスワードをお忘れの方",
+      "description": "再設定リンクを受け取るメールアドレスを入力してください。",
+      "submit": "リンクを送信",
+      "submitting": "送信しています...",
+      "emailSent": "そのアドレスのアカウントが存在する場合、再設定メールを送信しました。",
+      "backToLogin": "ログインに戻る"
+    },
+    "resetPassword": {
+      "title": "パスワードの再設定",
+      "description": "アカウントの新しいパスワードを選択してください。",
+      "submit": "再設定",
+      "submitting": "再設定しています...",
+      "success": "パスワードを再設定しました。サインインできます。",
+      "invalidToken": "この再設定リンクは無効か、有効期限が切れています。",
+      "missingToken": "再設定リンクが無効か不完全です。",
+      "requestNewLink": "新しいリンクをリクエスト",
+      "backToLogin": "ログインに戻る"
+    },
+    "register": {
+      "title": "登録",
+      "description": "BattleCRM アカウントを作成",
+      "submit": "アカウントを作成",
+      "submitting": "アカウントを作成しています...",
+      "signIn": "すでにアカウントをお持ちですか？サインイン"
+    },
+    "registrationDisabled": {
+      "title": "登録は無効です",
+      "description": "現在、登録は無効になっています。管理者にお問い合わせください。",
+      "goToLogin": "ログインへ"
+    },
+    "notAuthenticated": "認証されていません",
+    "changePassword": {
+      "invalidCurrentPassword": "現在のパスワードが正しくありません"
+    },
+    "fields": {
+      "email": "メールアドレス",
+      "password": "パスワード",
+      "newPassword": "新しいパスワード",
+      "confirmPassword": "パスワードの確認"
+    },
+    "placeholders": {
+      "email": "you@example.com",
+      "password": "8文字以上",
+      "confirmPassword": "パスワードを再入力"
+    }
+  },
+  "dashboard": {
+    "title": "ダッシュボード",
+    "description": "ファネルステージ別のパフォーマンス概要",
+    "logout": "ログアウト",
+    "loggingOut": "ログアウトしています...",
+    "loadError": "ダッシュボードの読み込みに失敗しました。",
+    "noStages": "ファネルステージが設定されていません。設定からファネルを構成してください。",
+    "noData": "このステージのデータはまだありません。",
+    "noActiveBattle": "進行中のバトルはありません",
+    "battleClosed": "バトル #{{n}} 終了 — 勝者: {{winner}}",
+    "battleClosedNoWinner": "バトル #{{n}} 終了",
+    "activeBattle": "バトル #{{n}} · {{a}} vs {{b}}",
+    "unknownVariant": "不明なバリアント",
+    "conversionRates": "コンバージョン率",
+    "battleHistory": "バトル履歴",
+    "battleHistoryItem": "バトル #{{n}}: {{winner}} が {{loser}} に勝利 ({{rateWinner}} vs {{rateLoser}})",
+    "noClosedBattles": "終了したバトルはありません",
+    "startBattle": "バトルを開始",
+    "startNextBattle": "次のバトルを開始",
+    "closeBattle": "バトルを終了",
+    "closeBattleDisabledTooltip": "終了するにはデータが不足しています",
+    "cancelBattle": "バトルを中止",
+    "deletedPositioning": "[削除されたポジショニング]",
+    "startBattleDialog": {
+      "title": "バトルを開始",
+      "description": "{{stage}} で比較する2つのポジショニングバリアントを選択",
+      "variantA": "バリアント A",
+      "variantB": "バリアント B",
+      "selectVariant": "バリアントを選択",
+      "submit": "開始",
+      "successToast": "バトルを開始しました！",
+      "errorGeneric": "バトルの開始に失敗しました。",
+      "errorSameVariant": "バリアントは異なる必要があります"
+    },
+    "closeBattleDialog": {
+      "title": "バトルを終了",
+      "description": "バトル #{{n}} の勝者を確定",
+      "winner": "勝者: {{name}}",
+      "confirm": "終了して勝者を記録",
+      "cancel": "キャンセル",
+      "successToast": "バトル終了 — {{winner}} の勝利！",
+      "errorGeneric": "バトルの終了に失敗しました。"
+    },
+    "cancelBattleDialog": {
+      "title": "バトル #{{n}} を中止しますか？",
+      "description": "このバトルは勝者も履歴も残さず完全に削除されます。この操作は取り消せません。",
+      "confirm": "バトルを中止",
+      "cancel": "戻る",
+      "successToast": "バトルを中止しました。",
+      "errorGeneric": "バトルの中止に失敗しました。"
+    },
+    "battleDetailDialog": {
+      "title": "バトル #{{n}}",
+      "started": "開始: {{date}}",
+      "closed": "終了: {{date}}",
+      "winner": "勝者",
+      "noData": "データなし"
+    },
+    "trafficLight": {
+      "significant": "有意",
+      "trending": "傾向あり",
+      "needData": "データが不足しています",
+      "tooltipWithProb": "{{confidence}}% の確信度で {{variant}} が優れています",
+      "tooltipLowConfidence": "{{variant}} に傾いています ({{confidence}}%) — 70% のしきい値に未達",
+      "tooltipNoData": "データが不足しています (バリアントごとに n < 10)"
+    },
+    "drillDown": {
+      "title": "{{name}} — {{stage}}",
+      "rate": "{{rate}}% ({{n}}/{{total}})",
+      "noProspects": "このセルに見込み客はいません",
+      "outcomes": {
+        "success": "コンバージョン",
+        "failed": "失敗",
+        "inProgress": "進行中"
+      }
+    },
+    "deletedStage": "[削除されたステージ]",
+    "summary": {
+      "totalActiveProspects": "アクティブな見込み客",
+      "interactionsThisWeek": "今週のやり取り",
+      "interactionsThisMonth": "今月",
+      "bestPerforming": "トップのポジショニング",
+      "bestPerformingNone": "—",
+      "funnelOverview": "ファネル概要",
+      "emptyProspects": "見込み客を追加して始めましょう",
+      "emptyPositionings": "ポジショニングを作成して A/B テストを始めましょう",
+      "emptyInteractions": "やり取りを記録してコンバージョンデータを確認しましょう",
+      "loadError": "サマリーデータを読み込めませんでした。"
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "description": "見込み客パイプラインを構成します。",
+    "preferences": {
+      "title": "設定",
+      "description": "外観と言語。"
+    },
+    "appearance": {
+      "title": "外観",
+      "description": "インターフェースのテーマを選択。",
+      "themes": {
+        "system": "システム",
+        "light": "ライト",
+        "dark": "ダーク"
+      }
+    },
+    "language": {
+      "title": "言語",
+      "description": "インターフェースの言語を選択。"
+    },
+    "pipeline": {
+      "title": "パイプライン",
+      "description": "ファネルステージを構成します。"
+    },
+    "account": {
+      "title": "アカウント",
+      "description": "アクセスとセキュリティ。"
+    },
+    "security": {
+      "changePassword": {
+        "trigger": "パスワードを変更",
+        "description": "現在のパスワードを入力し、新しいパスワードを選択してください。",
+        "currentPassword": "現在のパスワード",
+        "newPassword": "新しいパスワード",
+        "confirmPassword": "新しいパスワードの確認",
+        "submit": "確認",
+        "submitting": "保存しています...",
+        "success": "パスワードを変更しました"
+      }
+    },
+    "backup": {
+      "title": "データとバックアップ",
+      "description": "すべてのデータをエクスポートまたは復元します。",
+      "export": {
+        "title": "データをエクスポート",
+        "description": "CRM 全体を含む .json.gz ファイルをダウンロードします。",
+        "trigger": "エクスポート",
+        "submitting": "エクスポートしています...",
+        "success": "エクスポートをダウンロードしました",
+        "error": "エクスポートに失敗しました"
+      },
+      "import": {
+        "title": "インポート / 復元",
+        "description": "エクスポートファイルからデータを復元します。この操作は現在のデータを完全に置き換えます。",
+        "trigger": "ファイルをインポート",
+        "dialogTitle": "データをインポート / 復元",
+        "dialogDescription": "アカウントを復元するエクスポートファイル (.json.gz) を選択してください。",
+        "fileLabel": "バックアップファイル (.json.gz)",
+        "chooseFile": "ファイルを選択",
+        "noFile": "ファイルが選択されていません",
+        "removeFile": "ファイルを削除",
+        "warning": "⚠ この操作は現在のすべてのデータをファイルの内容で完全に置き換えます。取り消せません。",
+        "confirmWord": "RESTORE",
+        "confirmLabel": "確認のため「{{word}}」と入力してください",
+        "submit": "データを復元",
+        "submitting": "復元しています...",
+        "success": "データを復元しました",
+        "error": "インポートに失敗しました"
+      }
+    }
+  },
+  "funnelStages": {
+    "loadError": "ファネルステージの読み込みに失敗しました。もう一度お試しください。",
+    "addStage": "ステージを追加",
+    "stageName": "ステージ名",
+    "add": "追加",
+    "aria": {
+      "reorder": "ステージを並べ替え",
+      "edit": "ステージを編集",
+      "delete": "ステージを削除",
+      "saveName": "ステージ名を保存",
+      "cancelEdit": "編集をキャンセル",
+      "cancelAdd": "キャンセル"
+    },
+    "deleteDialog": {
+      "title": "ステージを削除しますか？",
+      "description": "「{{name}}」はアーカイブされます。取り消せません。",
+      "confirm": "削除"
+    },
+    "stageCount": "{{total}}/15 ステージ",
+    "maxReached": "ステージの上限 15 に達しました。追加するにはステージをアーカイブしてください。",
+    "toast": {
+      "added": "ステージを追加しました",
+      "updated": "ステージを更新しました",
+      "deleted": "ステージを削除しました",
+      "addFailed": "ステージの追加に失敗しました",
+      "updateFailed": "ステージの更新に失敗しました",
+      "deleteFailed": "ステージの削除に失敗しました",
+      "reorderFailed": "ステージの並べ替えに失敗しました"
+    }
+  },
+  "prospects": {
+    "title": "見込み客",
+    "description": "見込み客の連絡先を管理します。",
+    "drawerDescription": "見込み客の詳細",
+    "loadError": "見込み客の読み込みに失敗しました。もう一度お試しください。",
+    "empty": "見込み客はまだいません。",
+    "emptyFiltered": "このステージに見込み客はいません。",
+    "emptySearch": "検索に一致する見込み客はいません。",
+    "clearFilter": "フィルターをクリア",
+    "clearFilters": "フィルターをクリア",
+    "filters": {
+      "allStages": "すべてのステージ"
+    },
+    "count": "{{count}} 件の見込み客",
+    "addProspect": "見込み客を追加",
+    "columns": {
+      "name": "名前",
+      "company": "会社",
+      "stage": "ファネルステージ",
+      "email": "メールアドレス"
+    },
+    "fields": {
+      "name": "名前",
+      "company": "会社",
+      "linkedinUrl": "LinkedIn",
+      "email": "メールアドレス",
+      "phone": "電話番号",
+      "title": "役職",
+      "notes": "メモ",
+      "funnelStage": "ファネルステージ",
+      "positioning": "ポジショニング"
+    },
+    "placeholders": {
+      "name": "氏名",
+      "company": "会社名",
+      "linkedinUrl": "https://linkedin.com/in/...",
+      "email": "email@example.com",
+      "phone": "201 555 0123",
+      "title": "役職名",
+      "notes": "追加のメモ..."
+    },
+    "createForm": {
+      "title": "見込み客を追加",
+      "description": "パイプラインに新しい見込み客を作成します。",
+      "submit": "見込み客を作成"
+    },
+    "archived": "アーカイブ済み",
+    "showArchived": "アーカイブを表示",
+    "edit": "編集",
+    "archive": "アーカイブ",
+    "restore": "復元",
+    "searchPlaceholder": "見込み客を検索...",
+    "archiveDialog": {
+      "title": "見込み客をアーカイブしますか？",
+      "description": "「{{name}}」はアーカイブに移動されます。後で復元できます。",
+      "confirm": "アーカイブ"
+    },
+    "notAssigned": "未割り当て",
+    "positioningLinked": "リンク済み",
+    "interactions": {
+      "title": "やり取り",
+      "empty": "やり取りはまだ記録されていません。",
+      "logButton": "やり取りを記録",
+      "comingSoon": "今後のリリースで対応予定"
+    },
+    "viewToggle": {
+      "label": "表示モード",
+      "list": "リスト",
+      "kanban": "カンバン",
+      "kanbanPlaceholder": "カンバン表示 — ストーリー 3.9 で対応予定"
+    },
+    "kanban": {
+      "moveFailed": "見込み客の移動に失敗しました。もう一度お試しください。",
+      "noProspects": "見込み客なし",
+      "searchPlaceholder": "見込み客を検索...",
+      "showArchived": "アーカイブを表示"
+    },
+    "positioning": {
+      "assignPlaceholder": "ポジショニングを割り当て...",
+      "inProgress": "進行中",
+      "outcomeSuccess": "成功",
+      "outcomeFailedLabel": "失敗",
+      "success": "成功",
+      "fail": "失敗",
+      "skip": "スキップ",
+      "assignFailed": "ポジショニングの割り当てに失敗しました。",
+      "setOutcomeFailed": "結果の設定に失敗しました。",
+      "popupTitle": "「{{stage}}」へ移動する前に",
+      "popupBody": "「{{name}}」はどうでしたか？",
+      "history": "ポジショニング履歴",
+      "noneConfigured": "このステージに設定されたポジショニングはありません。",
+      "changePositioning": "ポジショニングを変更",
+      "aria": {
+        "editOutcome": "ポジショニングの結果を編集"
+      }
+    },
+    "stageHistory": "ステージ履歴",
+    "noStageHistory": "ステージの変更はまだ記録されていません。",
+    "initialStage": "初期",
+    "timeline": {
+      "title": "履歴",
+      "empty": "アクティビティはまだ記録されていません。",
+      "loadError": "履歴の読み込みに失敗しました。",
+      "showAll": "さらに {{count}} 件を表示"
+    },
+    "stagePosition": "({{total}} 中 {{current}})",
+    "toast": {
+      "created": "見込み客を作成しました",
+      "updated": "見込み客を更新しました",
+      "archived": "見込み客をアーカイブしました",
+      "restored": "見込み客を復元しました",
+      "stageMoved": "見込み客を新しいステージに移動しました",
+      "createFailed": "見込み客の作成に失敗しました。",
+      "updateFailed": "見込み客の更新に失敗しました。",
+      "archiveFailed": "見込み客のアーカイブに失敗しました。",
+      "restoreFailed": "見込み客の復元に失敗しました。",
+      "stageMoveFailed": "見込み客の新しいステージへの移動に失敗しました。"
+    },
+    "aria": {
+      "editProspect": "{{name}} を編集",
+      "cancelEdit": "編集をキャンセル",
+      "archiveProspect": "{{name}} をアーカイブ",
+      "restoreProspect": "{{name}} を復元",
+      "stageSelect": "{{name}} のファネルステージを変更",
+      "dragHandle": "{{name}} をドラッグ"
+    }
+  },
+  "positionings": {
+    "title": "ポジショニング",
+    "description": "ファネルステージごとのポジショニングバリアントを管理します。",
+    "drawerDescription": "ポジショニングの詳細",
+    "addPositioning": "ポジショニングを追加",
+    "edit": "編集",
+    "archive": "アーカイブ",
+    "restore": "復元",
+    "archiveDialog": {
+      "title": "ポジショニングをアーカイブしますか？",
+      "description": "「{{name}}」はアーカイブされます。アクティブなリストには表示されなくなりますが、履歴データ（見込み客、やり取り）は保持されます。",
+      "confirm": "アーカイブ"
+    },
+    "showArchived": "アーカイブを表示",
+    "archivedBadge": "アーカイブ済み",
+    "loadError": "ポジショニングの読み込みに失敗しました。もう一度お試しください。",
+    "empty": "ポジショニングはまだありません。",
+    "emptyFiltered": "このステージにポジショニングはありません。",
+    "clearFilter": "フィルターをクリア",
+    "clearFilters": "フィルターをクリア",
+    "filters": {
+      "allStages": "すべてのステージ",
+      "search": "検索..."
+    },
+    "count": "{{count}} 件のポジショニング",
+    "columns": {
+      "name": "名前",
+      "stage": "ファネルステージ",
+      "description": "説明",
+      "createdAt": "作成日"
+    },
+    "fields": {
+      "name": "名前",
+      "funnelStage": "ファネルステージ",
+      "description": "説明",
+      "content": "コンテンツ"
+    },
+    "placeholders": {
+      "name": "例: 履歴書 v3 — アーキテクチャ重視",
+      "description": "このバリアントを作成した理由...",
+      "content": "実際のコンテンツまたはファイル参照..."
+    },
+    "createForm": {
+      "title": "ポジショニングを追加",
+      "description": "ファネルステージ向けの新しいポジショニングバリアントを作成します。",
+      "submit": "作成"
+    },
+    "toast": {
+      "created": "ポジショニングを作成しました。",
+      "createFailed": "ポジショニングの作成に失敗しました。",
+      "updated": "ポジショニングを更新しました。",
+      "updateFailed": "ポジショニングの更新に失敗しました。",
+      "archived": "ポジショニングをアーカイブしました。",
+      "archiveFailed": "ポジショニングのアーカイブに失敗しました。",
+      "restored": "ポジショニングを復元しました。",
+      "restoreFailed": "ポジショニングの復元に失敗しました。"
+    },
+    "linkedProspects": {
+      "title": "リンクされた見込み客",
+      "empty": "このポジショニングにリンクされた見込み客はまだいません。",
+      "loadError": "リンクされた見込み客の読み込みに失敗しました。"
+    },
+    "aria": {
+      "viewProspect": "見込み客リストで {{name}} を表示"
+    },
+    "interactions": {
+      "title": "やり取り",
+      "empty": "このポジショニングにリンクされたやり取りはありません。",
+      "loadError": "やり取りの読み込みに失敗しました。"
+    }
+  },
+  "interactions": {
+    "title": "やり取り",
+    "description": "見込み客とのやり取りを管理します。",
+    "drawerDescription": "やり取りの詳細",
+    "addInteraction": "やり取りを記録",
+    "noPositioning": "ポジショニングなし",
+    "fields": {
+      "prospect": "見込み客",
+      "positioning": "ポジショニング",
+      "notes": "メモ"
+    },
+    "placeholders": {
+      "selectProspect": "見込み客を選択...",
+      "selectPositioning": "ポジショニングを選択...",
+      "notes": "このやり取りに関するメモ..."
+    },
+    "createForm": {
+      "title": "やり取りを記録",
+      "description": "見込み客とのやり取りを記録します。",
+      "submit": "保存"
+    },
+    "edit": "編集",
+    "delete": "削除",
+    "deleteDialog": {
+      "title": "やり取りを削除しますか？",
+      "description": "このやり取りは完全に削除されます。この操作は取り消せません。",
+      "confirm": "削除"
+    },
+    "toast": {
+      "created": "やり取りを記録しました。",
+      "createFailed": "やり取りの記録に失敗しました。",
+      "updated": "やり取りを更新しました。",
+      "updateFailed": "やり取りの更新に失敗しました。",
+      "deleted": "やり取りを削除しました。",
+      "deleteFailed": "やり取りの削除に失敗しました。"
+    },
+    "loadError": "やり取りの読み込みに失敗しました。",
+    "empty": "やり取りはまだ記録されていません。",
+    "filters": {
+      "search": "検索...",
+      "allProspects": "すべての見込み客",
+      "allPositionings": "すべてのポジショニング",
+      "allStages": "すべてのステージ",
+      "dateFrom": "開始日",
+      "dateTo": "終了日",
+      "clearFilters": "フィルターをクリア"
+    },
+    "detail": {
+      "positioning": "ポジショニング",
+      "date": "日付"
+    }
+  },
+  "phoneInput": {
+    "searchCountry": "国を検索...",
+    "noCountryFound": "国が見つかりません。"
+  },
+  "validation": {
+    "required": "{{field}} は必須です",
+    "email": "有効なメールアドレスを入力してください",
+    "minLength": "{{min}} 文字以上で入力してください",
+    "confirmed": "一致しません",
+    "unique": "すでに登録されています"
+  },
+  "accessibility": {
+    "showPassword": "パスワードを表示",
+    "hidePassword": "パスワードを非表示"
+  }
+}

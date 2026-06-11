@@ -4,16 +4,18 @@ import { initReactI18next } from 'react-i18next'
 
 import en from '../locales/en.json'
 import fr from '../locales/fr.json'
+import ja from '../locales/ja.json'
 
 i18next
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     fallbackLng: 'fr',
-    supportedLngs: ['fr', 'en'],
+    supportedLngs: ['fr', 'en', 'ja'],
     resources: {
       fr: { translation: fr },
       en: { translation: en },
+      ja: { translation: ja },
     },
     interpolation: {
       escapeValue: false,
