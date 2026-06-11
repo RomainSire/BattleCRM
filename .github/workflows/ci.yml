@@ -54,8 +54,10 @@ jobs:
           cat > .env <<EOF
           NODE_ENV=development
           APP_KEY=$APP_KEY
+          APP_NAME=BattleCRM
           PORT=3333
           HOST=0.0.0.0
+          LOG_LEVEL=info
           DB_HOST=localhost
           DB_PORT=5432
           DB_USER=postgres
@@ -63,13 +65,17 @@ jobs:
           DB_DATABASE=battlecrm
           SESSION_DRIVER=cookie
           ALLOW_REGISTRATION=true
+          GMAIL_USER=ci@battlecrm.test
+          GMAIL_APP_PASSWORD=ci-dummy-password
+          FRONTEND_URL=http://localhost:5173
+          VITE_API_URL=http://localhost:3333/api
+          VITE_APP_URL=http://localhost:5173
           E2E_TEST_ROUTES_ENABLED=true
           E2E_BASE_URL=http://localhost:5173
           E2E_API_URL=http://localhost:3333
           E2E_TEST_EMAIL=e2e-test@battlecrm.test
           E2E_TEST_PASSWORD=E2eTestPwd123!
           CORS_ORIGIN=http://localhost:5173
-          LOG_LEVEL=info
           EOF
 
       - name: Run migrations
