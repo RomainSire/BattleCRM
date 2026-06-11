@@ -56,15 +56,16 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
       - "traefik.http.routers.battlecrm.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.battlecrm.entrypoints=websecure"
       - "traefik.http.routers.battlecrm.tls=true"
       - "traefik.http.routers.battlecrm.tls.certresolver=letsencrypt"
       - "traefik.http.services.battlecrm.loadbalancer.server.port=80"
-      - "traefik.docker.network=traefik"
+      - "com.centurylinklabs.watchtower.enable=false"
     networks:
       - internal
-      - traefik
+      - traefik-public
 
 volumes:
   pgdata:
@@ -72,5 +73,5 @@ volumes:
 networks:
   internal:
     driver: bridge
-  traefik:
+  traefik-public:
     external: true
