@@ -85,6 +85,15 @@ test.group('POST /api/auth/forgot-password', (group) => {
     })
   })
 
+  test('sends the email in Japanese when locale is "ja"', async ({ client }) => {
+    await client.post('/api/auth/forgot-password').json({ email: TEST_EMAIL, locale: 'ja' })
+
+    fakeMailer.mails.assertSent(ResetPasswordNotification, (mail) => {
+      mail.message.assertSubject('BattleCRM のパスワード再設定')
+      return true
+    })
+  })
+
   test('falls back to English when no locale is provided', async ({ client }) => {
     await client.post('/api/auth/forgot-password').json({ email: TEST_EMAIL })
 
