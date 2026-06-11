@@ -1,0 +1,97 @@
+{
+  "auth": {
+    "title": "⚔️ BattleCRM",
+    "subtitle": "インスタンスに接続",
+    "fields": {
+      "url": "BattleCRM の URL",
+      "email": "メールアドレス",
+      "password": "パスワード"
+    },
+    "placeholders": {
+      "url": "http://localhost:3333",
+      "email": "you@example.com"
+    },
+    "submit": "サインイン",
+    "submitting": "サインインしています…",
+    "errors": {
+      "invalidCredentials": "認証情報が正しくありません",
+      "serverUnreachable": "サーバーに接続できません"
+    }
+  },
+  "neutral": {
+    "linkedinHint": "LinkedIn のプロフィールに移動して見込み客を取得します。",
+    "connected": "接続中: {{email}}"
+  },
+  "settings": {
+    "title": "設定",
+    "back": "戻る",
+    "connectedAs": "接続中のアカウント",
+    "language": {
+      "label": "言語"
+    },
+    "frontendUrl": {
+      "label": "フロントエンド URL（任意）",
+      "hint": "フロントエンドが別のポートで動作している場合のみ必要です（例: ローカル開発）。",
+      "placeholder": "http://localhost:5173",
+      "save": "保存"
+    },
+    "logout": "サインアウト",
+    "loggingOut": "サインアウトしています…"
+  },
+  "panel": {
+    "title": "BattleCRM パネル",
+    "description": "フローティングウィンドウ"
+  },
+  "session": {
+    "expired": "セッションの有効期限が切れました。再度サインインしてください"
+  },
+  "aria": {
+    "settings": "設定"
+  },
+  "accessibility": {
+    "showPassword": "パスワードを表示",
+    "hidePassword": "パスワードを非表示"
+  },
+  "validation": {
+    "required": "この項目は必須です",
+    "email": "メールアドレスが正しくありません",
+    "minLength": "この項目は必須です"
+  },
+  "common": {
+    "appName": "BattleCRM"
+  },
+  "prospect": {
+    "form": {
+      "name": "氏名",
+      "title": "役職 / 肩書き",
+      "company": "会社",
+      "companyPlaceholder": "LinkedIn で確認",
+      "email": "メールアドレス",
+      "phone": "電話番号",
+      "linkedinUrl": "LinkedIn URL",
+      "submitAdd": "見込み客を追加",
+      "submitEdit": "更新",
+      "submitting": "保存しています…",
+      "cancel": "キャンセル",
+      "unsavedBanner": "⚠️ 未保存の変更があります — 再開しますか？",
+      "editBanner": "⚠️ 編集中",
+      "reset": "やり直す",
+      "successAdd": "見込み客を追加しました ✓",
+      "successEdit": "✓ 見込み客を更新しました",
+      "errors": {
+        "alreadyExists": "この見込み客はすでに BattleCRM に存在します",
+        "noFunnelStage": "有効なファネルステージがありません — まず作成してください",
+        "validation": "入力エラーです。データを確認してください",
+        "server": "サーバーエラーです。もう一度お試しください"
+      }
+    },
+    "read": {
+      "foundBanner": "✓ すでに BattleCRM にあります",
+      "stage": "ステージ",
+      "email": "メールアドレス",
+      "phone": "電話番号",
+      "edit": "編集",
+      "viewInApp": "アプリで表示"
+    }
+  }
+}

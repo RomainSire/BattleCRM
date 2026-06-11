@@ -4,6 +4,7 @@ import { cn } from '../lib/utils'
 const LANGUAGES = [
   { code: 'fr', label: 'FR' },
   { code: 'en', label: 'EN' },
+  { code: 'ja', label: '日本語' },
 ] as const
 
 export default function LanguageSelector() {
