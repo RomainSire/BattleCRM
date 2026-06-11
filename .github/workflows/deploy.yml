@@ -1,0 +1,95 @@
+name: CD — Build, push & deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/backend/Dockerfile
+          push: true
+          tags: ghcr.io/romainsire/battlecrm-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/frontend/Dockerfile
+          build-args: VITE_API_URL=/api
+          push: true
+          tags: ghcr.io/romainsire/battlecrm-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          script: |
+            cd /opt/docker/battlecrm
+
+            # Login GHCR
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u RomainSire --password-stdin
+
+            # Pull nouvelles images
+            docker compose -f docker-compose.prod.yml pull
+
+            # Redémarrer
+            docker compose -f docker-compose.prod.yml up -d
+
+            # Nettoyer anciennes images
+            docker image prune -f
+
+            # Vérifier statut
+            docker compose -f docker-compose.prod.yml ps
+
+            echo "✅ Déploiement BattleCRM terminé!"
+
+      - name: Healthcheck
+        run: |
+          echo "⏳ Attente démarrage..."
+          sleep 45
+          for i in {1..3}; do
+            echo "Tentative $i/3..."
+            if curl -f --max-time 10 https://battlecrm.romainsire.com; then
+              echo "✅ BattleCRM accessible!"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "❌ Site inaccessible"
+          exit 1
