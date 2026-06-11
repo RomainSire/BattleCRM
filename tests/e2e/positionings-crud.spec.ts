@@ -76,7 +76,7 @@ test.describe('Positionings - Create & Edit', () => {
   test('created positioning is assigned to a funnel stage by default', async ({ page }) => {
     await page.goto('/positionings')
     const row = page.locator('tr').filter({ hasText: 'New Positioning E2E' })
-    await expect(row).toContainText('Lead qualified')
+    await expect(row).toContainText('Prospect → À contacter')
   })
 
   // ── Edit ────────────────────────────────────────────────────────────────────

@@ -38,7 +38,7 @@ test.describe('Settings - Funnel Configuration', () => {
   test('shows default funnel stages seeded on registration', async ({ page }) => {
     await page.goto('/settings')
     // Default stages are seeded when a new user registers (Story 2.1)
-    await expect(page.getByText('Lead qualified')).toBeVisible()
+    await expect(page.getByText('Prospect → À contacter')).toBeVisible()
   })
 
   test('can add a new stage', async ({ page }) => {

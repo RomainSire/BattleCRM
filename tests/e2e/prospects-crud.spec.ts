@@ -82,8 +82,8 @@ test.describe('Prospects - Create & Edit', () => {
     await page.goto('/prospects')
     // "New Prospect E2E" was created in previous test — it should show a stage name (not "—")
     const row = page.locator('tr').filter({ hasText: 'New Prospect E2E' })
-    // The row should show a stage name — beforeAll seeds "Lead qualified" as the first stage
-    await expect(row).toContainText('Lead qualified')
+    // The row should show a stage name — beforeAll seeds "Prospect → À contacter" as the first stage
+    await expect(row).toContainText('Prospect → À contacter')
   })
 
   // ── Edit ────────────────────────────────────────────────────────────────────

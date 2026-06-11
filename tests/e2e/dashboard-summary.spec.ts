@@ -93,9 +93,9 @@ test.describe('Dashboard - Summary KPIs with data (6.8)', () => {
     const funnelSection = page.locator('section', {
       has: page.getByText('Funnel overview'),
     })
-    await expect(funnelSection.getByText('Lead qualified')).toBeVisible()
-    await expect(funnelSection.getByText('Linkedin connection')).toBeVisible()
-    await expect(funnelSection.getByText('First contact')).toBeVisible()
+    await expect(funnelSection.getByText('Prospect → À contacter')).toBeVisible()
+    await expect(funnelSection.getByText('Approche → CV à envoyer')).toBeVisible()
+    await expect(funnelSection.getByText('Qualif ESN → Entretien à décrocher')).toBeVisible()
   })
 
   test('funnel overview shows prospect count for stages (AC#2)', async ({ page }) => {

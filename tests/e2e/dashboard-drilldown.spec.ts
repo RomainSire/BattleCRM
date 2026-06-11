@@ -82,7 +82,7 @@ test.describe('Dashboard - Drill-Down Dialog basic flow (6.7)', () => {
     await page.getByRole('button', { name: new RegExp(positioningName) }).first().click()
 
     const dialog = page.getByRole('dialog')
-    // Title: "Pitch Alpha — Lead qualified"
+    // Title: "Pitch Alpha — Prospect → À contacter"
     await expect(
       dialog.getByRole('heading', {
         name: new RegExp(`${positioningName}.*${stageName}`),

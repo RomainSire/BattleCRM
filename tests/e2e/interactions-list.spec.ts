@@ -152,7 +152,7 @@ test.describe('Interactions - List View', () => {
   test('stage filter shows only matching interactions', async ({ page }) => {
     await page.goto('/interactions')
     await page.getByPlaceholder(/all stages/i).click()
-    await page.getByRole('option', { name: 'Lead qualified' }).click()
+    await page.getByRole('option', { name: 'Prospect → À contacter' }).click()
     await expect(page.getByText('TL Prospect A')).toBeVisible()
     await expect(page.getByText('TL Prospect B')).not.toBeVisible()
   })
@@ -177,7 +177,7 @@ test.describe('Interactions - List View', () => {
   test('"Clear filters" button resets all filters', async ({ page }) => {
     await page.goto('/interactions')
     await page.getByPlaceholder(/all stages/i).click()
-    await page.getByRole('option', { name: 'Lead qualified' }).click()
+    await page.getByRole('option', { name: 'Prospect → À contacter' }).click()
     await expect(page.getByRole('button', { name: /clear filters/i })).toBeVisible()
     await page.getByRole('button', { name: /clear filters/i }).click()
     await expect(page.getByText('TL Prospect A')).toBeVisible()
@@ -189,7 +189,7 @@ test.describe('Interactions - List View', () => {
   }) => {
     await page.goto('/interactions')
     await page.getByPlaceholder(/all stages/i).click()
-    await page.getByRole('option', { name: 'Lead qualified' }).click()
+    await page.getByRole('option', { name: 'Prospect → À contacter' }).click()
     await expect(page.getByText('1 result(s)')).toBeVisible()
 
     await page.getByRole('button', { name: /clear filters/i }).click()

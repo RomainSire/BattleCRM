@@ -28,7 +28,7 @@ test.describe('Interactions - Pre-fill & Quick Actions', () => {
     await hardResetTestData(context.request)
     await resetFunnelStages(context.request)
     const stages = await getFunnelStages(context.request)
-    // Prospect in first stage (Lead qualified)
+    // Prospect in first stage (Prospect → À contacter)
     await createProspect(context.request, {
       name: 'Pre-fill Prospect',
       funnel_stage_id: stages[0]?.id,

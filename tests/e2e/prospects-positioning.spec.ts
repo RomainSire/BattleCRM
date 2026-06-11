@@ -34,7 +34,7 @@ test.describe('Prospects - Positioning Section', () => {
     await resetFunnelStages(context.request)
     const stages = await getFunnelStages(context.request)
 
-    // One positioning for stage[0] (Lead qualified)
+    // One positioning for stage[0] (Prospect → À contacter)
     const positioning = await createPositioning(context.request, {
       name: 'PP Positioning Alpha',
       funnel_stage_id: stages[0]?.id,
@@ -186,7 +186,7 @@ test.describe('Prospects - Positioning Section', () => {
     await stageCombobox.click()
     const listbox = page.getByRole('listbox')
     await expect(listbox).toBeVisible()
-    await listbox.getByRole('option', { name: 'Linkedin connection' }).click()
+    await listbox.getByRole('option', { name: 'Approche → CV à envoyer' }).click()
     // Non-blocking outcome prompt appears immediately (stage change proceeds regardless)
     await expect(page.getByText(/how did/i)).toBeVisible()
     await expect(page.getByRole('button', { name: /skip/i })).toBeVisible()

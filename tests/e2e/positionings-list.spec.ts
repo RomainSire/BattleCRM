@@ -80,14 +80,14 @@ test.describe('Positionings - List View', () => {
   test('selecting a stage filter updates the select value', async ({ page }) => {
     await page.goto('/positionings')
     await page.getByRole('combobox').click()
-    await page.getByRole('option', { name: 'Lead qualified' }).click()
-    await expect(page.getByRole('combobox')).toHaveValue('Lead qualified')
+    await page.getByRole('option', { name: 'Prospect → À contacter' }).click()
+    await expect(page.getByRole('combobox')).toHaveValue('Prospect → À contacter')
   })
 
   test('stage filter shows only matching positionings', async ({ page }) => {
     await page.goto('/positionings')
     await page.getByRole('combobox').click()
-    await page.getByRole('option', { name: 'Lead qualified' }).click()
+    await page.getByRole('option', { name: 'Prospect → À contacter' }).click()
     await expect(page.getByText('CV Alpha')).toBeVisible()
     await expect(page.getByText('CV Beta')).not.toBeVisible()
   })
@@ -95,7 +95,7 @@ test.describe('Positionings - List View', () => {
   test('"Clear filter" button resets the stage filter', async ({ page }) => {
     await page.goto('/positionings')
     await page.getByRole('combobox').click()
-    await page.getByRole('option', { name: 'Lead qualified' }).click()
+    await page.getByRole('option', { name: 'Prospect → À contacter' }).click()
     await expect(page.getByRole('button', { name: /clear filter/i })).toBeVisible()
     await page.getByRole('button', { name: /clear filter/i }).click()
     await expect(page.getByText('CV Alpha')).toBeVisible()
@@ -105,7 +105,7 @@ test.describe('Positionings - List View', () => {
   test('clearing the stage filter shows all positionings', async ({ page }) => {
     await page.goto('/positionings')
     await page.getByRole('combobox').click()
-    await page.getByRole('option', { name: 'Lead qualified' }).click()
+    await page.getByRole('option', { name: 'Prospect → À contacter' }).click()
     await expect(page.getByText('CV Beta')).not.toBeVisible()
     await page.locator('[data-slot="combobox-clear"]').click()
     await expect(page.getByText('CV Beta')).toBeVisible()
@@ -143,7 +143,7 @@ test.describe('Positionings - List View', () => {
   test('drawer shows funnel stage name as badge', async ({ page }) => {
     await page.goto('/positionings')
     await page.locator('tr').filter({ hasText: 'CV Alpha' }).click()
-    await expect(page.getByRole('dialog').getByText('Lead qualified')).toBeVisible()
+    await expect(page.getByRole('dialog').getByText('Prospect → À contacter')).toBeVisible()
   })
 
   test('drawer shows full description and content', async ({ page }) => {
