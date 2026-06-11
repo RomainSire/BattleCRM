@@ -1,5 +1,6 @@
 import { Moon, Sun, SunMoon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { LanguageToggle } from '@/components/common/LanguageToggle'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -9,7 +10,7 @@ import { ChangePasswordDialog } from './components/ChangePasswordDialog'
 import { FunnelStageList } from './components/FunnelStageList'
 
 export function SettingsPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { theme } = useTheme()
 
   return (
@@ -59,14 +60,7 @@ export function SettingsPage() {
               <p className="text-sm font-medium">{t('settings.language.title')}</p>
               <p className="text-sm text-muted-foreground">{t('settings.language.description')}</p>
             </div>
-            <ToggleGroup
-              type="single"
-              value={i18n.language}
-              onValueChange={(v) => v && i18n.changeLanguage(v)}
-            >
-              <ToggleGroupItem value="fr">Français</ToggleGroupItem>
-              <ToggleGroupItem value="en">English</ToggleGroupItem>
-            </ToggleGroup>
+            <LanguageToggle />
           </div>
         </CardContent>
       </Card>

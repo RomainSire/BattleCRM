@@ -29,7 +29,8 @@ export function ForgotPasswordPage() {
     // Always show the same confirmation regardless of whether the email exists
     // (server responds identically to prevent account enumeration).
     // Normalize to a supported locale so the backend email matches the UI language.
-    const locale = (i18n.resolvedLanguage ?? i18n.language).startsWith('fr') ? 'fr' : 'en'
+    const lang = i18n.resolvedLanguage ?? i18n.language
+    const locale = lang.startsWith('fr') ? 'fr' : lang.startsWith('ja') ? 'ja' : 'en'
     forgotPassword.mutate(
       { email: data.email, locale },
       {
