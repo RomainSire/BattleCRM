@@ -190,6 +190,12 @@ Pour **chaque** feature/fix, l'agent doit, dans cet ordre :
    - Logique pure → Japa unitaires (`tests/unit/`). Extension → Vitest.
    - Parcours utilisateur critique → Playwright E2E (`tests/e2e/`), **à écrire** mais **pas à lancer**
      automatiquement (lent — demander à Romain de les lancer).
+   - **Anti-flake (E2E)** : avant de muter un champ d'un formulaire d'édition inline du drawer
+     (`ProspectDetail`/`PositioningDetail`, inputs non-contrôlés `register`), **attendre que le
+     formulaire soit stabilisé** via `await expect(input).toHaveValue('<valeur seedée>')` AVANT
+     tout `clear()`/`fill()`. Sinon un refetch TanStack Query en arrière-plan remonte l'input
+     (`element detached from the DOM`) et le test flake. Préférer corriger la course plutôt que
+     s'appuyer sur les retries Playwright.
 5. **Mettre à jour la collection Bruno** : pour tout nouvel endpoint ou endpoint modifié, ajouter/éditer
    le `.bru` dans `.brunoCollection/<ressource>/` (incrémenter le `seq`, suivre le format des fichiers voisins).
 6. **i18n** : toute string UI ajoutée doit l'être dans **`fr.json` ET `en.json`** (frontend et/ou extension).
