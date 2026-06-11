@@ -121,6 +121,9 @@ test.describe('Prospects - Create & Edit', () => {
     await page.getByRole('button', { name: /^edit/i }).click()
 
     const nameInput = page.getByRole('textbox', { name: /^name/i })
+    // Wait for the edit form to settle (mounted + pre-filled) before mutating,
+    // otherwise a background refetch can remount the input mid-interaction.
+    await expect(nameInput).toHaveValue('Initial Prospect')
     await nameInput.clear()
     await nameInput.fill('Should Not Be Saved')
 
@@ -141,6 +144,9 @@ test.describe('Prospects - Create & Edit', () => {
     await page.getByRole('button', { name: /^edit/i }).click()
 
     const nameInput = page.getByRole('textbox', { name: /^name/i })
+    // Wait for the edit form to settle (mounted + pre-filled) before mutating,
+    // otherwise a background refetch can remount the input mid-interaction.
+    await expect(nameInput).toHaveValue('Initial Prospect')
     await nameInput.clear()
     await nameInput.fill('Updated Prospect Name')
 
