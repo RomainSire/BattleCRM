@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
+import { AppLogo } from '@/components/common/AppLogo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { TextField } from '@/components/ui/text-field'
@@ -50,7 +51,8 @@ export function LoginPage() {
 
   return (
     <Card className="w-full max-w-md">
-      <CardHeader>
+      <CardHeader className="flex flex-col items-center gap-2 text-center">
+        <AppLogo size="lg" className="mb-2" />
         <CardTitle>{t('auth.login.title')}</CardTitle>
         <CardDescription>{t('auth.login.description')}</CardDescription>
       </CardHeader>

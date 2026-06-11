@@ -2,6 +2,7 @@ import { CircleUser, LogOut, Menu, Settings } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
+import { AppLogo } from '@/components/common/AppLogo'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -46,15 +47,7 @@ export function AppNavbar() {
     <nav className="border-b bg-background shadow-sm" aria-label="Main navigation">
       <div className="container mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
         {/* Logo */}
-        <div className="flex items-center gap-2">
-          <img
-            src="/images/BattleCRM_logo.svg"
-            alt=""
-            aria-hidden="true"
-            className="size-10 shrink-0"
-          />
-          <span className="font-bold text-2xl text-brand-gradient">{t('common.appName')}</span>
-        </div>
+        <AppLogo size="md" />
 
         {/* Desktop nav links */}
         <div className="hidden md:flex flex-1 items-center gap-4">
@@ -103,16 +96,8 @@ export function AppNavbar() {
             </SheetTrigger>
             <SheetContent side="left" className="w-72 flex flex-col p-0">
               <SheetHeader className="px-6 py-4 border-b">
-                <SheetTitle className="flex items-center gap-2">
-                  <img
-                    src="/images/BattleCRM_logo.svg"
-                    alt=""
-                    aria-hidden="true"
-                    className="size-7 shrink-0"
-                  />
-                  <span className="font-bold text-xl text-brand-gradient">
-                    {t('common.appName')}
-                  </span>
+                <SheetTitle>
+                  <AppLogo size="sm" />
                 </SheetTitle>
               </SheetHeader>
 
