@@ -3,7 +3,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import hash from '@adonisjs/core/services/hash'
 import db from '@adonisjs/lucid/services/db'
 import mail from '@adonisjs/mail/services/main'
-import type { AuthResponse, UserType } from '@battlecrm/shared'
+import type { AuthResponse, MessageResponse, UserType } from '@battlecrm/shared'
 import ResetPasswordNotification from '#mails/reset_password_notification'
 import User from '#models/user'
 import { seedDefaultStages } from '#services/funnel_stage_service'
@@ -110,7 +110,8 @@ export default class AuthController {
    */
   async logout({ auth, response }: HttpContext) {
     await auth.use('web').logout()
-    return response.ok({ message: 'Logged out' })
+    const body: MessageResponse = { message: 'Logged out' }
+    return response.ok(body)
   }
 
   /**
@@ -137,7 +138,8 @@ export default class AuthController {
     user.password = data.newPassword
     await user.save()
 
-    return response.ok({ message: 'Password changed' })
+    const body: MessageResponse = { message: 'Password changed' }
+    return response.ok(body)
   }
 
   /**
@@ -155,7 +157,8 @@ export default class AuthController {
       await mail.send(new ResetPasswordNotification(user.email, resetUrl, locale))
     }
 
-    return response.ok({ message: 'auth.forgotPassword.emailSent' })
+    const body: MessageResponse = { message: 'auth.forgotPassword.emailSent' }
+    return response.ok(body)
   }
 
   /**
@@ -176,6 +179,7 @@ export default class AuthController {
     user.password = data.password
     await user.save()
 
-    return response.ok({ message: 'auth.resetPassword.success' })
+    const body: MessageResponse = { message: 'auth.resetPassword.success' }
+    return response.ok(body)
   }
 }

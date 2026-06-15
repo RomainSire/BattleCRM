@@ -14,3 +14,8 @@ export type BattleType = {
   createdAt: string
   updatedAt: string | null
 }
+
+// Response wrapper for GET /api/battles (no meta envelope)
+export type BattleListResponse = {
+  data: BattleType[]
+}

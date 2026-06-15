@@ -1,8 +1,10 @@
 import type {
+  BattleListResponse,
   BattleType,
   DashboardSummaryType,
+  MessageResponse,
   PerformanceMatrixType,
-  PositioningLinkedProspectType,
+  PositioningLinkedProspectsResponse,
 } from '@battlecrm/shared'
 import { fetchApi } from '@/lib/api'
 
@@ -15,7 +17,7 @@ export const analyticsApi = {
     return fetchApi<DashboardSummaryType>(`/analytics/summary?tz=${tz}`)
   },
   drillDown(positioningId: string, stageId: string) {
-    return fetchApi<{ data: PositioningLinkedProspectType[]; meta: { total: number } }>(
+    return fetchApi<PositioningLinkedProspectsResponse>(
       `/positionings/${positioningId}/prospects?funnel_stage_id=${stageId}`,
     )
   },
@@ -23,7 +25,7 @@ export const analyticsApi = {
 
 export const battlesApi = {
   list() {
-    return fetchApi<{ data: BattleType[] }>('/battles')
+    return fetchApi<BattleListResponse>('/battles')
   },
   start(data: { funnel_stage_id: string; variant_a_id: string; variant_b_id: string }) {
     return fetchApi<BattleType>('/battles', { method: 'POST', body: JSON.stringify(data) })
@@ -35,6 +37,6 @@ export const battlesApi = {
     })
   },
   cancel(id: string) {
-    return fetchApi<{ message: string }>(`/battles/${id}`, { method: 'DELETE' })
+    return fetchApi<MessageResponse>(`/battles/${id}`, { method: 'DELETE' })
   },
 }

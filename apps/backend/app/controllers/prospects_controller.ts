@@ -1,4 +1,9 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import type {
+  MessageResponse,
+  ProspectsListResponse,
+  StageTransitionsResponse,
+} from '@battlecrm/shared'
 import { DateTime } from 'luxon'
 import { UUID_REGEX } from '#helpers/regex'
 import FunnelStage from '#models/funnel_stage'
@@ -81,10 +86,11 @@ export default class ProspectsController {
       }
     }
 
-    return response.ok({
+    const body: ProspectsListResponse = {
       data: prospects.map((p) => serializeProspect(p, activeByProspectId.get(p.id) ?? null)),
       meta: { total: prospects.length },
-    })
+    }
+    return response.ok(body)
   }
 
   /**
@@ -226,7 +232,8 @@ export default class ProspectsController {
       .firstOrFail()
 
     await prospect.delete() // SoftDeletes: sets deleted_at = now()
-    return response.ok({ message: 'Prospect archived' })
+    const body: MessageResponse = { message: 'Prospect archived' }
+    return response.ok(body)
   }
 
   /**
@@ -272,6 +279,7 @@ export default class ProspectsController {
       .preload('toStage')
       .orderBy('transitioned_at', 'desc')
 
-    return response.ok({ data: transitions.map(serializeTransition) })
+    const body: StageTransitionsResponse = { data: transitions.map(serializeTransition) }
+    return response.ok(body)
   }
 }

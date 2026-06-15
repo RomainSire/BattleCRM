@@ -1,5 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
+import type { FunnelStageListResponse, MessageResponse } from '@battlecrm/shared'
 import FunnelStage from '#models/funnel_stage'
 import { serializeFunnelStage } from '#serializers/funnel_stage'
 import {
@@ -29,7 +30,11 @@ export default class FunnelStagesController {
     }
 
     const stages = await query
-    return response.ok({ data: stages.map(serializeFunnelStage), meta: { total: stages.length } })
+    const body: FunnelStageListResponse = {
+      data: stages.map(serializeFunnelStage),
+      meta: { total: stages.length },
+    }
+    return response.ok(body)
   }
 
   /**
@@ -137,7 +142,8 @@ export default class FunnelStagesController {
       }
     })
 
-    return response.ok({ message: 'Stage deleted' })
+    const body: MessageResponse = { message: 'Stage deleted' }
+    return response.ok(body)
   }
 
   /**
@@ -197,9 +203,10 @@ export default class FunnelStagesController {
         q.whereNull('deleted_at')
       })
 
-    return response.ok({
+    const body: FunnelStageListResponse = {
       data: updatedStages.map(serializeFunnelStage),
       meta: { total: updatedStages.length },
-    })
+    }
+    return response.ok(body)
   }
 }

@@ -1,8 +1,9 @@
+import type { AuthResponse, MessageResponse, UserType } from '@battlecrm/shared'
 import { fetchApi } from '@/lib/api'
 
 export const authApi = {
   register(email: string, password: string) {
-    return fetchApi<{ user: { id: string; email: string } }>('/auth/register', {
+    return fetchApi<AuthResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
@@ -13,18 +14,18 @@ export const authApi = {
   },
 
   me() {
-    return fetchApi<{ id: string; email: string }>('/auth/me')
+    return fetchApi<UserType>('/auth/me')
   },
 
   login(email: string, password: string) {
-    return fetchApi<{ user: { id: string; email: string } }>('/auth/login', {
+    return fetchApi<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
   },
 
   logout() {
-    return fetchApi<{ message: string }>('/auth/logout', { method: 'POST' })
+    return fetchApi<MessageResponse>('/auth/logout', { method: 'POST' })
   },
 
   changePassword(data: {
@@ -32,21 +33,21 @@ export const authApi = {
     newPassword: string
     newPasswordConfirmation: string
   }) {
-    return fetchApi<{ message: string }>('/auth/password', {
+    return fetchApi<MessageResponse>('/auth/password', {
       method: 'PUT',
       body: JSON.stringify(data),
     })
   },
 
   forgotPassword(email: string, locale: string) {
-    return fetchApi<{ message: string }>('/auth/forgot-password', {
+    return fetchApi<MessageResponse>('/auth/forgot-password', {
       method: 'POST',
       body: JSON.stringify({ email, locale }),
     })
   },
 
   resetPassword(data: { token: string; password: string; passwordConfirmation: string }) {
-    return fetchApi<{ message: string }>('/auth/reset-password', {
+    return fetchApi<MessageResponse>('/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify(data),
     })

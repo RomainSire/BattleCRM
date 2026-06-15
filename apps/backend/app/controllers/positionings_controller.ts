@@ -1,4 +1,9 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import type {
+  MessageResponse,
+  PositioningLinkedProspectsResponse,
+  PositioningListResponse,
+} from '@battlecrm/shared'
 import { UUID_REGEX } from '#helpers/regex'
 import FunnelStage from '#models/funnel_stage'
 import Positioning from '#models/positioning'
@@ -45,10 +50,11 @@ export default class PositioningsController {
     }
 
     const positionings = await query
-    return response.ok({
+    const body: PositioningListResponse = {
       data: positionings.map(serializePositioning),
       meta: { total: positionings.length },
-    })
+    }
+    return response.ok(body)
   }
 
   /**
@@ -143,7 +149,8 @@ export default class PositioningsController {
       .firstOrFail()
 
     await positioning.delete()
-    return response.ok({ message: 'Positioning archived' })
+    const body: MessageResponse = { message: 'Positioning archived' }
+    return response.ok(body)
   }
 
   /**
@@ -211,9 +218,10 @@ export default class PositioningsController {
 
     const pps = await query
 
-    return response.ok({
+    const body: PositioningLinkedProspectsResponse = {
       data: pps.map(serializePositioningLinkedProspect),
       meta: { total: pps.length },
-    })
+    }
+    return response.ok(body)
   }
 }

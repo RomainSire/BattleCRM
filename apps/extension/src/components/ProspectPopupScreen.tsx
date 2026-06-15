@@ -1,9 +1,8 @@
-import type { ExtensionProspectData } from '@battlecrm/shared'
+import type { ExtensionCreateProspectPayload, ExtensionProspectData } from '@battlecrm/shared'
 import { Loader2, Settings } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCreateProspect, useUpdateProspect } from '../features/prospects/hooks/useProspects'
-import type { CreateProspectPayload } from '../features/prospects/lib/api'
 import { HttpError } from '../lib/api'
 import type { LinkedInScrapedData } from '../lib/linkedin'
 import type { CachedCheckResult } from '../lib/types'
@@ -142,7 +141,7 @@ export default function ProspectPopupScreen({
   const handleAddSubmit = async (fields: ProspectFormFields) => {
     setServerError(undefined)
     try {
-      const payload: CreateProspectPayload = {
+      const payload: ExtensionCreateProspectPayload = {
         name: fields.name,
         linkedin_url: linkedinUrl,
         ...(fields.company ? { company: fields.company } : {}),
