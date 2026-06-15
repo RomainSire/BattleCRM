@@ -49,6 +49,7 @@ export function serializePositioningLinkedProspect(
   return {
     id: pp.prospect.id,
     name: pp.prospect.name,
+    company: pp.prospect.company,
     funnelStageId: pp.funnelStageId,
     outcome: pp.outcome,
     createdAt: pp.createdAt.toUTC().toISO()!,

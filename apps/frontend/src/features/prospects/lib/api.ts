@@ -1,5 +1,6 @@
 import type {
   CreateProspectPayload,
+  MessageResponse,
   ProspectPositioningDetailType,
   ProspectPositioningType,
   ProspectsFilterType,
@@ -43,8 +44,8 @@ export const prospectsApi = {
     })
   },
 
-  archive(id: string): Promise<{ message: string }> {
-    return fetchApi<{ message: string }>(`/prospects/${id}`, {
+  archive(id: string): Promise<MessageResponse> {
+    return fetchApi<MessageResponse>(`/prospects/${id}`, {
       method: 'DELETE',
     })
   },

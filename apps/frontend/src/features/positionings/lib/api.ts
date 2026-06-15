@@ -1,9 +1,10 @@
 import type {
   CreatePositioningPayload,
+  MessageResponse,
+  PositioningLinkedProspectsResponse,
   PositioningListResponse,
   PositioningsFilterType,
   PositioningType,
-  ProspectsListResponse,
   UpdatePositioningPayload,
 } from '@battlecrm/shared'
 import { fetchApi } from '@/lib/api'
@@ -25,8 +26,8 @@ export const positioningsApi = {
     return fetchApi<PositioningListResponse>(`/positionings${queryString ? `?${queryString}` : ''}`)
   },
 
-  prospects(id: string): Promise<ProspectsListResponse> {
-    return fetchApi<ProspectsListResponse>(`/positionings/${id}/prospects`)
+  prospects(id: string): Promise<PositioningLinkedProspectsResponse> {
+    return fetchApi<PositioningLinkedProspectsResponse>(`/positionings/${id}/prospects`)
   },
 
   create(payload: CreatePositioningPayload): Promise<PositioningType> {
@@ -43,8 +44,8 @@ export const positioningsApi = {
     })
   },
 
-  archive(id: string): Promise<{ message: string }> {
-    return fetchApi<{ message: string }>(`/positionings/${id}`, {
+  archive(id: string): Promise<MessageResponse> {
+    return fetchApi<MessageResponse>(`/positionings/${id}`, {
       method: 'DELETE',
     })
   },

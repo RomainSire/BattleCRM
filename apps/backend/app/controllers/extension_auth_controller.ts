@@ -1,6 +1,6 @@
 import { errors as authErrors } from '@adonisjs/auth'
 import type { HttpContext } from '@adonisjs/core/http'
-import type { ExtensionLoginResponse } from '@battlecrm/shared'
+import type { ExtensionLoginResponse, MessageResponse } from '@battlecrm/shared'
 import User from '#models/user'
 import { extensionLoginValidator } from '#validators/extension_auth'
 
@@ -32,6 +32,7 @@ export default class ExtensionAuthController {
   async logout({ auth, response }: HttpContext) {
     const user = auth.use('extension').user!
     await User.accessTokens.delete(user, user.currentAccessToken.identifier)
-    return response.ok({ message: 'Logged out' })
+    const body: MessageResponse = { message: 'Logged out' }
+    return response.ok(body)
   }
 }

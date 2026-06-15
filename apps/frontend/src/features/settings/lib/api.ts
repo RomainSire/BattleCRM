@@ -1,4 +1,4 @@
-import type { FunnelStageListResponse, FunnelStageType } from '@battlecrm/shared'
+import type { FunnelStageListResponse, FunnelStageType, MessageResponse } from '@battlecrm/shared'
 import { fetchApi, fetchBlob } from '@/lib/api'
 
 export const funnelStagesApi = {
@@ -21,7 +21,7 @@ export const funnelStagesApi = {
   },
 
   delete(id: string) {
-    return fetchApi<{ message: string }>(`/funnel_stages/${id}`, {
+    return fetchApi<MessageResponse>(`/funnel_stages/${id}`, {
       method: 'DELETE',
     })
   },
@@ -44,7 +44,7 @@ export const backupApi = {
   import(file: File) {
     const formData = new FormData()
     formData.append('file', file)
-    return fetchApi<{ message: string }>('/backup/import', {
+    return fetchApi<MessageResponse>('/backup/import', {
       method: 'POST',
       body: formData,
     })

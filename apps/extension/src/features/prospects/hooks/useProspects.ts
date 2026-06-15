@@ -1,6 +1,10 @@
+import type {
+  ExtensionCreateProspectPayload,
+  ExtensionUpdateProspectPayload,
+} from '@battlecrm/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../../../lib/queryKeys'
-import { type CreateProspectPayload, prospectsApi, type UpdateProspectPayload } from '../lib/api'
+import { prospectsApi } from '../lib/api'
 
 export function useCheckProspect(linkedinUrl: string | null) {
   return useQuery({
@@ -13,7 +17,7 @@ export function useCheckProspect(linkedinUrl: string | null) {
 export function useCreateProspect() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: CreateProspectPayload) => prospectsApi.create(payload),
+    mutationFn: (payload: ExtensionCreateProspectPayload) => prospectsApi.create(payload),
     onSuccess: (_data, { linkedin_url }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.prospects.check(linkedin_url) })
     },
@@ -23,7 +27,7 @@ export function useCreateProspect() {
 export function useUpdateProspect() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...payload }: { id: string } & UpdateProspectPayload) =>
+    mutationFn: ({ id, ...payload }: { id: string } & ExtensionUpdateProspectPayload) =>
       prospectsApi.update(id, payload),
     onSuccess: (updated) => {
       if (updated.linkedinUrl) {

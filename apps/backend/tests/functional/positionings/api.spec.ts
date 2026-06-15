@@ -509,6 +509,7 @@ test.group('Positionings API', (group) => {
       userId: user.id,
       funnelStageId: stage.id,
       name: 'Jane Doe',
+      company: 'Acme Inc',
     })
     await ProspectPositioning.create({
       userId: user.id,
@@ -524,8 +525,39 @@ test.group('Positionings API', (group) => {
     const body = response.body()
     assert.property(body, 'data')
     assert.property(body, 'meta')
+    assert.equal(body.meta.total, 1)
     assert.equal(body.data.length, 1)
     assert.equal(body.data[0].name, 'Jane Doe')
+    assert.equal(body.data[0].company, 'Acme Inc')
+  })
+
+  test('GET /api/positionings/:id/prospects returns null company when prospect has none', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'get-prospects-no-company')
+    const stage = await getUserFirstStage(user.id)
+    const p = await createPositioning(user.id, stage.id)
+
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'No Company',
+    })
+    await ProspectPositioning.create({
+      userId: user.id,
+      prospectId: prospect.id,
+      positioningId: p.id,
+      funnelStageId: stage.id,
+      outcome: null,
+    })
+
+    const response = await client.get(`/api/positionings/${p.id}/prospects`).loginAs(user)
+    response.assertStatus(200)
+
+    const body = response.body()
+    assert.equal(body.data.length, 1)
+    assert.isNull(body.data[0].company)
   })
 
   test('GET /api/positionings/:id/prospects returns empty list when no prospects linked', async ({

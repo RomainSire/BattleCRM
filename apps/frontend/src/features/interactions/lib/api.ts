@@ -3,6 +3,7 @@ import type {
   InteractionListResponse,
   InteractionsFilterType,
   InteractionType,
+  MessageResponse,
   UpdateInteractionPayload,
 } from '@battlecrm/shared'
 import { fetchApi } from '@/lib/api'
@@ -32,7 +33,7 @@ export const interactionsApi = {
       body: JSON.stringify(payload),
     })
   },
-  delete(id: string): Promise<void> {
-    return fetchApi<void>(`/interactions/${id}`, { method: 'DELETE' })
+  delete(id: string): Promise<MessageResponse> {
+    return fetchApi<MessageResponse>(`/interactions/${id}`, { method: 'DELETE' })
   },
 }

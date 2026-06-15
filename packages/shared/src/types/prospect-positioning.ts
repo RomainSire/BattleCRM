@@ -24,9 +24,16 @@ export type ProspectPositioningDetailType = {
 export type PositioningLinkedProspectType = {
   id: string // prospect.id
   name: string // prospect.name
+  company: string | null // prospect.company
   funnelStageId: string // pp.funnel_stage_id (the assignment's stage)
   outcome: 'success' | 'failed' | null
   createdAt: string // pp.createdAt ISO 8601
   isActive: boolean // pp.funnelStageId === prospect.funnelStageId
   deletedAt: string | null // prospect.deletedAt — for archived prospects
+}
+
+// Response wrapper for GET /api/positionings/:id/prospects
+export type PositioningLinkedProspectsResponse = {
+  data: PositioningLinkedProspectType[]
+  meta: { total: number }
 }

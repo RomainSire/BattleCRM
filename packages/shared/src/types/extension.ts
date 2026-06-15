@@ -21,3 +21,24 @@ export type ExtensionProspectData = {
 export type ExtensionCheckResponse =
   | { found: true; prospect: ExtensionProspectData }
   | { found: false }
+
+// Request payloads — aligned with extensionCreate/UpdateProspectValidator (snake_case keys)
+export type ExtensionCreateProspectPayload = {
+  name: string
+  linkedin_url: string
+  company?: string | null
+  email?: string | null
+  phone?: string | null
+  title?: string | null
+  notes?: string | null
+}
+
+export type ExtensionUpdateProspectPayload = {
+  name?: string
+  company?: string | null
+  email?: string | null
+  phone?: string | null
+  title?: string | null
+  notes?: string | null
+  // linkedin_url & funnel_stage_id intentionally excluded (read-only / web app only)
+}

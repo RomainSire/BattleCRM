@@ -1,6 +1,12 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
-import type { ConversionCellType, DashboardSummaryType } from '@battlecrm/shared'
+import type {
+  BattleListResponse,
+  ConversionCellType,
+  DashboardSummaryType,
+  MessageResponse,
+  PerformanceMatrixType,
+} from '@battlecrm/shared'
 import { DateTime } from 'luxon'
 import { UUID_REGEX } from '#helpers/regex'
 import Battle from '#models/battle'
@@ -31,7 +37,8 @@ export default class BattlesController {
     }
 
     const battles = await query
-    return response.ok({ data: battles.map(serializeBattle) })
+    const body: BattleListResponse = { data: battles.map(serializeBattle) }
+    return response.ok(body)
   }
 
   async store({ auth, request, response }: HttpContext) {
@@ -158,7 +165,8 @@ export default class BattlesController {
     // Hard-delete — no SoftDeletes on Battle. Frees the battleNumber for the stage.
     await battle.delete()
 
-    return response.ok({ message: 'Battle cancelled' })
+    const body: MessageResponse = { message: 'Battle cancelled' }
+    return response.ok(body)
   }
 
   async performanceMatrix({ auth, response }: HttpContext) {
@@ -185,7 +193,8 @@ export default class BattlesController {
     }>
 
     if (rows.length === 0) {
-      return response.ok({ cells: [] })
+      const emptyBody: PerformanceMatrixType = { cells: [] }
+      return response.ok(emptyBody)
     }
 
     const positioningIds = [...new Set(rows.map((r) => r.positioning_id))]
@@ -221,7 +230,8 @@ export default class BattlesController {
       }
     })
 
-    return response.ok({ cells })
+    const body: PerformanceMatrixType = { cells }
+    return response.ok(body)
   }
 
   async summary({ auth, request, response }: HttpContext) {

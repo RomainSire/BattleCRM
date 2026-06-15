@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import zlib from 'node:zlib'
 import type { HttpContext } from '@adonisjs/core/http'
+import type { MessageResponse } from '@battlecrm/shared'
 import { DateTime } from 'luxon'
 import { exportUserData, importUserData } from '#services/backup_service'
 import { backupEnvelopeValidator, importFileValidator } from '#validators/backup'
@@ -55,6 +56,7 @@ export default class BackupController {
 
     await importUserData(user, envelope)
 
-    return response.ok({ message: 'Backup imported' })
+    const body: MessageResponse = { message: 'Backup imported' }
+    return response.ok(body)
   }
 }

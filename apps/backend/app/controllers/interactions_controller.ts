@@ -1,4 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import type { InteractionListResponse, MessageResponse } from '@battlecrm/shared'
 import { DateTime } from 'luxon'
 import { UUID_REGEX } from '#helpers/regex'
 import FunnelStage from '#models/funnel_stage'
@@ -75,10 +76,11 @@ export default class InteractionsController {
     }
 
     const interactions = await query
-    return response.ok({
+    const body: InteractionListResponse = {
       data: interactions.map(serializeInteraction),
       meta: { total: interactions.length },
-    })
+    }
+    return response.ok(body)
   }
 
   /**
@@ -193,6 +195,7 @@ export default class InteractionsController {
       .where('id', params.id)
       .firstOrFail()
     await interaction.delete()
-    return response.ok({ message: 'Interaction deleted' })
+    const body: MessageResponse = { message: 'Interaction deleted' }
+    return response.ok(body)
   }
 }
