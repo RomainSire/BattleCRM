@@ -28,6 +28,10 @@ interface SelectFieldProps<T extends FieldValues> {
   disabled?: boolean
   /** While true, renders a Skeleton in place of the Select (data still loading). */
   loading?: boolean
+  /** Optional muted hint rendered between the Select and the error. */
+  description?: ReactNode
+  /** Extra side-effect fired alongside the RHF `field.onChange` (e.g. reset a dependent field). */
+  onValueChange?: (value: string) => void
   /** Wires both the Label `htmlFor` and the trigger `id`. Defaults to `name`. */
   id?: string
   triggerClassName?: string
@@ -48,6 +52,8 @@ export function SelectField<T extends FieldValues>({
   required,
   disabled,
   loading,
+  description,
+  onValueChange,
   id,
   triggerClassName,
   'aria-label': ariaLabel,
@@ -74,7 +80,14 @@ export function SelectField<T extends FieldValues>({
           {loading ? (
             <Skeleton className="h-9 w-full" />
           ) : (
-            <Select value={field.value} onValueChange={field.onChange} disabled={disabled}>
+            <Select
+              value={field.value}
+              onValueChange={(value) => {
+                field.onChange(value)
+                onValueChange?.(value)
+              }}
+              disabled={disabled}
+            >
               <SelectTrigger
                 id={fieldId}
                 aria-label={ariaLabel}
@@ -92,6 +105,7 @@ export function SelectField<T extends FieldValues>({
               </SelectContent>
             </Select>
           )}
+          {description && <p className="text-xs text-muted-foreground">{description}</p>}
           <FieldError errors={[fieldState.error]} />
         </div>
       )}
