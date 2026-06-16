@@ -13,16 +13,10 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { DateField } from '@/components/ui/date-field'
 import { FieldError } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
+import { SelectField } from '@/components/ui/select-field'
 import { Textarea } from '@/components/ui/textarea'
 import { formatDateTime } from '@/lib/dates'
 import { useInteractionEdit } from '../hooks/useInteractionEdit'
@@ -38,15 +32,12 @@ export function InteractionDetail({ interaction, onClose }: Props) {
     isEditing,
     apiError,
     deleteError,
-    editPositioningId,
-    setEditPositioningId,
-    editDate,
-    setEditDate,
     update,
     deleteInteraction,
     positionings,
     positioningsLoading,
     register,
+    control,
     formErrors,
     onFormSubmit,
     handleEditStart,
@@ -58,42 +49,26 @@ export function InteractionDetail({ interaction, onClose }: Props) {
     <div className="space-y-3 px-4 pb-4 text-sm">
       {isEditing ? (
         <form onSubmit={onFormSubmit} className="space-y-3">
-          <div className="flex flex-col gap-1">
-            <Label>{t('interactions.fields.positioning')}</Label>
-            {positioningsLoading ? (
-              <Skeleton className="h-9 w-full" />
-            ) : (
-              <Select
-                value={editPositioningId}
-                onValueChange={setEditPositioningId}
-                disabled={update.isPending}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t('interactions.noPositioning')}</SelectItem>
-                  {positionings.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+          <SelectField
+            control={control}
+            name="positioning_id"
+            label={t('interactions.fields.positioning')}
+            disabled={update.isPending}
+            loading={positioningsLoading}
+            options={[
+              { value: 'none', label: t('interactions.noPositioning') },
+              ...positionings.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+          />
 
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`edit-date-${interaction.id}`}>{t('interactions.detail.date')}</Label>
-            <input
-              id={`edit-date-${interaction.id}`}
-              type="date"
-              value={editDate}
-              onChange={(e) => setEditDate(e.target.value)}
-              disabled={update.isPending}
-              className="h-9 w-48 rounded-md border border-input bg-background px-3 text-sm"
-            />
-          </div>
+          <DateField
+            control={control}
+            name="interaction_date"
+            id={`edit-date-${interaction.id}`}
+            label={t('interactions.detail.date')}
+            disabled={update.isPending}
+            className="w-48"
+          />
 
           <div className="flex flex-col gap-1">
             <Label htmlFor={`edit-notes-${interaction.id}`}>{t('interactions.fields.notes')}</Label>
