@@ -241,7 +241,9 @@
         "submit": "Restaurer mes données",
         "submitting": "Restauration en cours...",
         "success": "Données restaurées avec succès",
-        "error": "Échec de l'import"
+        "error": "Échec de l'import",
+        "fileRequired": "Veuillez sélectionner un fichier",
+        "confirmMismatch": "Le mot de confirmation ne correspond pas"
       }
     }
   },
