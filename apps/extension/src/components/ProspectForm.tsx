@@ -1,9 +1,6 @@
-import { vineResolver } from '@hookform/resolvers/vine'
 import { useEffect, useRef } from 'react'
 import { type SubmitHandler, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { prospectSchema } from '../features/prospects/schemas/prospect'
-import { i18nMessagesProvider } from '../lib/validation'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -50,10 +47,7 @@ export default function ProspectForm({
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<ProspectFormFields>({
-    resolver: vineResolver(prospectSchema, { messagesProvider: i18nMessagesProvider }),
-    defaultValues,
-  })
+  } = useForm<ProspectFormFields>({ defaultValues, mode: 'onTouched' })
 
   useEffect(() => {
     nameInputRef.current?.focus()
@@ -66,7 +60,9 @@ export default function ProspectForm({
     return () => subscription.unsubscribe()
   }, [watch, onFieldChange])
 
-  const { ref: rhfNameRef, ...nameRest } = register('name')
+  const { ref: rhfNameRef, ...nameRest } = register('name', {
+    required: t('validation.required'),
+  })
 
   const onFormSubmit: SubmitHandler<ProspectFormFields> = (data) => {
     onSubmit(data)

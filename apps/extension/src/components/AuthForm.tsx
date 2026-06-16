@@ -1,11 +1,8 @@
-import { vineResolver } from '@hookform/resolvers/vine'
 import { useEffect } from 'react'
 import { type SubmitHandler, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useLoginExtension } from '../features/auth/hooks/useAuth'
-import { authSchema } from '../features/auth/schemas/auth'
 import { HttpError } from '../lib/api'
-import { i18nMessagesProvider } from '../lib/validation'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -32,8 +29,8 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
     setError,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
-    resolver: vineResolver(authSchema, { messagesProvider: i18nMessagesProvider }),
     defaultValues: { baseUrl: '', email: '', password: '' },
+    mode: 'onTouched',
   })
 
   useEffect(() => {
@@ -75,7 +72,7 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="baseUrl">{t('auth.fields.url')}</Label>
           <Input
-            {...register('baseUrl')}
+            {...register('baseUrl', { required: t('validation.required') })}
             aria-invalid={!!errors.baseUrl}
             disabled={isPending}
             id="baseUrl"
@@ -88,7 +85,13 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email">{t('auth.fields.email')}</Label>
           <Input
-            {...register('email')}
+            {...register('email', {
+              required: t('validation.required'),
+              pattern: {
+                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                message: t('validation.email'),
+              },
+            })}
             aria-invalid={!!errors.email}
             disabled={isPending}
             id="email"
@@ -101,7 +104,7 @@ export default function AuthForm({ onSuccess, initialError }: AuthFormProps) {
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="password">{t('auth.fields.password')}</Label>
           <PasswordInput
-            {...register('password')}
+            {...register('password', { required: t('validation.required') })}
             aria-invalid={!!errors.password}
             disabled={isPending}
             id="password"
