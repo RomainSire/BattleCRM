@@ -52,7 +52,11 @@ Import aliases (définis dans `package.json#imports`) :
 - **React 19** + **Vite 8** + **TypeScript strict**
 - **Routing** : React Router v7 (layout routes pour guards `AuthGuard`/`GuestGuard` via `<Outlet />`)
 - **State serveur** : TanStack Query v5 (hooks `useX` dans `features/*/hooks/`, clés dans `lib/queryKeys.ts`)
-- **Formulaires** : react-hook-form v7 + VineJS (validation côté client, schemas dans `features/*/schemas/`)
+- **Formulaires** : react-hook-form v7 + VineJS (validation côté client, schemas dans `features/*/schemas/`).
+  TOUT champ d'un formulaire à submit (y compris select/date) doit être **dans le schéma Vine** et piloté
+  par **`Controller`** — jamais un `useState` parallèle validé à la main. Briques : `components/ui/{text-field,select-field,date-field}.tsx`.
+  Exception : `ImportBackupDialog` valide via règles RHF inline (un `File` + l'égalité à un mot i18n runtime
+  ne sont pas exprimables dans un schéma Vine statique).
 - **UI** : shadcn/ui (Radix) + Tailwind CSS v4
 - **Drag & drop** : dnd-kit
 - **i18n** : react-i18next — locales dans `apps/frontend/public/locales/{fr,en}.json`
@@ -71,6 +75,10 @@ avec sous-dossiers `components/`, `hooks/`, `lib/`, `schemas/`.
 - **Auth** : tokens d'accès Bearer (SHA-256) — PAS les cookies de session
 - **Entrypoint unique** : tout passe par `popup/` (pas de `chrome.windows.create`)
 - Persistance d'état formulaire : `chrome.storage.session` (clé = URL LinkedIn normalisée)
+- **Validation formulaires : PAS de VineJS ici.** La CSP MV3 (`script-src 'self'`) interdit `unsafe-eval` ;
+  or Vine compile ses schémas via `new Function()` → `vine.create()` lève `EvalError` au chargement (popup blanc).
+  Tenté puis rollback (juin 2026). Garder la validation **react-hook-form inline** (`register(name, { required, pattern })`).
+  Une lib sans codegen (Zod/Valibot) serait nécessaire pour une validation déclarative côté extension.
 
 ### Package partagé (`packages/shared`)
 

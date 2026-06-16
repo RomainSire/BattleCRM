@@ -17,14 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { FieldError } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
+import { SelectField } from '@/components/ui/select-field'
 import { Textarea } from '@/components/ui/textarea'
 import { usePositionings } from '@/features/positionings/hooks/usePositionings'
 import { useProspects } from '@/features/prospects/hooks/useProspects'
@@ -41,6 +34,8 @@ interface AddInteractionDialogProps {
 }
 
 interface FormValues {
+  prospect_id: string
+  positioning_id: string
   notes: string
 }
 
@@ -50,11 +45,26 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
 
   const [open, setOpen] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
-  const [selectedProspectId, setSelectedProspectId] = useState(
-    initialProspectId ?? lastProspectId ?? '',
-  )
-  const [selectedPositioningId, setSelectedPositioningId] = useState<string>('none')
-  const [prospectError, setProspectError] = useState<string | null>(null)
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: vineResolver(createInteractionSchema, { messagesProvider: i18nMessagesProvider }),
+    defaultValues: {
+      prospect_id: initialProspectId ?? lastProspectId ?? '',
+      positioning_id: 'none',
+      notes: '',
+    },
+  })
+
+  const selectedProspectId = watch('prospect_id')
+  const selectedPositioningId = watch('positioning_id')
 
   const create = useCreateInteraction()
   const { data: prospectsData, isLoading: prospectsLoading } = useProspects()
@@ -87,37 +97,21 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
     if (!lastId) return
     const found = positionings.find((p) => p.id === lastId)
     if (found) {
-      setSelectedPositioningId(lastId)
+      setValue('positioning_id', lastId)
     }
   }, [positioningsLoading, positionings, selectedProspect?.funnelStageId, open])
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<FormValues>({
-    resolver: vineResolver(createInteractionSchema, { messagesProvider: i18nMessagesProvider }),
-    defaultValues: { notes: '' },
-  })
-
   function onSubmit(values: FormValues) {
-    if (!selectedProspectId) {
-      setProspectError(t('validation.required', { field: t('interactions.fields.prospect') }))
-      return
-    }
-    setProspectError(null)
-
     setApiError(null)
     create.mutate(
       {
-        prospect_id: selectedProspectId,
-        positioning_id: selectedPositioningId === 'none' ? null : selectedPositioningId,
+        prospect_id: values.prospect_id,
+        positioning_id: values.positioning_id === 'none' ? null : values.positioning_id,
         notes: values.notes || null,
       },
       {
         onSuccess: () => {
-          saveContext(selectedProspectId, selectedProspect?.funnelStageId, selectedPositioningId)
+          saveContext(values.prospect_id, selectedProspect?.funnelStageId, values.positioning_id)
           resetAll()
           setOpen(false)
           toast.success(t('interactions.toast.created'))
@@ -131,10 +125,7 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
   }
 
   function resetAll() {
-    reset()
-    setSelectedProspectId(initialProspectId ?? '')
-    setSelectedPositioningId('none')
-    setProspectError(null)
+    reset({ prospect_id: initialProspectId ?? '', positioning_id: 'none', notes: '' })
     setApiError(null)
   }
 
@@ -143,10 +134,9 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
     setOpen(newOpen)
   }
 
-  function handleProspectChange(value: string) {
-    setSelectedProspectId(value)
-    setSelectedPositioningId('none')
-    setProspectError(null)
+  // Changing prospect invalidates the previously picked positioning (filtered by stage)
+  function handleProspectChange() {
+    setValue('positioning_id', 'none')
   }
 
   return (
@@ -167,58 +157,33 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
 
         <form id="create-interaction-form" onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           {/* Prospect — required */}
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="interaction-prospect">
-              {t('interactions.fields.prospect')}{' '}
-              <span aria-hidden="true" className="text-destructive">
-                *
-              </span>
-            </Label>
-            {prospectsLoading ? (
-              <Skeleton className="h-9 w-full" />
-            ) : (
-              <Select value={selectedProspectId} onValueChange={handleProspectChange}>
-                <SelectTrigger id="interaction-prospect" className="w-full">
-                  <SelectValue placeholder={t('interactions.placeholders.selectProspect')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {prospects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            {currentStage && <p className="text-xs text-muted-foreground">{currentStage.name}</p>}
-            <FieldError>{prospectError}</FieldError>
-          </div>
+          <SelectField
+            control={control}
+            name="prospect_id"
+            id="interaction-prospect"
+            label={t('interactions.fields.prospect')}
+            required
+            loading={prospectsLoading}
+            placeholder={t('interactions.placeholders.selectProspect')}
+            description={currentStage?.name}
+            onValueChange={handleProspectChange}
+            options={prospects.map((p) => ({ value: p.id, label: p.name }))}
+          />
 
           {/* Positioning — optional, filtered by prospect's funnel stage */}
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="interaction-positioning">{t('interactions.fields.positioning')}</Label>
-            {positioningsLoading && selectedProspect ? (
-              <Skeleton className="h-9 w-full" />
-            ) : (
-              <Select
-                value={selectedPositioningId}
-                onValueChange={setSelectedPositioningId}
-                disabled={!selectedProspect}
-              >
-                <SelectTrigger id="interaction-positioning" className="w-full">
-                  <SelectValue placeholder={t('interactions.placeholders.selectPositioning')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t('interactions.noPositioning')}</SelectItem>
-                  {positionings.map((pos) => (
-                    <SelectItem key={pos.id} value={pos.id}>
-                      {pos.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+          <SelectField
+            control={control}
+            name="positioning_id"
+            id="interaction-positioning"
+            label={t('interactions.fields.positioning')}
+            disabled={!selectedProspect}
+            loading={positioningsLoading && !!selectedProspect}
+            placeholder={t('interactions.placeholders.selectPositioning')}
+            options={[
+              { value: 'none', label: t('interactions.noPositioning') },
+              ...positionings.map((pos) => ({ value: pos.id, label: pos.name })),
+            ]}
+          />
 
           {/* Notes — optional */}
           <div className="flex flex-col gap-1">

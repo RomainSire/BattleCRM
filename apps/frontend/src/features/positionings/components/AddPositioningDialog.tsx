@@ -17,14 +17,7 @@ import {
 import { FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
+import { SelectField } from '@/components/ui/select-field'
 import { Textarea } from '@/components/ui/textarea'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
@@ -34,6 +27,7 @@ import { createPositioningSchema } from '../schemas/positioning'
 
 interface FormValues {
   name: string
+  funnel_stage_id: string
   description: string
   content: string
 }
@@ -42,37 +36,40 @@ export function AddPositioningDialog() {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
-  const [selectedStageId, setSelectedStageId] = useState<string>('')
 
   const create = useCreatePositioning()
   const { data: stagesData, isLoading: stagesLoading } = useFunnelStages()
   const stages = stagesData?.data ?? []
 
-  // Initialize selected stage to first stage when data loads
-  useEffect(() => {
-    if (stages.length > 0 && !selectedStageId) {
-      setSelectedStageId(stages[0].id)
-    }
-  }, [stages, selectedStageId])
-
   const {
     register,
+    control,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: vineResolver(createPositioningSchema, { messagesProvider: i18nMessagesProvider }),
     defaultValues: {
       name: '',
+      funnel_stage_id: '',
       description: '',
       content: '',
     },
   })
 
+  // Initialize selected stage to first stage when data loads
+  useEffect(() => {
+    if (stages.length > 0 && !watch('funnel_stage_id')) {
+      setValue('funnel_stage_id', stages[0].id)
+    }
+  }, [stages, watch, setValue])
+
   function onSubmit(values: FormValues) {
     setApiError(null)
     const payload = {
-      funnel_stage_id: selectedStageId,
+      funnel_stage_id: values.funnel_stage_id,
       name: values.name.trim(),
       ...(values.description.trim() && { description: values.description.trim() }),
       ...(values.content.trim() && { content: values.content.trim() }),
@@ -92,9 +89,8 @@ export function AddPositioningDialog() {
 
   function handleOpenChange(newOpen: boolean) {
     if (!newOpen) {
-      reset()
+      reset({ name: '', funnel_stage_id: stages[0]?.id ?? '', description: '', content: '' })
       setApiError(null)
-      setSelectedStageId(stages[0]?.id ?? '')
     }
     setOpen(newOpen)
   }
@@ -132,31 +128,16 @@ export function AddPositioningDialog() {
             <FieldError errors={[errors.name]} />
           </div>
 
-          {/* Funnel Stage — required (Fix #6: show skeleton while loading) */}
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="positioning-stage">
-              {t('positionings.fields.funnelStage')}{' '}
-              <span aria-hidden="true" className="text-destructive">
-                *
-              </span>
-            </Label>
-            {stagesLoading ? (
-              <Skeleton className="h-9 w-full" />
-            ) : (
-              <Select value={selectedStageId} onValueChange={setSelectedStageId}>
-                <SelectTrigger id="positioning-stage" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {stages.map((stage) => (
-                    <SelectItem key={stage.id} value={stage.id}>
-                      {stage.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+          {/* Funnel Stage — required (skeleton while loading) */}
+          <SelectField
+            control={control}
+            name="funnel_stage_id"
+            id="positioning-stage"
+            label={t('positionings.fields.funnelStage')}
+            required
+            loading={stagesLoading}
+            options={stages.map((stage) => ({ value: stage.id, label: stage.name }))}
+          />
 
           {/* Description — optional */}
           <div className="flex flex-col gap-1">
@@ -188,11 +169,7 @@ export function AddPositioningDialog() {
           <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button
-            type="submit"
-            form="create-positioning-form"
-            disabled={create.isPending || !selectedStageId}
-          >
+          <Button type="submit" form="create-positioning-form" disabled={create.isPending}>
             {create.isPending ? '...' : t('positionings.createForm.submit')}
           </Button>
         </DialogFooter>

@@ -12,6 +12,8 @@ import { updateInteractionSchema } from '../schemas/interaction'
 import { useDeleteInteraction, useUpdateInteraction } from './useInteractionMutations'
 
 export interface EditFormValues {
+  positioning_id: string
+  interaction_date: string
   notes: string
 }
 
@@ -25,10 +27,6 @@ export function useInteractionEdit(
   const [isEditing, setIsEditing] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [editPositioningId, setEditPositioningId] = useState<string>(
-    interaction.positioningId ?? 'none',
-  )
-  const [editDate, setEditDate] = useState<string>(toLocalDateInput(interaction.interactionDate))
 
   const update = useUpdateInteraction()
   const deleteInteraction = useDeleteInteraction()
@@ -41,12 +39,17 @@ export function useInteractionEdit(
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors: formErrors },
   } = useForm<EditFormValues>({
     resolver: vineResolver(updateInteractionSchema, { messagesProvider: i18nMessagesProvider }),
-    defaultValues: { notes: interaction.notes ?? '' },
+    defaultValues: {
+      positioning_id: interaction.positioningId ?? 'none',
+      interaction_date: toLocalDateInput(interaction.interactionDate),
+      notes: interaction.notes ?? '',
+    },
   })
 
   // Exit edit mode when item collapses
@@ -61,16 +64,20 @@ export function useInteractionEdit(
   // Sync form values when interaction data refreshes after a save
   useEffect(() => {
     if (!isEditing) {
-      reset({ notes: interaction.notes ?? '' })
-      setEditPositioningId(interaction.positioningId ?? 'none')
-      setEditDate(toLocalDateInput(interaction.interactionDate))
+      reset({
+        positioning_id: interaction.positioningId ?? 'none',
+        interaction_date: toLocalDateInput(interaction.interactionDate),
+        notes: interaction.notes ?? '',
+      })
     }
   }, [interaction, isEditing, reset])
 
   function handleEditStart() {
-    reset({ notes: interaction.notes ?? '' })
-    setEditPositioningId(interaction.positioningId ?? 'none')
-    setEditDate(interaction.interactionDate.slice(0, 10))
+    reset({
+      positioning_id: interaction.positioningId ?? 'none',
+      interaction_date: toLocalDateInput(interaction.interactionDate),
+      notes: interaction.notes ?? '',
+    })
     setApiError(null)
     setIsEditing(true)
   }
@@ -87,9 +94,11 @@ export function useInteractionEdit(
       {
         id: interaction.id,
         payload: {
-          positioning_id: editPositioningId === 'none' ? null : editPositioningId,
+          positioning_id: values.positioning_id === 'none' ? null : values.positioning_id,
           notes: values.notes.trim() || null,
-          interaction_date: editDate ? localDateInputToISO(editDate) : undefined,
+          interaction_date: values.interaction_date
+            ? localDateInputToISO(values.interaction_date)
+            : undefined,
         },
       },
       {
@@ -125,11 +134,6 @@ export function useInteractionEdit(
     // Errors
     apiError,
     deleteError,
-    // Edit fields
-    editPositioningId,
-    setEditPositioningId,
-    editDate,
-    setEditDate,
     // Mutations (expose isPending for button disabled states)
     update,
     deleteInteraction,
@@ -138,6 +142,7 @@ export function useInteractionEdit(
     positioningsLoading,
     // Form
     register,
+    control,
     formErrors,
     onFormSubmit: handleSubmit(onSubmit),
     // Handlers

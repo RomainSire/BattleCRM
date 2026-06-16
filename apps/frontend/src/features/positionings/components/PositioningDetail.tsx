@@ -22,13 +22,7 @@ import { Button } from '@/components/ui/button'
 import { FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SelectField } from '@/components/ui/select-field'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { TimelineItem } from '@/features/interactions/components/TimelineItem'
@@ -51,6 +45,7 @@ interface Props {
 
 interface EditFormValues {
   name: string
+  funnel_stage_id: string
   description: string
   content: string
 }
@@ -62,7 +57,6 @@ export function PositioningDetail({ positioning, onClose }: Props) {
   const [apiError, setApiError] = useState<string | null>(null)
   const [archiveError, setArchiveError] = useState<string | null>(null)
   const [restoreError, setRestoreError] = useState<string | null>(null)
-  const [editStageId, setEditStageId] = useState<string>(positioning.funnelStageId)
   const [expandedInteractionId, setExpandedInteractionId] = useState<string | null>(null)
 
   const {
@@ -88,6 +82,7 @@ export function PositioningDetail({ positioning, onClose }: Props) {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -95,6 +90,7 @@ export function PositioningDetail({ positioning, onClose }: Props) {
     resolver: vineResolver(updatePositioningSchema, { messagesProvider: i18nMessagesProvider }),
     defaultValues: {
       name: positioning.name,
+      funnel_stage_id: positioning.funnelStageId,
       description: positioning.description ?? '',
       content: positioning.content ?? '',
     },
@@ -104,20 +100,20 @@ export function PositioningDetail({ positioning, onClose }: Props) {
     if (!isEditing) {
       reset({
         name: positioning.name,
+        funnel_stage_id: positioning.funnelStageId,
         description: positioning.description ?? '',
         content: positioning.content ?? '',
       })
-      setEditStageId(positioning.funnelStageId)
     }
   }, [positioning, isEditing, reset])
 
   function handleEditStart() {
     reset({
       name: positioning.name,
+      funnel_stage_id: positioning.funnelStageId,
       description: positioning.description ?? '',
       content: positioning.content ?? '',
     })
-    setEditStageId(positioning.funnelStageId)
     setApiError(null)
     setArchiveError(null)
     setIsEditing(true)
@@ -162,7 +158,7 @@ export function PositioningDetail({ positioning, onClose }: Props) {
       {
         id: positioning.id,
         name: values.name.trim(),
-        funnel_stage_id: editStageId,
+        funnel_stage_id: values.funnel_stage_id,
         description: values.description.trim() || null,
         content: values.content.trim() || null,
       },
@@ -212,30 +208,15 @@ export function PositioningDetail({ positioning, onClose }: Props) {
               <Skeleton className="h-9 w-full" />
             </div>
           ) : stages.length > 0 ? (
-            <div className="flex flex-col gap-1">
-              <Label htmlFor={`edit-stage-${positioning.id}`}>
-                {t('positionings.fields.funnelStage')}{' '}
-                <span aria-hidden="true" className="text-destructive">
-                  *
-                </span>
-              </Label>
-              <Select
-                value={editStageId}
-                onValueChange={setEditStageId}
-                disabled={update.isPending}
-              >
-                <SelectTrigger id={`edit-stage-${positioning.id}`} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {stages.map((stage) => (
-                    <SelectItem key={stage.id} value={stage.id}>
-                      {stage.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              control={control}
+              name="funnel_stage_id"
+              id={`edit-stage-${positioning.id}`}
+              label={t('positionings.fields.funnelStage')}
+              required
+              disabled={update.isPending}
+              options={stages.map((stage) => ({ value: stage.id, label: stage.name }))}
+            />
           ) : null}
 
           <div className="flex flex-col gap-1">

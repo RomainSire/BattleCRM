@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { ApiError } from '@/lib/api'
 import { i18nMessagesProvider } from '@/lib/validation'
@@ -75,8 +76,8 @@ export function AddStageForm() {
             if (e.key === 'Escape') handleCancel()
           }}
         />
-        {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
-        {apiError && <p className="text-xs text-destructive">{apiError}</p>}
+        <FieldError errors={[errors.name]} />
+        <FieldError>{apiError}</FieldError>
       </div>
       <Button type="submit" size="sm" disabled={create.isPending || !nameValue.trim()}>
         {create.isPending ? '...' : t('funnelStages.add')}

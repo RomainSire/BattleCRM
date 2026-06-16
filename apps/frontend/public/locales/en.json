@@ -241,7 +241,9 @@
         "submit": "Restore my data",
         "submitting": "Restoring...",
         "success": "Data restored successfully",
-        "error": "Import failed"
+        "error": "Import failed",
+        "fileRequired": "Please select a file",
+        "confirmMismatch": "The confirmation word does not match"
       }
     }
   },
