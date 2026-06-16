@@ -1,6 +1,8 @@
 import type { PositioningType } from '@battlecrm/shared'
+import { vineResolver } from '@hookform/resolvers/vine'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -14,16 +16,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { FieldError } from '@/components/ui/field'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SelectField } from '@/components/ui/select-field'
 import { ApiError } from '@/lib/api'
+import { i18nMessagesProvider } from '@/lib/validation'
 import { useStartBattle } from '../hooks/useStartBattle'
+import { startBattleSchema } from '../schemas/startBattle'
 
 interface StartBattleDialogProps {
   stageId: string
@@ -31,6 +28,11 @@ interface StartBattleDialogProps {
   positionings: PositioningType[]
   initialVariantAId?: string
   trigger: ReactNode
+}
+
+interface FormValues {
+  variant_a_id: string
+  variant_b_id: string
 }
 
 export function StartBattleDialog({
@@ -42,41 +44,43 @@ export function StartBattleDialog({
 }: StartBattleDialogProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const [variantAId, setVariantAId] = useState(initialVariantAId ?? '')
-  const [variantBId, setVariantBId] = useState('')
-  const [sameVariantError, setSameVariantError] = useState<string | null>(null)
   const [apiError, setApiError] = useState<string | null>(null)
 
   const start = useStartBattle()
+
+  const { control, handleSubmit, reset, setError } = useForm<FormValues>({
+    resolver: vineResolver(startBattleSchema, { messagesProvider: i18nMessagesProvider }),
+    defaultValues: { variant_a_id: initialVariantAId ?? '', variant_b_id: '' },
+  })
 
   // Only active (non-deleted) positionings for this stage
   const stagePositionings = positionings.filter(
     (p) => p.funnelStageId === stageId && p.deletedAt === null,
   )
+  const variantOptions = stagePositionings.map((p) => ({ value: p.id, label: p.name }))
 
   function handleOpenChange(newOpen: boolean) {
     if (!newOpen) {
-      setVariantAId(initialVariantAId ?? '')
-      setVariantBId('')
-      setSameVariantError(null)
+      reset({ variant_a_id: initialVariantAId ?? '', variant_b_id: '' })
       setApiError(null)
     }
     setOpen(newOpen)
   }
 
-  function handleSubmit() {
-    setSameVariantError(null)
+  function onSubmit(values: FormValues) {
     setApiError(null)
 
-    if (!variantAId || !variantBId) return
-
-    if (variantAId === variantBId) {
-      setSameVariantError(t('dashboard.startBattleDialog.errorSameVariant'))
+    if (values.variant_a_id === values.variant_b_id) {
+      setError('variant_b_id', { message: t('dashboard.startBattleDialog.errorSameVariant') })
       return
     }
 
     start.mutate(
-      { funnel_stage_id: stageId, variant_a_id: variantAId, variant_b_id: variantBId },
+      {
+        funnel_stage_id: stageId,
+        variant_a_id: values.variant_a_id,
+        variant_b_id: values.variant_b_id,
+      },
       {
         onSuccess: () => {
           setOpen(false)
@@ -90,8 +94,6 @@ export function StartBattleDialog({
     )
   }
 
-  const canSubmit = !!variantAId && !!variantBId && !start.isPending
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -103,48 +105,35 @@ export function StartBattleDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <div className="flex flex-col gap-1">
-            <Label>{t('dashboard.startBattleDialog.variantA')}</Label>
-            <Select value={variantAId} onValueChange={setVariantAId} disabled={start.isPending}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={t('dashboard.startBattleDialog.selectVariant')} />
-              </SelectTrigger>
-              <SelectContent>
-                {stagePositionings.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <form id="start-battle-form" onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <SelectField
+            control={control}
+            name="variant_a_id"
+            label={t('dashboard.startBattleDialog.variantA')}
+            required
+            disabled={start.isPending}
+            placeholder={t('dashboard.startBattleDialog.selectVariant')}
+            options={variantOptions}
+          />
 
-          <div className="flex flex-col gap-1">
-            <Label>{t('dashboard.startBattleDialog.variantB')}</Label>
-            <Select value={variantBId} onValueChange={setVariantBId} disabled={start.isPending}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={t('dashboard.startBattleDialog.selectVariant')} />
-              </SelectTrigger>
-              <SelectContent>
-                {stagePositionings.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FieldError>{sameVariantError}</FieldError>
-          </div>
+          <SelectField
+            control={control}
+            name="variant_b_id"
+            label={t('dashboard.startBattleDialog.variantB')}
+            required
+            disabled={start.isPending}
+            placeholder={t('dashboard.startBattleDialog.selectVariant')}
+            options={variantOptions}
+          />
 
           <FieldError>{apiError}</FieldError>
-        </div>
+        </form>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit}>
+          <Button type="submit" form="start-battle-form" disabled={start.isPending}>
             {start.isPending ? '...' : t('dashboard.startBattleDialog.submit')}
           </Button>
         </DialogFooter>
