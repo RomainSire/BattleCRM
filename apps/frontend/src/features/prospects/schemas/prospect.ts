@@ -7,6 +7,7 @@ import vine from '@vinejs/vine'
 export const createProspectSchema = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1),
+    funnel_stage_id: vine.string().trim().optional(),
     company: vine.string().trim().optional(),
     linkedin_url: vine.string().trim().optional(),
     email: vine.string().trim().optional(),

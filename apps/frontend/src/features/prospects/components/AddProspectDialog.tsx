@@ -18,13 +18,7 @@ import { FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhoneInput } from '@/components/ui/phone-input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SelectField } from '@/components/ui/select-field'
 import { Textarea } from '@/components/ui/textarea'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
@@ -34,6 +28,7 @@ import { createProspectSchema } from '../schemas/prospect'
 
 interface FormValues {
   name: string
+  funnel_stage_id: string
   company: string
   linkedin_url: string
   email: string
@@ -53,29 +48,24 @@ export function AddProspectDialog() {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
-  const [selectedStageId, setSelectedStageId] = useState<string>('')
 
   const create = useCreateProspect()
   const { data: stagesData } = useFunnelStages()
   const stages = stagesData?.data ?? []
-
-  // Initialize selected stage to first stage when data loads
-  useEffect(() => {
-    if (stages.length > 0 && !selectedStageId) {
-      setSelectedStageId(stages[0].id)
-    }
-  }, [stages, selectedStageId])
 
   const {
     register,
     control,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: vineResolver(createProspectSchema, { messagesProvider: i18nMessagesProvider }),
     defaultValues: {
       name: '',
+      funnel_stage_id: '',
       company: '',
       linkedin_url: '',
       email: '',
@@ -85,11 +75,32 @@ export function AddProspectDialog() {
     },
   })
 
+  // Initialize selected stage to first stage when data loads
+  useEffect(() => {
+    if (stages.length > 0 && !watch('funnel_stage_id')) {
+      setValue('funnel_stage_id', stages[0].id)
+    }
+  }, [stages, watch, setValue])
+
+  // Reset all fields to blank, defaulting the (optional) stage to the first stage
+  function resetForm() {
+    reset({
+      name: '',
+      funnel_stage_id: stages[0]?.id ?? '',
+      company: '',
+      linkedin_url: '',
+      email: '',
+      phone: '',
+      title: '',
+      notes: '',
+    })
+  }
+
   function onSubmit(values: FormValues) {
     setApiError(null)
     const payload = {
       name: values.name.trim(),
-      ...(selectedStageId && { funnel_stage_id: selectedStageId }),
+      ...(values.funnel_stage_id && { funnel_stage_id: values.funnel_stage_id }),
       ...(values.company.trim() && { company: values.company.trim() }),
       ...(values.linkedin_url.trim() && { linkedin_url: values.linkedin_url.trim() }),
       ...(values.email.trim() && { email: values.email.trim() }),
@@ -99,7 +110,7 @@ export function AddProspectDialog() {
     }
     create.mutate(payload, {
       onSuccess: () => {
-        reset()
+        resetForm()
         setOpen(false)
         toast.success(t('prospects.toast.created'))
       },
@@ -112,9 +123,8 @@ export function AddProspectDialog() {
 
   function handleOpenChange(newOpen: boolean) {
     if (!newOpen) {
-      reset()
+      resetForm()
       setApiError(null)
-      setSelectedStageId(stages[0]?.id ?? '')
     }
     setOpen(newOpen)
   }
@@ -187,23 +197,15 @@ export function AddProspectDialog() {
             <FieldError errors={[errors.phone]} />
           </div>
 
-          {/* Funnel stage — shadcn Select */}
+          {/* Funnel stage — optional */}
           {stages.length > 0 && (
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="prospect-stage">{t('prospects.fields.funnelStage')}</Label>
-              <Select value={selectedStageId} onValueChange={setSelectedStageId}>
-                <SelectTrigger id="prospect-stage" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {stages.map((stage) => (
-                    <SelectItem key={stage.id} value={stage.id}>
-                      {stage.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              control={control}
+              name="funnel_stage_id"
+              id="prospect-stage"
+              label={t('prospects.fields.funnelStage')}
+              options={stages.map((stage) => ({ value: stage.id, label: stage.name }))}
+            />
           )}
 
           {/* Notes — Textarea */}
