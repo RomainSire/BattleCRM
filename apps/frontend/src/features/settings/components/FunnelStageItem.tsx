@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { ApiError } from '@/lib/api'
 import { i18nMessagesProvider } from '@/lib/validation'
@@ -148,8 +149,8 @@ export function FunnelStageItem({ stage, displayPosition }: Props) {
                   if (e.key === 'Escape') handleCancel()
                 }}
               />
-              {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
-              {updateError && <p className="text-xs text-destructive">{updateError}</p>}
+              <FieldError errors={[errors.name]} />
+              <FieldError>{updateError}</FieldError>
             </div>
             <Button
               type="submit"
@@ -220,7 +221,7 @@ export function FunnelStageItem({ stage, displayPosition }: Props) {
       </div>
 
       {/* Delete error — shown inline when the API call fails after dialog confirmation */}
-      {deleteError && <p className="mt-1 text-xs text-destructive">{deleteError}</p>}
+      <FieldError className="mt-1">{deleteError}</FieldError>
     </div>
   )
 }
