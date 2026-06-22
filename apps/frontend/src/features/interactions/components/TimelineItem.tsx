@@ -13,10 +13,10 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { ComboboxField } from '@/components/ui/combobox-field'
 import { DateField } from '@/components/ui/date-field'
 import { FieldError } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
-import { SelectField } from '@/components/ui/select-field'
 import { Textarea } from '@/components/ui/textarea'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { cn } from '@/lib/utils'
@@ -79,7 +79,7 @@ export function TimelineItem({ interaction, isExpanded, onToggle }: TimelineItem
             /* ── EDIT MODE ── */
             <form onSubmit={onFormSubmit} className="space-y-3">
               {/* Positioning */}
-              <SelectField
+              <ComboboxField
                 control={control}
                 name="positioning_id"
                 label={<span className="text-xs">{t('interactions.fields.positioning')}</span>}

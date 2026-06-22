@@ -3,15 +3,16 @@ import { AlertCircle, CheckCircle2, Clock, Info, XCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox'
 import { FieldError } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePositionings } from '@/features/positionings/hooks/usePositionings'
 import { ApiError } from '@/lib/api'
@@ -89,21 +90,39 @@ export function PositioningSection({
     )
   }
 
+  // Searchable positioning picker — fires the assign mutation on selection.
+  // Shared by State A (assign) and the reassign flow (State B/C).
+  const positioningPicker = (
+    <Combobox<PositioningType>
+      items={availablePositionings}
+      itemToStringLabel={(p) => p.name}
+      itemToStringValue={(p) => p.id}
+      onValueChange={(p) => p && handleAssign(p.id)}
+      disabled={assign.isPending}
+    >
+      <ComboboxInput
+        id={`positioning-select-${prospect.id}`}
+        placeholder={t('prospects.positioning.assignPlaceholder')}
+        disabled={assign.isPending}
+        className="w-full"
+      />
+      <ComboboxContent>
+        <ComboboxEmpty>{t('table.noResults')}</ComboboxEmpty>
+        <ComboboxList>
+          {(p: PositioningType) => (
+            <ComboboxItem key={p.id} value={p}>
+              {p.name}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  )
+
   // Reassign select — shared by State B and State C when isReassigning=true
   const reassignSelect = (
     <div className="flex flex-col gap-2">
-      <Select onValueChange={handleAssign} disabled={assign.isPending}>
-        <SelectTrigger id={`positioning-select-${prospect.id}`} className="w-full">
-          <SelectValue placeholder={t('prospects.positioning.assignPlaceholder')} />
-        </SelectTrigger>
-        <SelectContent>
-          {availablePositionings.map((p) => (
-            <SelectItem key={p.id} value={p.id}>
-              {p.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {positioningPicker}
       <Button
         type="button"
         size="sm"
@@ -331,18 +350,7 @@ export function PositioningSection({
               {t('prospects.fields.positioning')}
             </span>
           </Label>
-          <Select onValueChange={handleAssign} disabled={assign.isPending}>
-            <SelectTrigger id={`positioning-select-${prospect.id}`} className="w-full">
-              <SelectValue placeholder={t('prospects.positioning.assignPlaceholder')} />
-            </SelectTrigger>
-            <SelectContent>
-              {availablePositionings.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {positioningPicker}
           {assignError && <FieldError>{assignError}</FieldError>}
         </>
       )}

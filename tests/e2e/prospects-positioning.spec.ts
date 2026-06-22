@@ -111,9 +111,7 @@ test.describe('Prospects - Positioning Section', () => {
     await page.goto('/prospects')
     await expandProspect(page, 'PP Assign Prospect')
     // State A: a combobox showing "Assign a positioning..." placeholder is visible
-    await expect(
-      page.getByRole('combobox').filter({ hasText: /assign a positioning/i }),
-    ).toBeVisible()
+    await expect(page.getByPlaceholder(/assign a positioning/i)).toBeVisible()
   })
 
   // ── AC6: Assign positioning ────────────────────────────────────────────────────
@@ -123,11 +121,11 @@ test.describe('Prospects - Positioning Section', () => {
   }) => {
     await page.goto('/prospects')
     await expandProspect(page, 'PP Assign Prospect')
-    // Open the assign select and choose "PP Positioning Alpha"
-    await page.getByRole('combobox').filter({ hasText: /assign a positioning/i }).click()
+    // Open the assign combobox and choose "PP Positioning Alpha"
+    await page.getByPlaceholder(/assign a positioning/i).click()
     await page.getByRole('option', { name: 'PP Positioning Alpha' }).click()
-    // State B: outcome buttons appear once the assign mutation settles (the Select
-    // unmounts), then the positioning name is shown as plain text (not the Select value).
+    // State B: outcome buttons appear once the assign mutation settles (the combobox
+    // unmounts), then the positioning name is shown as plain text (not the field value).
     await expect(page.getByRole('button', { name: /success/i }).first()).toBeVisible()
     await expect(page.getByRole('button', { name: /failure/i }).first()).toBeVisible()
     await expect(page.getByText('PP Positioning Alpha')).toBeVisible()
@@ -166,9 +164,7 @@ test.describe('Prospects - Positioning Section', () => {
     await expect(page.getByRole('button', { name: /change positioning/i })).toBeVisible()
     // Click "Change positioning" → reassign select appears
     await page.getByRole('button', { name: /change positioning/i }).click()
-    await expect(
-      page.getByRole('combobox').filter({ hasText: /assign a positioning/i }),
-    ).toBeVisible()
+    await expect(page.getByPlaceholder(/assign a positioning/i)).toBeVisible()
   })
 
   // ── AC4: Stage change popup ────────────────────────────────────────────────────
