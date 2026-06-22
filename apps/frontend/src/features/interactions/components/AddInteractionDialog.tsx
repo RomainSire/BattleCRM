@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { ComboboxField } from '@/components/ui/combobox-field'
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,6 @@ import {
 } from '@/components/ui/dialog'
 import { FieldError } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
-import { SelectField } from '@/components/ui/select-field'
 import { Textarea } from '@/components/ui/textarea'
 import { usePositionings } from '@/features/positionings/hooks/usePositionings'
 import { useProspects } from '@/features/prospects/hooks/useProspects'
@@ -157,7 +157,7 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
 
         <form id="create-interaction-form" onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           {/* Prospect — required */}
-          <SelectField
+          <ComboboxField
             control={control}
             name="prospect_id"
             id="interaction-prospect"
@@ -171,7 +171,7 @@ export function AddInteractionDialog({ initialProspectId, trigger }: AddInteract
           />
 
           {/* Positioning — optional, filtered by prospect's funnel stage */}
-          <SelectField
+          <ComboboxField
             control={control}
             name="positioning_id"
             id="interaction-positioning"

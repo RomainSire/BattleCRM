@@ -54,8 +54,8 @@ test.describe('Interactions - Pre-fill & Quick Actions', () => {
     await page.goto('/prospects')
     await page.getByRole('button', { name: 'Log Interaction' }).first().click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    // The prospect select should show the prospect's name (not the placeholder)
-    await expect(page.getByRole('dialog')).toContainText('Pre-fill Prospect')
+    // The prospect combobox input should show the prospect's name (not the placeholder)
+    await expect(page.locator('#interaction-prospect')).toHaveValue('Pre-fill Prospect')
   })
 
   test('"+" button does NOT open the prospect drawer', async ({ page }) => {
@@ -124,7 +124,7 @@ test.describe('Interactions - Pre-fill & Quick Actions', () => {
     // Second open: positioning should be pre-filled
     await page.getByRole('button', { name: 'Log Interaction' }).first().click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    await expect(page.locator('#interaction-positioning')).toContainText('Pre-fill Positioning')
+    await expect(page.locator('#interaction-positioning')).toHaveValue('Pre-fill Positioning')
   })
 
   // ── AC4: archived prospects have no quick-action button ───────────────────

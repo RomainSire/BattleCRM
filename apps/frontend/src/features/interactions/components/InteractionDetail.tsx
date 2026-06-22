@@ -13,10 +13,10 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { ComboboxField } from '@/components/ui/combobox-field'
 import { DateField } from '@/components/ui/date-field'
 import { FieldError } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
-import { SelectField } from '@/components/ui/select-field'
 import { Textarea } from '@/components/ui/textarea'
 import { formatDateTime } from '@/lib/dates'
 import { useInteractionEdit } from '../hooks/useInteractionEdit'
@@ -49,7 +49,7 @@ export function InteractionDetail({ interaction, onClose }: Props) {
     <div className="space-y-3 px-4 pb-4 text-sm">
       {isEditing ? (
         <form onSubmit={onFormSubmit} className="space-y-3">
-          <SelectField
+          <ComboboxField
             control={control}
             name="positioning_id"
             label={t('interactions.fields.positioning')}

@@ -218,7 +218,8 @@ test.describe('Interactions - Prospect Timeline', () => {
     await page.getByText('Log Interaction').click()
     // The drawer (role="dialog") is already open — scope to the interaction dialog specifically
     await expect(page.locator('[data-slot="dialog-content"]')).toBeVisible()
-    await expect(page.locator('[data-slot="dialog-content"]')).toContainText('TL Timeline Prospect')
+    // The prospect combobox input shows the pre-selected prospect's name (input value, not text)
+    await expect(page.locator('#interaction-prospect')).toHaveValue('TL Timeline Prospect')
   })
 
   // ── Empty state ────────────────────────────────────────────────────────────────
