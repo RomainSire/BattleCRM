@@ -126,10 +126,11 @@ test.describe('Prospects - Positioning Section', () => {
     // Open the assign select and choose "PP Positioning Alpha"
     await page.getByRole('combobox').filter({ hasText: /assign a positioning/i }).click()
     await page.getByRole('option', { name: 'PP Positioning Alpha' }).click()
-    // State B: positioning name + outcome buttons visible
-    await expect(page.getByText('PP Positioning Alpha')).toBeVisible()
+    // State B: outcome buttons appear once the assign mutation settles (the Select
+    // unmounts), then the positioning name is shown as plain text (not the Select value).
     await expect(page.getByRole('button', { name: /success/i }).first()).toBeVisible()
     await expect(page.getByRole('button', { name: /failure/i }).first()).toBeVisible()
+    await expect(page.getByText('PP Positioning Alpha')).toBeVisible()
   })
 
   // ── AC2/AC3: Set outcome ────────────────────────────────────────────────────────
