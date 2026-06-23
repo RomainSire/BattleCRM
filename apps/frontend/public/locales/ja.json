@@ -296,7 +296,9 @@
       "name": "名前",
       "company": "会社",
       "stage": "ファネルステージ",
-      "email": "メールアドレス"
+      "email": "メールアドレス",
+      "neededRole": "希望職種",
+      "lastInteraction": "最終やり取り"
     },
     "fields": {
       "name": "名前",
@@ -305,6 +307,7 @@
       "email": "メールアドレス",
       "phone": "電話番号",
       "title": "役職",
+      "neededRole": "希望職種",
       "notes": "メモ",
       "funnelStage": "ファネルステージ",
       "positioning": "ポジショニング"
@@ -316,7 +319,20 @@
       "email": "email@example.com",
       "phone": "201 555 0123",
       "title": "役職名",
+      "neededRole": "例：Reactエンジニア",
       "notes": "追加のメモ..."
+    },
+    "lastInteraction": {
+      "daysAgo": "{{count}}日",
+      "never": "なし",
+      "detailDaysAgo_other": "最終やり取り：{{count}}日前",
+      "detailNever": "最終やり取り：なし"
+    },
+    "recency": {
+      "tooltip": {
+        "daysAgo_other": "最終やり取りは{{count}}日前",
+        "never": "未接触"
+      }
     },
     "createForm": {
       "title": "見込み客を追加",

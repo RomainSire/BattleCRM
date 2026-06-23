@@ -1,4 +1,6 @@
 import type { ProspectType, StageTransitionType } from '@battlecrm/shared'
+import { DateTime } from 'luxon'
+import Interaction from '#models/interaction'
 import type Prospect from '#models/prospect'
 import ProspectPositioning from '#models/prospect_positioning'
 import type ProspectStageTransition from '#models/prospect_stage_transition'
@@ -12,6 +14,7 @@ type ActivePositioningData = {
 export function serializeProspect(
   prospect: Prospect,
   activePositioning: ActivePositioningData = null,
+  lastInteractionAt: string | null = null,
 ): ProspectType {
   return {
     id: prospect.id,
@@ -22,13 +25,35 @@ export function serializeProspect(
     email: prospect.email,
     phone: prospect.phone,
     title: prospect.title,
+    neededRole: prospect.neededRole,
     notes: prospect.notes,
     funnelStageId: prospect.funnelStageId,
+    lastInteractionAt,
     createdAt: prospect.createdAt.toUTC().toISO()!,
     updatedAt: prospect.updatedAt?.toUTC().toISO() ?? prospect.createdAt.toUTC().toISO()!,
     deletedAt: prospect.deletedAt?.toUTC().toISO() ?? null,
     activePositioning,
   }
+}
+
+/**
+ * Load the most recent interaction date for a single prospect (MAX(interaction_date)).
+ * Returns an ISO UTC string, or null if the prospect has no interactions.
+ * Always scoped by user_id for isolation.
+ */
+export async function loadLastInteractionAt(
+  userId: string,
+  prospectId: string,
+): Promise<string | null> {
+  const row = await Interaction.query()
+    .where('user_id', userId)
+    .where('prospect_id', prospectId)
+    .max('interaction_date as last_at')
+    .first()
+
+  const lastAt = row?.$extras.last_at
+  if (!lastAt) return null
+  return DateTime.fromJSDate(new Date(lastAt)).toUTC().toISO()!
 }
 
 /**

@@ -13,7 +13,19 @@
  */
 
 import { expect, test } from '../support/fixtures'
-import { createProspect, hardResetTestData, resetFunnelStages } from '../support/helpers/api'
+import {
+  createInteraction,
+  createProspect,
+  hardResetTestData,
+  resetFunnelStages,
+} from '../support/helpers/api'
+
+/** Returns an ISO date string (YYYY-MM-DD) for `n` days before today. */
+function daysAgoDate(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toISOString().slice(0, 10)
+}
 
 test.describe('Prospects - Kanban Board View', () => {
   test.describe.configure({ mode: 'serial' })
@@ -155,5 +167,65 @@ test.describe('Prospects - Kanban Board View', () => {
     await expect(page.getByRole('combobox')).toBeVisible()
     // Prospect rows visible
     await expect(page.getByText('Kanban Prospect A')).toBeVisible()
+  })
+})
+
+test.describe('Prospects - Kanban recency dot', () => {
+  test.describe.configure({ mode: 'serial' })
+
+  test.beforeAll(async ({ browser, workerStorageState }) => {
+    const context = await browser.newContext({ storageState: workerStorageState })
+    await hardResetTestData(context.request)
+    await resetFunnelStages(context.request)
+
+    // Four prospects in the default first stage, one per recency level.
+    const fresh = await createProspect(context.request, { name: 'Fresh Frank' })
+    await createInteraction(context.request, {
+      prospect_id: fresh.id,
+      interaction_date: daysAgoDate(2), // ≤ 7 → fresh
+    })
+
+    const warning = await createProspect(context.request, { name: 'Warning Wendy' })
+    await createInteraction(context.request, {
+      prospect_id: warning.id,
+      interaction_date: daysAgoDate(14), // 8–21 → warning
+    })
+
+    const danger = await createProspect(context.request, { name: 'Danger Dan' })
+    await createInteraction(context.request, {
+      prospect_id: danger.id,
+      interaction_date: daysAgoDate(40), // > 21 → danger
+    })
+
+    await createProspect(context.request, { name: 'Never Nina' }) // no interaction → never
+
+    await context.close()
+  })
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/prospects')
+    await page.evaluate(() => localStorage.removeItem('prospects-view-mode'))
+    await page.reload()
+    await page.getByRole('radio', { name: 'Kanban' }).click()
+  })
+
+  function cardDot(page: import('@playwright/test').Page, name: string) {
+    return page.locator('[data-slot="card"]').filter({ hasText: name }).locator('[data-recency]')
+  }
+
+  test('fresh prospect (≤7d) shows a green/fresh recency dot', async ({ page }) => {
+    await expect(cardDot(page, 'Fresh Frank')).toHaveAttribute('data-recency', 'fresh')
+  })
+
+  test('warning prospect (8–21d) shows a warning recency dot', async ({ page }) => {
+    await expect(cardDot(page, 'Warning Wendy')).toHaveAttribute('data-recency', 'warning')
+  })
+
+  test('danger prospect (>21d) shows a danger recency dot', async ({ page }) => {
+    await expect(cardDot(page, 'Danger Dan')).toHaveAttribute('data-recency', 'danger')
+  })
+
+  test('never-contacted prospect shows a neutral "never" recency dot', async ({ page }) => {
+    await expect(cardDot(page, 'Never Nina')).toHaveAttribute('data-recency', 'never')
   })
 })

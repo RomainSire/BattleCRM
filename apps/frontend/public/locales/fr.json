@@ -296,7 +296,9 @@
       "name": "Nom",
       "company": "Entreprise",
       "stage": "Étape du funnel",
-      "email": "Email"
+      "email": "Email",
+      "neededRole": "Poste recherché",
+      "lastInteraction": "Dernière interaction"
     },
     "fields": {
       "name": "Nom",
@@ -305,6 +307,7 @@
       "email": "Email",
       "phone": "Téléphone",
       "title": "Poste",
+      "neededRole": "Poste recherché",
       "notes": "Notes",
       "funnelStage": "Étape du funnel",
       "positioning": "Positionnement"
@@ -316,7 +319,22 @@
       "email": "email@exemple.com",
       "phone": "06 12 34 56 78",
       "title": "Poste occupé",
+      "neededRole": "Ex. Développeur React",
       "notes": "Notes supplémentaires..."
+    },
+    "lastInteraction": {
+      "daysAgo": "{{count}} j",
+      "never": "Jamais",
+      "detailDaysAgo_one": "Dernière interaction : il y a {{count}} jour",
+      "detailDaysAgo_other": "Dernière interaction : il y a {{count}} jours",
+      "detailNever": "Dernière interaction : jamais"
+    },
+    "recency": {
+      "tooltip": {
+        "daysAgo_one": "Dernière interaction il y a {{count}} jour",
+        "daysAgo_other": "Dernière interaction il y a {{count}} jours",
+        "never": "Jamais contacté"
+      }
     },
     "createForm": {
       "title": "Ajouter un prospect",

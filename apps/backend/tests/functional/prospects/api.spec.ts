@@ -2,6 +2,7 @@ import type { ApiClient } from '@japa/api-client'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import FunnelStage from '#models/funnel_stage'
+import Interaction from '#models/interaction'
 import Prospect from '#models/prospect'
 import ProspectStageTransition from '#models/prospect_stage_transition'
 import User from '#models/user'
@@ -987,5 +988,203 @@ test.group('Prospects API', (group) => {
     assert.lengthOf(data, 1)
     assert.equal(data[0].fromStageId, stage1.id)
     assert.equal(data[0].toStageId, stage2.id)
+  })
+
+  // ===========================
+  // needed_role (Poste recherché)
+  // ===========================
+
+  test('POST /api/prospects persists and returns needed_role', async ({ client, assert }) => {
+    const user = await registerUser(client, 'needed-role-create')
+    const stage = await getFirstStage(user.id)
+
+    const response = await client
+      .post('/api/prospects')
+      .loginAs(user)
+      .json({ name: 'Role Prospect', needed_role: 'Développeur React', funnel_stage_id: stage.id })
+
+    response.assertStatus(201)
+    assert.equal(response.body().neededRole, 'Développeur React')
+
+    // Persisted in DB
+    const stored = await Prospect.findOrFail(response.body().id)
+    assert.equal(stored.neededRole, 'Développeur React')
+  })
+
+  test('PUT /api/prospects/:id updates needed_role', async ({ client, assert }) => {
+    const user = await registerUser(client, 'needed-role-update')
+    const stage = await getFirstStage(user.id)
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'Updatable',
+      neededRole: 'Old Role',
+    })
+
+    const response = await client
+      .put(`/api/prospects/${prospect.id}`)
+      .loginAs(user)
+      .json({ needed_role: 'New Role' })
+
+    response.assertStatus(200)
+    assert.equal(response.body().neededRole, 'New Role')
+  })
+
+  test('PUT /api/prospects/:id can clear needed_role with null', async ({ client, assert }) => {
+    const user = await registerUser(client, 'needed-role-clear')
+    const stage = await getFirstStage(user.id)
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'Clearable Role',
+      neededRole: 'Some Role',
+    })
+
+    const response = await client
+      .put(`/api/prospects/${prospect.id}`)
+      .loginAs(user)
+      .json({ needed_role: null })
+
+    response.assertStatus(200)
+    assert.isNull(response.body().neededRole)
+  })
+
+  test('POST /api/prospects returns 422 when needed_role exceeds 255 chars', async ({ client }) => {
+    const user = await registerUser(client, 'needed-role-too-long')
+    const response = await client
+      .post('/api/prospects')
+      .loginAs(user)
+      .json({ name: 'Too Long', needed_role: 'x'.repeat(256) })
+
+    response.assertStatus(422)
+  })
+
+  // ===========================
+  // lastInteractionAt (computed from interactions)
+  // ===========================
+
+  test('GET /api/prospects/:id returns lastInteractionAt null when no interactions', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'last-int-none')
+    const stage = await getFirstStage(user.id)
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'No Interactions',
+    })
+
+    const response = await client.get(`/api/prospects/${prospect.id}`).loginAs(user)
+    response.assertStatus(200)
+    assert.isNull(response.body().lastInteractionAt)
+  })
+
+  test('GET /api/prospects/:id returns MAX(interaction_date) as lastInteractionAt', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'last-int-max')
+    const stage = await getFirstStage(user.id)
+    const prospect = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'With Interactions',
+    })
+
+    // Two interactions — the most recent date must be returned
+    await Interaction.create({
+      userId: user.id,
+      prospectId: prospect.id,
+      funnelStageId: stage.id,
+      interactionDate: DateTime.fromISO('2026-01-10'),
+    })
+    await Interaction.create({
+      userId: user.id,
+      prospectId: prospect.id,
+      funnelStageId: stage.id,
+      interactionDate: DateTime.fromISO('2026-03-15'),
+    })
+
+    const response = await client.get(`/api/prospects/${prospect.id}`).loginAs(user)
+    response.assertStatus(200)
+    const lastAt = response.body().lastInteractionAt
+    assert.isNotNull(lastAt)
+    assert.equal(DateTime.fromISO(lastAt).toISODate(), '2026-03-15')
+  })
+
+  test('lastInteractionAt is isolated per user (other user interactions ignored)', async ({
+    client,
+    assert,
+  }) => {
+    const userA = await registerUser(client, 'last-int-iso-a')
+    const userB = await registerUser(client, 'last-int-iso-b')
+    const stageA = await getFirstStage(userA.id)
+    const stageB = await getFirstStage(userB.id)
+
+    const prospectA = await Prospect.create({
+      userId: userA.id,
+      funnelStageId: stageA.id,
+      name: 'A Prospect',
+    })
+
+    // An interaction belonging to user B referencing user B's own prospect must not leak.
+    const prospectB = await Prospect.create({
+      userId: userB.id,
+      funnelStageId: stageB.id,
+      name: 'B Prospect',
+    })
+    await Interaction.create({
+      userId: userB.id,
+      prospectId: prospectB.id,
+      funnelStageId: stageB.id,
+      interactionDate: DateTime.fromISO('2026-05-01'),
+    })
+
+    const response = await client.get(`/api/prospects/${prospectA.id}`).loginAs(userA)
+    response.assertStatus(200)
+    assert.isNull(
+      response.body().lastInteractionAt,
+      'User A prospect has no interactions of its own',
+    )
+  })
+
+  test('GET /api/prospects (index) returns correct lastInteractionAt per prospect (batch)', async ({
+    client,
+    assert,
+  }) => {
+    const user = await registerUser(client, 'last-int-batch')
+    const stage = await getFirstStage(user.id)
+
+    const withInt = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'Has Interaction',
+    })
+    const withoutInt = await Prospect.create({
+      userId: user.id,
+      funnelStageId: stage.id,
+      name: 'No Interaction',
+    })
+
+    await Interaction.create({
+      userId: user.id,
+      prospectId: withInt.id,
+      funnelStageId: stage.id,
+      interactionDate: DateTime.fromISO('2026-02-20'),
+    })
+
+    const response = await client.get('/api/prospects').loginAs(user)
+    response.assertStatus(200)
+    const data = response.body().data as Array<{ id: string; lastInteractionAt: string | null }>
+
+    const withRow = data.find((p) => p.id === withInt.id)
+    const withoutRow = data.find((p) => p.id === withoutInt.id)
+    assert.isNotNull(withRow?.lastInteractionAt)
+    assert.equal(DateTime.fromISO(withRow!.lastInteractionAt!).toISODate(), '2026-02-20')
+    assert.isNull(
+      withoutRow?.lastInteractionAt,
+      'Prospect without interactions must be null (no leak between prospects)',
+    )
   })
 })

@@ -296,7 +296,9 @@
       "name": "Name",
       "company": "Company",
       "stage": "Funnel Stage",
-      "email": "Email"
+      "email": "Email",
+      "neededRole": "Target role",
+      "lastInteraction": "Last interaction"
     },
     "fields": {
       "name": "Name",
@@ -305,6 +307,7 @@
       "email": "Email",
       "phone": "Phone",
       "title": "Title",
+      "neededRole": "Target role",
       "notes": "Notes",
       "funnelStage": "Funnel Stage",
       "positioning": "Positioning"
@@ -316,7 +319,22 @@
       "email": "email@example.com",
       "phone": "201 555 0123",
       "title": "Job title",
+      "neededRole": "e.g. React Developer",
       "notes": "Additional notes..."
+    },
+    "lastInteraction": {
+      "daysAgo": "{{count}}d",
+      "never": "Never",
+      "detailDaysAgo_one": "Last interaction: {{count}} day ago",
+      "detailDaysAgo_other": "Last interaction: {{count}} days ago",
+      "detailNever": "Last interaction: never"
+    },
+    "recency": {
+      "tooltip": {
+        "daysAgo_one": "Last interaction {{count}} day ago",
+        "daysAgo_other": "Last interaction {{count}} days ago",
+        "never": "Never contacted"
+      }
     },
     "createForm": {
       "title": "Add Prospect",

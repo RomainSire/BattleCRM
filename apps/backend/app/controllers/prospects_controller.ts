@@ -7,11 +7,13 @@ import type {
 import { DateTime } from 'luxon'
 import { UUID_REGEX } from '#helpers/regex'
 import FunnelStage from '#models/funnel_stage'
+import Interaction from '#models/interaction'
 import Prospect from '#models/prospect'
 import ProspectPositioning from '#models/prospect_positioning'
 import ProspectStageTransition from '#models/prospect_stage_transition'
 import {
   loadActivePositioning,
+  loadLastInteractionAt,
   serializeProspect,
   serializeTransition,
 } from '#serializers/prospect'
@@ -65,6 +67,8 @@ export default class ProspectsController {
       string,
       { positioningId: string; positioningName: string; outcome: 'success' | 'failed' | null }
     >()
+    // Batch load last interaction date per prospect — 1 extra query (no N+1)
+    const lastInteractionByProspectId = new Map<string, string>()
     if (prospects.length > 0) {
       const prospectIds = prospects.map((p) => p.id)
       const pps = await ProspectPositioning.query()
@@ -84,10 +88,32 @@ export default class ProspectsController {
           })
         }
       }
+
+      const lastInteractionRows = await Interaction.query()
+        .where('user_id', userId)
+        .whereIn('prospect_id', prospectIds)
+        .select('prospect_id')
+        .max('interaction_date as last_at')
+        .groupBy('prospect_id')
+      for (const r of lastInteractionRows) {
+        const lastAt = r.$extras.last_at
+        if (lastAt) {
+          lastInteractionByProspectId.set(
+            r.prospectId,
+            DateTime.fromJSDate(new Date(lastAt)).toUTC().toISO()!,
+          )
+        }
+      }
     }
 
     const body: ProspectsListResponse = {
-      data: prospects.map((p) => serializeProspect(p, activeByProspectId.get(p.id) ?? null)),
+      data: prospects.map((p) =>
+        serializeProspect(
+          p,
+          activeByProspectId.get(p.id) ?? null,
+          lastInteractionByProspectId.get(p.id) ?? null,
+        ),
+      ),
       meta: { total: prospects.length },
     }
     return response.ok(body)
@@ -108,7 +134,8 @@ export default class ProspectsController {
       .firstOrFail()
 
     const activePp = await loadActivePositioning(userId, prospect)
-    return response.ok(serializeProspect(prospect, activePp))
+    const lastInteractionAt = await loadLastInteractionAt(userId, prospect.id)
+    return response.ok(serializeProspect(prospect, activePp, lastInteractionAt))
   }
 
   /**
@@ -159,11 +186,12 @@ export default class ProspectsController {
     if (payload.email !== undefined) prospect.email = payload.email ?? null
     if (payload.phone !== undefined) prospect.phone = payload.phone ?? null
     if (payload.title !== undefined) prospect.title = payload.title ?? null
+    if (payload.needed_role !== undefined) prospect.neededRole = payload.needed_role ?? null
     if (payload.notes !== undefined) prospect.notes = payload.notes ?? null
 
     await prospect.save()
-    // New prospects have no active positioning
-    return response.created(serializeProspect(prospect, null))
+    // New prospects have no active positioning and no interactions yet
+    return response.created(serializeProspect(prospect, null, null))
   }
 
   /**
@@ -199,6 +227,7 @@ export default class ProspectsController {
     if (payload.email !== undefined) prospect.email = payload.email ?? null
     if (payload.phone !== undefined) prospect.phone = payload.phone ?? null
     if (payload.title !== undefined) prospect.title = payload.title ?? null
+    if (payload.needed_role !== undefined) prospect.neededRole = payload.needed_role ?? null
     if (payload.notes !== undefined) prospect.notes = payload.notes ?? null
 
     await prospect.save()
@@ -216,7 +245,8 @@ export default class ProspectsController {
 
     // Recompute active positioning — stage may have changed
     const activePp = await loadActivePositioning(userId, prospect)
-    return response.ok(serializeProspect(prospect, activePp))
+    const lastInteractionAt = await loadLastInteractionAt(userId, prospect.id)
+    return response.ok(serializeProspect(prospect, activePp, lastInteractionAt))
   }
 
   /**
@@ -253,7 +283,8 @@ export default class ProspectsController {
 
     await prospect.restore()
     const activePp = await loadActivePositioning(userId, prospect)
-    return response.ok(serializeProspect(prospect, activePp))
+    const lastInteractionAt = await loadLastInteractionAt(userId, prospect.id)
+    return response.ok(serializeProspect(prospect, activePp, lastInteractionAt))
   }
 
   /**
