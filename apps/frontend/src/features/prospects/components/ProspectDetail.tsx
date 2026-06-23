@@ -39,6 +39,7 @@ import {
   useUpdateProspect,
 } from '../hooks/useProspectMutations'
 import { useSetPositioningOutcome } from '../hooks/useProspectPositioningMutations'
+import { daysSince } from '../lib/recency'
 import { updateProspectSchema } from '../schemas/prospect'
 import { PositioningSection } from './PositioningSection'
 import { ProspectTimeline } from './ProspectTimeline'
@@ -65,6 +66,7 @@ interface EditFormValues {
   email: string
   phone: string
   title: string
+  needed_role: string
   notes: string
 }
 
@@ -73,6 +75,7 @@ const EDIT_FIELDS = [
   ['linkedin_url', 'linkedinUrl'],
   ['email', 'email'],
   ['title', 'title'],
+  ['needed_role', 'neededRole'],
 ] as const
 
 export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
@@ -123,6 +126,7 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
       email: prospect.email ?? '',
       phone: prospect.phone ?? '',
       title: prospect.title ?? '',
+      needed_role: prospect.neededRole ?? '',
       notes: prospect.notes ?? '',
     },
   })
@@ -135,6 +139,7 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
       email: prospect.email ?? '',
       phone: prospect.phone ?? '',
       title: prospect.title ?? '',
+      needed_role: prospect.neededRole ?? '',
       notes: prospect.notes ?? '',
     })
     setApiError(null)
@@ -230,6 +235,7 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
         email: values.email.trim() || null,
         phone: values.phone.trim() || null,
         title: values.title.trim() || null,
+        needed_role: values.needed_role.trim() || null,
         notes: values.notes.trim() || null,
       },
       {
@@ -449,6 +455,12 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
                 <dd>{prospect.title}</dd>
               </>
             )}
+            {prospect.neededRole && (
+              <>
+                <dt className="text-muted-foreground">{t('prospects.fields.neededRole')}</dt>
+                <dd>{prospect.neededRole}</dd>
+              </>
+            )}
             {prospect.notes && (
               <>
                 <dt className="text-muted-foreground">{t('prospects.fields.notes')}</dt>
@@ -561,6 +573,16 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
 
           {/* Unified timeline: interactions + stage transitions */}
           <div className="mt-4">
+            {(() => {
+              const days = daysSince(prospect.lastInteractionAt)
+              return (
+                <p className="mb-2 text-xs text-muted-foreground">
+                  {days === null
+                    ? t('prospects.lastInteraction.detailNever')
+                    : t('prospects.lastInteraction.detailDaysAgo', { count: days })}
+                </p>
+              )
+            })()}
             <ProspectTimeline prospectId={prospect.id} isArchived={isArchived} />
           </div>
         </div>

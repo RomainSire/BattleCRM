@@ -13,6 +13,7 @@ export const createProspectSchema = vine.create(
     email: vine.string().trim().optional(),
     phone: vine.string().trim().optional(),
     title: vine.string().trim().optional(),
+    needed_role: vine.string().trim().optional(),
     notes: vine.string().trim().optional(),
   }),
 )
@@ -25,6 +26,7 @@ export const updateProspectSchema = vine.create(
     email: vine.string().trim().optional(),
     phone: vine.string().trim().optional(),
     title: vine.string().trim().optional(),
+    needed_role: vine.string().trim().optional(),
     notes: vine.string().trim().optional(),
   }),
 )
