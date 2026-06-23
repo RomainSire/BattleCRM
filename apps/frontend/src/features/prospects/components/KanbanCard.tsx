@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AddInteractionDialog } from '@/features/interactions/components/AddInteractionDialog'
 import { cn } from '@/lib/utils'
+import { daysSince, RECENCY_DOT_COLORS, recencyLevel } from '../lib/recency'
 
 interface KanbanCardProps {
   prospect: ProspectType
@@ -56,6 +57,31 @@ function PositioningIndicator({
           <span className="flex items-center" aria-hidden="true">
             {icon}
           </span>
+        </TooltipTrigger>
+        <TooltipContent>{tooltipText}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+function RecencyDot({ prospect }: { prospect: ProspectType }) {
+  const { t } = useTranslation()
+  const days = daysSince(prospect.lastInteractionAt)
+  const level = recencyLevel(days)
+  const tooltipText =
+    days === null
+      ? t('prospects.recency.tooltip.never')
+      : t('prospects.recency.tooltip.daysAgo', { count: days })
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            data-recency={level}
+            className={cn('size-2.5 shrink-0 rounded-full', RECENCY_DOT_COLORS[level])}
+            aria-hidden="true"
+          />
         </TooltipTrigger>
         <TooltipContent>{tooltipText}</TooltipContent>
       </Tooltip>
@@ -123,9 +149,12 @@ export function KanbanCard({
           )}
         </div>
 
-        {/* Positioning indicator — shown for non-archived prospects, not in drag overlay */}
+        {/* Recency dot + positioning indicator — non-archived prospects, not in drag overlay */}
         {!isArchived && !overlay && (
-          <PositioningIndicator prospect={prospect} stageHasPositionings={stageHasPositionings} />
+          <div className="flex items-center gap-1.5">
+            <RecencyDot prospect={prospect} />
+            <PositioningIndicator prospect={prospect} stageHasPositionings={stageHasPositionings} />
+          </div>
         )}
 
         {/* Quick-add interaction — hidden for archived prospects and drag overlay */}

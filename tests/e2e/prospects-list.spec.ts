@@ -10,11 +10,19 @@
 
 import { expect, test } from '../support/fixtures'
 import {
+  createInteraction,
   createProspect,
   getFunnelStages,
   hardResetTestData,
   resetFunnelStages,
 } from '../support/helpers/api'
+
+/** Returns an ISO date string (YYYY-MM-DD) for `n` days before today. */
+function daysAgoDate(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toISOString().slice(0, 10)
+}
 test.describe('Prospects - List View', () => {
   test.describe.configure({ mode: 'serial' })
 
@@ -169,5 +177,109 @@ test.describe('Prospects - List View', () => {
     await page.goto('/prospects')
     await expect(page.getByText('No results.')).toBeVisible()
     await context.close()
+  })
+})
+
+test.describe('Prospects - Target role & last interaction columns', () => {
+  test.describe.configure({ mode: 'serial' })
+
+  test.beforeAll(async ({ browser, workerStorageState }) => {
+    const context = await browser.newContext({ storageState: workerStorageState })
+    await hardResetTestData(context.request)
+    await resetFunnelStages(context.request)
+    const stages = await getFunnelStages(context.request)
+
+    // Recent: interacted 2 days ago, with a target role
+    const recent = await createProspect(context.request, {
+      name: 'Recent Andy',
+      needed_role: 'Backend Engineer',
+      funnel_stage_id: stages[0]?.id,
+    })
+    await createInteraction(context.request, {
+      prospect_id: recent.id,
+      interaction_date: daysAgoDate(2),
+    })
+
+    // Old: interacted 30 days ago, no target role
+    const old = await createProspect(context.request, {
+      name: 'Old Bob',
+      funnel_stage_id: stages[0]?.id,
+    })
+    await createInteraction(context.request, {
+      prospect_id: old.id,
+      interaction_date: daysAgoDate(30),
+    })
+
+    // Never interacted, with a target role for the search test
+    await createProspect(context.request, {
+      name: 'Never Carol',
+      needed_role: 'Data Scientist',
+      funnel_stage_id: stages[0]?.id,
+    })
+
+    await context.close()
+  })
+
+  // ── Target role column ────────────────────────────────────────────────────────
+
+  test('shows the "Target role" column with values and "—" when empty', async ({ page }) => {
+    await page.goto('/prospects')
+    await expect(page.getByRole('button', { name: /target role/i })).toBeVisible()
+
+    // Andy has a target role
+    await expect(
+      page.locator('tr').filter({ hasText: 'Recent Andy' }),
+    ).toContainText('Backend Engineer')
+    // Bob has none → em dash
+    await expect(page.locator('tr').filter({ hasText: 'Old Bob' })).toContainText('—')
+  })
+
+  test('clicking the "Target role" header sorts the column', async ({ page }) => {
+    await page.goto('/prospects')
+    await page.getByRole('button', { name: /target role/i }).click()
+    // Prospects are still listed after sorting (no crash, sortable header works)
+    await expect(page.getByText('Recent Andy')).toBeVisible()
+    await expect(page.getByText('Never Carol')).toBeVisible()
+  })
+
+  test('global search matches the target role', async ({ page }) => {
+    await page.goto('/prospects')
+    await page.getByRole('searchbox', { name: /search prospects/i }).fill('Data Scientist')
+    // Only Carol has that target role
+    await expect(page.getByText('Never Carol')).toBeVisible()
+    await expect(page.getByText('Recent Andy')).not.toBeVisible()
+    await expect(page.getByText('Old Bob')).not.toBeVisible()
+  })
+
+  // ── Last interaction column ───────────────────────────────────────────────────
+
+  test('shows day counts and "Never" for prospects without interactions', async ({ page }) => {
+    await page.goto('/prospects')
+    await expect(page.getByRole('button', { name: /last interaction/i })).toBeVisible()
+
+    // Andy ~2 days, Bob ~30 days (day suffix), Carol never
+    await expect(page.locator('tr').filter({ hasText: 'Recent Andy' })).toContainText(/\dd/)
+    await expect(page.locator('tr').filter({ hasText: 'Old Bob' })).toContainText(/\dd/)
+    await expect(page.locator('tr').filter({ hasText: 'Never Carol' })).toContainText('Never')
+  })
+
+  test('sorting descending puts oldest on top and "Never" at the bottom', async ({ page }) => {
+    await page.goto('/prospects')
+    const header = page.getByRole('button', { name: /last interaction/i })
+    // First click → ascending, second click → descending
+    await header.click()
+    await header.click()
+
+    const rows = page.locator('table tbody tr')
+    // Descending by elapsed days: Old Bob (30) → Recent Andy (2) → Never Carol (null, bottom)
+    await expect(rows.nth(0)).toContainText('Old Bob')
+    await expect(rows.nth(1)).toContainText('Recent Andy')
+    await expect(rows.nth(2)).toContainText('Never Carol')
+  })
+
+  test('no recency filter control is present in the toolbar', async ({ page }) => {
+    await page.goto('/prospects')
+    // Only the stage filter combobox exists — no recency-specific filter was added
+    await expect(page.getByRole('combobox')).toHaveCount(1)
   })
 })

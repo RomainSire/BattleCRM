@@ -257,6 +257,7 @@ export class ProspectSchema extends BaseModel {
     'id',
     'linkedinUrl',
     'name',
+    'neededRole',
     'notes',
     'phone',
     'title',
@@ -280,6 +281,8 @@ export class ProspectSchema extends BaseModel {
   declare linkedinUrl: string | null
   @column()
   declare name: string
+  @column()
+  declare neededRole: string | null
   @column()
   declare notes: string | null
   @column()

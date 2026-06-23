@@ -37,6 +37,9 @@ export default class Prospect extends compose(BaseModel, SoftDeletes) {
   declare title: string | null
 
   @column()
+  declare neededRole: string | null
+
+  @column()
   declare notes: string | null
 
   @column.dateTime({ autoCreate: true })

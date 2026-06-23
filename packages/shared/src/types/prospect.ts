@@ -7,8 +7,11 @@ export type ProspectType = {
   email: string | null
   phone: string | null
   title: string | null
+  neededRole: string | null
   notes: string | null
   funnelStageId: string
+  // Read-only: most recent interaction date (ISO UTC), or null if none. Never sent in create/update payloads.
+  lastInteractionAt: string | null
   createdAt: string
   updatedAt: string
   deletedAt: string | null
@@ -32,6 +35,7 @@ export type CreateProspectPayload = {
   email?: string | null
   phone?: string | null
   title?: string | null
+  needed_role?: string | null
   notes?: string | null
 }
 
@@ -43,6 +47,7 @@ export type UpdateProspectPayload = {
   email?: string | null
   phone?: string | null
   title?: string | null
+  needed_role?: string | null
   notes?: string | null
 }
 

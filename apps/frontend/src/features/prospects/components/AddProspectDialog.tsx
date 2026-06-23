@@ -34,12 +34,14 @@ interface FormValues {
   email: string
   phone: string
   title: string
+  needed_role: string
   notes: string
 }
 
 const OPTIONAL_FIELDS = [
   ['linkedin_url', 'linkedinUrl'],
   ['title', 'title'],
+  ['needed_role', 'neededRole'],
   ['company', 'company'],
   ['email', 'email'],
 ] as const
@@ -71,6 +73,7 @@ export function AddProspectDialog() {
       email: '',
       phone: '',
       title: '',
+      needed_role: '',
       notes: '',
     },
   })
@@ -92,6 +95,7 @@ export function AddProspectDialog() {
       email: '',
       phone: '',
       title: '',
+      needed_role: '',
       notes: '',
     })
   }
@@ -106,6 +110,7 @@ export function AddProspectDialog() {
       ...(values.email.trim() && { email: values.email.trim() }),
       ...(values.phone.trim() && { phone: values.phone.trim() }),
       ...(values.title.trim() && { title: values.title.trim() }),
+      ...(values.needed_role.trim() && { needed_role: values.needed_role.trim() }),
       ...(values.notes.trim() && { notes: values.notes.trim() }),
     }
     create.mutate(payload, {

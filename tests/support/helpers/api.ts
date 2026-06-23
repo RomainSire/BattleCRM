@@ -125,6 +125,7 @@ export async function createProspect(
     company?: string
     email?: string
     title?: string
+    needed_role?: string
     notes?: string
   },
 ): Promise<{ id: string; name: string; funnelStageId: string; deletedAt: string | null }> {

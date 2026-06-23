@@ -7,6 +7,7 @@ import { SortableHeader } from '@/components/ui/data-table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AddInteractionDialog } from '@/features/interactions/components/AddInteractionDialog'
 import { cn } from '@/lib/utils'
+import { daysSince, RECENCY_TEXT_COLORS, recencyLevel } from '../lib/recency'
 
 export function getProspectsColumns(
   t: TFunction,
@@ -65,6 +66,47 @@ export function getProspectsColumns(
       ),
       cell: ({ row }) => <span className="text-muted-foreground">{row.original.email ?? '—'}</span>,
       enableGlobalFilter: true,
+    },
+    {
+      accessorKey: 'neededRole',
+      header: ({ column }) => (
+        <SortableHeader column={column} label={t('prospects.columns.neededRole')} />
+      ),
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{row.original.neededRole ?? '—'}</span>
+      ),
+      enableGlobalFilter: true,
+    },
+    {
+      id: 'lastInteraction',
+      accessorFn: (row) => daysSince(row.lastInteractionAt),
+      header: ({ column }) => (
+        <SortableHeader column={column} label={t('prospects.columns.lastInteraction')} />
+      ),
+      cell: ({ row }) => {
+        const days = daysSince(row.original.lastInteractionAt)
+        const level = recencyLevel(days)
+        if (days === null) {
+          return (
+            <span className="font-semibold text-muted-foreground">
+              {t('prospects.lastInteraction.never')}
+            </span>
+          )
+        }
+        return (
+          <span className={cn('font-semibold', RECENCY_TEXT_COLORS[level])}>
+            {t('prospects.lastInteraction.daysAgo', { count: days })}
+          </span>
+        )
+      },
+      // Treat "never" (null) as the smallest value so that, sorted descending,
+      // the oldest interactions float to the top and "Jamais" sinks to the bottom.
+      sortingFn: (a, b) => {
+        const daysA = daysSince(a.original.lastInteractionAt) ?? -1
+        const daysB = daysSince(b.original.lastInteractionAt) ?? -1
+        return daysA - daysB
+      },
+      enableGlobalFilter: false,
     },
     {
       id: 'actions',

@@ -165,4 +165,51 @@ test.describe('Prospects - Create & Edit', () => {
     await expect(page.locator('table').getByText('Updated Prospect Name')).toBeVisible()
     await expect(page.getByRole('button', { name: /^edit/i })).toBeVisible()
   })
+
+  // ── Target role (neededRole) ─────────────────────────────────────────────────
+
+  test('creates a prospect with a target role — shown in detail and list', async ({ page }) => {
+    await page.goto('/prospects')
+    await page.getByRole('button', { name: /add prospect/i }).click()
+
+    const dialog = page.getByRole('dialog')
+    await dialog.locator('#prospect-name').fill('Role Prospect E2E')
+    await dialog.locator('#prospect-needed_role').fill('Staff Engineer')
+    await dialog.getByRole('button', { name: /create prospect/i }).click()
+
+    await expect(page.getByRole('dialog')).not.toBeVisible()
+    await expect(page.getByText(/prospect created/i)).toBeVisible()
+
+    // Target role appears in the list column
+    const row = page.locator('tr').filter({ hasText: 'Role Prospect E2E' })
+    await expect(row).toContainText('Staff Engineer')
+
+    // And in the detail drawer
+    await row.click()
+    await expect(page.getByText('Staff Engineer')).toBeVisible()
+  })
+
+  test('editing a prospect updates its target role', async ({ page }) => {
+    await page.goto('/prospects')
+    await page.locator('tr').filter({ hasText: 'Role Prospect E2E' }).click()
+    await page.getByRole('button', { name: /^edit/i }).click()
+
+    const roleInput = page.getByRole('textbox', { name: /target role/i })
+    // Anti-flake: wait for the edit form to settle (pre-filled) before mutating
+    await expect(roleInput).toHaveValue('Staff Engineer')
+    await roleInput.clear()
+    await roleInput.fill('Principal Engineer')
+
+    const updateResponse = page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/api/prospects') &&
+        resp.request().method() === 'PUT' &&
+        resp.status() === 200,
+    )
+    await page.getByRole('button', { name: /^save$/i }).click()
+    await updateResponse
+
+    await expect(page.getByText(/prospect updated/i)).toBeVisible()
+    await expect(page.locator('table').getByText('Principal Engineer')).toBeVisible()
+  })
 })
