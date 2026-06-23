@@ -7,7 +7,7 @@ import { SortableHeader } from '@/components/ui/data-table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AddInteractionDialog } from '@/features/interactions/components/AddInteractionDialog'
 import { cn } from '@/lib/utils'
-import { daysSince } from '../lib/recency'
+import { daysSince, RECENCY_TEXT_COLORS, recencyLevel } from '../lib/recency'
 
 export function getProspectsColumns(
   t: TFunction,
@@ -85,12 +85,19 @@ export function getProspectsColumns(
       ),
       cell: ({ row }) => {
         const days = daysSince(row.original.lastInteractionAt)
+        const level = recencyLevel(days)
         if (days === null) {
           return (
-            <span className="text-muted-foreground">{t('prospects.lastInteraction.never')}</span>
+            <span className="font-semibold text-muted-foreground">
+              {t('prospects.lastInteraction.never')}
+            </span>
           )
         }
-        return <span>{t('prospects.lastInteraction.daysAgo', { count: days })}</span>
+        return (
+          <span className={cn('font-semibold', RECENCY_TEXT_COLORS[level])}>
+            {t('prospects.lastInteraction.daysAgo', { count: days })}
+          </span>
+        )
       },
       // Treat "never" (null) as the smallest value so that, sorted descending,
       // the oldest interactions float to the top and "Jamais" sinks to the bottom.

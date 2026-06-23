@@ -32,6 +32,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { usePositionings } from '@/features/positionings/hooks/usePositionings'
 import { useFunnelStages } from '@/features/settings/hooks/useFunnelStages'
 import { ApiError } from '@/lib/api'
+import { cn } from '@/lib/utils'
 import { i18nMessagesProvider } from '@/lib/validation'
 import {
   useArchiveProspect,
@@ -39,7 +40,7 @@ import {
   useUpdateProspect,
 } from '../hooks/useProspectMutations'
 import { useSetPositioningOutcome } from '../hooks/useProspectPositioningMutations'
-import { daysSince } from '../lib/recency'
+import { daysSince, RECENCY_TEXT_COLORS, recencyLevel } from '../lib/recency'
 import { updateProspectSchema } from '../schemas/prospect'
 import { PositioningSection } from './PositioningSection'
 import { ProspectTimeline } from './ProspectTimeline'
@@ -575,8 +576,9 @@ export function ProspectDetail({ prospect, onClose }: ProspectDetailProps) {
           <div className="mt-4">
             {(() => {
               const days = daysSince(prospect.lastInteractionAt)
+              const level = recencyLevel(days)
               return (
-                <p className="mb-2 text-xs text-muted-foreground">
+                <p className={cn('mb-2 text-xs font-semibold', RECENCY_TEXT_COLORS[level])}>
                   {days === null
                     ? t('prospects.lastInteraction.detailNever')
                     : t('prospects.lastInteraction.detailDaysAgo', { count: days })}

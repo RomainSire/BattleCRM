@@ -11,6 +11,26 @@ export const RECENCY_THRESHOLDS = { warning: 7, danger: 21 } as const
 
 export type RecencyLevel = 'fresh' | 'warning' | 'danger' | 'never'
 
+/**
+ * Shared colour mappings per recency level — single source of truth so the
+ * kanban dot, the list column and the detail view stay visually consistent.
+ * - `*_DOT` → background classes for the round kanban indicator.
+ * - `*_TEXT` → foreground classes for emphasised text (list / detail).
+ */
+export const RECENCY_DOT_COLORS: Record<RecencyLevel, string> = {
+  fresh: 'bg-green-500',
+  warning: 'bg-orange-500',
+  danger: 'bg-red-500',
+  never: 'bg-muted-foreground/40',
+}
+
+export const RECENCY_TEXT_COLORS: Record<RecencyLevel, string> = {
+  fresh: 'text-green-600',
+  warning: 'text-orange-600',
+  danger: 'text-red-600',
+  never: 'text-muted-foreground',
+}
+
 const MS_PER_DAY = 86_400_000
 
 /**

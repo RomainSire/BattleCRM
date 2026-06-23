@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AddInteractionDialog } from '@/features/interactions/components/AddInteractionDialog'
 import { cn } from '@/lib/utils'
-import { daysSince, recencyLevel } from '../lib/recency'
+import { daysSince, RECENCY_DOT_COLORS, recencyLevel } from '../lib/recency'
 
 interface KanbanCardProps {
   prospect: ProspectType
@@ -63,13 +63,6 @@ function PositioningIndicator({
     </TooltipProvider>
   )
 }
-
-const RECENCY_DOT_COLORS = {
-  fresh: 'bg-green-500',
-  warning: 'bg-orange-500',
-  danger: 'bg-red-500',
-  never: 'bg-muted-foreground/40',
-} as const
 
 function RecencyDot({ prospect }: { prospect: ProspectType }) {
   const { t } = useTranslation()
