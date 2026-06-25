@@ -152,9 +152,12 @@ export default function ProspectPopupScreen({
       const created = await createProspect.mutateAsync(payload)
 
       await browser.storage.session.remove(formKey)
-      await browser.action.setBadgeText({ text: '✓' })
-      await browser.action.setBadgeBackgroundColor({ color: '#16a34a' })
-      await browser.action.setTitle({ title: 'Prospect déjà dans BattleCRM' })
+      // Scope the badge to the active tab so it doesn't leak to other tabs/windows.
+      const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true })
+      const target = activeTab?.id === undefined ? {} : { tabId: activeTab.id }
+      await browser.action.setBadgeText({ text: '✓', ...target })
+      await browser.action.setBadgeBackgroundColor({ color: '#16a34a', ...target })
+      await browser.action.setTitle({ title: 'Prospect déjà dans BattleCRM', ...target })
       await browser.storage.session.set({ [linkedinUrl]: { found: true, prospect: created } })
 
       setProspect(created)

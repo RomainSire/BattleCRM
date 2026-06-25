@@ -6,6 +6,13 @@ export const extensionCheckValidator = vine.create(
   }),
 )
 
+export const extensionCheckBatchValidator = vine.create(
+  vine.object({
+    // Batch lookup for the search-results list — capped at 50 URLs to prevent abuse.
+    linkedin_urls: vine.array(vine.string().trim().url()).minLength(1).maxLength(50),
+  }),
+)
+
 export const extensionCreateProspectValidator = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1).maxLength(255),

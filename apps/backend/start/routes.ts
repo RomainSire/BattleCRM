@@ -55,6 +55,7 @@ router
         router
           .group(() => {
             router.get('/check', [ExtensionProspectsController, 'check'])
+            router.post('/check-batch', [ExtensionProspectsController, 'checkBatch'])
             router.post('/', [ExtensionProspectsController, 'store'])
             router.patch('/:id', [ExtensionProspectsController, 'update']).where('id', UUID_REGEX)
           })

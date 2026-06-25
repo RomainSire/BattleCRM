@@ -1,4 +1,5 @@
 import type {
+  ExtensionCheckBatchResponse,
   ExtensionCheckResponse,
   ExtensionCreateProspectPayload,
   ExtensionProspectData,
@@ -9,6 +10,13 @@ import { fetchExtensionApi } from '../../../lib/api'
 export const prospectsApi = {
   check(linkedinUrl: string): Promise<ExtensionCheckResponse> {
     return fetchExtensionApi(`/prospects/check?linkedin_url=${encodeURIComponent(linkedinUrl)}`)
+  },
+
+  checkBatch(linkedinUrls: string[]): Promise<ExtensionCheckBatchResponse> {
+    return fetchExtensionApi('/prospects/check-batch', {
+      method: 'POST',
+      body: JSON.stringify({ linkedin_urls: linkedinUrls }),
+    })
   },
 
   create(payload: ExtensionCreateProspectPayload): Promise<ExtensionProspectData> {

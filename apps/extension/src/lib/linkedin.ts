@@ -146,6 +146,70 @@ export function isProfilePage(url: string): boolean {
 }
 
 /**
+ * Returns true if the given URL is the LinkedIn people-search results page.
+ * Scope of the search-list CRM badges feature.
+ */
+export function isPeopleSearchPage(url: string): boolean {
+  try {
+    return new URL(url).pathname.startsWith('/search/results/people/')
+  } catch {
+    return false
+  }
+}
+
+/** A single person result extracted from the people-search list. */
+export interface SearchResultEntry {
+  /** The <a> element wrapping the person's name — where the CRM badge is anchored. */
+  nameAnchor: HTMLAnchorElement
+  /** Normalized canonical profile URL — key for the CRM check and for de-duplication. */
+  canonicalUrl: string
+}
+
+/**
+ * Extract the visible person results from a LinkedIn people-search list.
+ *
+ * LinkedIn obfuscates all CSS classes — we rely on structure only:
+ *  - each result is a `div[role="listitem"]`,
+ *  - the first `a[href*="/in/"]` is the card wrapper (covers the whole row),
+ *  - the *name* anchor is a deeper `a[href*="/in/"]` pointing to the SAME profile
+ *    (mutual-connection links inside the card point to OTHER profiles, so they differ).
+ *
+ * Non-person rows (Premium upsells, the "are these results useful?" block) have no
+ * `/in/` anchor and are skipped. Results are de-duplicated by canonical URL.
+ */
+export function scrapeSearchResults(root: ParentNode = document): SearchResultEntry[] {
+  const entries: SearchResultEntry[] = []
+  const seen = new Set<string>()
+
+  const items = root.querySelectorAll<HTMLElement>('[role="listitem"]')
+  for (const item of items) {
+    const anchors = Array.from(item.querySelectorAll<HTMLAnchorElement>('a[href*="/in/"]'))
+    if (anchors.length === 0) continue
+
+    const wrapper = anchors[0]
+    const canonicalUrl = normalizeLinkedInUrl(wrapper.href)
+    if (!isProfilePage(canonicalUrl)) continue
+
+    // Prefer a deeper anchor (the clickable name) pointing to the same profile;
+    // fall back to the wrapper itself if none is found.
+    const nameAnchor =
+      anchors.find(
+        (a, i) =>
+          i > 0 &&
+          normalizeLinkedInUrl(a.href) === canonicalUrl &&
+          (a.textContent?.trim().length ?? 0) > 0,
+      ) ?? wrapper
+
+    if (seen.has(canonicalUrl)) continue
+    seen.add(canonicalUrl)
+
+    entries.push({ nameAnchor, canonicalUrl })
+  }
+
+  return entries
+}
+
+/**
  * Normalize a LinkedIn profile URL — strips query params, hash, and trailing slash.
  * Used in both content.ts (before sending CHECK_PROSPECT) and background.ts (before API call).
  * Must stay in sync with the backend normalizeLinkedinUrl in extension_prospects_controller.ts.
