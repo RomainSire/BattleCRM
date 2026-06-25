@@ -1,12 +1,13 @@
 {
   "name": "@battlecrm/extension",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
+    "sign:firefox": "web-ext sign --source-dir .output/firefox-mv3 --channel unlisted --artifacts-dir .output/signed",
     "zip": "wxt zip",
     "type-check": "wxt prepare && tsc --noEmit",
     "test": "vitest run",
@@ -42,6 +43,7 @@
     "tailwindcss": "^4.3.1",
     "vite": "^8.0.16",
     "vitest": "^4.1.9",
+    "web-ext": "^10.4.0",
     "wxt": "^0.20.26"
   }
 }
