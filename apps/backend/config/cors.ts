@@ -22,6 +22,19 @@ const allowedOrigins = [env.get('CORS_ORIGIN'), ...extensionOrigins]
 const corsConfig = defineConfig({
   enabled: true,
   origin: (requestOrigin) => {
+    if (!requestOrigin) return false
+    // Browser extensions: Chrome IDs are deterministic (could be whitelisted), but Firefox
+    // generates a RANDOM `moz-extension://<uuid>` origin per install — impossible to know
+    // ahead of time. So we reflect any extension-scheme origin. This is safe: extension API
+    // endpoints authenticate via Bearer tokens (not session cookies), so a reflected origin
+    // alone grants nothing without a valid token. EXTENSION_ORIGINS remains supported below
+    // for any explicit additions, but is no longer required for the extension to connect.
+    if (
+      requestOrigin.startsWith('chrome-extension://') ||
+      requestOrigin.startsWith('moz-extension://')
+    ) {
+      return requestOrigin
+    }
     return allowedOrigins.includes(requestOrigin) ? requestOrigin : false
   },
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH'],

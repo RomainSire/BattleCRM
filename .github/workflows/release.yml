@@ -1,0 +1,58 @@
+name: Release — sign extension & publish
+
+# Tag a release (e.g. `git tag v1.0.0 && git push --follow-tags`) to:
+#   1. build the Firefox extension (MV3),
+#   2. get it signed by Mozilla (AMO, unlisted / self-distribution),
+#   3. attach the signed .xpi (+ the Chrome .zip) to a GitHub Release.
+# The signed .xpi is then directly installable on a normal Firefox.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build-sign-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # required to create the GitHub Release
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Shared types must be built before the extension consumes them.
+      - run: pnpm shared:build
+
+      - name: Build Firefox extension (MV3)
+        run: pnpm --filter @battlecrm/extension build:firefox
+
+      - name: Build Chrome zip (bonus artifact)
+        run: pnpm --filter @battlecrm/extension zip
+
+      # web-ext reads WEB_EXT_API_KEY / WEB_EXT_API_SECRET from the environment.
+      # Channel `unlisted` => Mozilla signs it but does NOT list it on AMO
+      # (self-distribution). The signed .xpi lands in apps/extension/.output/signed/.
+      - name: Sign Firefox extension (AMO)
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: pnpm --filter @battlecrm/extension sign:firefox
+
+      - name: Create GitHub Release with artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            apps/extension/.output/signed/*.xpi \
+            apps/extension/.output/*-chrome.zip
