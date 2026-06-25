@@ -18,6 +18,10 @@ export default defineBackground(() => {
       handleClearBadge(message.previousUrl).then(() => sendResponse({ ok: true }))
       return true
     }
+    if (message.type === 'CHECK_PROSPECTS_BATCH') {
+      handleCheckProspectsBatch(message.urls).then((results) => sendResponse({ results }))
+      return true
+    }
     if (message.type === 'GET_PANEL_DATA') {
       handleGetPanelData(message.linkedinUrl).then((result) => sendResponse(result))
       return true
@@ -67,6 +71,33 @@ async function handleCheckProspect(linkedinUrl: string): Promise<void> {
     } else {
       await clearBadge()
     }
+  }
+}
+
+/**
+ * Batch presence check for the people-search list. Returns a map of normalized URL -> boolean.
+ * NEVER touches the toolbar badge (that's the profile-page feature). Fails silently — on no
+ * token / network error / non-401 error we return an empty map so the list shows no badge.
+ * Chunked to the backend's 50-URL cap.
+ */
+async function handleCheckProspectsBatch(urls: string[]): Promise<Record<string, boolean>> {
+  const { token } = await getStorage()
+  if (!token || !Array.isArray(urls) || urls.length === 0) return {}
+
+  const CHUNK_SIZE = 50
+  const merged: Record<string, boolean> = {}
+  try {
+    for (let i = 0; i < urls.length; i += CHUNK_SIZE) {
+      const chunk = urls.slice(i, i + CHUNK_SIZE)
+      const res = await prospectsApi.checkBatch(chunk)
+      Object.assign(merged, res.results)
+    }
+    return merged
+  } catch (err) {
+    if (err instanceof HttpError && err.status === 401) {
+      await handleAuthExpired()
+    }
+    return {}
   }
 }
 

@@ -1,8 +1,13 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import type { ExtensionCheckResponse, ExtensionProspectData } from '@battlecrm/shared'
+import type {
+  ExtensionCheckBatchResponse,
+  ExtensionCheckResponse,
+  ExtensionProspectData,
+} from '@battlecrm/shared'
 import FunnelStage from '#models/funnel_stage'
 import Prospect from '#models/prospect'
 import {
+  extensionCheckBatchValidator,
   extensionCheckValidator,
   extensionCreateProspectValidator,
   extensionUpdateProspectValidator,
@@ -63,6 +68,35 @@ export default class ExtensionProspectsController {
       found: true,
       prospect: await serializeExtensionProspect(prospect),
     }
+    return response.ok(body)
+  }
+
+  /**
+   * POST /api/extension/prospects/check-batch
+   * Body: { linkedin_urls: string[] } (max 50). Returns { results: { <normalizedUrl>: boolean } }.
+   * Used by the search-results list to verify ~10 profiles in a single round-trip.
+   * Always 200 — every requested (normalized) URL appears in `results`, false when absent.
+   */
+  async checkBatch({ request, response, auth }: HttpContext) {
+    const data = await request.validateUsing(extensionCheckBatchValidator)
+    const userId = auth.use('extension').user!.id
+
+    // Normalize + dedupe so a single SQL `whereIn` covers the whole batch.
+    const normalized = [...new Set(data.linkedin_urls.map(normalizeLinkedinUrl))]
+
+    const prospects = await Prospect.query()
+      .withScopes((s) => s.forUser(userId))
+      .whereIn('linkedin_url', normalized)
+      .select('linkedin_url')
+
+    const foundSet = new Set(prospects.map((p) => p.linkedinUrl))
+
+    const results: Record<string, boolean> = {}
+    for (const url of normalized) {
+      results[url] = foundSet.has(url)
+    }
+
+    const body: ExtensionCheckBatchResponse = { results }
     return response.ok(body)
   }
 

@@ -93,5 +93,9 @@
       "edit": "Modifier",
       "viewInApp": "Voir dans l'app"
     }
+  },
+  "searchBadge": {
+    "inCrm": "Déjà dans BattleCRM",
+    "notInCrm": "Pas encore dans BattleCRM"
   }
 }

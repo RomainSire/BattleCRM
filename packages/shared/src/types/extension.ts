@@ -22,6 +22,19 @@ export type ExtensionCheckResponse =
   | { found: true; prospect: ExtensionProspectData }
   | { found: false }
 
+// Batch check — used by the search-results list feature to verify ~10 profiles in one call.
+// Request: list of LinkedIn URLs (snake_case, aligned with extensionCheckBatchValidator).
+export type ExtensionCheckBatchPayload = {
+  linkedin_urls: string[]
+}
+
+// Response: map of normalized LinkedIn URL -> presence in the CRM.
+// Only booleans (no prospect data): the list view only needs the in/out state, and this
+// avoids loading/leaking prospect details for bulk lookups.
+export type ExtensionCheckBatchResponse = {
+  results: Record<string, boolean>
+}
+
 // Request payloads — aligned with extensionCreate/UpdateProspectValidator (snake_case keys)
 export type ExtensionCreateProspectPayload = {
   name: string

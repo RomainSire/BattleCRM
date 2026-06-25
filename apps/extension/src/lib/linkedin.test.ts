@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { isProfilePage, normalizeLinkedInUrl, scrapeLinkedInProfile } from './linkedin'
+import {
+  isPeopleSearchPage,
+  isProfilePage,
+  normalizeLinkedInUrl,
+  scrapeLinkedInProfile,
+  scrapeSearchResults,
+} from './linkedin'
 
 // ---------------------------------------------------------------------------
 // Helpers to build minimal LinkedIn-like DOM structures for scraper tests.
@@ -262,5 +268,141 @@ describe('isProfilePage', () => {
 
   it('returns false for an invalid URL string', () => {
     expect(isProfilePage('not-a-url')).toBe(false)
+  })
+})
+
+describe('isPeopleSearchPage', () => {
+  it('returns true for the people-search results page', () => {
+    expect(isPeopleSearchPage('https://www.linkedin.com/search/results/people/?keywords=ing')).toBe(
+      true,
+    )
+  })
+
+  it('returns true without query params', () => {
+    expect(isPeopleSearchPage('https://www.linkedin.com/search/results/people/')).toBe(true)
+  })
+
+  it('returns false for other search verticals', () => {
+    expect(isPeopleSearchPage('https://www.linkedin.com/search/results/companies/')).toBe(false)
+    expect(isPeopleSearchPage('https://www.linkedin.com/search/results/content/')).toBe(false)
+  })
+
+  it('returns false for a profile page', () => {
+    expect(isPeopleSearchPage('https://www.linkedin.com/in/john-doe')).toBe(false)
+  })
+
+  it('returns false for an invalid URL string', () => {
+    expect(isPeopleSearchPage('not-a-url')).toBe(false)
+  })
+})
+
+describe('scrapeSearchResults', () => {
+  beforeEach(() => {
+    document.body.innerHTML = ''
+  })
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  /** Minimal listitem mirroring the real people-search DOM (card wrapper + inner name link). */
+  function listItem(opts: {
+    slug: string
+    name: string
+    /** Other profiles linked as "mutual connections" inside the card. */
+    mutualSlugs?: string[]
+    /** Use a separate inner name anchor (true) or only the wrapping anchor (false). */
+    innerNameAnchor?: boolean
+  }): string {
+    const { slug, name, mutualSlugs = [], innerNameAnchor = true } = opts
+    const href = `https://www.linkedin.com/in/${slug}/`
+    const mutuals = mutualSlugs
+      .map(
+        (s) =>
+          `<p><span><a href="https://www.linkedin.com/in/${s}/"><strong>${s}</strong></a> est une relation que vous avez en commun</span></p>`,
+      )
+      .join('')
+    return `
+      <div role="listitem">
+        <a tabindex="0" href="${href}">
+          <div>
+            <p>${innerNameAnchor ? `<a href="${href}">${name}</a>` : name}<span> • 2e</span></p>
+            <p>Ingénieur d'affaire chez ACME</p>
+            ${mutuals}
+          </div>
+        </a>
+      </div>
+    `
+  }
+
+  it('extracts one entry per person result with a normalized URL', () => {
+    document.body.innerHTML = `
+      <div role="list">
+        ${listItem({ slug: 'aubin-vieillescazes', name: 'Aubin Vieillescazes' })}
+        ${listItem({ slug: 'mathieu-grossetti-1b394682', name: 'Mathieu Grossetti' })}
+      </div>
+    `
+    const results = scrapeSearchResults()
+    expect(results).toHaveLength(2)
+    expect(results.map((r) => r.canonicalUrl)).toEqual([
+      'https://www.linkedin.com/in/aubin-vieillescazes',
+      'https://www.linkedin.com/in/mathieu-grossetti-1b394682',
+    ])
+  })
+
+  it('anchors on the inner name link (its text is just the name)', () => {
+    document.body.innerHTML = listItem({ slug: 'aubin-vieillescazes', name: 'Aubin Vieillescazes' })
+    const [entry] = scrapeSearchResults()
+    expect(entry.nameAnchor.textContent?.trim()).toBe('Aubin Vieillescazes')
+  })
+
+  it('does NOT pick mutual-connection links as the person', () => {
+    document.body.innerHTML = listItem({
+      slug: 'zyad-el-oula',
+      name: 'Zyad El oula',
+      mutualSlugs: ['theo-haddad', 'mickael-compper'],
+    })
+    const results = scrapeSearchResults()
+    expect(results).toHaveLength(1)
+    expect(results[0].canonicalUrl).toBe('https://www.linkedin.com/in/zyad-el-oula')
+  })
+
+  it('skips rows without an /in/ anchor (ads, feedback block)', () => {
+    document.body.innerHTML = `
+      <div role="list">
+        ${listItem({ slug: 'real-person', name: 'Real Person' })}
+        <div role="listitem">
+          <a href="https://www.linkedin.com/premium/products/">Essayez Premium</a>
+        </div>
+      </div>
+    `
+    const results = scrapeSearchResults()
+    expect(results).toHaveLength(1)
+    expect(results[0].canonicalUrl).toBe('https://www.linkedin.com/in/real-person')
+  })
+
+  it('de-duplicates the same profile appearing twice', () => {
+    document.body.innerHTML = `
+      <div role="list">
+        ${listItem({ slug: 'same-guy', name: 'Same Guy' })}
+        ${listItem({ slug: 'same-guy', name: 'Same Guy' })}
+      </div>
+    `
+    expect(scrapeSearchResults()).toHaveLength(1)
+  })
+
+  it('falls back to the wrapper anchor when there is no inner name link', () => {
+    document.body.innerHTML = listItem({
+      slug: 'wrapper-only',
+      name: 'Wrapper Only',
+      innerNameAnchor: false,
+    })
+    const results = scrapeSearchResults()
+    expect(results).toHaveLength(1)
+    expect(results[0].canonicalUrl).toBe('https://www.linkedin.com/in/wrapper-only')
+  })
+
+  it('returns an empty array when there are no results', () => {
+    document.body.innerHTML = '<div role="list"></div>'
+    expect(scrapeSearchResults()).toEqual([])
   })
 })

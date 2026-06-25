@@ -1,0 +1,33 @@
+meta {
+  name: Check Prospects Batch
+  type: http
+  seq: 4
+}
+
+post {
+  url: http://localhost:3333/api/extension/prospects/check-batch
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{extensionToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "linkedin_urls": [
+      "https://www.linkedin.com/in/jeandupont",
+      "https://www.linkedin.com/in/janesmith"
+    ]
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
