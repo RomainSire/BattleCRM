@@ -2,115 +2,120 @@
 
 ## Overview
 
-The BattleCRM extension detects LinkedIn profiles and lets you add or update prospects in BattleCRM without leaving the browser. It uses a Bearer token auth separate from the web app session.
+The BattleCRM extension detects LinkedIn profiles and lets you add or update prospects in BattleCRM without leaving the browser. It authenticates with a Bearer token, separate from the web-app session (the token lives in `chrome.storage.local` and survives browser restarts).
 
-**Supported browsers:** Chrome / Chromium (MV3) · Firefox (MV2)
+**Supported browsers:** Chrome / Chromium (MV3) · Firefox 115+ (MV3)
 
----
+There are two ways to install:
 
-## Prerequisites
-
-- Node.js ≥ 20 and pnpm installed
-- BattleCRM repository cloned and dependencies installed (`pnpm install` at the root)
-- A running BattleCRM backend (local or remote)
+- **[A. Install a signed release](#a-install-a-signed-release-recommended)** — the easy path, no build needed.
+- **[B. Build from source](#b-build-from-source-development)** — for development / hacking on the extension.
 
 ---
 
-## 1. Build from source
+## A. Install a signed release (recommended)
+
+Each `vX.Y.Z` git tag triggers a GitHub Actions workflow that builds the extension, gets it **signed by Mozilla (AMO)**, and publishes a **GitHub Release** with the installable files attached.
+
+Go to the repository's **Releases** page and grab the latest one.
+
+### Firefox — one-click install
+
+1. In Firefox, **open the `.xpi` file's link directly** from the Release page (or drag the downloaded `.xpi` onto a Firefox window).
+2. Firefox prompts to install — confirm.
+3. Because the `.xpi` is **AMO-signed**, it installs **permanently** (survives restarts). No developer mode, no `about:debugging`.
+
+> Alternative: `about:addons` → gear icon → **Install Add-on From File…** → pick the `.xpi`.
+
+### Chrome / Chromium
+
+Chrome only installs signed extensions from the Web Store, so for a self-hosted build you load it unpacked:
+
+1. Download the `*-chrome.zip` asset from the Release and unzip it.
+2. Open `chrome://extensions`, enable **Developer mode** (top-right).
+3. Click **Load unpacked** and select the unzipped folder.
+
+> The Chrome extension ID is pinned by the `key` field in `wxt.config.ts`, so it stays stable (`aigeldhmbeopfpaeokckafajeneccbkc`).
+
+→ Once installed, jump to **[First use & connecting](#first-use--connecting)**.
+
+---
+
+## B. Build from source (development)
+
+### Prerequisites
+
+- Node.js ≥ 20.6 and pnpm installed
+- Repository cloned, dependencies installed (`pnpm install` at the root)
+
+### Build
 
 Run from the **repository root**:
 
 ```bash
-# Chrome / Chromium (Manifest V3)
+# Chrome / Chromium (MV3)
 pnpm build:extension
 
-# Firefox (Manifest V2)
+# Firefox (MV3)
 pnpm --filter @battlecrm/extension build:firefox
 ```
 
-Build outputs:
 | Browser | Output directory |
 |---------|-----------------|
-| Chrome | `apps/extension/.output/chrome-mv3/` |
-| Firefox | `apps/extension/.output/firefox-mv2/` |
+| Chrome  | `apps/extension/.output/chrome-mv3/` |
+| Firefox | `apps/extension/.output/firefox-mv3/` |
 
-> The build is deterministic. The `key` field in `wxt.config.ts` pins the Chrome extension ID across builds — you never need to update `EXTENSION_ORIGINS` after the first setup.
+### Load it
 
----
-
-## 2. Load on Chrome
-
-1. Open `chrome://extensions`
-2. Enable **Developer mode** (toggle in the top-right corner)
-3. Click **Load unpacked**
-4. Select the folder `apps/extension/.output/chrome-mv3/`
-5. The **BattleCRM** extension appears in your extensions list
-
-**Find the extension ID:**
-Still on `chrome://extensions`, the ID is displayed under the extension name (32-character string like `abcdefghijklmnopqrstuvwxyz123456`).
-
-> The ID is stable across builds thanks to the fixed `key` in the manifest. Note it — you will need it for the backend CORS configuration (step 4).
+- **Chrome:** `chrome://extensions` → **Developer mode** → **Load unpacked** → select `apps/extension/.output/chrome-mv3/`.
+- **Firefox (temporary):** `about:debugging` → **This Firefox** → **Load Temporary Add-on…** → select `apps/extension/.output/firefox-mv3/manifest.json`.
+  > Temporary add-ons disappear on restart. For a permanent unsigned install, use Firefox Developer Edition / ESR with `xpinstall.signatures.required = false` in `about:config`, or install a signed release (option A).
 
 ---
 
-## 3. Load on Firefox
+## First use & connecting
 
-Firefox only supports temporarily loaded extensions (until browser restart) unless the extension is signed.
+1. Open a LinkedIn profile page (e.g. `linkedin.com/in/someone`).
+2. Click the **BattleCRM** icon in your browser toolbar.
+3. In the login form, fill in:
+   - **URL BattleCRM** — the base URL of your BattleCRM instance, **without trailing slash and without `/api`**.
+     Examples: `https://battlecrm.romainsire.com` (prod) · `http://localhost:3333` (local dev)
+   - **Email** and **Password** — your BattleCRM account credentials.
+4. Click **Se connecter**.
 
-1. Open `about:debugging`
-2. Click **This Firefox** in the left sidebar
-3. Click **Load Temporary Add-on...**
-4. Navigate to `apps/extension/.output/firefox-mv2/` and select `manifest.json`
-5. The extension appears in the list with a temporary UUID
+The toolbar badge then reflects the current profile:
+- **green ✓** — already in BattleCRM (popup lets you view/edit);
+- **red +** — new profile — a pre-filled form lets you add it as a prospect.
 
-**Find the extension UUID:**
-On `about:debugging`, click **Inspect** on the BattleCRM extension. The internal UUID is shown in the URL (`moz-extension://<uuid>/`).
+On the LinkedIn **people-search list**, each result also gets a small BattleCRM logo badge (green ✓ / red +) showing whether it's already in your CRM.
 
-> Firefox UUIDs change on each browser restart for temporary add-ons. To keep a stable UUID, set a fixed `extensions.webextensions.uuids` preference in `about:config` or distribute a signed `.xpi`.
-
----
-
-## 4. Configure `EXTENSION_ORIGINS` in `.env`
-
-The backend needs to allow cross-origin requests from the extension. Add the extension origins to the root `.env`:
-
-```dotenv
-# Chrome only
-EXTENSION_ORIGINS=chrome-extension://abcdefghijklmnopqrstuvwxyz123456
-
-# Chrome + Firefox
-EXTENSION_ORIGINS=chrome-extension://abcdefghijklmnopqrstuvwxyz123456,moz-extension://your-firefox-uuid-here
-```
-
-Replace the placeholders with the IDs found in steps 2 and 3.
-
-**Restart the backend** after changing `.env` so the new CORS origins take effect:
-
-```bash
-# Local dev
-cd apps/backend && ENV_PATH=../../ node ace serve --hmr
-
-# Docker
-docker compose restart backend
-```
+> The token + base URL are stored in `chrome.storage.local` (persist across browser restarts). Per-profile form state is cached in `chrome.storage.session` and survives popup close/reopen. Tokens expire after 180 days (fixed) — you'll need to log in again then.
 
 ---
 
-## 5. First use
+## CORS / backend configuration
 
-1. Open a LinkedIn profile page (e.g. `linkedin.com/in/someone`)
-2. Click the **BattleCRM** icon in your browser toolbar
-3. A login form appears — fill in:
-   - **URL BattleCRM**: the base URL of your backend, without trailing slash  
-     Examples: `http://localhost:3333` · `https://battlecrm.yourdomain.com`
-   - **Email** and **Password**: your BattleCRM account credentials
-4. Click **Se connecter**
+The backend automatically accepts any browser-extension origin (`chrome-extension://…` and `moz-extension://…`) — see `apps/backend/config/cors.ts`. This is required because **Firefox generates a random `moz-extension://` origin per install** that can't be whitelisted ahead of time. It's safe: extension endpoints authenticate via Bearer tokens, not cookies.
 
-On success, the popup shows either:
-- A **green badge** — the profile is already in BattleCRM (click to view/edit)
-- A **red badge** — new profile — a pre-filled form lets you add it as a prospect
+You therefore **do not need to set `EXTENSION_ORIGINS`** for the extension to connect. The variable still exists for explicitly allowing other (non-extension) origins, but it's optional and unrelated to extension auth.
 
-> Credentials (token + base URL) are stored in `chrome.storage.local` and persist across browser sessions. Form state for the current LinkedIn profile is cached in `chrome.storage.session` and survives popup close/reopen.
+> If you change the backend domain, the extension just needs the new URL in its login form — no manifest or CORS change required.
+
+---
+
+## Cutting a new signed release (maintainers)
+
+1. Bump the version in `apps/extension/package.json` (AMO refuses to re-sign an existing version, so this is mandatory each time).
+2. Commit, then tag and push:
+   ```bash
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+3. The `release.yml` workflow builds Firefox + Chrome, signs the Firefox build via AMO, and creates the GitHub Release with the `.xpi` and Chrome zip attached.
+
+Requires two repository secrets (Mozilla AMO API credentials from <https://addons.mozilla.org/developers/addon/api/key/>):
+- `AMO_JWT_ISSUER`
+- `AMO_JWT_SECRET`
 
 ---
 
@@ -118,20 +123,18 @@ On success, the popup shows either:
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Login fails with "Serveur inaccessible" | CORS not configured or backend not running | Check `EXTENSION_ORIGINS` in `.env` and restart backend |
-| Login fails with "Identifiants invalides" | Wrong email / password | Check credentials in BattleCRM web app |
-| Badge doesn't appear on LinkedIn | LinkedIn DOM changed / content script not injected | Check `chrome://extensions` → BattleCRM → Errors; reload the extension |
-| Extension ID changed (Chrome) | `key` field missing from built manifest | The `key` in `wxt.config.ts` must be present at build time |
-| Firefox UUID changed after restart | Temporary add-on limitation | Reload the add-on and update `EXTENSION_ORIGINS` if needed |
+| Login fails with "Serveur inaccessible" | Backend not running, or the prod backend hasn't been deployed with the extension-origin CORS support | Verify the backend is up and reachable at the URL you entered; ensure prod is on a build that includes `config/cors.ts` reflecting extension origins |
+| Login fails with "Identifiants invalides" | Wrong email / password | Check credentials in the BattleCRM web app |
+| Badge doesn't appear on LinkedIn | Content script not injected / LinkedIn DOM changed | `chrome://extensions` (or `about:addons`) → BattleCRM → check errors; reload the extension |
+| Firefox: `.xpi` won't install | Unsigned build, or wrong file | Use the AMO-signed `.xpi` from a GitHub Release (option A), not a `.zip` |
+| Chrome extension ID changed | `key` missing from the built manifest | The `key` in `wxt.config.ts` must be present at build time |
 
 ---
 
-## Development mode
-
-To run the extension with hot-reload during development:
+## Development mode (hot-reload)
 
 ```bash
 pnpm dev:extension
 ```
 
-WXT opens a browser window automatically with the extension loaded. In dev mode the extension ID may differ from the production build — update `EXTENSION_ORIGINS` accordingly if testing against a local backend.
+WXT opens a Chromium dev window with the extension hot-loaded. The dev build's extension ID differs from the production build, but since the backend reflects any extension origin, no CORS change is needed to test against a local backend.

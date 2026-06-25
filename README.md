@@ -178,9 +178,14 @@ Key variables:
 
 ## Browser Extension
 
-BattleCRM includes a Chrome/Firefox extension that detects LinkedIn profiles and lets you add or update prospects without leaving the browser.
+BattleCRM includes a Chrome/Firefox extension (WXT, MV3) that detects LinkedIn profiles and lets you add or update prospects without leaving the browser.
+
+- **End users:** grab the latest **[GitHub Release](../../releases)** — the Firefox build is AMO-signed and installs in one click (`.xpi`); a Chrome zip is attached too.
+- **Developers:** build from source and load it unpacked.
 
 → **[Extension Installation Guide](docs/extension-install.md)**
+
+> Releases are cut by pushing a `vX.Y.Z` tag, which signs the extension and publishes it automatically. See the guide for details.
 
 ## License
 
