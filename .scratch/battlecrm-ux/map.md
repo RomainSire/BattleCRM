@@ -1,0 +1,48 @@
+# Carte : BattleCRM — UX
+
+Label: wayfinder:map
+
+## Destination
+
+Une **spec UX** (`.scratch/battlecrm-ux/spec.md`) : inventaire des écrans, parcours clés, navigation, comportements, direction visuelle, et une section **Exigences pour la stack**. Elle s'appuie sur des prototypes basse fidélité liés en assets là où « à quoi ça ressemble » est la vraie question. Elle doit être prête à alimenter le wayfinder stack, puis le découpage en tickets d'implémentation.
+
+## Notes
+
+- Domaine : CRM de prospection pour développeurs freelance, fondé sur l'A/B testing de Positionnements. Modèle verrouillé par la carte [BattleCRM](../battlecrm/map.md) : `CONTEXT.md` + `docs/adr/` font foi, en utiliser strictement le vocabulaire.
+- Skills à consulter : `grilling` + `domain-modeling` par défaut ; `prototype` pour les tickets de ce type (prototypes jetables, basse fidélité, liés depuis le ticket).
+- **Planification uniquement** : on tranche l'UX, on ne code pas l'app. Aucune décision de techno ici : un besoin à cheval (hors-ligne, PWA, notifications, persistance d'une préférence) s'écrit comme **exigence pour la stack**, sans solution.
+- La V1 était un POC « vibe codé », jamais utilisé : aucun acquis UX à en reprendre, on part de zéro.
+- Exigences produit héritées : plus ergonomique et plus rapide au quotidien qu'Excel/Notion/Airtable ; aider à se détacher des réponses négatives.
+- Acquis du cadrage (2026-09-27) :
+  - Fidélité : spec + wireframes basse fidélité ciblés, pas de haute fidélité. La direction visuelle est fixée (ton, densité, clair/sombre), pas le design system détaillé.
+  - Périmètre : tout le modèle de domaine, les écrans d'indicateurs et d'Activité, les parcours d'inscription/connexion et les réglages (Funnel, Objectif d'activité, Cadence par défaut).
+  - **PC = poste principal**, **mobile = usage rapide** (Relances du jour, enregistrer une Interaction ou une Relance faite, régler un Essai), avec un vrai parcours mobile pour ces actions : desktop-first, mais pas un simple « responsive par défaut ».
+  - Écran d'accueil = **« Aujourd'hui »** (Relances dues ou en retard, Essais « délai dépassé », Battles concluantes, Activité du jour face à l'Objectif).
+  - Funnel : vues kanban **et** table ; kanban par défaut, le dernier choix de l'Utilisateur est retenu.
+  - Termes du glossaire affichés **tels quels** à l'écran ; interface **bilingue français/anglais** (i18n dès le départ).
+  - **Pas d'assistant d'onboarding** : Funnel pré-rempli avec des Étapes types modifiables, plus des états vides qui se suffisent à eux-mêmes (« si l'UX doit s'expliquer, elle est ratée »).
+  - **Clavier d'abord** : palette de commandes et ajout rapide global (Contact, Interaction).
+  - Battle : phrase en langage naturel, jauge vers le seuil, progression vers le minimum d'Essais et l'Horizon ; jamais de distribution brute par défaut.
+
+## Decisions so far
+
+<!-- une ligne par ticket résolu -->
+
+## Pas encore spécifié
+
+- **Fiche Contact** : timeline des Interactions, Essai en cours, Relance planifiée, Étape et État, Organisation. Se précisera après le geste central et la vue Funnel.
+- **Navigation globale** : structure des menus, place de la palette de commandes, entre desktop et mobile. Dépend de l'écran « Aujourd'hui » et de l'inventaire des écrans.
+- **Gestion des Positionnements** : création, dérivation d'un Positionnement existant, pièces jointes, Cadence de relance, consultation des archivés, désignation du Champion initial.
+- **Réglages** : édition du Funnel (ajout, renommage, réordonnancement, archivage et restauration d'Étapes avec leurs garde-fous), Objectif d'activité, Cadence par défaut, langue, thème.
+- **Organisations** : écran propre ou simple attribut du Contact ? Repérage des doublons (URL LinkedIn).
+- **Parcours d'authentification** : inscription (ouverte ou fermée selon la configuration), connexion, mot de passe oublié.
+- **Accessibilité** : niveau visé (contrastes, navigation clavier complète, lecteurs d'écran).
+- **Exigences pour la stack** : s'accumulent au fil des tickets (par exemple la persistance du choix kanban/table, une notification de Relance en retard, un hors-ligne mobile éventuel), à consolider dans la spec.
+
+## Hors périmètre
+
+- Choix de stack, architecture du code, déploiement : wayfinder stack à venir.
+- Maquettes haute fidélité et design system détaillé.
+- Import de Contacts et extension Firefox LinkedIn : fonctionnalités futures.
+- Notifications push et e-mail comme **solutions** (le besoin, lui, s'exprime en exigence pour la stack).
+- Administration (ouverture des inscriptions pilotée par variable d'environnement).
