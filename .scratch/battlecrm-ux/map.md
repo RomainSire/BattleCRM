@@ -29,17 +29,18 @@ Une **spec UX** (`.scratch/battlecrm-ux/spec.md`) : inventaire des écrans, parc
 <!-- une ligne par ticket résolu -->
 
 - [Écran « Aujourd'hui »](issues/01-ecran-aujourdhui.md) : tableau de bord par blocs sur bureau, « une chose à la fois » sur mobile. Priorité : Relances en retard, Relances du jour, Essais délai dépassé, Battles concluantes. Actions directes (dont « A répondu… » et proposition de clore après un Essai sans suite), bloc « sans prochaine action » limité, états vides sans assistant.
+- [Geste central : utiliser un Positionnement](issues/02-geste-utiliser-positionnement.md) : la proposition d'abord, dans un panneau latéral en 3 étapes (Quoi envoyer, Envoie-le, Confirme, avec un récapitulatif des conséquences). Dérogation au tirage avec motif optionnel, tirage réservé au Contact, Relance 1 affichée et modifiable, garde-fous traités dans le panneau, même panneau depuis tous les déclencheurs.
 
 ## Pas encore spécifié
 
-- **Fiche Contact** : timeline des Interactions, Essai en cours, Relance planifiée, Étape et État, Organisation. Se précisera après le geste central et la vue Funnel.
+- **Fiche Contact** : timeline des Interactions, Essai en cours, Relance planifiée, Étape et État, Organisation. Le geste central s'y déclenche (bouton, touche `U`) et y ajoute son Interaction en tête ; le reste se précisera après la vue Funnel.
 - **Navigation globale** : structure des menus, place de la palette de commandes, entre desktop et mobile. « Aujourd'hui » est l'écran d'arrivée ; le reste dépend de l'inventaire des écrans.
 - **Gestion des Positionnements** : création, dérivation d'un Positionnement existant, pièces jointes, Cadence de relance, consultation des archivés, désignation du Champion initial.
 - **Réglages** : édition du Funnel (ajout, renommage, réordonnancement, archivage et restauration d'Étapes avec leurs garde-fous), Objectif d'activité, Cadence par défaut, langue, thème.
 - **Organisations** : écran propre ou simple attribut du Contact ? Repérage des doublons (URL LinkedIn).
 - **Parcours d'authentification** : inscription (ouverte ou fermée selon la configuration), connexion, mot de passe oublié.
 - **Accessibilité** : niveau visé (contrastes, navigation clavier complète, lecteurs d'écran).
-- **Exigences pour la stack** : s'accumulent au fil des tickets (par exemple la persistance du choix kanban/table, une notification de Relance en retard, un hors-ligne mobile éventuel), à consolider dans la spec.
+- **Exigences pour la stack** : s'accumulent au fil des tickets (par exemple la persistance du choix kanban/table, une notification de Relance en retard, un hors-ligne mobile éventuel, le presse-papiers, le téléchargement des pièces jointes, l'annulation juste après un enregistrement), à consolider dans la spec.
 
 ## Hors périmètre
 
