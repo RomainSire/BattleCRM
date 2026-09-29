@@ -28,10 +28,12 @@ Une **spec UX** (`.scratch/battlecrm-ux/spec.md`) : inventaire des écrans, parc
 
 <!-- une ligne par ticket résolu -->
 
+- [Écran « Aujourd'hui »](issues/01-ecran-aujourdhui.md) : tableau de bord par blocs sur bureau, « une chose à la fois » sur mobile. Priorité : Relances en retard, Relances du jour, Essais délai dépassé, Battles concluantes. Actions directes (dont « A répondu… » et proposition de clore après un Essai sans suite), bloc « sans prochaine action » limité, états vides sans assistant.
+
 ## Pas encore spécifié
 
 - **Fiche Contact** : timeline des Interactions, Essai en cours, Relance planifiée, Étape et État, Organisation. Se précisera après le geste central et la vue Funnel.
-- **Navigation globale** : structure des menus, place de la palette de commandes, entre desktop et mobile. Dépend de l'écran « Aujourd'hui » et de l'inventaire des écrans.
+- **Navigation globale** : structure des menus, place de la palette de commandes, entre desktop et mobile. « Aujourd'hui » est l'écran d'arrivée ; le reste dépend de l'inventaire des écrans.
 - **Gestion des Positionnements** : création, dérivation d'un Positionnement existant, pièces jointes, Cadence de relance, consultation des archivés, désignation du Champion initial.
 - **Réglages** : édition du Funnel (ajout, renommage, réordonnancement, archivage et restauration d'Étapes avec leurs garde-fous), Objectif d'activité, Cadence par défaut, langue, thème.
 - **Organisations** : écran propre ou simple attribut du Contact ? Repérage des doublons (URL LinkedIn).
