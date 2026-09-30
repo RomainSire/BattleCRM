@@ -38,6 +38,11 @@ Un palier du Funnel (par ex. « premier contact », « CV envoyé », « entreti
 _EN_: Stage; archived Stage (avoid: step, phase, status)
 _Avoid_: Stage, phase, statut
 
+**Taux de passage**:
+La part des Contacts arrivés à une Étape qui ont ensuite atteint une Étape plus loin, qu'ils aient sauté des Étapes ou non. « Plus loin » se lit dans l'ordre en vigueur au moment du changement d'Étape, comme pour le Funnel. Une Étape archivée n'a pas de Taux de passage. Il décrit le Funnel, jamais l'Utilisateur, et n'est pas un taux de succès.
+_EN_: Pass-through rate (avoid: conversion rate)
+_Avoid_: Taux de conversion
+
 **Interaction**:
 Un événement daté concernant un Contact, sortant (ce que l'Utilisateur a fait) ou entrant (ce que le Contact a fait). Elle est rattachée au Contact, pas à un Essai : les Interactions d'un Essai sont celles du Contact pendant sa durée. Chaque utilisation d'un Positionnement, chaque changement d'Étape et chaque changement d'État est enregistré comme une Interaction, ce qui conserve l'historique de son parcours dans le Funnel. Sa date peut précéder sa saisie.
 _EN_: Interaction (avoid: activity, note, log)
