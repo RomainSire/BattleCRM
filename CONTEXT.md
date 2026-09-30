@@ -54,7 +54,7 @@ _EN_: Follow-up; values Scheduled, Done, Canceled; signal Overdue (avoid: remind
 _Avoid_: Rappel, tâche, follow-up
 
 **Cadence de relance**:
-La façon de relancer un Contact qui ne répond pas après l'utilisation d'un Positionnement : une suite d'intervalles, chacun compté depuis la dernière Interaction faite, puis le Délai de réponse (par défaut +3, +7, +14 jours, puis 14 jours). Elle fait partie du Positionnement, peut donc être l'objet d'une Battle, et elle est figée avec lui. L'app planifie les Relances une à la fois ; pour un Contact donné, l'Utilisateur peut en sauter ou en ajouter, ce qui est tracé comme un écart sur l'Essai.
+La façon de relancer un Contact qui ne répond pas après l'utilisation d'un Positionnement : une suite d'intervalles, chacun compté depuis la dernière Interaction sortante faite, puis le Délai de réponse (par défaut +3, +7, +14 jours, puis 14 jours). Elle fait partie du Positionnement, peut donc être l'objet d'une Battle, et elle est figée avec lui. L'app planifie les Relances une à la fois ; pour un Contact donné, l'Utilisateur peut en sauter ou en ajouter, ce qui est tracé comme un écart sur l'Essai. Une Interaction entrante arrête la Cadence : l'app ne planifie plus de Relance d'elle-même, et l'Utilisateur peut toujours en planifier une à la main.
 _EN_: Follow-up cadence (avoid: sequence, automated follow-ups)
 _Avoid_: Séquence, relances automatiques
 
@@ -111,7 +111,7 @@ Ce qui fait d'un Essai un succès dans une Battle donnée (par ex. « a répondu
 _EN_: Success criterion
 
 **Délai de réponse**:
-L'attente après la dernière Relance prévue par la Cadence de relance, dont il fait partie (14 jours par défaut), au-delà de laquelle un Essai en cours sans nouvelle Interaction est signalé « délai dépassé ». Tant que la Cadence n'est pas épuisée, un silence appelle la Relance suivante, pas ce signal. Le délai ne tranche rien : c'est l'Utilisateur qui confirme que l'Essai est sans suite.
+L'attente après la dernière Relance prévue par la Cadence de relance, dont il fait partie (14 jours par défaut), ou après l'Interaction entrante qui a arrêté la Cadence, au-delà de laquelle un Essai en cours sans nouvelle Interaction est signalé « délai dépassé ». Tant que la Cadence n'est pas épuisée, un silence appelle la Relance suivante, pas ce signal. Le délai ne tranche rien : c'est l'Utilisateur qui confirme que l'Essai est sans suite.
 _EN_: Response window; signal Window elapsed
 
 ### Activité
