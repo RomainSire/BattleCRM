@@ -49,7 +49,7 @@ _EN_: Interaction (avoid: activity, note, log)
 _Avoid_: Activité, note, log
 
 **Relance**:
-Une Interaction sortante planifiée à une date future sur un Contact : planifiée, faite (datée du jour où elle a été faite, elle devient alors une Interaction comme une autre) ou annulée. Elle appartient au Contact, ne référence jamais de Positionnement et ne crée jamais d'Essai. Elle peut porter une note libre (la raison de relancer, ce qui a été dit), qui reste sur l'Interaction une fois la Relance faite. Une Relance planifiée dont la date est passée est signalée « en retard » ; rien n'est automatique.
+Une Interaction sortante planifiée à une date future sur un Contact : planifiée, faite (datée du jour où elle a été faite, elle devient alors une Interaction comme une autre) ou annulée. Elle appartient au Contact, ne référence jamais de Positionnement et ne crée jamais d'Essai. Elle peut porter une note libre (la raison de relancer, ce qui a été dit), qui reste sur l'Interaction une fois la Relance faite. Un Contact a au plus une Relance planifiée : en planifier une autre revient à modifier celle-ci, qui garde son rang. Une Relance planifiée dont la date est passée est signalée « en retard » ; rien n'est automatique.
 _EN_: Follow-up; values Scheduled, Done, Canceled; signal Overdue (avoid: reminder, task)
 _Avoid_: Rappel, tâche, follow-up
 
