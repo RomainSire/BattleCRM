@@ -9,7 +9,7 @@ L'interface est bilingue (anglais US) : la ligne `_EN_` de chaque terme donne so
 ### Prospection
 
 **Contact**:
-Une personne prospectée, que l'on fait avancer dans le Funnel et sur qui l'on teste des Positionnements. Un Contact peut participer à plusieurs Battles successives d'une même Étape (retour en arrière, reprospection). Rattachée à 0 ou 1 Organisation ; peut porter l'URL de son profil LinkedIn (qui sert aussi à repérer les doublons). Un nouveau Contact entre à la première Étape du Funnel, dans l'État actif.
+Une personne prospectée, que l'on fait avancer dans le Funnel et sur qui l'on teste des Positionnements. Un Contact peut participer à plusieurs Battles successives d'une même Étape (retour en arrière, reprospection). Rattachée à 0 ou 1 Organisation ; peut porter l'URL de son profil LinkedIn, qui l'identifie : deux Contacts d'un Utilisateur ne peuvent pas avoir la même. Changer d'Organisation change sa Cible, sans toucher l'Essai en cours. Un nouveau Contact entre à la première Étape du Funnel, dans l'État actif.
 _EN_: Contact (avoid: prospect, lead, client)
 _Avoid_: Prospect, lead, client
 
@@ -19,7 +19,7 @@ _EN_: Status; values Active, Paused, Dropped, Won (avoid: closed, lost, state)
 _Avoid_: Statut, situation, perdu
 
 **Organisation**:
-La société pour laquelle travaille un Contact, avec un nom et un type : ESN ou client final. Le type d'Organisation définit la Cible du Contact.
+La société pour laquelle travaille un Contact, avec un nom et un type : ESN ou client final. Le type d'Organisation définit la Cible du Contact : le changer change la Cible de tous ses Contacts, mais les Essais déjà commencés gardent la leur. Deux Organisations d'un Utilisateur ne peuvent pas porter le même nom, à la casse, aux accents et aux espaces près ; deux Organisations créées en double se fusionnent. Une Organisation sans Contact subsiste jusqu'à ce qu'on la supprime.
 _EN_: Organization (avoid: company, account)
 _Avoid_: Société, entreprise, compte
 
