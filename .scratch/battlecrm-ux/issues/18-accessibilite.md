@@ -14,3 +14,4 @@ Quel niveau d'accessibilité vise-t-on au-delà du contraste, et qu'est-ce que �
 - Le niveau visé pour le reste (WCAG 2.2 AA en entier, ou une liste de critères).
 
 Déjà tranché : contraste WCAG 2.2 AA non négociable dans les deux thèmes, et la préférence « réduire les animations » respectée (ticket « Direction visuelle »).
+Le clavier global est tranché (palette `Ctrl K` ou `/`, `N`, `G` + lettre, `?`, `Échap`, raccourcis de la fiche ; ticket « Navigation globale (bureau) ») : reste à vérifier qu'il couvre tout sans souris.
