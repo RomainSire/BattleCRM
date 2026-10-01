@@ -53,3 +53,5 @@ Pendant le glisser apparaissent des **zones d'État** (En pause, Clos, Gagné). 
 **Ajout rapide** (`N`, ou la palette) : seul le nom est obligatoire. L'Organisation est choisie parmi les existantes, ou créée dans la foulée en choisissant son type (ESN, client final), qui définit la Cible. L'URL LinkedIn signale un doublon, et un nom identique à celui d'un Contact existant donne une simple information. L'Étape est pré-remplie avec la première. `Entrée` ajoute le Contact ; `Ctrl Entrée` ajoute et enchaîne sur « Utiliser un Positionnement ».
 
 **Exigences pour la stack** : le glisser-déposer (souris ; le tactile relève du ticket « Parcours mobile ») ; la persistance du choix kanban/table (déjà notée) ; annuler juste après un enregistrement (déjà notée).
+
+**Précision (ticket [Réglages](14-reglages.md))** : un Contact actif dans une Étape qui n'a aucun Positionnement (par ex. le Vivier) ne compte pas comme « sans prochaine action ». Il n'apparaît pas dans « Aujourd'hui » et se range dans « En attente », sans signal.

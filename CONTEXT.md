@@ -34,9 +34,14 @@ _EN_: Funnel (avoid: pipeline, tunnel)
 _Avoid_: Pipeline, tunnel
 
 **Étape**:
-Un palier du Funnel (par ex. « premier contact », « CV envoyé », « entretien »). Son identité ne dépend pas de son nom : la renommer s'applique partout, historique compris. Une Étape qui a servi n'est jamais supprimée, elle est **archivée** : elle sort du Funnel, mais ses Positionnements, ses Battles et son Historique des Champions restent consultables, et elle peut être restaurée telle quelle. On ne peut archiver une Étape ni pendant qu'elle a une Battle ouverte, ni tant qu'un Contact actif ou en pause s'y trouve ; un Contact clos ou gagné garde une Étape archivée comme dernière Étape atteinte.
+Un palier du Funnel (par ex. « premier contact », « CV envoyé », « entretien »). Son identité ne dépend pas de son nom : la renommer s'applique partout, historique compris. Elle peut porter un But. Une Étape qui a servi (un Contact y est passé, ou elle porte un Positionnement ou une Battle) n'est jamais supprimée, elle est **archivée** : elle sort du Funnel, mais ses Positionnements, ses Battles et son Historique des Champions restent consultables, et elle peut être restaurée telle quelle. On ne peut archiver une Étape ni pendant qu'elle a une Battle ouverte, ni tant qu'un Contact actif ou en pause s'y trouve ; un Contact clos ou gagné garde une Étape archivée comme dernière Étape atteinte.
 _EN_: Stage; archived Stage (avoid: step, phase, status)
 _Avoid_: Stage, phase, statut
+
+**But**:
+Ce qui fait franchir une Étape, en texte libre et facultatif (par ex. « CV à envoyer », « entretien ESN à obtenir »). Il sert de point de départ au Critère de succès d'une Battle de cette Étape, sans le lier : le modifier ne touche aucune Battle.
+_EN_: Aim (avoid: goal, objective)
+_Avoid_: Objectif (réservé à l'Objectif d'activité), Critère de succès
 
 **Taux de passage**:
 La part des Contacts arrivés à une Étape qui ont ensuite atteint une Étape plus loin, qu'ils aient sauté des Étapes ou non. « Plus loin » se lit dans l'ordre en vigueur au moment du changement d'Étape, comme pour le Funnel. Une Étape archivée n'a pas de Taux de passage. Il décrit le Funnel, jamais l'Utilisateur, et n'est pas un taux de succès.
@@ -57,6 +62,10 @@ _Avoid_: Rappel, tâche, follow-up
 La façon de relancer un Contact qui ne répond pas après l'utilisation d'un Positionnement : une suite d'intervalles, chacun compté depuis la dernière Interaction sortante faite, puis le Délai de réponse (par défaut +3, +7, +14 jours, puis 14 jours). Chaque rang peut porter un message de relance. Tant que la Cadence court, la Relance d'un rang montre le message de ce rang, lu depuis la dernière utilisation d'un Positionnement sur le Contact ; une Relance hors Cadence (ajoutée à la main, après le dernier rang ou après une Interaction entrante) n'a pas de message. Elle fait partie du Positionnement, peut donc être l'objet d'une Battle, et elle est figée avec lui. L'app planifie les Relances une à la fois ; pour un Contact donné, l'Utilisateur peut en sauter ou en ajouter, ce qui est tracé comme un écart sur l'Essai. Une Interaction entrante arrête la Cadence : l'app ne planifie plus de Relance d'elle-même, et l'Utilisateur peut toujours en planifier une à la main.
 _EN_: Follow-up cadence (avoid: sequence, automated follow-ups)
 _Avoid_: Séquence, relances automatiques
+
+**Cadence par défaut**:
+La Cadence de relance qu'un Utilisateur se donne pour pré-remplir un nouveau Positionnement qui n'est dérivé d'aucun autre : des intervalles et un Délai de réponse, sans message. La modifier ne touche aucun Positionnement existant.
+_EN_: Default follow-up cadence
 
 ### A/B testing
 

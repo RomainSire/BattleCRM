@@ -58,3 +58,5 @@ Une légende sous les lignées rappelle ce code.
 **Hérité du prototype par défaut, non discuté en détail** : les libellés exacts, le contenu des onglets Essais et Par Cible, et le détail de la fenêtre de clôture. Ils ont été validés en bloc avec la variante B et restent ajustables quand la direction visuelle sera fixée.
 
 **Exigences pour la stack** : aucune nouvelle. Le calcul de la Règle de victoire est défini par l'ADR 0001.
+
+**Précision (ticket [Réglages](14-reglages.md))** : quand l'Étape n'a encore jamais eu de Battle, le Critère de succès est pré-rempli avec le But de l'Étape, s'il existe.
