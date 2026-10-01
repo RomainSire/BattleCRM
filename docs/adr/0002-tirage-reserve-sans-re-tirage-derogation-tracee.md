@@ -1,0 +1,10 @@
+# Tirage réservé, sans nouveau tirage, avec dérogation tracée
+
+Dans une Battle ouverte, l'app attribue à chaque Contact le Positionnement à utiliser par un Tirage au hasard, plutôt que de laisser l'Utilisateur choisir : s'il choisissait librement, il enverrait sans le vouloir son Positionnement préféré aux Contacts les plus prometteurs, et la Battle mesurerait ses choix plutôt que les Positionnements. Le Tirage est équilibré à la volée : on propose le Positionnement qui a le moins d'Essais et de Tirages réservés parmi les Contacts de la même Cible, au hasard en cas d'égalité. Des blocs de 2 tirés d'avance (recommandation initiale de la recherche) auraient été déséquilibrés par chaque Tirage révélé mais jamais envoyé. Une fois révélé, le Tirage reste réservé au Contact et ne peut jamais être refait, pour qu'on ne puisse pas tirer à nouveau jusqu'à obtenir le Positionnement souhaité. L'Utilisateur peut toujours utiliser l'autre Positionnement : l'app ne refuse rien, mais la dérogation est tracée sur l'Essai, avec un motif facultatif. Détail : `.scratch/battlecrm/research/01-methode-statistique.md`, `.scratch/battlecrm-ux/issues/02-geste-utiliser-positionnement.md`.
+
+## Conséquences
+
+- Le Tirage est une donnée conservée (Contact, Battle, Positionnement tiré), pas un calcul à la volée : il ne se reconstitue pas après coup.
+- Le Tirage réservé tient tant que la Battle est ouverte et que le Contact reste actif à cette Étape ; il tombe sinon et libère sa place dans l'équilibrage. Un changement de Cible ne le refait pas : le biais est négligeable.
+- Un Positionnement qui a atteint l'Horizon n'est plus tiré. Quand aucun Essai n'est possible (Contact hors de la Cible d'une Battle restreinte, Horizon atteint des deux côtés), l'app propose le Champion et l'utilisation est enregistrée sans Essai.
+- Un Essai avec dérogation compte comme les autres (pas de verrou, comme pour le vainqueur désigné de l'ADR 0001). Beaucoup de dérogations affaiblissent la protection contre le biais de sélection : c'est à l'Utilisateur d'en juger.
