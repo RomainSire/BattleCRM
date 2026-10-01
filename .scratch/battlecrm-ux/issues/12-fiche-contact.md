@@ -49,3 +49,8 @@ Les autres actions sont en boutons secondaires sur la page, sous `⋯` dans le p
 **Mobile** : la fiche est toujours une page. Les blocs s'empilent dans l'ordre Essai en cours, Coordonnées, puis le fil (Relance planifiée en tête). Une barre collée en bas porte le bouton plein, « Noter » et `⋯` (Changer d'Étape…, Changer d'État…, Planifier une Relance, Modifier le Contact). Les panneaux s'ouvrent en feuille plein écran (ticket « Parcours mobile »).
 
 **Renvois** : la saisie de l'Organisation et le repérage des doublons dans « Modifier le Contact » relèvent du ticket « Organisations ».
+
+**Précision (ticket [Écran Contacts et « Modifier le Contact »](19-ecran-contacts-modifier-contact.md))** :
+- Depuis l'écran Contacts, un clic sur une ligne ouvre la fiche **en panneau, ancré à droite de la liste**, et non plus en page. La page reste accessible par « Ouvrir en page », la palette et les liens.
+- « Modifier le Contact » ne passe plus par un panneau de geste. C'est l'**édition sur place du bloc Coordonnées**, qui comprend désormais le poste, l'e-mail, le téléphone et une note libre.
+- « Supprimer le Contact… » s'ajoute sous `⋯`.

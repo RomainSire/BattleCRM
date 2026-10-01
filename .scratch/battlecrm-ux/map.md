@@ -46,11 +46,11 @@ Une **spec UX** (`.scratch/battlecrm-ux/spec.md`) : inventaire des écrans, parc
 - [Parcours d'authentification](issues/16-parcours-authentification.md) : e-mail et mot de passe seulement (15 caractères minimum, sans règle de composition, mots de passe fuités refusés). Inscription masquée quand elle est fermée, vérification bloquante de l'e-mail sans énumération d'adresses, puis « Aujourd'hui » vide. Session longue et glissante (environ 90 jours). Double authentification par application facultative, avec codes de secours et récupération par e-mail après 7 jours annulables. La section Compte liste les appareils connectés ; e-mails de sécurité ; données locales effacées à la déconnexion.
 - [Navigation globale (bureau)](issues/17-navigation-globale-bureau.md) : barre latérale à gauche, avec la recherche et « + Ajouter » en haut, deux groupes (Prospection : Aujourd'hui, Contacts, Funnel ; Expérimentation : Battles, Positionnements, Indicateurs), Réglages, raccourcis et déconnexion en bas. Compteur ambre sur Aujourd'hui, point teal sur Battles. Palette (`Ctrl K` ou `/`) : Contacts à traiter sans saisie, Contact puis `→` pour ses actions ou verbe puis nom (« relancer jul »). `N` ajoute un Contact, `G` + lettre change d'écran, `?` affiche l'aide.
 - [Accessibilité](issues/18-accessibilite.md) : WCAG 2.2 AA en entier. Raccourcis à une touche désactivables dans Préférences, ceux de la fiche liés au focus. « Changer d'Étape… » (`E`) remplace le glisser au clavier. Gestes et fenêtres modaux, fiche en panneau non modale. Focus teal visible. Rien porté par la couleur seule : « Voir en tableau » pour l'Activité, phrase pour les jauges. « Annuler » au moins 10 s, avec `Ctrl Z`. Tout reste utilisable à 400 % de zoom. Cibles de 24 px (44 px sur mobile). Collage autorisé à la connexion, sans CAPTCHA.
+- [Écran Contacts et « Modifier le Contact »](issues/19-ecran-contacts-modifier-contact.md) : liste à gauche (recherche, puces d'État avec « Tous » par défaut, dernière Interaction d'abord), fiche à droite dans le panneau du Funnel, ancré. Contact enrichi (poste, e-mail, téléphone, note), modifié **sur place** dans le bloc Coordonnées partout ; seul le doublon d'URL LinkedIn bloque. « Supprimer le Contact… » sous `⋯` anonymise, après confirmation, et garde Essais et Interactions (ADR 0006).
 
 ## Pas encore spécifié
 
-- **Exigences pour la stack** : consolidées dans la [spec](spec.md) (§8, identifiants `ST-xx`).
-- **[Écran Contacts et « Modifier le Contact »](issues/19-ecran-contacts-modifier-contact.md)** : ouvert après la consolidation de la spec, à trancher avant le découpage en tickets d'implémentation.
+Rien : la carte a atteint sa destination, la [spec](spec.md) (exigences pour la stack au §8, identifiants `ST-xx`).
 
 ## Hors périmètre
 

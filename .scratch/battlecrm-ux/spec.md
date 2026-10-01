@@ -1,7 +1,7 @@
 # Spec UX : BattleCRM
 
 Status: needs-triage
-Source: [carte UX](map.md), 18 tickets résolus (`issues/01` à `issues/18`), consolidés le 2026-10-01.
+Source: [carte UX](map.md), 19 tickets résolus (`issues/01` à `issues/19`), consolidés le 2026-10-01.
 
 Cette spec est la destination de la carte UX. Elle rassemble ce qui a été tranché ticket par ticket : inventaire des écrans, navigation, gestes, comportements, direction visuelle et **exigences pour la stack**. Elle doit alimenter le wayfinder stack, puis le découpage en tickets d'implémentation.
 
@@ -19,7 +19,7 @@ Cette spec est la destination de la carte UX. Elle rassemble ce qui a été tran
 - **Clavier d'abord** sur bureau : palette de commandes, ajout rapide, raccourcis (§3.3).
 - **Une seule forme par geste.** Un geste s'ouvre dans le même panneau quel que soit son déclencheur. Sur mobile, ce panneau devient une feuille plein écran, avec le même contenu.
 - **Récapitulatif des conséquences** avant toute validation d'un geste qui touche l'Essai, la Cadence, l'Activité, l'Étape ou l'État.
-- **Annuler plutôt que confirmer** : après un enregistrement, une notification « Annuler » s'affiche au moins 10 s, se met en pause au survol ou au focus, et répond à `Ctrl Z` hors des champs de saisie. Les confirmations sont réservées aux effets qu'on ne peut pas annuler simplement (archivage d'une Étape, clôture d'une Battle, changement de type d'une Organisation).
+- **Annuler plutôt que confirmer** : après un enregistrement, une notification « Annuler » s'affiche au moins 10 s, se met en pause au survol ou au focus, et répond à `Ctrl Z` hors des champs de saisie. Les confirmations sont réservées aux effets qu'on ne peut pas annuler simplement (archivage d'une Étape, clôture d'une Battle, changement de type d'une Organisation, suppression d'un Contact).
 - **Accessibilité : WCAG 2.2 AA en entier**, sans dérogation implicite ([18](issues/18-accessibilite.md)). Tout écart futur s'écrit ici avec son motif. Aucun à ce jour.
 
 ## 2. Direction visuelle
@@ -96,8 +96,8 @@ Source : [08](issues/08-parcours-mobile.md) ; prototype `prototype/08-parcours-m
 | Écran | Accès | Bureau | Mobile | Ticket · prototype |
 |---|---|---|---|---|
 | Aujourd'hui | menu, écran d'arrivée | tableau de bord par blocs | « une chose à la fois » | [01](issues/01-ecran-aujourdhui.md) · `prototype/01-aujourdhui` (B bureau, C mobile) |
-| Contacts | menu, onglet | **à trancher** | onglet | [19](issues/19-ecran-contacts-modifier-contact.md) |
-| Fiche Contact | page (Contacts, palette, lien) ; panneau (Funnel, Aujourd'hui) | page à deux colonnes ou panneau | page empilée | [12](issues/12-fiche-contact.md) · `prototype/12-fiche-contact` (A et B) |
+| Contacts (§5.10) | menu, onglet | liste et fiche en panneau ancré | liste, fiche en page | [19](issues/19-ecran-contacts-modifier-contact.md) · `prototype/19-ecran-contacts` (B) |
+| Fiche Contact | page (« Ouvrir en page », palette, lien) ; panneau (Funnel, Aujourd'hui, ancré dans Contacts) | page à deux colonnes ou panneau | page empilée | [12](issues/12-fiche-contact.md) · `prototype/12-fiche-contact` (A et B) |
 | Organisation | clic sur le nom, palette | page légère | lecture seule | [15](issues/15-organisations.md) |
 | Funnel | menu, onglet | kanban en couloirs (défaut) et table | liste groupée par Étape | [03](issues/03-vue-funnel-kanban-table.md) · `prototype/03-vue-funnel` (C) |
 | Battles (onglets Battles, Historique des Champions) | menu, Plus | vue d'ensemble et panneau | consultation et clôture | [04](issues/04-lisibilite-battle.md) · `prototype/04-battle` (B) |
@@ -139,12 +139,13 @@ Source : [08](issues/08-parcours-mobile.md) ; prototype `prototype/08-parcours-m
 
 ### 5.3 Fiche Contact
 
-- **Panneau** (depuis le Funnel et Aujourd'hui, non modal) : un bloc **Prochaine action** (Relance planifiée, Essai en attente, « Sans prochaine action » ou « Hors prospection ») avec le bouton plein et `⋯`, puis « Noter une Interaction », des onglets Fil / Détails et « Ouvrir en page ». Passer sur une autre carte remplace son contenu.
-- **Page** (adresse propre) : en-tête avec le nom, l'Organisation et la Cible, le lien LinkedIn, les pastilles Étape (avec le But) et État, qui ouvrent la fenêtre de conséquences, puis les actions. Deux colonnes : le **fil** à gauche ; à droite **Essai en cours** (Positionnement, Battle, rôle Champion ou Challenger, Critère de succès, durée, « A répondu… ») et **Coordonnées** (Organisation, Cible, LinkedIn, Étape, État et motif, « Modifier »).
+- **Panneau** (depuis le Funnel et Aujourd'hui, non modal ; ancré à droite de la liste dans l'écran Contacts, §5.10) : un bloc **Prochaine action** (Relance planifiée, Essai en attente, « Sans prochaine action » ou « Hors prospection ») avec le bouton plein et `⋯`, puis « Noter une Interaction », des onglets Fil / Détails et « Ouvrir en page ». Passer sur une autre carte remplace son contenu.
+- **Page** (adresse propre) : en-tête avec le nom, l'Organisation et la Cible, le lien LinkedIn, les pastilles Étape (avec le But) et État, qui ouvrent la fenêtre de conséquences, puis les actions. Deux colonnes : le **fil** à gauche ; à droite **Essai en cours** (Positionnement, Battle, rôle Champion ou Challenger, Critère de succès, durée, « A répondu… ») et **Coordonnées** (poste, Organisation, Cible, e-mail, téléphone, LinkedIn, note, Étape, État et motif, « Modifier » : édition sur place, §6.12).
 - **Tête du fil** : la Relance planifiée, distincte comme élément futur (rang ou « hors Cadence », signal, note ; Relancer… / Modifier / Annuler), ou le rappel « sans prochaine action » avec « Planifier une Relance ». Puis les Interactions, de la plus récente à la plus ancienne ; les changements d'Étape et d'État sont discrets. *Point d'attention pour le développement : cet élément de tête était fragile dans le prototype.*
 - **Bouton plein selon la situation** : Relance du jour ou en retard → Relancer… ; Essai délai dépassé → Sans suite… ; ni Relance ni Essai → Utiliser un Positionnement ; en attente → A répondu… ; en pause, clos ou gagné → Réactiver… Les autres actions sont en boutons secondaires (page) ou sous `⋯` (panneau).
 - Un Contact clos s'affiche en gris, avec son motif, et la fiche rappelle qu'il peut redevenir actif.
 - **Mobile** : page empilée (Essai en cours, Coordonnées, fil), avec une barre collée en bas (bouton plein, « Noter », `⋯`).
+- **Sous `⋯`**, en dernier : « Supprimer le Contact… » (§6.13).
 
 ### 5.4 Organisation
 
@@ -219,6 +220,17 @@ Source : [16](issues/16-parcours-authentification.md), complété par [18](issue
 - **Section Compte** : toute action sensible redemande le mot de passe. E-mail (changé au clic sur un lien envoyé à la nouvelle adresse, avertissement à l'ancienne), mot de passe (déconnecte les autres appareils), double authentification, **appareils connectés** (navigateur et système, dernière activité, Déconnecter, Déconnecter tous les autres), Se déconnecter (cet appareil, sans confirmation).
 - **E-mails de sécurité**, dans la langue de l'Utilisateur, avec « Ce n'était pas moi » : changement de mot de passe, changement d'e-mail, activation ou désactivation de la double authentification, nouvel appareil.
 - **Données sur l'appareil** effacées à la déconnexion et à la reconnexion d'un appareil déconnecté à distance.
+
+### 5.10 Contacts
+
+Source : [19](issues/19-ecran-contacts-modifier-contact.md) ; prototype `prototype/19-ecran-contacts` (`?variant=B`).
+
+Écran distinct de la vue table du Funnel : on y cherche **une personne**, puis on agit sur elle.
+- **Liste** à gauche : recherche en tête (nom, Organisation, poste, e-mail), puces d'État **Tous** (par défaut), Actifs, Hors prospection. Les Contacts en pause, clos et gagnés sont dans « Tous », en grisé. Tri unique : la dernière Interaction d'abord.
+- **Ligne** : initiale, nom, « Organisation · Étape » (« Sans Organisation » à défaut), signal de prochaine action (ou État et motif), date de la dernière Interaction.
+- **À droite**, le **panneau de la fiche** (§5.3), ancré au lieu de flotter. Changer de ligne remplace son contenu ; « Ouvrir en page » mène à la page.
+- **Mobile** : même liste ; toucher une ligne ouvre la fiche en page.
+- **États vides** : « Aucun Contact pour l'instant », une phrase (seul le nom est obligatoire), « Ajouter un Contact » `N` ; recherche sans résultat : « Aucun Contact ne correspond ».
 
 ## 6. Gestes
 
@@ -301,6 +313,21 @@ Panneau : Étape (verrouillée selon la provenance), libellé, canal en puces (E
 
 Pour un Contact en pause, clos ou gagné (bouton plein de la fiche, palette, pastille d'État). Une fenêtre courte : l'Étape (l'actuelle par défaut ; choix obligatoire si elle est archivée), puis, si l'Étape a une Battle ouverte, « Enchaîner : utiliser un Positionnement maintenant » (cochée), sinon le lien « Planifier une Relance… ». Aucune Relance n'est planifiée d'office ; une Relance déjà planifiée est conservée. Récapitulatif, « Réactiver » (`Entrée`), puis « Annuler ».
 
+### 6.12 Modifier le Contact
+
+Source : [19](issues/19-ecran-contacts-modifier-contact.md). **Édition sur place du bloc Coordonnées**, partout où il apparaît (page de la fiche, onglet Détails du panneau, volet de Contacts, page mobile) ; pas de panneau de geste.
+- **Champs** : nom (seul obligatoire), poste, Organisation (liste filtrée à la frappe, création avec son type, ou « Aucune Organisation »), e-mail, téléphone, URL LinkedIn, note libre.
+- **Contrôles pendant la frappe** : URL LinkedIn déjà portée par un autre Contact → enregistrement **bloqué** (« Ce Contact existe déjà : … », « Ouvrir sa fiche »). Même nom (plus précis dans la même Organisation), même e-mail, même téléphone → **information** seulement.
+- **Ce qui change**, affiché dès que l'Organisation change : nouvelle Cible, l'Essai en cours garde sa Cible de départ, aucune Interaction enregistrée, Organisation créée le cas échéant.
+- L'Étape et l'État n'y figurent pas (fenêtre de conséquences, §6.6).
+- `Entrée` enregistre (champ d'une ligne), `Échap` annule ; puis « Annuler ».
+
+### 6.13 Supprimer le Contact…
+
+Source : [19](issues/19-ecran-contacts-modifier-contact.md), [ADR 0006](../../docs/adr/0006-supprimer-un-contact-l-anonymise.md). Sous `⋯` de la fiche, jamais dans une liste.
+- **Anonymisation** : nom, poste, coordonnées, note et notes d'Interaction effacés définitivement ; Essais et Interactions conservés sous « Contact supprimé » (Battles, Activité et Taux de passage inchangés). Essai en cours → annulé (« Contact supprimé ») ; Relance planifiée annulée ; URL LinkedIn libérée. Le Contact disparaît de Contacts, du Funnel et de la palette.
+- **Fenêtre de confirmation** (irréversible) : « Supprimer <Contact> ? Ses coordonnées et ses notes sont effacées définitivement. Ses n Essais restent dans les Battles, sans son nom. » ; propose **Clore** à la place pour seulement arrêter la prospection. Supprimer / Annuler.
+
 ## 7. Accessibilité
 
 Source : [18](issues/18-accessibilite.md). En plus de ce qui figure plus haut :
@@ -357,6 +384,7 @@ Besoins exprimés **sans solution** : le choix de techno revient au wayfinder st
 | ST-35 | Téléverser, stocker et télécharger les pièces jointes d'un Positionnement. | 02, 13 |
 | ST-36 | Interactions datées indépendamment de leur saisie (dates passées). | 02, 10, 11, 12 |
 | ST-37 | Créer les Étapes types dans la langue de l'inscription, avec leur But. | 14, 16 |
+| ST-38 | Supprimer un Contact en l'anonymisant : effacement définitif de ses champs identifiants et des notes de ses Interactions (y compris dans les copies locales, et dans les sauvegardes selon leur rétention), en gardant ses Essais et Interactions. | 19, ADR 0006 |
 
 ### 8.4 Temps et agrégats
 
@@ -390,8 +418,8 @@ Besoins exprimés **sans solution** : le choix de techno revient au wayfinder st
 | ST-60 | Copier dans le presse-papiers (message avec `{prénom}` remplacé, clé TOTP, codes de secours), y compris hors ligne. | 02, 08, 11, 16 |
 | ST-61 | Glisser-déposer à la souris (Funnel, réordonnancement des Étapes), avec une alternative au clavier ; pas de glisser tactile. | 03, 08, 14, 18 |
 | ST-62 | Annuler juste après coup (au moins 10 s, pause au survol ou au focus, `Ctrl Z`) : enregistrement d'un geste, enregistrement automatique d'un réglage, suppression (Étape, Positionnement). | 02, 03, 13, 14, 18 |
-| ST-63 | Recherche instantanée sur les Contacts et les Organisations pendant la frappe (palette, choix d'Organisation). | 15, 17 |
-| ST-64 | Vérification des doublons pendant la frappe, sans ralentir la saisie. | 15 |
+| ST-63 | Recherche instantanée sur les Contacts (nom, Organisation, poste, e-mail) et les Organisations pendant la frappe (palette, choix d'Organisation, écran Contacts). | 15, 17, 19 |
+| ST-64 | Vérification des doublons pendant la frappe, sans ralentir la saisie : URL LinkedIn bloquante ; nom, e-mail et téléphone informatifs. | 15, 19 |
 | ST-65 | Raccourcis clavier globaux, y compris en séquence (`G` + lettre), qui ne s'activent jamais dans un champ de saisie. | 17, 18 |
 | ST-66 | Gestion du focus : piège dans les éléments modaux, retour au déclencheur, entrée dans le panneau non modal. | 18 |
 | ST-67 | Régions live pour les annonces. | 18 |
@@ -428,6 +456,7 @@ Prototypes jetables, basse fidélité, un fichier HTML par branche. Pour en ouvr
 | [12 Fiche Contact](issues/12-fiche-contact.md) | `prototype/12-fiche-contact` | `.scratch/battlecrm-ux/prototypes/12-fiche-contact.html` | A (page) et B (panneau), tête du fil de C |
 | [13 Positionnements](issues/13-gestion-positionnements.md) | `prototype/13-gestion-positionnements` | `.scratch/battlecrm-ux/prototypes/13-gestion-positionnements.html` | `?variant=C` |
 | [17 Navigation bureau](issues/17-navigation-globale-bureau.md) | `prototype/17-navigation-bureau` | `.scratch/battlecrm-ux/prototypes/17-navigation-bureau.html` | `?variant=A` |
+| [19 Contacts](issues/19-ecran-contacts-modifier-contact.md) | `prototype/19-ecran-contacts` | `.scratch/battlecrm-ux/prototypes/19-ecran-contacts.html` | `?variant=B` (formulaire sur place ; « Supprimer » non prototypé) |
 
 Sans prototype (grilling) : [05](issues/05-detachement-reponses-negatives.md), [06](issues/06-vocabulaire-anglais.md), [11](issues/11-relance-faite-aide-memoire.md), [14](issues/14-reglages.md), [15](issues/15-organisations.md), [16](issues/16-parcours-authentification.md), [18](issues/18-accessibilite.md).
 
@@ -449,6 +478,8 @@ Les prototypes ne font pas foi sur ce que les tickets ont amendé après coup : 
 | Mot de passe | « 15 caractères minimum. Une phrase fait très bien l'affaire. » |
 | Mot de passe fuité | « Ce mot de passe apparaît dans des fuites de données connues, choisis-en un autre. » |
 | Mot de passe oublié | « Si un compte existe pour cette adresse, un lien vient de partir. » |
+| Supprimer un Contact | « Supprimer <Contact> ? Ses coordonnées et ses notes sont effacées définitivement. Ses n Essais restent dans les Battles, sans son nom. » |
+| Doublon LinkedIn | « Ce Contact existe déjà : Jean Dupont · Capgemini » — Ouvrir sa fiche |
 | Inscriptions fermées | « Les inscriptions sont fermées pour le moment. » |
 | Trop de tentatives | « Trop de tentatives. Réessaie dans 15 minutes, ou réinitialise ton mot de passe. » |
 
@@ -466,6 +497,7 @@ Les libellés exacts des prototypes 04 et 09 ont été validés en bloc et reste
 | Écrans « sur ordinateur seulement » | 08, 13 | **Atteignables en version empilée** sous Plus (18, reflow). |
 | Raccourcis `R` (reporter) et `S` (sans suite) | 01 (piste) | **Abandonnés** (arbitrage du 2026-10-01). Précision ajoutée au ticket 01. |
 | Synthèse du graphe d'Activité | 05 « pas de marque Objectif atteint », 18 « Objectif atteint 61 jours » | **Retirée** : « 214 actions sur 12 mois » (arbitrage du 2026-10-01). Précision ajoutée au ticket 18. |
+| Fiche depuis Contacts ; « Modifier le Contact » | 12 « page » et « Modifier » en panneau de geste, 19 | **Panneau ancré** dans Contacts ; **édition sur place** des Coordonnées partout (19). Précision ajoutée au ticket 12. |
 
 ## 12. Écarts entre l'UX et le modèle
 
@@ -495,12 +527,12 @@ Règles que les tickets UX avaient ajoutées ou modifiées sans les consigner. *
 - [0003 — L'historique conserve les valeurs en vigueur au moment des faits](../../docs/adr/0003-historique-valeurs-en-vigueur.md)
 - [0004 — Hors-ligne en consultation seulement](../../docs/adr/0004-hors-ligne-en-consultation-seulement.md)
 - [0005 — Une Interaction entrante n'a pas de nature](../../docs/adr/0005-interaction-entrante-sans-nature.md)
+- [0006 — Supprimer un Contact l'anonymise](../../docs/adr/0006-supprimer-un-contact-l-anonymise.md)
 
 Envisagés sans être retenus comme ADR (décisions de produit, réversibles, consignées dans cette spec) : WCAG 2.2 AA en entier ; e-mail et mot de passe seulement ; pas de rouge ni de taux personnels.
 
 ## 14. Pas encore spécifié
 
-- **Écran Contacts et « Modifier le Contact »** : [ticket 19](issues/19-ecran-contacts-modifier-contact.md), à trancher avant le découpage en tickets d'implémentation.
 - **Suppression de compte** écartée en V1 : à confronter au droit à l'effacement (RGPD) avant d'ouvrir les inscriptions à des tiers.
 
 ## 15. Hors périmètre
