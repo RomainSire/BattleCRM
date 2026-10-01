@@ -53,3 +53,5 @@ Tranché avec Romain le 2026-10-01.
 - une mise en page qui dépend de la largeur et non du type d'appareil ;
 - l'attribut de langue de la page qui suit la langue de l'Utilisateur ;
 - une vérification de chaque écran : sans souris, au lecteur d'écran, à 400 % de zoom, dans les deux thèmes, et par un contrôle automatique.
+
+**Précision ([spec](../spec.md), arbitrage du 2026-10-01)** : la phrase de synthèse du graphe d'Activité ne compte pas les jours où l'Objectif a été atteint (« 214 actions sur 12 mois ») : l'équivalent textuel ne dit rien de plus que le graphe, qui ne marque pas l'Objectif. L'Objectif du jour reste lisible au focus de chaque case.

@@ -42,3 +42,5 @@ Tranché avec Romain le 2026-09-29, sur le prototype.
 **Clavier (bureau).** Palette `Ctrl K`, ajout rapide `N`. Les raccourcis par élément (`F` faite, `R` reporter, `S` sans suite) sont gardés comme piste ; la navigation `J`/`K` de la variante A n'a pas été retenue telle quelle.
 
 **Précision (ticket [Réglages](14-reglages.md))** : un Contact actif dans une Étape qui n'a aucun Positionnement (par ex. le Vivier) ne compte pas comme « sans prochaine action ». Il n'apparaît pas dans « Aujourd'hui » et se range dans « En attente », sans signal.
+
+**Précision ([spec](../spec.md), arbitrages du 2026-10-01)** : les raccourcis `R` et `S` ne sont pas retenus. Les 3 ou 4 Contacts sans prochaine action sont tirés une fois par jour (un Contact traité sort de la liste sans être remplacé), et « Plus tard » sur une Battle concluante vaut jusqu'au lendemain ; les deux valent sur tous les appareils de l'Utilisateur.

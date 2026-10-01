@@ -60,3 +60,5 @@ Une légende sous les lignées rappelle ce code.
 **Exigences pour la stack** : aucune nouvelle. Le calcul de la Règle de victoire est défini par l'ADR 0001.
 
 **Précision (ticket [Réglages](14-reglages.md))** : quand l'Étape n'a encore jamais eu de Battle, le Critère de succès est pré-rempli avec le But de l'Étape, s'il existe.
+
+**Précision (ticket [Direction visuelle](07-direction-visuelle.md))** : le Champion prouvé a un fond **teal** plein, pas vert : le vert est réservé au Succès d'un Essai.

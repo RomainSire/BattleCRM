@@ -57,3 +57,5 @@ Tranché avec Romain le 2026-09-30, sur deux tours de prototype. Aucun changemen
 - persister la préférence de thème (Système / Clair / Sombre) par Utilisateur, et suivre le thème du système en direct ;
 - respecter la préférence système « réduire les animations » ;
 - garantir le contraste AA dans les deux thèmes : les couleurs sont des jetons, jamais codées en dur.
+
+**Précision (ticket [Réglages](14-reglages.md))** : le thème est conservé **par appareil**, pas par Utilisateur.
