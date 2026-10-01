@@ -36,6 +36,7 @@ Tranché avec Romain le 2026-09-30, sur le prototype.
 - **Complet** : « Aujourd'hui » (une chose à la fois, déjà tranché), Contacts et fiche Contact, les gestes rapides (Relancer…, A répondu…, Utiliser un Positionnement, Sans suite, Reporter), l'ajout rapide et la palette.
 - **Dégradé** : le **Funnel** devient une **liste groupée par Étape**, sans kanban, sans glisser-déposer et sans vue table. On change d'Étape depuis la fiche Contact. Les **Battles** sont consultables et se clôturent. Les **Indicateurs** sont consultables (déjà tranché : rien de plus sur mobile). Seuls les **Réglages simples** y sont (langue, thème, célébration).
 - **Sur ordinateur seulement** (listé sous « Sur ordinateur » dans Plus) : créer ou dériver un Positionnement, ouvrir une Battle, éditer le Funnel.
+  - **Amendé par le ticket « Accessibilité » (reflow WCAG 1.4.10)** : ces écrans ne sont plus réservés à l'ordinateur. En largeur étroite, ils restent atteignables et utilisables en version empilée sous Plus, mais ne sont ni pensés pour le téléphone ni mis en avant.
 
 **Exigences pour la stack :**
 - l'app s'**installe sur l'écran d'accueil** du téléphone ;
