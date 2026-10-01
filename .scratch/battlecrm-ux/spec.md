@@ -297,7 +297,7 @@ Depuis un Essai délai dépassé : l'Essai passe Sans suite, puis « Clore <Cont
 
 ### 6.8 Ajout rapide d'un Contact
 
-Seul le nom est obligatoire. Organisation choisie dans une liste filtrée à la frappe (sans casse, accents ni espaces), ou créée avec son type. Doublons vérifiés **pendant la frappe**, jamais après `Entrée` : même URL LinkedIn normalisée → création bloquée (« Ce Contact existe déjà : Jean Dupont · Capgemini », « Ouvrir sa fiche ») ; même nom → information discrète, plus précise dans la même Organisation. Étape : la première non archivée par défaut, modifiable ; les Étapes qui précèdent celle choisie ne comptent pas comme sautées. `Entrée` ajoute ; `Ctrl Entrée` enchaîne sur le geste central.
+Seul le nom est obligatoire. Champs visibles : nom, Organisation, URL LinkedIn, Étape ; le lien « Plus de champs » déplie le poste, l'e-mail, le téléphone et la note (arbitrage du 2026-10-01). Organisation choisie dans une liste filtrée à la frappe (sans casse, accents ni espaces), ou créée avec son type. Doublons vérifiés **pendant la frappe**, jamais après `Entrée`, comme au §6.12 : même URL LinkedIn normalisée → création bloquée (« Ce Contact existe déjà : Jean Dupont · Capgemini », « Ouvrir sa fiche ») ; même nom (plus précis dans la même Organisation), et, s'ils sont remplis, même e-mail ou même téléphone → information discrète. Étape : la première non archivée par défaut, modifiable ; les Étapes qui précèdent celle choisie ne comptent pas comme sautées. `Entrée` ajoute ; `Ctrl Entrée` enchaîne sur le geste central.
 
 ### 6.9 Ouvrir et clôturer une Battle
 
@@ -418,7 +418,7 @@ Besoins exprimés **sans solution** : le choix de techno revient au wayfinder st
 | ST-60 | Copier dans le presse-papiers (message avec `{prénom}` remplacé, clé TOTP, codes de secours), y compris hors ligne. | 02, 08, 11, 16 |
 | ST-61 | Glisser-déposer à la souris (Funnel, réordonnancement des Étapes), avec une alternative au clavier ; pas de glisser tactile. | 03, 08, 14, 18 |
 | ST-62 | Annuler juste après coup (au moins 10 s, pause au survol ou au focus, `Ctrl Z`) : enregistrement d'un geste, enregistrement automatique d'un réglage, suppression (Étape, Positionnement). | 02, 03, 13, 14, 18 |
-| ST-63 | Recherche instantanée sur les Contacts (nom, Organisation, poste, e-mail) et les Organisations pendant la frappe (palette, choix d'Organisation, écran Contacts). | 15, 17, 19 |
+| ST-63 | Recherche instantanée sur les Contacts et les Organisations pendant la frappe : palette (Contacts par nom, Organisation, Étape), choix d'Organisation, écran Contacts (nom, Organisation, poste, e-mail). | 15, 17, 19 |
 | ST-64 | Vérification des doublons pendant la frappe, sans ralentir la saisie : URL LinkedIn bloquante ; nom, e-mail et téléphone informatifs. | 15, 19 |
 | ST-65 | Raccourcis clavier globaux, y compris en séquence (`G` + lettre), qui ne s'activent jamais dans un champ de saisie. | 17, 18 |
 | ST-66 | Gestion du focus : piège dans les éléments modaux, retour au déclencheur, entrée dans le panneau non modal. | 18 |
@@ -498,6 +498,7 @@ Les libellés exacts des prototypes 04 et 09 ont été validés en bloc et reste
 | Raccourcis `R` (reporter) et `S` (sans suite) | 01 (piste) | **Abandonnés** (arbitrage du 2026-10-01). Précision ajoutée au ticket 01. |
 | Synthèse du graphe d'Activité | 05 « pas de marque Objectif atteint », 18 « Objectif atteint 61 jours » | **Retirée** : « 214 actions sur 12 mois » (arbitrage du 2026-10-01). Précision ajoutée au ticket 18. |
 | Fiche depuis Contacts ; « Modifier le Contact » | 12 « page » et « Modifier » en panneau de geste, 19 | **Panneau ancré** dans Contacts ; **édition sur place** des Coordonnées partout (19). Précision ajoutée au ticket 12. |
+| Champs de l'ajout rapide | 15 (nom, Organisation, LinkedIn, Étape), 19 (poste, e-mail, téléphone, note) | **Minimal, avec « Plus de champs »** ; doublons alignés sur « Modifier le Contact » (arbitrage du 2026-10-01). Précision ajoutée au ticket 19. |
 
 ## 12. Écarts entre l'UX et le modèle
 
@@ -517,6 +518,8 @@ Règles que les tickets UX avaient ajoutées ou modifiées sans les consigner. *
 | E10 | Canal | Nouveau terme **Canal** (*Channel*) : e-mail, LinkedIn, téléphone, courrier. | `CONTEXT.md` (Prospection) |
 | E11 | Horizon dans l'ADR 0001 | « Commencés (hors annulés) » et « conclut » au lieu de « ferme ». | [ADR 0001](../../docs/adr/0001-regle-de-victoire-bayesienne-sans-verrou.md) |
 | E12 | Dupliquer | Dupliquer un Positionnement, même jamais utilisé, crée une copie modifiée (lien « dérivé de », lignée). | `CONTEXT.md` (Positionnement) |
+| E13 | Champs du Contact | Seul le nom est obligatoire ; s'y ajoutent poste, e-mail, téléphone et note libre (contexte permanent, distinct des notes d'Interaction). Seule l'URL LinkedIn est unique : un même nom, e-mail ou téléphone est permis. | `CONTEXT.md` (Contact) |
+| E14 | Supprimer un Contact | Anonymisation : nom, coordonnées et notes effacés, Essais et Interactions gardés sous « Contact supprimé » ; Essai en cours annulé (motif « Contact supprimé »), Relance planifiée annulée, URL LinkedIn libérée. | `CONTEXT.md` (Contact), [ADR 0006](../../docs/adr/0006-supprimer-un-contact-l-anonymise.md) |
 
 Également consigné : une Interaction entrante ne porte aucune nature (`CONTEXT.md`, Interaction ; [ADR 0005](../../docs/adr/0005-interaction-entrante-sans-nature.md)).
 
