@@ -144,5 +144,5 @@ _Avoid_: Quota, cible
 
 **Utilisateur**:
 Un freelance qui possède son propre Funnel, ses Contacts et ses Battles, isolés de ceux des autres Utilisateurs.
-_EN_: User (avoid: account, member)
-_Avoid_: Compte, membre
+_EN_: User (avoid: account, member; *account* only for the User's sign-in access, as in French)
+_Avoid_: Compte, membre (« compte » ne désigne que l'accès d'un Utilisateur, son e-mail et son mot de passe, dans les écrans de connexion et la section Compte des Réglages)
