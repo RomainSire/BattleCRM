@@ -17,6 +17,8 @@ Une **spec stack** (`.scratch/battlecrm-stack/spec.md`) et des ADR pour les choi
   3. **Léger sur le VPS** ;
   - plus : un **backend rapide**, pour une app très fluide.
   - Ce que Romain maîtrise déjà et l'envie d'apprendre n'entrent pas en jeu.
+  - **C# / .NET écarté** (préférence de Romain, 2026-10-02) : le backend se choisit entre TypeScript (Hono, NestJS ou AdonisJS), Rust et Go.
+  - **Écrire soi-même n'est pas un défaut en soi** : une dépendance en moins ; à peser contre le risque du code de sécurité écrit à la main.
 - Contraintes fixées :
   - **VPS de Romain** : Docker, Traefik (réseau `traefik-public`, Let's Encrypt), Watchtower actif ; d'autres apps cloisonnées y tournent, **pas de base partagée**.
   - **GitHub + Actions + GHCR**, **monorepo**.
