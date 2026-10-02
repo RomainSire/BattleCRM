@@ -29,6 +29,7 @@ Une **spec stack** (`.scratch/battlecrm-stack/spec.md`) et des ADR pour les choi
 
 <!-- une ligne par ticket résolu -->
 
+- [Candidats front](issues/02-candidats-front.md) : recherche, SPA Vite + API séparée ; finalistes React + React Aria Components (puis Base UI, à départager par un spike kanban) avec TanStack Router/Query, Paraglide, vite-plugin-pwa, tinykeys ; Vue + Reka UI en troisième. Hors ligne : une seule copie dans IndexedDB, mutations jamais rejouées. Panneau ouvert dans l'URL (ST-70).
 - [Base de données : SQLite ou Postgres](issues/03-base-de-donnees.md) : recherche, PostgreSQL 18 recommandé (majeure épinglée), SQLite défendable sous réglages stricts ; jour local stocké à l'écriture, normalisation dans le code sous index unique, index partiels pour les « au plus un », RLS en garde-fou, `pg_dump` quotidien et rétention bornée pour ST-38.
 
 ## Pas encore spécifié
