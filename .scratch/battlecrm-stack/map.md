@@ -25,6 +25,7 @@ Une **spec stack** (`.scratch/battlecrm-stack/spec.md`) et des ADR pour les choi
   - **Multi-utilisateur** avec isolation stricte, mais à petite échelle : Romain seul, puis quelques collègues. **Inscriptions ouvertes ou fermées par variable d'environnement**, sans écran d'administration.
   - **Rien de payant** : e-mails par le SMTP Gmail de Romain (mot de passe d'application) ; sauvegardes hebdomadaires de l'hébergeur pour l'instant.
   - **Extension Firefox LinkedIn imminente** : la stack ne lui ferme pas la porte (API et auth utilisables par un client extension), sans la concevoir ici.
+- **Modèle en cours d'amendement** (2026-10-06) : la carte [Cercle d'alliés](../battlecrm-cercle/map.md) a refondu les États du Contact (Vivier, En prospection, Allié, Archivé ; ADR 0007), reportés dans la spec UX (§5.11, §6.11, §6.14, ST-39, ST-48, ST-49, ST-57, ST-58).
 - La V1 (`../BattleCRM` : AdonisJS + React + Postgres, Docker/Traefik) n'est pas un acquis : on repart de zéro, l'infra exceptée.
 
 ## Decisions so far

@@ -37,10 +37,11 @@ Les États du Contact refondus autour du parcours **Vivier → En prospection �
 - [Objectif d'entrées hebdomadaire : semaine, comptage et modification](issues/02-objectif-d-entrees-hebdomadaire.md) : semaine du lundi, toute arrivée En prospection compte (même depuis Allié ou Archivé), 5 par défaut, modification au lundi suivant (ADR 0003 amendé), dépassable, « 6/5 » en couleur de succès sans célébration.
 - [Page Cercle et blocs Cercle d'« Aujourd'hui »](issues/03-page-cercle-et-aujourdhui.md) : page Cercle en trois paliers (À relancer / Bientôt / À jour) avec une jauge du Rythme ; Aujourd'hui ouvre sur un bandeau Entrées avec les propositions du Vivier, et les Alliés à relancer y sont mêlés aux Relances par ancienneté du retard ; « Cercle » entre Aujourd'hui et Contacts, `G E` ; seule la pastille d'Aujourd'hui compte, Alliés compris (prototype `prototype/03-page-cercle`).
 - [Gestes de changement d'État, « Ajouter au Cercle… » et « Prendre des nouvelles… »](issues/04-gestes-changement-d-etat.md) : un verbe par destination (Faire entrer…, Remettre au Vivier…, Ajouter au Cercle…, Archiver…) ouvre la même fenêtre de conséquences, et « Réactiver… » disparaît ; Remettre au Vivier proposé après un Essai sans suite, Ajouter au Cercle après un Succès à la dernière Étape ; sur un Allié, « Prendre des nouvelles… » remplace « Noter une Interaction » ; zones Vivier, Cercle et Archivé dans le kanban, filtre d'État retiré du Funnel ; touche `S`, palette, puces de Contacts.
+- [Reporter la refonte des États dans la spec UX](issues/05-report-spec-ux.md) : spec UX amendée (navigation, écrans dont la page Cercle, gestes §6.11 et §6.14, ST-39, ST-48, ST-49, ST-57, ST-58) ; à la relecture, un Contact entré depuis le bandeau est remplacé par un nouveau tirage, et un Allié porte une étoile ★ partout.
 
 ## Pas encore spécifié
 
-_(rien : les exigences `ST-xx` sont reprises par [Reporter la refonte des États dans la spec UX](issues/05-report-spec-ux.md))_
+_(rien : destination atteinte le 2026-10-06)_
 
 ## Hors périmètre
 
