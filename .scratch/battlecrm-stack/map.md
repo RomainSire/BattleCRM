@@ -38,12 +38,12 @@ Une **spec stack** (`.scratch/battlecrm-stack/spec.md`) et des ADR pour les choi
 - [Auth : ce que couvrent les bibliothèques](issues/04-auth.md) : recherche, aucune bibliothèque ne couvre ST-10 à ST-23 (ST-17, ST-19, ST-21 toujours à écrire). Better Auth (TS, le moins de code mais une veille de sécurité lourde) et ASP.NET Core Identity (le plus stable, plus d'assemblage) ex æquo, puis Phoenix, puis Go. Sessions opaques en base ; l'extension s'authentifie par un jeton de session dédié, révocable.
 - [Candidats front](issues/02-candidats-front.md) : recherche, SPA Vite + API séparée ; finalistes React + React Aria Components (puis Base UI, à départager par un spike kanban) avec TanStack Router/Query, Paraglide, vite-plugin-pwa, tinykeys ; Vue + Reka UI en troisième. Hors ligne : une seule copie dans IndexedDB, mutations jamais rejouées. Panneau ouvert dans l'URL (ST-70).
 - [Base de données : SQLite ou Postgres](issues/03-base-de-donnees.md) : recherche, PostgreSQL 18 recommandé (majeure épinglée), SQLite défendable sous réglages stricts ; jour local stocké à l'écriture, normalisation dans le code sous index unique, index partiels pour les « au plus un », RLS en garde-fou, `pg_dump` quotidien et rétention bornée pour ST-38.
+- [Forme de l'app et langages](issues/06-forme-app-langages.md) : monorepo TypeScript sous pnpm (ADR 0008) ; SPA React (TanStack Router + Query, Paraglide, vite-plugin-pwa, tinykeys, shadcn base `aria` éjecté, Tailwind 4), API Hono + Zod sur Node LTS avec Better Auth, landing page Astro statique (vitrine seule) ; adresses souhaitées `battlecrm.romainsire.com` et `app.battlecrm.romainsire.com/api`.
 - [Relevé du VPS](issues/05-releve-vps.md) : tâche. Pas de swap et d'autres apps sur la machine (`mem_limit` par conteneur) ; Traefik v3 en `latest`, sans middleware global ; Watchtower met à jour tout conteneur non exclu par label ; accès SSH d'Actions à refaire ; aucun dump de base, seulement l'instantané hebdomadaire de l'hébergeur. Relevé détaillé hors du dépôt. La V1 sera supprimée et la V2 reprend son domaine.
 
 ## Pas encore spécifié
 
 - **Stratégie de test** : niveaux, outils, tests du domaine (Règle de victoire, Tirage, valeurs en vigueur), contrôle automatique d'accessibilité (ST-80) ; dépend de l'architecture.
-- **Outillage du monorepo** : gestionnaire de paquets, lint, format, typage partagé entre front, back et extension ; dépend des langages.
 - **E-mails transactionnels traduits** (ST-11, ST-12) : gabarits, envoi, file d'attente ou non, par le SMTP Gmail.
 - **Observabilité** : journaux, erreurs, santé de l'app sur le VPS, sans service payant.
 - **Sauvegardes et RGPD avant d'ouvrir les inscriptions** : sauvegardes plus sûres que l'instantané hebdomadaire de l'hébergeur, rétention compatible avec l'anonymisation (ST-38), suppression de compte (spec UX §14).
@@ -54,4 +54,5 @@ Une **spec stack** (`.scratch/battlecrm-stack/spec.md`) et des ADR pour les choi
 - Montée en charge au-delà de quelques collègues.
 - Écran d'administration (inscriptions pilotées par variable d'environnement).
 - Conception de l'extension Firefox LinkedIn et de l'import de Contacts.
+- Contenu de la landing page (sections, textes, captures, vidéo) : de l'UX, pour une session de grilling dédiée ; la carte n'en fixe que la stack. Compte de démo écarté pour l'instant (vitrine seule).
 - L'implémentation elle-même, squelette compris : premier ticket après cette carte.

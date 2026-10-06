@@ -9,7 +9,8 @@ Blocked by: 05, 06, 07
 Comment l'app est-elle construite, livrée et configurée sur le VPS ?
 
 À trancher :
-- Images (une ou plusieurs), conteneurs, réseau Traefik ; migrations au déploiement.
+- Images (une ou plusieurs), conteneurs, réseau Traefik ; migrations au déploiement. Trois apps à servir : la SPA, l'API Hono et la landing page Astro statique (« [Forme de l'app et langages](06-forme-app-langages.md) »).
+- Adresses : préférence de Romain, landing sur `battlecrm.romainsire.com`, app sur `app.battlecrm.romainsire.com`, API sur la même origine sous `/api` ; passage possible plus tard à un domaine dédié par la seule configuration.
 - Chaîne GitHub Actions → GHCR → VPS : déclenchement, Watchtower ou déploiement explicite, retour arrière.
 - Configuration par variables d'environnement (dont l'ouverture des inscriptions) et secrets (SMTP Gmail).
 - Budget mémoire sur le VPS au regard des autres apps : limites `mem_limit` par conteneur (il n'y a pas de swap).
