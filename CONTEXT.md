@@ -44,7 +44,7 @@ _EN_: Archived (avoid: closed, dropped, lost)
 _Avoid_: Clos, perdu
 
 **Entrée dans le Funnel**:
-Le passage d'un Contact En prospection, à une Étape : depuis le Vivier (réentrées comprises) ou dès son ajout. Les Étapes qui précèdent celle d'entrée ne comptent pas comme sautées.
+Le passage d'un Contact En prospection, à une Étape : depuis tout autre État (réentrées comprises) ou dès son ajout. Elle est datée de son enregistrement et comptée, comme l'Activité, dans le fuseau horaire de l'Utilisateur en vigueur ce jour-là. Chaque passage compte : un Contact qui entre deux fois dans la semaine fait deux Entrées. Les Étapes qui précèdent celle d'entrée ne comptent pas comme sautées.
 _EN_: Funnel entry (avoid: activation, enrollment)
 _Avoid_: Activation, inscription
 
@@ -218,7 +218,7 @@ _EN_: Activity goal (avoid: quota, target)
 _Avoid_: Quota, cible
 
 **Objectif d'entrées**:
-Le nombre d'Entrées dans le Funnel par semaine que l'Utilisateur se fixe : un seul par Utilisateur, réglable, désactivable. L'atteindre n'est pas célébré (seul l'Objectif d'activité l'est) ; ne pas l'atteindre n'a aucune conséquence.
+Le nombre d'Entrées dans le Funnel par semaine, du lundi au dimanche, que l'Utilisateur se fixe : un seul par Utilisateur, 5 par défaut (une par jour ouvré), désactivable. Une modification, désactivation comprise, s'applique à partir du lundi suivant, sans effet sur les semaines passées, dont les valeurs en vigueur sont conservées. Il peut être dépassé. L'atteindre n'est pas célébré (seul l'Objectif d'activité l'est) ; ne pas l'atteindre n'a aucune conséquence et n'est jamais enregistré comme tel. Désactivé, les Entrées restent comptées.
 _EN_: Entry goal (avoid: quota, target)
 _Avoid_: Quota, cible
 

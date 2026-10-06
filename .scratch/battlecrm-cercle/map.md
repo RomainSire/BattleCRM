@@ -34,10 +34,11 @@ Les États du Contact refondus autour du parcours **Vivier → En prospection �
 <!-- une ligne par ticket résolu -->
 
 - [Amender le glossaire et rédiger l'ADR 0007](issues/01-amender-glossaire-adr.md) : `CONTEXT.md` amendé (États, Vivier, Allié, Cercle, Entrée dans le Funnel, Rythme des Alliés, Prise de nouvelles…) et ADR 0007 ; « bientôt » = 7 derniers jours du Rythme, un Allié remis En prospection garde sa Relance.
+- [Objectif d'entrées hebdomadaire : semaine, comptage et modification](issues/02-objectif-d-entrees-hebdomadaire.md) : semaine du lundi, toute arrivée En prospection compte (même depuis Allié ou Archivé), 5 par défaut, modification au lundi suivant (ADR 0003 amendé), dépassable, « 6/5 » en couleur de succès sans célébration.
 
 ## Pas encore spécifié
 
-- **Nouvelles exigences pour la stack** (`ST-xx`) : jours sans contact calculés dans le fuseau de l'Utilisateur, objectif hebdomadaire en valeurs en vigueur (ADR 0003), compteurs de Cercle ; à préciser quand les gestes et l'objectif d'entrées seront tranchés.
+- **Nouvelles exigences pour la stack** (`ST-xx`) : jours sans contact calculés dans le fuseau de l'Utilisateur, Entrées comptées par semaine du lundi dans le fuseau en vigueur et objectif conservé semaine par semaine (ADR 0003), compteurs de Cercle ; à préciser quand les gestes seront tranchés.
 
 ## Hors périmètre
 
