@@ -35,6 +35,7 @@ Les États du Contact refondus autour du parcours **Vivier → En prospection �
 
 - [Amender le glossaire et rédiger l'ADR 0007](issues/01-amender-glossaire-adr.md) : `CONTEXT.md` amendé (États, Vivier, Allié, Cercle, Entrée dans le Funnel, Rythme des Alliés, Prise de nouvelles…) et ADR 0007 ; « bientôt » = 7 derniers jours du Rythme, un Allié remis En prospection garde sa Relance.
 - [Objectif d'entrées hebdomadaire : semaine, comptage et modification](issues/02-objectif-d-entrees-hebdomadaire.md) : semaine du lundi, toute arrivée En prospection compte (même depuis Allié ou Archivé), 5 par défaut, modification au lundi suivant (ADR 0003 amendé), dépassable, « 6/5 » en couleur de succès sans célébration.
+- [Page Cercle et blocs Cercle d'« Aujourd'hui »](issues/03-page-cercle-et-aujourdhui.md) : page Cercle en trois paliers (À relancer / Bientôt / À jour) avec une jauge du Rythme ; Aujourd'hui ouvre sur un bandeau Entrées avec les propositions du Vivier, et les Alliés à relancer y sont mêlés aux Relances par ancienneté du retard ; « Cercle » entre Aujourd'hui et Contacts, `G E` ; seule la pastille d'Aujourd'hui compte, Alliés compris (prototype `prototype/03-page-cercle`).
 
 ## Pas encore spécifié
 
