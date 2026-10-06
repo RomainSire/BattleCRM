@@ -19,4 +19,6 @@ Comment l'app est-elle construite, livrée et configurée sur le VPS ?
 - En-têtes de sécurité et limitation de débit : à déclarer par labels Traefik, puisqu'aucun middleware global n'existe.
 - Bascule depuis la V1 : la supprimer (conteneurs, volume `battlecrm_pgdata`, `/opt/docker/battlecrm`) et reprendre `battlecrm.romainsire.com`.
 
+- Migrations : point d'entrée `migrate` séparé, même image, identifiants du rôle **propriétaire** ; l'API n'a que ceux du rôle applicatif (« [Base de données et accès aux données](07-donnees.md) », ADR 0009). Comment l'enchaîner avant l'API, et où vivent les deux jeux d'identifiants.
+
 Faits du VPS : voir « [Relevé du VPS](05-releve-vps.md) ».

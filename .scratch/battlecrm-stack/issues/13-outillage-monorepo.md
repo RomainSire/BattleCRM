@@ -16,4 +16,6 @@ Comment le monorepo TypeScript (pnpm) est-il outillé, pour que des agents y éc
 - Orchestration des tâches : scripts pnpm récursifs, ou un outil (Turborepo, Nx) ; cache en CI.
 - Interdictions vérifiées automatiquement (paquets bannis par « shadcn/ui face aux bibliothèques headless » : `@base-ui/react`, radix, cmdk, vaul, sonner, next-themes).
 
+- Interdictions liées aux données (« [Base de données et accès aux données](07-donnees.md) ») : importer la connexion brute hors du module de données, les requêtes relationnelles Drizzle `db.query…`, `drizzle-kit push` hors base jetable ; versions de Drizzle et Better Auth épinglées.
+
 Décisions d'entrée : « [Forme de l'app et langages](06-forme-app-langages.md) ».
