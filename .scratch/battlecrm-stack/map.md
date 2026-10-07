@@ -41,14 +41,14 @@ Une **spec stack** (`.scratch/battlecrm-stack/spec.md`) et des ADR pour les choi
 - [Forme de l'app et langages](issues/06-forme-app-langages.md) : monorepo TypeScript sous pnpm (ADR 0008) ; SPA React (TanStack Router + Query, Paraglide, vite-plugin-pwa, tinykeys, shadcn base `aria` éjecté, Tailwind 4), API Hono + Zod sur Node LTS avec Better Auth, landing page Astro statique (vitrine seule) ; adresses souhaitées `battlecrm.romainsire.com` et `app.battlecrm.romainsire.com/api`.
 - [Relevé du VPS](issues/05-releve-vps.md) : tâche. Pas de swap et d'autres apps sur la machine (`mem_limit` par conteneur) ; Traefik v3 en `latest`, sans middleware global ; Watchtower met à jour tout conteneur non exclu par label ; accès SSH d'Actions à refaire ; aucun dump de base, seulement l'instantané hebdomadaire de l'hébergeur. Relevé détaillé hors du dépôt. La V1 sera supprimée et la V2 reprend son domaine.
 - [Base de données et accès aux données](issues/07-donnees.md) : PostgreSQL 18 ; Drizzle 0.45 épinglé sur `pg`, style SQL seul (repli Kysely) ; migrations SQL générées et relues, lancées par un point d'entrée séparé sous le rôle propriétaire ; isolation par filtre applicatif + RLS forcée via `withUser` (ADR 0009) ; FK composites `(user_id, id)`, index uniques partiels, UUID v7, jours locaux en `date` ; anonymisation sur place ; Better Auth sur l'adaptateur Drizzle, hors RLS ; contrat Zod écrit à la main.
+- [Auth : bibliothèque, sessions et client extension](issues/08-auth.md) : Better Auth en noyau derrière une liste blanche de chemins (ADR 0010), plugins `twoFactor` et `haveIBeenPwned` ; écrits autour : inscription en attente (compte créé au clic), fin de réinitialisation, changement d'e-mail, réauthentification à chaque action sensible, nouvel appareil par cookie d'appareil, récupération 2FA à J+7, limitation par compte en base ; sessions 90 j glissantes, SameSite=Lax ; `SIGNUPS_OPEN` fermé par défaut ; planificateur dans l'API ; extension en session normale, `bearer` activé plus tard.
 
 ## Pas encore spécifié
 
 - **Stratégie de test** : niveaux, outils, tests du domaine (Règle de victoire, Tirage, valeurs en vigueur), contrôle automatique d'accessibilité (ST-80) ; dépend de l'architecture.
-- **E-mails transactionnels traduits** (ST-11, ST-12) : gabarits, envoi, file d'attente ou non, par le SMTP Gmail.
 - **Observabilité** : journaux, erreurs, santé de l'app sur le VPS, sans service payant.
-- **Sauvegardes et RGPD avant d'ouvrir les inscriptions** : sauvegardes plus sûres que l'instantané hebdomadaire de l'hébergeur, rétention compatible avec l'anonymisation (ST-38), suppression de compte (spec UX §14).
-- **Contrat d'API pour l'extension** : ce que la stack doit garantir pour qu'elle se branche (authentification, versionnement), sans concevoir l'extension.
+- **Sauvegardes et RGPD avant d'ouvrir les inscriptions** : sauvegardes plus sûres que l'instantané hebdomadaire de l'hébergeur, rétention compatible avec l'anonymisation (ST-38), suppression de compte (spec UX §14). **Dumps chiffrés obligatoires** : les jetons de session sont en clair en base (« Auth : bibliothèque, sessions et client extension »).
+- **Contrat d'API pour l'extension** : ce que la stack doit garantir pour qu'elle se branche (authentification, versionnement), sans concevoir l'extension. Déjà tranché : session normale, plugin `bearer` à activer, origine `moz-extension://` à déclarer dans `trustedOrigins`.
 
 ## Hors périmètre
 

@@ -22,3 +22,5 @@ Comment l'app est-elle construite, livrée et configurée sur le VPS ?
 - Migrations : point d'entrée `migrate` séparé, même image, identifiants du rôle **propriétaire** ; l'API n'a que ceux du rôle applicatif (« [Base de données et accès aux données](07-donnees.md) », ADR 0009). Comment l'enchaîner avant l'API, et où vivent les deux jeux d'identifiants.
 
 Faits du VPS : voir « [Relevé du VPS](05-releve-vps.md) ».
+
+- Auth (« [Auth : bibliothèque, sessions et client extension](08-auth.md) ») : `SIGNUPS_OPEN` (fermé par défaut) ; Traefik doit transmettre `X-Forwarded-For` et l'API déclarer `trustedProxies`, sinon la limitation par IP met tout le monde dans un seau partagé ; un seul conteneur d'API (le planificateur tourne en processus, sans verrou distribué) ; dumps chiffrés.

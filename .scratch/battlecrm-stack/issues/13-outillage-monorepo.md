@@ -19,3 +19,5 @@ Comment le monorepo TypeScript (pnpm) est-il outillé, pour que des agents y éc
 - Interdictions liées aux données (« [Base de données et accès aux données](07-donnees.md) ») : importer la connexion brute hors du module de données, les requêtes relationnelles Drizzle `db.query…`, `drizzle-kit push` hors base jetable ; versions de Drizzle et Better Auth épinglées.
 
 Décisions d'entrée : « [Forme de l'app et langages](06-forme-app-langages.md) ».
+
+- Interdiction liée à l'auth (« [Auth : bibliothèque, sessions et client extension](08-auth.md) ») : importer les tables d'auth ou l'instance Better Auth hors du module `auth`.
