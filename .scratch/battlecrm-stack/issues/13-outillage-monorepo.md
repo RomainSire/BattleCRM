@@ -21,3 +21,5 @@ Comment le monorepo TypeScript (pnpm) est-il outillé, pour que des agents y éc
 Décisions d'entrée : « [Forme de l'app et langages](06-forme-app-langages.md) ».
 
 - Interdiction liée à l'auth (« [Auth : bibliothèque, sessions et client extension](08-auth.md) ») : importer les tables d'auth ou l'instance Better Auth hors du module `auth`.
+
+- Architecture (« [Architecture : où vivent les règles du domaine](09-architecture.md) ») : paquets `packages/domain` (pur : interdire toute E/S, horloge et hasard, et tout import de `contract`) et `packages/contract` (Zod) ; modules de l'API `prospecting`, `battles`, `funnel`, `organizations`, `settings`, `views`, `auth`, `db`, `jobs`, chacun seul à importer ses tables ; `withoutIsolation` importable par `auth` seul. **Tout le code en anglais** : vérification possible (lint de commentaires ?) ou revue seule.

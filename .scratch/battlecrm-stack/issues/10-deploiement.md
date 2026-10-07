@@ -24,3 +24,5 @@ Comment l'app est-elle construite, livrée et configurée sur le VPS ?
 Faits du VPS : voir « [Relevé du VPS](05-releve-vps.md) ».
 
 - Auth (« [Auth : bibliothèque, sessions et client extension](08-auth.md) ») : `SIGNUPS_OPEN` (fermé par défaut) ; Traefik doit transmettre `X-Forwarded-For` et l'API déclarer `trustedProxies`, sinon la limitation par IP met tout le monde dans un seau partagé ; un seul conteneur d'API (le planificateur tourne en processus, sans verrou distribué) ; dumps chiffrés.
+
+- Pièces jointes des Positionnements (ST-35), renvoyées par « [Architecture : où vivent les règles du domaine](09-architecture.md) » : stockage (volume Docker monté dans l'API, servi par une route qui vérifie le propriétaire), taille maximale, sauvegarde avec la base.
