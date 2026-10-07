@@ -15,4 +15,6 @@ Comment l'app est-elle testée, à quels niveaux et avec quels outils ?
 - Contrôle automatique d'accessibilité (ST-80) : outil, écrans couverts, bloquant en CI ou non ; ce qui reste manuel (lecteur d'écran, zoom 400 %).
 - Temps et hasard injectés (horloge, fuseau, `random`) pour tester valeurs en vigueur, Cadence et Tirage sans attendre.
 
+- Outillage tranché par « [Outillage du monorepo](13-outillage-monorepo.md) » : TypeScript 7, Oxlint, scripts pnpm, `pnpm check` qui lance les tests, CI `ci` bloquante.
+
 Entrées : « [Architecture : où vivent les règles du domaine](09-architecture.md) », « [Base de données et accès aux données](07-donnees.md) ».

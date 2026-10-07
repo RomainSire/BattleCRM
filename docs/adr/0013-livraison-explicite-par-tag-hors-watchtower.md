@@ -5,5 +5,5 @@ Seul un tag SemVer `v*` posé sur un commit de `main` livre BattleCRM : le workf
 ## Consequences
 
 - Un push sur `main` sans tag ne livre rien ; la version vient du `package.json` racine (`pnpm version`).
-- Les mises à jour de `postgres` (épinglé sur une mineure) et des images de base arrivent par des PR Dependabot, puis par une release comme le reste.
+- Les mises à jour de `postgres` (épinglé sur une mineure) et des images de base arrivent par des PR Renovate, puis par une release comme le reste.
 - Le retour arrière ne touche que les images : chaque migration et chaque changement d'endpoint doivent rester compatibles avec la version précédente (ajouter d'abord, retirer une version plus tard).
