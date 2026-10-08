@@ -1,6 +1,6 @@
 # Spec stack : BattleCRM
 
-Status: needs-triage
+Status: ready-for-agent
 Source : [carte stack](map.md), 18 tickets résolus (`issues/01` à `issues/18`), consolidés le 2026-10-08.
 
 Cette spec est la destination de la carte stack. Elle rassemble les choix de langages, frameworks, données, auth, architecture, test, déploiement et exploitation, et donne pour chaque exigence `ST-xx` de la [spec UX](../battlecrm-ux/spec.md) (§8) sa réponse (§14). Elle alimente directement le découpage en tickets d'implémentation.
@@ -71,7 +71,8 @@ extension Firefox (plus tard) ─► /api/* en jeton bearer
 [Forme de l'app et langages](issues/06-forme-app-langages.md).
 
 - **Astro statique**, FR/EN par Paraglide (`packages/i18n`), mêmes jetons (`packages/theme`). Servie par le conteneur `web` sur `battlecrm.romainsire.com` ; elle reste en ligne quand l'API redémarre.
-- **Vitrine seule**, sans compte de démo ; elle ne lit pas `SIGNUPS_OPEN`. Son contenu est hors de cette spec.
+- **Vitrine seule**, sans compte de démo ; elle ne lit pas `SIGNUPS_OPEN`. Son contenu est hors de cette spec, pour une session de grilling dédiée.
+- **À trancher avec son contenu, avant sa première mise en ligne** : les **mentions légales** (identité de l'éditeur et de l'hébergeur, exigées par la LCEN pour toute page publique, inscriptions ouvertes ou non : elles ne peuvent pas attendre le chantier RGPD du §16) et la présence ou non de statistiques de visite (sans elles, aucun bandeau de cookies).
 
 ## 5. API et architecture
 
@@ -152,7 +153,7 @@ Modules profonds dans `apps/api/src/<module>/`, chacun **seul à écrire ses tab
 
 [E-mails transactionnels traduits](issues/14-e-mails.md).
 
-- **Nodemailer** sur `smtp.gmail.com:465` (mot de passe d'application) ; expéditeur `SMTP_USER`, nom « BattleCRM », sans `Reply-To`. `romainsire.com` est chez Tuta en DMARC strict : ne jamais l'utiliser comme expéditeur. Derrière une interface `EmailTransport` (`send`).
+- **Nodemailer** sur `smtp.gmail.com:465` (mot de passe d'application) ; expéditeur `SMTP_USER` (le Gmail de Romain), nom « BattleCRM », sans `Reply-To`. `romainsire.com` est chez Tuta en DMARC strict : ne jamais l'utiliser comme expéditeur. Derrière une interface `EmailTransport` (`send`).
 - **Module `email`** : `sendEmail(to, template, params)`, typé par gabarit ; seul `auth` l'appelle aujourd'hui.
 - **Envoi direct après le commit**, sans `await`, sans file ni reprise ; un échec est journalisé (adresse masquée) et déclenche l'alerte (§11). E-mails planifiés : étape marquée en base dans la transaction, envoi après le commit. Au `SIGTERM`, l'API attend au plus ~5 s les envois en vol.
 - **Gabarits** : fonctions TS `(params, locale) → { subject, text, html }`, un gabarit HTML minimal, version texte obligatoire, échappement par un tagged template testé. Textes Paraglide `email_*`. Liens construits sur `APP_HOST`.
@@ -359,7 +360,7 @@ Les numéros de section renvoient à cette spec. « Implémentation » signale u
 - Montée en charge au-delà de quelques collègues ; écran d'administration.
 - Conception de l'extension Firefox et de l'import de Contacts (seul le contrat d'API, §9, est fixé).
 - Contenu de la landing page ; compte de démo.
-- **Avant d'ouvrir `SIGNUPS_OPEN`**, un chantier à part : mentions légales, politique de confidentialité, registre des traitements, suppression de compte, export des données, copie des sauvegardes hors du VPS et son chiffrement (les jetons de session sont en clair dans les dumps).
+- **Avant d'ouvrir `SIGNUPS_OPEN`**, un chantier à part : mentions légales de l'app (celles de la landing viennent avant, §4), politique de confidentialité, registre des traitements, suppression de compte, export des données, copie des sauvegardes hors du VPS et son chiffrement (les jetons de session sont en clair dans les dumps).
 
 ## 17. ADR de la stack
 
