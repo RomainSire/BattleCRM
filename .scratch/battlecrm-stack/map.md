@@ -54,7 +54,7 @@ Une **spec stack** (`.scratch/battlecrm-stack/spec.md`) et des ADR pour les choi
 
 ## Pas encore spécifié
 
-<!-- vide : toutes les zones sont tranchées (2026-10-08) ; reste à rédiger la spec stack -->
+<!-- vide : toutes les zones sont tranchées et consolidées dans la [spec stack](spec.md) (2026-10-08) -->
 
 ## Hors périmètre
 
