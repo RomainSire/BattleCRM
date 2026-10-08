@@ -1,6 +1,6 @@
 # Spec UX : BattleCRM
 
-Status: needs-triage
+Status: ready-for-agent
 Source: [carte UX](map.md), 19 tickets résolus (`issues/01` à `issues/19`), consolidés le 2026-10-01 ; amendée le 2026-10-06 par la carte [Cercle d'alliés](../battlecrm-cercle/map.md) (États Vivier, En prospection, Allié, Archivé ; [ADR 0007](../../docs/adr/0007-etats-vivier-en-prospection-allie-archive.md)).
 
 Cette spec est la destination de la carte UX. Elle rassemble ce qui a été tranché ticket par ticket : inventaire des écrans, navigation, gestes, comportements, direction visuelle et **exigences pour la stack**. Elle doit alimenter le wayfinder stack, puis le découpage en tickets d'implémentation.
@@ -35,9 +35,10 @@ Source : [07](issues/07-direction-visuelle.md) ; prototype `prototype/07-directi
 | Accent (teal) | `#0f766e` (bouton, texte blanc) | bouton `#2dd4bf` à texte sombre, texte `#5eead4` | action principale, contour des actions de carte, Challenger, Battle, anneau et graphe d'Activité, Champion prouvé dans l'Historique, focus |
 | Succès (vert) | `#15803d` | `#4ade80` | Essai en Succès, « Objectif atteint », Objectif d'entrées atteint (semaine en cours) |
 | Retard (ambre) | `#a84d06` | `#f59e0b` | Relances en retard, Alliés « à relancer », compteur de la navigation |
-| Bientôt (ambre clair) | texte `#8a5a14`, jauge `#e2b062` (valeurs du prototype C03, contraste à contrôler) | à définir | Alliés « bientôt » (jauge du Rythme, Jours sans contact) |
+| Bientôt (ambre clair) | texte `#8a5a14`, jauge `#b07c1a` | texte `#fcd34d`, jauge `#d4a24c` | Alliés « bientôt » (jauge du Rythme, Jours sans contact) |
 | Neutre (gris) | point `#a1a1aa`, texte `#63636b` | point `#71717a`, texte `#a1a1aa` | sans suite, en cours, Vivier, archivé, délai dépassé, Champion dans une jauge, Allié sans signal |
 
+- **« Bientôt » contrôlé le 2026-10-08** sur les fonds zinc (clair `#ffffff` / `#f4f4f5`, sombre `#18181b` / `#27272a`) : texte clair 5,4:1 à 5,9:1, jauge claire 3,3:1 à 3,7:1, texte sombre 10,3:1 à 12,3:1, jauge sombre 6,4:1 à 7,7:1. La jauge `#e2b062` du prototype C03 (1,8:1 à 2:1) ne passait pas le 3:1 des composants. Le palier et le nombre de jours, toujours écrits, distinguent « bientôt » de « à relancer » sans dépendre de l'écart entre les deux ambres.
 - **Pas de rouge**, nulle part.
 - **Un seul bouton plein par écran.** Les actions de ligne sont des boutons neutres, la première en gras. Une action qui sort de la routine (« Clôturer… ») porte un contour d'accent.
 - **Contraste** : 4,5:1 pour le texte, 3:1 pour les formes et composants, dans les deux thèmes.
@@ -524,7 +525,7 @@ Prototypes jetables, basse fidélité, un fichier HTML par branche. Pour en ouvr
 
 Sans prototype (grilling) : [05](issues/05-detachement-reponses-negatives.md), [06](issues/06-vocabulaire-anglais.md), [11](issues/11-relance-faite-aide-memoire.md), [14](issues/14-reglages.md), [15](issues/15-organisations.md), [16](issues/16-parcours-authentification.md), [18](issues/18-accessibilite.md).
 
-Les prototypes ne font pas foi sur ce que les tickets ont amendé après coup : « Faite » et « J'ai relancé » (01, 03) sont devenus « Relancer… » ; le vert plein de l'Historique (04) est devenu teal ; les écrans « sur ordinateur seulement » (08, 13) sont empilés sous Plus. Depuis la carte Cercle d'alliés (2026-10-06), les prototypes 01 à 19 montrent encore les anciens États : la colonne Vivier du Funnel, actif / en pause / clos / gagné, « Réactiver… », la proposition de clore et le filtre d'État du Funnel ne font plus foi (§5, §6.11).
+**Pour le développement : cette spec fait foi, jamais un prototype.** Un prototype montre une mise en page ; dès qu'il diverge de la spec (États, libellés, couleurs), on suit la spec. Les prototypes ne font pas foi sur ce que les tickets ont amendé après coup : « Faite » et « J'ai relancé » (01, 03) sont devenus « Relancer… » ; le vert plein de l'Historique (04) est devenu teal ; les écrans « sur ordinateur seulement » (08, 13) sont empilés sous Plus. Depuis la carte Cercle d'alliés (2026-10-06), les prototypes 01 à 19 montrent encore les anciens États : la colonne Vivier du Funnel, actif / en pause / clos / gagné, « Réactiver… », la proposition de clore et le filtre d'État du Funnel ne font plus foi (§5, §6.11).
 
 ## 10. Microcopie de référence
 

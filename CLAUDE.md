@@ -11,3 +11,12 @@ Default canonical labels (`needs-triage`, `needs-info`, `ready-for-agent`, `read
 ### Domain docs
 
 Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+## Development
+
+- **What is authoritative**: `CONTEXT.md` and `docs/adr/`, then `.scratch/battlecrm-ux/spec.md` and `.scratch/battlecrm-stack/spec.md`. A prototype (`prototype/*` branches) only shows a layout: when it disagrees with a spec (States, labels, colours), follow the spec. Prototypes 01–19 still show the old States.
+- **All code is in English** (files, identifiers, tables, columns, endpoints, comments). Domain terms use the `_EN_` line of `CONTEXT.md`; a notion with no glossary term gets one there first.
+- Run `pnpm check` before handing back.
+- Never import from inside another API module's folder: go through its `index.ts`.
+- Never run `drizzle-kit push` outside a throwaway database, never edit a shipped migration. Every migration and endpoint change stays compatible with the previous version (expand/contract).
+- `.private/` holds personal infrastructure notes: it is git-ignored, never copy its content into a tracked file.
