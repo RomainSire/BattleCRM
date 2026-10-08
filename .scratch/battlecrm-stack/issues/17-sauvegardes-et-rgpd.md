@@ -17,4 +17,4 @@ Comment les données sont-elles sauvegardées, restaurées et effacées, de faç
 - **Suppression de compte (spec UX §14)** : effacement immédiat des lignes de l'Utilisateur (cascade sous RLS, pièces jointes comprises, tables de Better Auth hors RLS), délai d'effacement dans les sauvegardes, e-mail de confirmation.
 - **RGPD minimal pour des collègues** : registre, mentions légales et politique de confidentialité, export des données de l'Utilisateur (droit d'accès et de portabilité) : ce qui est exigé avant d'ouvrir `SIGNUPS_OPEN`, ce qui peut attendre.
 
-Aucun dump n'existe encore sur le VPS. Entrées : ADR 0006, 0009, 0013 ; « [Base de données et accès aux données](07-donnees.md) ».
+Aucun dump n'existe encore sur le VPS. Déjà tranché : un échec de sauvegarde se signale par un moniteur push uptime-kuma (→ Pushover), pingé après un dump réussi et poussé hors du VPS (« [Observabilité](16-observabilite.md) »). Entrées : ADR 0006, 0009, 0013 ; « [Base de données et accès aux données](07-donnees.md) ».
