@@ -51,9 +51,7 @@ Une **spec stack** (`.scratch/battlecrm-stack/spec.md`) et des ADR pour les choi
 
 ## Pas encore spécifié
 
-- **Observabilité** : journaux, erreurs, santé de l'app sur le VPS, sans service payant. Déjà là : rotation des journaux Docker, `/api/health`, et un uptime-kuma qui tourne sur le VPS. Les échecs d'envoi d'e-mail ne sont que journalisés, sans reprise (« E-mails transactionnels traduits ») : à rendre visibles.
-- **Sauvegardes et RGPD avant d'ouvrir les inscriptions** : sauvegardes plus sûres que l'instantané hebdomadaire de l'hébergeur, rétention compatible avec l'anonymisation (ST-38), suppression de compte (spec UX §14). **Dumps chiffrés obligatoires** : les jetons de session sont en clair en base (« Auth : bibliothèque, sessions et client extension »). Les pièces jointes sont en base (`bytea`), donc dans le même dump (« Déploiement ») ; aucun dump n'existe encore sur le VPS.
-- **Contrat d'API pour l'extension** : ce que la stack doit garantir pour qu'elle se branche (authentification, versionnement), sans concevoir l'extension. Déjà tranché : session normale, plugin `bearer` à activer, origine `moz-extension://` à déclarer dans `trustedOrigins` ; en-tête `X-App-Version` et changements d'endpoints compatibles avec la version précédente (« Déploiement »).
+<!-- vide : les trois zones restantes sont devenues les tickets « Observabilité », « Sauvegardes et RGPD avant d'ouvrir les inscriptions » et « Contrat d'API pour l'extension » (2026-10-08) -->
 
 ## Hors périmètre
 
