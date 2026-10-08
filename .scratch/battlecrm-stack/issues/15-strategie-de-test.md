@@ -17,4 +17,6 @@ Comment l'app est-elle testée, à quels niveaux et avec quels outils ?
 
 - Outillage tranché par « [Outillage du monorepo](13-outillage-monorepo.md) » : TypeScript 7, Oxlint, scripts pnpm, `pnpm check` qui lance les tests, CI `ci` bloquante.
 
+- E-mails (« [E-mails transactionnels traduits](14-e-mails.md) ») : aucun test n'envoie d'e-mail ; un faux `EmailTransport` enregistre les envois pour vérifier contenu, langue et liens (vérification, réinitialisation…).
+
 Entrées : « [Architecture : où vivent les règles du domaine](09-architecture.md) », « [Base de données et accès aux données](07-donnees.md) ».
