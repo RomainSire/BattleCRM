@@ -37,7 +37,7 @@ Tranché avec Romain le 2026-10-08. Consigne : **rester très simple**, aucun se
   - un e-mail en échec ou une tâche en échec déclenche le `down` ;
   - un planificateur mort se voit à l'absence de `up` ;
   - un retour automatique de `deploy.sh` fait échouer le workflow `release`, et GitHub l'envoie déjà par e-mail ;
-  - pour les sauvegardes, un moniteur push distinct, pingé après un dump réussi et poussé hors du VPS (détail : « [Sauvegardes et RGPD avant d'ouvrir les inscriptions](17-sauvegardes-et-rgpd.md) »).
+  - pour les sauvegardes, un moniteur push distinct, pingé après un dump réussi (détail : « [Sauvegardes et RGPD avant d'ouvrir les inscriptions](17-sauvegardes-et-rgpd.md) »).
 - **Erreurs du navigateur** : `POST /api/client-errors` (session requise), qui journalise le message, la pile et la version du front, puis envoie le même `down`. Pas de stockage ni de source maps : on reproduit en local.
 - **Mesures** : aucune pile de métriques, la durée sur chaque ligne de journal suffit.
 - **Écarté** : Sentry et GlitchTip auto-hébergés (lourds sur le VPS), une table d'erreurs avec alerte par e-mail, le contrôle SMTP quotidien, `Server-Timing`, Loki.
