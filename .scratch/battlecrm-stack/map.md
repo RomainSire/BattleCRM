@@ -50,10 +50,11 @@ Une **spec stack** (`.scratch/battlecrm-stack/spec.md`) et des ADR pour les choi
 - [Stratégie de test](issues/15-strategie-de-test.md) : Vitest 4 en projets (`domain`, `api`, `web` en navigateur) ; le gros aux gestes par endpoint (`app.request()`) contre un vrai Postgres 18, une base par exécution, un Utilisateur par test, sous le rôle applicatif de la prod (jamais superutilisateur) ; fabriques sous RLS ; `createApp({ clock, random, email, hibp })`, aucun `DEFAULT now()` du domaine, `TZ=UTC` ; tests de sécurité générés (catalogue RLS, filtre oublié, inventaire des routes, accès croisé, instantané des routes Better Auth) ; fast-check dans `domain` ; dérive Drizzle bloquante ; Playwright sur les images construites, Firefox et Chromium, ~6 parcours ; axe bloquant sur chaque écran et thème, lecteur d'écran et zoom manuels.
 - [Observabilité](issues/16-observabilite.md) : très simple, sans service ni table ajoutés ; pino en JSON sur stdout avec `requestId` et `redact` (ni secret, ni contenu, ni IP), rotation Docker existante ; `/api/health` public (« migrations au moins à jour », sans SMTP) ; uptime-kuma → Pushover comme seule centrale : un moniteur HTTP et un moniteur push « BattleCRM API » (`up` du planificateur toutes les 5 min, `down` sur toute exception imprévue, erreurs du navigateur comprises via `POST /api/client-errors`) ; pas de métriques.
 - [Sauvegardes et RGPD avant d'ouvrir les inscriptions](issues/17-sauvegardes-et-rgpd.md) : ultra simple, sans tiers ; cron de l'hôte à 3 h, `pg_dump` en superutilisateur sur le VPS, rétention 30 j (ST-38), ping uptime-kuma ; ni copie hors du VPS ni chiffrement (filet : instantanés de l'hébergeur) ; restauration documentée, essayée une fois ; `ON DELETE CASCADE` depuis l'Utilisateur. Le volet RGPD part hors périmètre.
+- [Contrat d'API pour l'extension](issues/18-contrat-api-extension.md) : connexion dans l'extension en `bearer` (même session, révocable), mêmes droits que la SPA ; pas de CORS, une liste d'origines partagée Better Auth / Hono avec `moz-extension://` ; endpoints de la SPA, rien de dédié ; `apps/extension` dans le monorepo sur `hc<AppType>` ; N-1 plus `426` sous `MIN_EXTENSION_VERSION` ; tests de sécurité doublés cookie / jeton.
 
 ## Pas encore spécifié
 
-<!-- vide : les trois zones restantes sont devenues les tickets « Observabilité », « Sauvegardes et RGPD avant d'ouvrir les inscriptions » et « Contrat d'API pour l'extension » (2026-10-08) -->
+<!-- vide : toutes les zones sont tranchées (2026-10-08) ; reste à rédiger la spec stack -->
 
 ## Hors périmètre
 
