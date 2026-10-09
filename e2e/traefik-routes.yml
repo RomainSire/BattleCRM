@@ -1,0 +1,19 @@
+# The two routers of docker-compose.prod.yml, without TLS: /api to the API first, the rest to nginx.
+http:
+  routers:
+    api:
+      rule: PathPrefix(`/api`)
+      priority: 100
+      service: api
+    web:
+      rule: PathPrefix(`/`)
+      service: web
+  services:
+    api:
+      loadBalancer:
+        servers:
+          - url: http://api:3000
+    web:
+      loadBalancer:
+        servers:
+          - url: http://web:8080

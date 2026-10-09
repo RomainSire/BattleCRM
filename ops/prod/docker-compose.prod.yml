@@ -1,0 +1,132 @@
+# Production on the VPS (spec stack §10.1), in /opt/docker/battlecrm next to its secrets.
+# Installed and run by deploy.sh, which sets BATTLECRM_VERSION; APP_HOST and SITE_HOST come from .env.
+name: battlecrm
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
+
+x-api: &api
+  image: ghcr.io/romainsire/battlecrm-api:${BATTLECRM_VERSION:?set by deploy.sh}
+  init: true
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  logging: *logging
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    # A fixed name for backup.sh and docs/ops/restore.md, which run without BATTLECRM_VERSION.
+    container_name: battlecrm-postgres
+    command: [postgres, -c, config_file=/etc/postgresql/postgresql.conf]
+    env_file: postgres.env
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./postgres/initdb:/docker-entrypoint-initdb.d:ro
+    networks: [internal]
+    healthcheck:
+      test: [CMD, pg_isready, -U, postgres, -d, battlecrm]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+      start_interval: 1s
+    stop_grace_period: 60s
+    restart: unless-stopped
+    mem_limit: 512m
+    memswap_limit: 512m
+    logging: *logging
+    labels:
+      com.centurylinklabs.watchtower.enable: 'false'
+
+  # One-off, run by deploy.sh before the API restarts: `docker compose run --rm migrate`.
+  migrate:
+    <<: *api
+    command: [dist/migrate.js]
+    env_file: migrate.env
+    # Without a cap, V8 lets the garbage of loading drizzle grow past the limit (no swap): OOM killed.
+    environment:
+      NODE_OPTIONS: --max-old-space-size=128
+    networks: [internal]
+    profiles: [migrate]
+    restart: 'no'
+    mem_limit: 256m
+    memswap_limit: 256m
+    labels:
+      com.centurylinklabs.watchtower.enable: 'false'
+
+  api:
+    <<: *api
+    env_file: api.env
+    environment:
+      APP_ORIGIN: https://${APP_HOST:?}
+      NODE_OPTIONS: --max-old-space-size=256
+    # The internal network reaches Postgres; traefik-public reaches Traefik and the outside (SMTP).
+    networks: [internal, traefik-public]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:3000/api/health]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+      start_interval: 1s
+    restart: unless-stopped
+    mem_limit: 384m
+    memswap_limit: 384m
+    labels:
+      com.centurylinklabs.watchtower.enable: 'false'
+      traefik.enable: 'true'
+      traefik.docker.network: traefik-public
+      traefik.http.routers.battlecrm-api.rule: Host(`${APP_HOST}`) && PathPrefix(`/api`)
+      traefik.http.routers.battlecrm-api.priority: '100'
+      traefik.http.routers.battlecrm-api.entrypoints: websecure
+      traefik.http.routers.battlecrm-api.tls.certresolver: letsencrypt
+      traefik.http.routers.battlecrm-api.middlewares: battlecrm-api-ratelimit
+      # A coarse net per IP; the fine limits live in the API (spec stack §10.2).
+      traefik.http.middlewares.battlecrm-api-ratelimit.ratelimit.average: '20'
+      traefik.http.middlewares.battlecrm-api-ratelimit.ratelimit.burst: '60'
+      traefik.http.services.battlecrm-api.loadbalancer.server.port: '3000'
+
+  web:
+    image: ghcr.io/romainsire/battlecrm-web:${BATTLECRM_VERSION:?set by deploy.sh}
+    environment:
+      APP_HOST: ${APP_HOST:?}
+      SITE_HOST: ${SITE_HOST:?}
+    read_only: true
+    # nginx renders its configuration into conf.d at start (user 101 of nginx-unprivileged).
+    tmpfs:
+      - /tmp
+      - /etc/nginx/conf.d:uid=101,gid=101
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [traefik-public]
+    restart: unless-stopped
+    mem_limit: 64m
+    memswap_limit: 64m
+    logging: *logging
+    labels:
+      com.centurylinklabs.watchtower.enable: 'false'
+      traefik.enable: 'true'
+      traefik.docker.network: traefik-public
+      traefik.http.routers.battlecrm-web.rule: Host(`${APP_HOST}`) || Host(`${SITE_HOST}`)
+      traefik.http.routers.battlecrm-web.entrypoints: websecure
+      traefik.http.routers.battlecrm-web.tls.certresolver: letsencrypt
+      traefik.http.services.battlecrm-web.loadbalancer.server.port: '8080'
+
+networks:
+  # No way out: Postgres is only reachable from migrate and the API.
+  internal:
+    internal: true
+  traefik-public:
+    external: true
+
+volumes:
+  pgdata:

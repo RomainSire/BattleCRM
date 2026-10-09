@@ -5,6 +5,10 @@
   "exports": {
     ".": "./src/app.ts"
   },
+  "files": [
+    "dist",
+    "drizzle"
+  ],
   "scripts": {
     "dev": "node --watch --env-file=.env.development src/main.ts | pino-pretty",
     "build": "tsdown",

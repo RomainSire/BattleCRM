@@ -1,0 +1,36 @@
+# ${APP_HOST} and ${SITE_HOST} are replaced from the environment when the container starts.
+# Traefik terminates TLS and sends /api to the API before this server sees it (spec stack §10.2).
+server_tokens off;
+gzip on;
+gzip_types text/css application/javascript application/json image/svg+xml application/manifest+json;
+
+server {
+    listen 8080 default_server;
+    server_name ${APP_HOST};
+    root /usr/share/nginx/html/app;
+
+    # Every route of the SPA falls back to index.html, which is revalidated so that a release shows up.
+    location / {
+        try_files $uri /index.html;
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    # Hashed file names: never stale, and a missing one is a 404 rather than index.html.
+    location /assets/ {
+        try_files $uri =404;
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    }
+}
+
+# The landing page does not exist yet: its host answers without content.
+server {
+    listen 8080;
+    server_name ${SITE_HOST};
+
+    location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        return 204;
+    }
+}

@@ -1,0 +1,15 @@
+# An allowlist: the build context holds what the images build from, never .private/ or .scratch/.
+*
+!apps/
+!packages/
+!ops/
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!tsconfig*.json
+
+**/node_modules/
+**/dist/
+**/*.tsbuildinfo
+**/coverage/
+packages/i18n/src/paraglide/

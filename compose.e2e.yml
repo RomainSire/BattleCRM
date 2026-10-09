@@ -1,0 +1,82 @@
+# End-to-end tests against the built images (spec stack §13): `pnpm e2e:up`, then `pnpm e2e`.
+# The services of docker-compose.prod.yml, test credentials, and a Traefik routing like the VPS's.
+name: battlecrm-e2e
+
+x-api: &api
+  image: battlecrm-api:e2e
+  build:
+    context: .
+    dockerfile: apps/api/Dockerfile
+    args:
+      VERSION: e2e
+  read_only: true
+  tmpfs: [/tmp]
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    command: [postgres, -c, config_file=/etc/postgresql/postgresql.conf]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: battlecrm
+      OWNER_PASSWORD: owner
+      APP_PASSWORD: app
+    volumes:
+      - ./ops/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./ops/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    tmpfs: [/var/lib/postgresql]
+    healthcheck:
+      test: [CMD, pg_isready, -U, postgres, -d, battlecrm]
+      interval: 1s
+      retries: 30
+
+  migrate:
+    <<: *api
+    command: [dist/migrate.js]
+    environment:
+      MIGRATION_DATABASE_URL: postgres://battlecrm_owner:owner@postgres:5432/battlecrm
+
+  api:
+    <<: *api
+    environment:
+      DATABASE_URL: postgres://battlecrm_app:app@postgres:5432/battlecrm
+      APP_ORIGIN: http://localhost:8080
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:3000/api/health]
+      interval: 1s
+      retries: 30
+
+  web:
+    image: battlecrm-web:e2e
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      APP_HOST: localhost
+      SITE_HOST: site.localhost
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /etc/nginx/conf.d:uid=101,gid=101
+
+  edge:
+    image: traefik:v3.7.13
+    command:
+      - --entrypoints.web.address=:8080
+      - --providers.file.filename=/etc/traefik/routes.yml
+    volumes:
+      - ./e2e/traefik-routes.yml:/etc/traefik/routes.yml:ro
+    ports:
+      - 127.0.0.1:8080:8080
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started

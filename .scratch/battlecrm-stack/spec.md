@@ -38,6 +38,7 @@ extension Firefox (plus tard) ─► /api/* en jeton bearer
 | `apps/api` | API Hono, point d'entrée `migrate` |
 | `apps/site` | landing Astro |
 | `apps/extension` | extension Firefox, plus tard (§9) |
+| `e2e` | tests de bout en bout Playwright contre les images (§13) |
 | `packages/domain` | règles pures, sans E/S (§5.3) |
 | `packages/contract` | schémas Zod écrits à la main, types de l'API |
 | `packages/theme` | jetons Tailwind partagés par web et site |
@@ -197,7 +198,7 @@ L'extension elle-même est hors périmètre ; la stack garantit ceci :
 - Push sur `main` : CI seule (`ci` : install, `prettier --check`, `oxlint --type-aware`, `tsc -b`, tests, build ; tout bloquant ; e2e en job parallèle).
 - **Tag SemVer `v*`** posé par `pnpm version` (version unique) : le workflow `release` refuse un tag hors de `main`, rejoue la CI, pousse les images (`1.2.3`, `sha-<court>`), lance `deploy.sh v1.2.3` en SSH, crée la GitHub Release. Retour arrière manuel par `workflow_dispatch`.
 - **`deploy.sh <tag>`** : `migrate` (un échec arrête tout), `up -d`, attente de `/api/health` ; en cas d'échec, **retour automatique** au tag précédent (`deployed_tag`). Il dépose aussi `ops/backup.sh`.
-- **SSH** : utilisateur dédié `battlecrm-deploy` (groupe `docker`, sans sudo), clé en `restrict,command="/opt/docker/battlecrm/deploy.sh"`, tag validé (`^v\d+\.\d+\.\d+$`). Les secrets GitHub ne portent que la clé et l'hôte.
+- **SSH** : utilisateur dédié `battlecrm-deploy` (groupe `docker`, sans sudo), clé en `restrict,command="/opt/docker/battlecrm/deploy.sh"`, tag validé (`^v\d+\.\d+\.\d+$`). Les secrets GitHub ne portent que la clé, l'hôte, sa clé d'hôte (`DEPLOY_KNOWN_HOSTS`) et, s'il n'est pas 22, le port.
 - **Expand/contract** : toute migration et tout changement d'endpoint restent compatibles avec la version précédente ; le retour arrière ne défait que les images.
 
 ### 10.4 Configuration et secrets
@@ -206,7 +207,8 @@ L'extension elle-même est hors périmètre ; la stack garantit ceci :
 
 - `postgres.env` : superutilisateur ;
 - `migrate.env` : rôle propriétaire (`MIGRATION_DATABASE_URL`) ;
-- `api.env` : rôle applicatif (`DATABASE_URL`), `APP_VERSION`, `APP_ORIGIN` (origine de la SPA, `https://` compris : seule liste d'origines de confiance, §9), `TRUSTED_PROXIES` (sous-réseau de `traefik-public`), `BETTER_AUTH_SECRET`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM_NAME`, `SIGNUPS_OPEN=false`, `SITE_HOST`, `UPTIME_KUMA_PUSH_URL` (facultatif), `LOG_LEVEL` et `PORT` (facultatifs).
+- `.env` : `APP_HOST`, `SITE_HOST`, lus par compose ; il en déduit `APP_ORIGIN` de l'API (`https://${APP_HOST}`, seule liste d'origines de confiance, §9). `APP_VERSION` est inscrit dans l'image de l'API à sa construction ;
+- `api.env` : rôle applicatif (`DATABASE_URL`), `TRUSTED_PROXIES` (sous-réseau de `traefik-public`), `BETTER_AUTH_SECRET`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM_NAME`, `SIGNUPS_OPEN=false`, `UPTIME_KUMA_PUSH_URL` (facultatif), `LOG_LEVEL` et `PORT` (facultatifs).
 
 Rôles propriétaire et applicatif créés par un script `docker-entrypoint-initdb.d`.
 

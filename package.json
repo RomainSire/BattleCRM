@@ -1,5 +1,6 @@
 {
   "name": "battlecrm",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.8.2",
@@ -13,7 +14,10 @@
     "lint": "oxlint --type-aware --deny-warnings",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "build": "pnpm -r --if-present build"
+    "build": "pnpm -r --if-present build",
+    "e2e:up": "docker compose -f compose.e2e.yml up --detach --build --wait",
+    "e2e": "pnpm --filter @battlecrm/e2e test",
+    "e2e:down": "docker compose -f compose.e2e.yml down"
   },
   "devDependencies": {
     "@types/node": "catalog:",

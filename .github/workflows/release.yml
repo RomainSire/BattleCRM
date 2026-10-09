@@ -1,0 +1,108 @@
+name: release
+
+# A v* tag on main delivers (ADR 0013, spec stack §10.3): CI again, images, deploy.sh over SSH, GitHub Release.
+# Rolling back: run this workflow by hand with a tag already released; it only delivers that tag again.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag already released, to deliver again (vMAJOR.MINOR.PATCH)
+        required: true
+
+permissions:
+  contents: read
+
+# One delivery at a time, never cancelled half-way. Not the group of ci.yml: a called workflow
+# takes its caller's name, and sharing the group would deadlock.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  verify:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: The tag is a version of package.json, on a commit of main
+        run: |
+          printf '%s' "$TAG" | grep -Eqx 'v[0-9]+\.[0-9]+\.[0-9]+'
+          test "v$(node -p 'require("./package.json").version')" = "$TAG"
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+  ci:
+    needs: verify
+    uses: ./.github/workflows/ci.yml
+
+  images:
+    needs: ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build and push the api and web images
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=${TAG#v}
+          short=$(git rev-parse --short=7 HEAD)
+          printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          for app in api web; do
+            image=ghcr.io/romainsire/battlecrm-$app
+            docker buildx build --platform linux/amd64 --file "apps/$app/Dockerfile" \
+              --build-arg VERSION="$version" \
+              --label org.opencontainers.image.source="https://github.com/$GITHUB_REPOSITORY" \
+              --label org.opencontainers.image.version="$version" \
+              --tag "$image:$version" --tag "$image:sha-$short" --push .
+          done
+
+  deploy:
+    needs: images
+    # Also when verify, ci and images were skipped: a rollback by hand.
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: deploy.sh over SSH, as battlecrm-deploy
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        # deploy.sh validates the tag itself: the server never trusts what the workflow sends.
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" >~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" >~/.ssh/known_hosts
+          # The key's forced command runs deploy.sh, which reads the tag in SSH_ORIGINAL_COMMAND.
+          ssh -o BatchMode=yes -p "${DEPLOY_PORT:-22}" "battlecrm-deploy@$DEPLOY_HOST" "$TAG"
+
+  release:
+    needs: deploy
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: GitHub Release with the generated notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes

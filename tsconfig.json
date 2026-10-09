@@ -4,6 +4,7 @@
     { "path": "tsconfig.config.json" },
     { "path": "apps/api" },
     { "path": "apps/web" },
+    { "path": "e2e" },
     { "path": "packages/contract" },
     { "path": "packages/domain" },
     { "path": "packages/i18n" }
