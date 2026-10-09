@@ -1,15 +1,23 @@
 name: Docker Hub mirror
 description: >-
-  Pulls Docker Hub images through mirror.gcr.io: the runners' anonymous pulls hit Docker Hub's
-  rate limit. The daemon falls back to Docker Hub for an image the mirror does not have.
+  Pulls the Docker Hub images of the compose files and Dockerfiles from mirror.gcr.io, under their
+  Docker Hub names: compose and the builds then find them locally and never reach Docker Hub, whose
+  anonymous pulls from the runners hit its rate limit or time out.
 runs:
   using: composite
   steps:
     - shell: bash
       run: |
-        config=/etc/docker/daemon.json
-        sudo test -f "$config" || echo '{}' | sudo tee "$config" >/dev/null
-        sudo jq '. + {"registry-mirrors": ["https://mirror.gcr.io"]}' "$config" | sudo tee "$config.new" >/dev/null
-        sudo mv "$config.new" "$config"
-        sudo systemctl restart docker
-        docker info --format '{{.RegistryConfig.Mirrors}}'
+        images=$(
+          {
+            docker compose -f compose.dev.yml config --images
+            docker compose -f compose.e2e.yml config --images
+            awk 'toupper($1) == "FROM" { print $2 }' apps/*/Dockerfile
+          } | grep ':' | grep -v '^battlecrm-' | sort -u
+        )
+        for image in $images; do
+          # Official images live under library/ on the registry.
+          case $image in */*) path=$image ;; *) path=library/$image ;; esac
+          docker pull --quiet "mirror.gcr.io/$path"
+          docker tag "mirror.gcr.io/$path" "$image"
+        done
