@@ -1,7 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    "resolveJsonModule": true
   },
-  "include": ["src"]
+  "include": ["src", "test", "drizzle/meta/_journal.json", "*.config.ts"]
 }

@@ -156,7 +156,7 @@ Modules profonds dans `apps/api/src/<module>/`, chacun **seul à écrire ses tab
 - **Nodemailer** sur `smtp.gmail.com:465` (mot de passe d'application) ; expéditeur `SMTP_USER` (le Gmail de Romain), nom « BattleCRM », sans `Reply-To`. `romainsire.com` est chez Tuta en DMARC strict : ne jamais l'utiliser comme expéditeur. Derrière une interface `EmailTransport` (`send`).
 - **Module `email`** : `sendEmail(to, template, params)`, typé par gabarit ; seul `auth` l'appelle aujourd'hui.
 - **Envoi direct après le commit**, sans `await`, sans file ni reprise ; un échec est journalisé (adresse masquée) et déclenche l'alerte (§11). E-mails planifiés : étape marquée en base dans la transaction, envoi après le commit. Au `SIGTERM`, l'API attend au plus ~5 s les envois en vol.
-- **Gabarits** : fonctions TS `(params, locale) → { subject, text, html }`, un gabarit HTML minimal, version texte obligatoire, échappement par un tagged template testé. Textes Paraglide `email_*`. Liens construits sur `APP_HOST`.
+- **Gabarits** : fonctions TS `(params, locale) → { subject, text, html }`, un gabarit HTML minimal, version texte obligatoire, échappement par un tagged template testé. Textes Paraglide `email_*`. Liens construits sur `APP_ORIGIN`.
 - **Langue** : `verify_email` et `account_exists` dans la langue de la tentative ; les autres dans la langue de l'Utilisateur au moment de l'envoi ; dates dans son fuseau.
 - **Les 12 gabarits** : `verify_email`, `account_exists`, `password_reset_link`, `password_changed`, `email_change_confirm`, `email_change_notice`, `two_factor_enabled`, `two_factor_disabled`, `new_device`, `two_factor_recovery_started`, `two_factor_recovery_reminder`, `two_factor_recovery_completed`. « Ce n'était pas moi » dans les e-mails de sécurité.
 - **Dev** : le vrai Gmail (alias `+n` de `SMTP_USER`) ; **tests** : jamais d'envoi, faux transport.
@@ -205,8 +205,8 @@ L'extension elle-même est hors périmètre ; la stack garantit ceci :
 Écrits à la main sur le VPS, droits 600, jamais dans GitHub ; un fichier par service (`env_file`), un `.env.example` versionné par fichier :
 
 - `postgres.env` : superutilisateur ;
-- `migrate.env` : rôle propriétaire ;
-- `api.env` : rôle applicatif, `BETTER_AUTH_SECRET`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM_NAME`, `SIGNUPS_OPEN=false`, `APP_HOST`, `SITE_HOST`, `UPTIME_KUMA_PUSH_URL` (facultatif).
+- `migrate.env` : rôle propriétaire (`MIGRATION_DATABASE_URL`) ;
+- `api.env` : rôle applicatif (`DATABASE_URL`), `APP_VERSION`, `APP_ORIGIN` (origine de la SPA, `https://` compris : seule liste d'origines de confiance, §9), `TRUSTED_PROXIES` (sous-réseau de `traefik-public`), `BETTER_AUTH_SECRET`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM_NAME`, `SIGNUPS_OPEN=false`, `SITE_HOST`, `UPTIME_KUMA_PUSH_URL` (facultatif), `LOG_LEVEL` et `PORT` (facultatifs).
 
 Rôles propriétaire et applicatif créés par un script `docker-entrypoint-initdb.d`.
 

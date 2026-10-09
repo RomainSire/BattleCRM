@@ -73,6 +73,7 @@
   // An override replaces the options of a rule: the API override repeats the banned packages.
   // Patterns are gitignore globs; a regex with a lookahead silently matches nothing.
   // `.*/**/<module>/**` only matches relative paths (`./`, `../`), never a package subpath.
+  // `importNames` only works under `paths`, not `patterns`: `withoutIsolation` is banned per relative depth.
   "overrides": [
     {
       "files": ["apps/api/src/**"],
@@ -81,6 +82,26 @@
           "error",
           {
             "paths": [
+              {
+                "name": "./db/index.ts",
+                "importNames": ["withoutIsolation"],
+                "message": "Business queries go through withUser; withoutIsolation is reserved to auth (ADR 0009, spec stack §2)."
+              },
+              {
+                "name": "../db/index.ts",
+                "importNames": ["withoutIsolation"],
+                "message": "Business queries go through withUser; withoutIsolation is reserved to auth (ADR 0009, spec stack §2)."
+              },
+              {
+                "name": "../../db/index.ts",
+                "importNames": ["withoutIsolation"],
+                "message": "Business queries go through withUser; withoutIsolation is reserved to auth (ADR 0009, spec stack §2)."
+              },
+              {
+                "name": "../../../db/index.ts",
+                "importNames": ["withoutIsolation"],
+                "message": "Business queries go through withUser; withoutIsolation is reserved to auth (ADR 0009, spec stack §2)."
+              },
               {
                 "name": "@base-ui/react",
                 "message": "UI primitives come from the ejected shadcn components on React Aria (spec stack §3)."

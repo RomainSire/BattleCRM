@@ -19,6 +19,8 @@ export default defineConfig({
           environment: 'node',
           // Time-zone cases are written explicitly; the process itself always runs in UTC.
           env: { TZ: 'UTC' },
+          globalSetup: ['test/global-setup.ts'],
+          setupFiles: ['test/setup.ts'],
         },
       },
       {

@@ -6,6 +6,7 @@ packages:
 catalog:
   '@types/node': ^24.19.1
   '@vitest/browser-playwright': ^4.1.11
+  hono: ^4.13.12
   oxlint: ^1.86.0
   oxlint-tsgolint: ^7.0.2003
   playwright: ^1.63.0
@@ -13,10 +14,13 @@ catalog:
   prettier-plugin-tailwindcss: ^0.8.1
   typescript: ^7.0.2
   vitest: ^4.1.11
+  zod: ^4.6.5
 
 # A release must be 7 days old before pnpm installs it (minutes).
 minimumReleaseAge: 10080
 
 # Explicit allowlist of dependencies whose install scripts may run.
-allowBuilds: {}
+allowBuilds:
+  # The postinstall only checks the binary, already installed through its platform package.
+  esbuild: false
 strictDepBuilds: true

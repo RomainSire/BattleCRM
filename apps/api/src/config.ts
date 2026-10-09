@@ -1,0 +1,70 @@
+import { BlockList, isIP } from 'node:net';
+
+import { z } from 'zod';
+
+const subnets = z
+  .string()
+  .default('')
+  .transform((value, ctx) => {
+    const list = new BlockList();
+    for (const subnet of value
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean)) {
+      const [address = '', prefix] = subnet.split('/');
+      const version = isIP(address);
+      if (version === 0 || !prefix || !/^\d+$/.test(prefix)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'expected comma-separated subnets such as 172.18.0.0/16',
+        });
+        return z.NEVER;
+      }
+      list.addSubnet(address, Number(prefix), version === 4 ? 'ipv4' : 'ipv6');
+    }
+    return list;
+  });
+
+const apiEnv = z.object({
+  /** The app role (ADR 0009): never the owner, never a superuser. */
+  DATABASE_URL: z.url(),
+  APP_VERSION: z.string().min(1),
+  /** The origin of the SPA; the single list of trusted origins grows with the Firefox extension (spec stack §9). */
+  APP_ORIGIN: z.url().transform((url) => new URL(url).origin),
+  /** The Traefik network: the only peers whose X-Forwarded-For is believed. */
+  TRUSTED_PROXIES: subnets,
+  PORT: z.coerce.number().int().positive().default(3000),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+});
+
+const migrationEnv = z.object({
+  /** The owner role, known by the `migrate` entry point only. */
+  MIGRATION_DATABASE_URL: z.url(),
+});
+
+export type Config = ReturnType<typeof loadConfig>;
+type Env = Record<string, string | undefined>;
+
+export function loadConfig(env: Env) {
+  const parsed = parse(apiEnv, env);
+  return {
+    databaseUrl: parsed.DATABASE_URL,
+    appVersion: parsed.APP_VERSION,
+    trustedOrigins: [parsed.APP_ORIGIN],
+    trustedProxies: parsed.TRUSTED_PROXIES,
+    port: parsed.PORT,
+    logLevel: parsed.LOG_LEVEL,
+  };
+}
+
+export function loadMigrationConfig(env: Env) {
+  return { databaseUrl: parse(migrationEnv, env).MIGRATION_DATABASE_URL };
+}
+
+/** Refuses to start on a missing or invalid variable; the message names it without echoing its value (a secret). */
+function parse<Schema extends z.ZodType>(schema: Schema, env: Env): z.output<Schema> {
+  const result = schema.safeParse(env, { reportInput: false });
+  if (result.success) return result.data;
+  const issues = result.error.issues.map((issue) => `- ${issue.path.join('.')}: ${issue.message}`);
+  throw new Error(`Invalid configuration:\n${issues.join('\n')}`);
+}

@@ -16,6 +16,19 @@ jobs:
   check:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: battlecrm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -32,6 +45,16 @@ jobs:
 
       - run: pnpm exec playwright install --with-deps chromium
 
+      # The same roles as compose.dev.yml and production (ADR 0009).
+      - run: ops/postgres/initdb/01-roles.sh
+        env:
+          PGHOST: localhost
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          POSTGRES_DB: battlecrm
+          OWNER_PASSWORD: owner
+          APP_PASSWORD: app
+
       - run: pnpm format:check
 
       - run: pnpm lint
@@ -39,5 +62,8 @@ jobs:
       - run: pnpm typecheck
 
       - run: pnpm test
+
+      # Fails when the tables changed without their migration.
+      - run: pnpm --filter @battlecrm/api db:drift
 
       - run: pnpm build
