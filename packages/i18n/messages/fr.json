@@ -1,0 +1,22 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "skip_to_content": "Aller au contenu",
+  "main_menu": "Menu principal",
+  "search": "Rechercher…",
+  "add": "Ajouter",
+  "prospecting": "Prospection",
+  "experimentation": "Expérimentation",
+  "today": "Aujourd'hui",
+  "circle": "Cercle",
+  "contacts": "Contacts",
+  "funnel": "Funnel",
+  "battles": "Battles",
+  "positionings": "Positionnements",
+  "insights": "Indicateurs",
+  "settings": "Réglages",
+  "shortcuts": "Raccourcis",
+  "more": "Plus",
+  "on_desktop": "Sur ordinateur",
+  "close": "Fermer",
+  "clear": "Effacer"
+}

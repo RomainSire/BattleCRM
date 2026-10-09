@@ -2,6 +2,9 @@
   "name": "@battlecrm/api",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/app.ts"
+  },
   "scripts": {
     "dev": "node --watch --env-file=.env.development src/main.ts | pino-pretty",
     "build": "tsdown",

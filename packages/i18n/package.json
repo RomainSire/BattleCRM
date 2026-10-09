@@ -3,6 +3,15 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/paraglide/messages.js",
+    "./runtime": "./src/paraglide/runtime.js"
+  },
+  "scripts": {
+    "postinstall": "pnpm compile",
+    "compile": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy localStorage preferredLanguage baseLocale --emit-ts-declarations --no-emit-readme --silent"
+  },
+  "devDependencies": {
+    "@inlang/paraglide-js": "catalog:",
+    "@inlang/plugin-message-format": "^4.4.4"
   }
 }

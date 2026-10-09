@@ -67,7 +67,8 @@ export function createApp({ config, logger }: AppDependencies) {
     await next();
   });
 
-  app.get('/health', async (c) =>
+  // Routes are chained so that AppType carries them to the SPA's typed client (hc).
+  const routes = app.get('/health', async (c) =>
     (await isDatabaseReady())
       ? c.json({ status: 'ok', version: config.appVersion })
       : c.json({ status: 'unavailable', version: config.appVersion }, 503),
@@ -79,7 +80,7 @@ export function createApp({ config, logger }: AppDependencies) {
     return c.json({ error: 'internal' }, 500);
   });
 
-  return app;
+  return routes;
 }
 
 export type AppType = ReturnType<typeof createApp>;

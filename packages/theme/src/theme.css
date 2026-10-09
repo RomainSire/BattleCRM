@@ -1,0 +1,118 @@
+/*
+ * Design tokens of spec UX §2, shared by the SPA and the landing page.
+ * One variable per meaning, in both themes; no red and no `--destructive` anywhere.
+ * Import after `tailwindcss`. The dark theme is the `dark` class on <html>.
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+
+  /* Zinc base. */
+  --background: #ffffff;
+  --foreground: #18181b;
+  --surface: #f4f4f5;
+  --muted-foreground: #63636b;
+  --border: #e4e4e7;
+  /* Field outlines need 3:1 against the background (WCAG 1.4.11). */
+  --input: #71717a;
+
+  /* Accent (teal): main action, focus, Challenger, Battle, Activity. */
+  --accent: #0f766e;
+  --accent-foreground: #ffffff;
+  --accent-text: #0f766e;
+
+  /* Success (green): Trial in Success, goal reached. */
+  --success: #15803d;
+
+  /* Overdue (amber): overdue Follow-ups, Allies to check in with, navigation counter. */
+  --overdue: #a84d06;
+
+  /* Soon (light amber): Allies to check in with soon. */
+  --soon-text: #8a5a14;
+  --soon-gauge: #b07c1a;
+
+  /* Neutral (grey): no result, in progress, Pool, archived, window elapsed. */
+  --neutral-dot: #a1a1aa;
+  --neutral-text: #63636b;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: #18181b;
+  --foreground: #fafafa;
+  --surface: #27272a;
+  --muted-foreground: #a1a1aa;
+  --border: #3f3f46;
+  --input: #71717a;
+
+  --accent: #2dd4bf;
+  --accent-foreground: #18181b;
+  --accent-text: #5eead4;
+
+  --success: #4ade80;
+
+  --overdue: #f59e0b;
+
+  --soon-text: #fcd34d;
+  --soon-gauge: #d4a24c;
+
+  --neutral-dot: #71717a;
+  --neutral-text: #a1a1aa;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-text: var(--accent-text);
+  --color-success: var(--success);
+  --color-overdue: var(--overdue);
+  --color-soon-text: var(--soon-text);
+  --color-soon-gauge: var(--soon-gauge);
+  --color-neutral-dot: var(--neutral-dot);
+  --color-neutral-text: var(--neutral-text);
+
+  /* 6 px for controls, 8 px for cards. */
+  --radius-control: 6px;
+  --radius-card: 8px;
+
+  /* Body text around 13 px. */
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+}
+
+/*
+ * The only focus style: a 2 px teal ring with an offset, on keyboard focus.
+ * React Aria decides through data-focus-visible; a plain element (data-rac absent) through :focus-visible.
+ */
+@utility focus-ring {
+  outline: none;
+
+  &[data-focus-visible],
+  &:not([data-rac]):focus-visible {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 2px;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-variant-numeric: tabular-nums;
+  }
+}

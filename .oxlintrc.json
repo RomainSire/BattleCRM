@@ -9,9 +9,12 @@
     "builtin": true,
     "es2024": true
   },
-  "ignorePatterns": ["**/dist/**", "**/coverage/**"],
+  "ignorePatterns": ["**/dist/**", "**/coverage/**", "packages/i18n/src/paraglide/**"],
   "rules": {
     "unicorn/require-module-specifiers": "off",
+    // The automatic JSX runtime needs no React in scope.
+    "react/react-in-jsx-scope": "off",
+    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
     "no-restricted-imports": [
       "error",
       {

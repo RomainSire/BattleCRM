@@ -4,6 +4,7 @@ packages:
 
 # Every shared dependency version lives here once, referenced as `catalog:`.
 catalog:
+  '@inlang/paraglide-js': ^2.25.4
   '@types/node': ^24.19.1
   '@vitest/browser-playwright': ^4.1.11
   hono: ^4.13.12

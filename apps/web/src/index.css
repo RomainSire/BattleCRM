@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@battlecrm/theme/theme.css';
+
+/* Inside an input group, the group draws the focus ring, not its control. Unlayered, so it wins. */
+[data-slot='input-group'] [data-slot='input-group-control'] {
+  outline: none;
+}
+
+/* The sticky header and bottom tabs never hide the focused element on narrow widths (spec UX §7). */
+@media (width < 48rem) {
+  html {
+    scroll-padding-top: 3.5rem;
+    scroll-padding-bottom: 4.5rem;
+  }
+}
