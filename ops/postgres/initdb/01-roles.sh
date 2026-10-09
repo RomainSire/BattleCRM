@@ -1,6 +1,6 @@
 #!/bin/sh
 # Creates the two roles of ADR 0009 and hands the database to the owner.
-# Runs as the superuser: from docker-entrypoint-initdb.d, or by hand with the PG* variables set (CI).
+# Runs as the superuser, from docker-entrypoint-initdb.d (compose.dev.yml, compose.e2e.yml, production).
 set -eu
 
 psql -v ON_ERROR_STOP=1 \

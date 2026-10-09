@@ -1,4 +1,4 @@
-// The Postgres of compose.dev.yml locally, `services: postgres` in CI: same credentials (ops/postgres/initdb).
+// The Postgres of compose.dev.yml, locally and in CI: same credentials (ops/postgres/initdb).
 const server = process.env['TEST_POSTGRES_HOST'] ?? 'localhost:5432';
 
 export const superuserUrl = (database: string) =>

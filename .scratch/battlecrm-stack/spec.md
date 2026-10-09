@@ -245,7 +245,7 @@ Planificateur **dans le processus de l'API** (module `jobs`) : boucle toutes les
 
 - **Vitest 4** en projets : `domain`, `api` (Node), `web` (mode navigateur, Playwright). Pas de seuil de couverture.
 - **Le gros aux gestes par endpoint** : `app.request()` contre un vrai Postgres 18 ; réponse, lignes du résumé et inverse d'« Annuler » vérifiés. Règle : au moins un test nominal et un test d'« Annuler » (refus compris) par geste.
-- **Base** : une base par exécution, migrée par le vrai `migrate` ; **un Utilisateur par test**, en parallèle sans nettoyage ; connexion sous **le rôle applicatif de la prod** (un test de garde refuse superutilisateur et `BYPASSRLS`). Postgres d'un `compose.dev.yml` en local, `services: postgres` en CI.
+- **Base** : une base par exécution, migrée par le vrai `migrate` ; **un Utilisateur par test**, en parallèle sans nettoyage ; connexion sous **le rôle applicatif de la prod** (un test de garde refuse superutilisateur et `BYPASSRLS`). Postgres du `compose.dev.yml`, en local comme en CI (les images Docker Hub passent par `mirror.gcr.io` en CI).
 - **Fabriques** (`apps/api/test/factories`) sous RLS, états atteignables seulement ; `makeUser()` renvoie un Utilisateur vérifié et son cookie.
 - **Racine de composition** `createApp({ clock, random, email, hibp, config })` (et le ping d'alerte) : horloge pilotable, hasard scriptable, faux transport d'e-mails, HIBP sans réseau ; tâches planifiées appelées directement ; `TZ=UTC`, avec des cas de fuseau à minuit et au changement d'heure.
 - **Sécurité, tests générés** : catalogue RLS ; filtre oublié ; inventaire des routes (401 ou 404 sans session) ; accès croisé (404 sans effet) ; garde-fous d'auth ; instantané des routes de Better Auth.

@@ -1,0 +1,15 @@
+name: Docker Hub mirror
+description: >-
+  Pulls Docker Hub images through mirror.gcr.io: the runners' anonymous pulls hit Docker Hub's
+  rate limit. The daemon falls back to Docker Hub for an image the mirror does not have.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        config=/etc/docker/daemon.json
+        sudo test -f "$config" || echo '{}' | sudo tee "$config" >/dev/null
+        sudo jq '. + {"registry-mirrors": ["https://mirror.gcr.io"]}' "$config" | sudo tee "$config.new" >/dev/null
+        sudo mv "$config.new" "$config"
+        sudo systemctl restart docker
+        docker info --format '{{.RegistryConfig.Mirrors}}'
