@@ -42,11 +42,11 @@ restrict,command="/opt/docker/battlecrm/deploy.sh" ssh-ed25519 AAAA… battlecrm
 
 ## 4. Fichiers de `/opt/docker/battlecrm`
 
-`deploy.sh` s'installe à la main, depuis le tag à livrer, et ne se remplace jamais tout seul (c'est lui qu'ouvre la clé) ; à refaire quand une release le modifie :
+`deploy.sh` s'installe à la main et ne se remplace jamais tout seul (c'est lui qu'ouvre la clé) : depuis `main` la première fois, puis depuis le tag d'une release qui le modifie :
 
 ```sh
 cd /opt/docker/battlecrm
-curl -fsSLo deploy.sh https://raw.githubusercontent.com/RomainSire/BattleCRM/v0.1.0/ops/prod/deploy.sh
+curl -fsSLo deploy.sh https://raw.githubusercontent.com/RomainSire/BattleCRM/main/ops/prod/deploy.sh
 chmod 755 deploy.sh
 ```
 
