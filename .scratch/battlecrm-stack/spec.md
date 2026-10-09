@@ -43,7 +43,7 @@ extension Firefox (plus tard) ─► /api/* en jeton bearer
 | `packages/theme` | jetons Tailwind partagés par web et site |
 | `packages/i18n` | un seul projet Paraglide : app, landing, e-mails |
 
-- **TypeScript 7** (`tsgo -b`), `tsconfig.base.json` racine ; `apps/site` reste en TS 6 pour `astro check` jusqu'à son portage. Options : `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `noPropertyAccessFromIndexSignature`, `verbatimModuleSyntax`, `erasableSyntaxOnly` (ni `enum` ni `namespace`).
+- **TypeScript 7** (`tsc -b` : le binaire de TS 7 stable s'appelle `tsc`, `tsgo` était celui de la préversion), `tsconfig.base.json` racine ; `apps/site` reste en TS 6 pour `astro check` jusqu'à son portage. Options : `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `noPropertyAccessFromIndexSignature`, `verbatimModuleSyntax`, `erasableSyntaxOnly` (ni `enum` ni `namespace`).
 - **Lint** : Oxlint en mode typé, règles natives seules. **Format** : Prettier + `prettier-plugin-tailwindcss`.
 - **Commande unique `pnpm check`** (format, lint, types, tests), scripts pnpm récursifs, ni Turborepo ni hooks git.
 - **Interdictions outillées** :
@@ -194,7 +194,7 @@ L'extension elle-même est hors périmètre ; la stack garantit ceci :
 
 ### 10.3 Livraison
 
-- Push sur `main` : CI seule (`ci` : install, `prettier --check`, `oxlint --type-aware`, `tsgo -b`, tests, build ; tout bloquant ; e2e en job parallèle).
+- Push sur `main` : CI seule (`ci` : install, `prettier --check`, `oxlint --type-aware`, `tsc -b`, tests, build ; tout bloquant ; e2e en job parallèle).
 - **Tag SemVer `v*`** posé par `pnpm version` (version unique) : le workflow `release` refuse un tag hors de `main`, rejoue la CI, pousse les images (`1.2.3`, `sha-<court>`), lance `deploy.sh v1.2.3` en SSH, crée la GitHub Release. Retour arrière manuel par `workflow_dispatch`.
 - **`deploy.sh <tag>`** : `migrate` (un échec arrête tout), `up -d`, attente de `/api/health` ; en cas d'échec, **retour automatique** au tag précédent (`deployed_tag`). Il dépose aussi `ops/backup.sh`.
 - **SSH** : utilisateur dédié `battlecrm-deploy` (groupe `docker`, sans sudo), clé en `restrict,command="/opt/docker/battlecrm/deploy.sh"`, tag validé (`^v\d+\.\d+\.\d+$`). Les secrets GitHub ne portent que la clé et l'hôte.
@@ -350,7 +350,7 @@ Les numéros de section renvoient à cette spec. « Implémentation » signale u
 
 - `pnpm version` crée bien le tag préfixé `v` dans le workspace ([Déploiement](issues/10-deploiement.md)).
 - Le kanban sur React Aria tient ST-61 et ST-62 ; sinon, repli shadcn base Base UI ([shadcn/ui face aux bibliothèques headless](issues/12-shadcn-et-bibliotheques.md)).
-- Oxlint propose nativement `no-restricted-properties` ; sinon, revue ([Outillage du monorepo](issues/13-outillage-monorepo.md)).
+- ~~Oxlint propose nativement `no-restricted-properties` ; sinon, revue~~ : vérifié le 2026-10-09, il l'a ; `Date.now` et `Math.random` sont interdits par le lint ([Outillage du monorepo](issues/13-outillage-monorepo.md)).
 - `hooks.before` force bien `trustDevice: false`, prouvé par un test ([Auth : bibliothèque, sessions et client extension](issues/08-auth.md)).
 - Mémoire réelle des conteneurs après une semaine de `docker stats` ([Déploiement](issues/10-deploiement.md)).
 - Au chantier extension : en-tête `Origin`, contournement de CORS et cookies dans un vrai Firefox ([Contrat d'API pour l'extension](issues/18-contrat-api-extension.md)).

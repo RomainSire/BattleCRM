@@ -1,3 +1,10 @@
 NOTE.md
 # Notes privées, jamais versionnées (relevé complet du VPS…)
 .private/
+
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.vitest-attachments/
+__screenshots__/

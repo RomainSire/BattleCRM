@@ -1,0 +1,5 @@
+pnpm-lock.yaml
+.scratch/
+docs/
+CONTEXT.md
+CLAUDE.md

@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  // Pure rules: no DOM, no Node types, so `fetch`, `process` or `fs` do not compile here.
+  "compilerOptions": {
+    "lib": ["ES2024"],
+    "types": []
+  },
+  "include": ["src"]
+}

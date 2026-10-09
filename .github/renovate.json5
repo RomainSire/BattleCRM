@@ -1,0 +1,47 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: ['config:recommended', 'helpers:pinGitHubActionDigests', ':semanticCommits'],
+  timezone: 'Europe/Paris',
+  schedule: ['* 0-6 * * 1'],
+  // Same rule as pnpm's minimumReleaseAge.
+  minimumReleaseAge: '7 days',
+  internalChecksFilter: 'strict',
+  packageRules: [
+    {
+      description: 'One weekly PR for everything that is not a major.',
+      matchUpdateTypes: ['minor', 'patch', 'pin', 'digest'],
+      groupName: 'weekly updates',
+    },
+    {
+      description: 'Dev tool fixes merge on their own when the CI passes.',
+      // Named one by one: they live in the pnpm catalog, not under devDependencies.
+      matchPackageNames: [
+        'typescript',
+        'oxlint',
+        'oxlint-tsgolint',
+        'prettier',
+        'prettier-plugin-tailwindcss',
+        'vitest',
+        '@vitest/**',
+        'playwright',
+        '@types/**',
+      ],
+      matchUpdateTypes: ['patch'],
+      groupName: 'dev tool patches',
+      automerge: true,
+    },
+    {
+      description: 'Data and auth core: exact versions, always a manual PR of their own.',
+      matchPackageNames: [
+        'drizzle-orm',
+        'drizzle-kit',
+        'better-auth',
+        '@better-auth/**',
+        'postgres',
+      ],
+      rangeStrategy: 'pin',
+      groupName: 'data and auth core',
+      automerge: false,
+    },
+  ],
+}

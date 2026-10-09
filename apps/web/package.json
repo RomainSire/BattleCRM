@@ -1,0 +1,5 @@
+{
+  "name": "@battlecrm/web",
+  "private": true,
+  "type": "module"
+}
