@@ -1,3 +1,4 @@
+import { HTTPException } from 'hono/http-exception';
 import { describe, expect, test } from 'vitest';
 
 import { testApp, testConfig } from '../test/app.ts';
@@ -96,5 +97,117 @@ describe('request log', () => {
     });
 
     for (const secret of secrets) expect(output()).not.toContain(secret);
+  });
+});
+
+describe('an unexpected exception in a route', () => {
+  test('answers 500, is logged with its request id and alerts down without body or user content', async () => {
+    const { app, alert, logs } = testApp();
+    app.post('/contacts/:id/boom', () => {
+      throw new TypeError('cannot read the note of Jane Doe');
+    });
+
+    const response = await app.request('/api/contacts/42/boom?name=Jane', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note: 'Jane Doe' }),
+    });
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: 'internal' });
+    expect(alert.downs).toEqual(['TypeError in POST /api/contacts/:id/boom']);
+    expect(logs()).toContainEqual(
+      expect.objectContaining({
+        level: 50,
+        msg: 'unexpected error',
+        requestId: response.headers.get('X-Request-Id'),
+      }),
+    );
+  });
+
+  test('an expected refusal does not alert', async () => {
+    const { app, alert } = testApp();
+    app.get('/forbidden', () => {
+      throw new HTTPException(403);
+    });
+
+    expect((await app.request('/api/forbidden')).status).toBe(403);
+    expect((await app.request('/api/nowhere')).status).toBe(404);
+    expect(alert.downs).toEqual([]);
+  });
+});
+
+async function reportClientError(body: unknown) {
+  const { app, alert, logs } = testApp();
+  const response = await app.request('/api/client-errors', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'https://app.battlecrm.test' },
+    body: typeof body === 'string' ? body : JSON.stringify(body),
+  });
+  return { response, alert, logs };
+}
+
+describe('POST /api/client-errors', () => {
+  test('logs the message, the stack and the version of the SPA, then alerts down', async () => {
+    const { response, alert, logs } = await reportClientError({
+      message: 'x is undefined',
+      stack: 'TypeError: x is undefined\n    at render (app.js:1:2)',
+      version: '1.2.3',
+    });
+
+    expect(response.status).toBe(204);
+    expect(logs()).toContainEqual(
+      expect.objectContaining({
+        level: 50,
+        msg: 'client error',
+        clientError: {
+          message: 'x is undefined',
+          stack: 'TypeError: x is undefined\n    at render (app.js:1:2)',
+          version: '1.2.3',
+        },
+        requestId: response.headers.get('X-Request-Id'),
+      }),
+    );
+    expect(alert.downs).toEqual(['browser error']);
+  });
+
+  test('accepts a report without a stack', async () => {
+    const { response, alert } = await reportClientError({
+      message: 'Script error.',
+      version: '1.2.3',
+    });
+
+    expect(response.status).toBe(204);
+    expect(alert.downs).toEqual(['browser error']);
+  });
+
+  test('refuses anything else without logging it nor alerting', async () => {
+    for (const body of [{ message: 'no version' }, { message: 42, version: '1.2.3' }, 'not json']) {
+      const { response, alert, logs } = await reportClientError(body);
+
+      expect(response.status).toBe(400);
+      expect(alert.downs).toEqual([]);
+      expect(logs()).not.toContainEqual(expect.objectContaining({ msg: 'client error' }));
+    }
+  });
+
+  test('accepts the longest report, even in characters of several bytes', async () => {
+    const { response } = await reportClientError({
+      message: 'é'.repeat(2_000),
+      stack: '€'.repeat(20_000),
+      version: '1.2.3',
+    });
+
+    expect(response.status).toBe(204);
+  });
+
+  test('refuses an oversized report', async () => {
+    const { response, alert } = await reportClientError({
+      message: 'x'.repeat(200_000),
+      version: '1.2.3',
+    });
+
+    expect(response.status).toBe(413);
+    expect(alert.downs).toEqual([]);
   });
 });

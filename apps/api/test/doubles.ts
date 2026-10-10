@@ -1,3 +1,4 @@
+import type { Alert } from '../src/alert.ts';
 import type { Clock } from '../src/clock.ts';
 import type { Random } from '../src/random.ts';
 
@@ -35,4 +36,15 @@ export function scriptedRandom(...values: number[]): Random {
       return value;
     },
   };
+}
+
+/** Keeps what the API would have sent to uptime-kuma. */
+export function recordingAlert(): Alert & { ups: number; downs: string[] } {
+  const alert = {
+    ups: 0,
+    downs: [] as string[],
+    up: () => void (alert.ups += 1),
+    down: (reason: string) => void alert.downs.push(reason),
+  };
+  return alert;
 }

@@ -49,6 +49,22 @@ describe('loadConfig', () => {
   });
 });
 
+describe('UPTIME_KUMA_PUSH_URL', () => {
+  test('is optional: absent or left empty, there is no push URL', () => {
+    expect(loadConfig(env).uptimeKumaPushUrl).toBeUndefined();
+    expect(loadConfig({ ...env, UPTIME_KUMA_PUSH_URL: '' }).uptimeKumaPushUrl).toBeUndefined();
+  });
+
+  test('is read as a URL', () => {
+    const url = 'https://kuma.example/api/push/token';
+
+    expect(loadConfig({ ...env, UPTIME_KUMA_PUSH_URL: url }).uptimeKumaPushUrl).toBe(url);
+    expect(() => loadConfig({ ...env, UPTIME_KUMA_PUSH_URL: 'kuma' })).toThrow(
+      /UPTIME_KUMA_PUSH_URL/,
+    );
+  });
+});
+
 describe('loadMigrationConfig', () => {
   test('only needs the owner connection', () => {
     expect(

@@ -71,7 +71,7 @@ Les secrets, un fichier par service, d'après les `ops/prod/*.example` du dépô
 | `.env` | `APP_HOST`, `SITE_HOST` (lus par compose) |
 | `postgres.env` | superutilisateur, mots de passe des rôles propriétaire et applicatif |
 | `migrate.env` | `MIGRATION_DATABASE_URL`, rôle propriétaire |
-| `api.env` | `DATABASE_URL` (rôle applicatif), `TRUSTED_PROXIES` |
+| `api.env` | `DATABASE_URL` (rôle applicatif), `TRUSTED_PROXIES`, `UPTIME_KUMA_PUSH_URL` (étape 6, facultatif) |
 | `backup.env` | `BACKUP_PUSH_URL` (étape 6), entre guillemets simples : `backup.sh` charge ce fichier comme du shell |
 
 Des mots de passe générés, par exemple `openssl rand -hex 32` (sans caractère à échapper dans une URL). `TRUSTED_PROXIES` est le sous-réseau de `traefik-public` :
@@ -92,7 +92,7 @@ Les rôles sont créés au premier démarrage de Postgres, sur un volume vide : 
 Dans uptime-kuma, qui alerte par Pushover :
 
 - un moniteur HTTP sur `https://app.battlecrm.romainsire.com/api/health` ;
-- un moniteur push « BattleCRM API » (son URL ira dans `api.env` avec le planificateur, ticket 05) ;
+- un moniteur push « BattleCRM API », intervalle de battement de 5 min, réglé pour alerter après ~10 min sans ping et dès qu'un `down` est poussé (à vérifier une fois en poussant un `down` à la main) : son URL, jusqu'au jeton (sans `?status=…`), va dans `api.env` (`UPTIME_KUMA_PUSH_URL`) et est lue au démarrage de l'API, donc à la livraison suivante. L'API y envoie `up` toutes les 5 min, et `down` sur toute exception imprévue ou erreur du navigateur ;
 - un moniteur push « BattleCRM sauvegardes », intervalle 25 h : son URL va dans `backup.env`.
 
 Puis, dans la crontab de root (`crontab -e`) :

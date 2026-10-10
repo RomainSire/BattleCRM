@@ -7,8 +7,10 @@ WORKDIR /repo
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 RUN pnpm fetch
 COPY . .
+# The version the SPA reports with its uncaught errors (spec stack §11).
+ARG VERSION=dev
 RUN pnpm install --offline --frozen-lockfile --filter @battlecrm/web... \
-  && pnpm --filter @battlecrm/web build
+  && VITE_APP_VERSION=$VERSION pnpm --filter @battlecrm/web build
 
 FROM nginxinc/nginx-unprivileged:1.30.5-alpine
 # Rendered into conf.d at start, with APP_HOST and SITE_HOST from the environment.

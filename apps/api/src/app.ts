@@ -2,12 +2,16 @@ import { randomUUID } from 'node:crypto';
 
 import type { HttpBindings } from '@hono/node-server';
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { csrf } from 'hono/csrf';
 import { HTTPException } from 'hono/http-exception';
 import { routePath } from 'hono/route';
 import { secureHeaders } from 'hono/secure-headers';
+import { validator } from 'hono/validator';
 import type { Logger } from 'pino';
 
+import { failureReason, type Alert } from './alert.ts';
+import { CLIENT_ERROR_MAX_BYTES, clientErrorReport } from './client-errors.ts';
 import { resolveClientIp } from './client-ip.ts';
 import type { Clock } from './clock.ts';
 import type { Config } from './config.ts';
@@ -20,6 +24,7 @@ export type AppDependencies = {
   clock: Clock;
   random: Random;
   logger: Logger;
+  alert: Alert;
 };
 
 export type AppEnv = {
@@ -33,7 +38,7 @@ export type AppEnv = {
   };
 };
 
-export function createApp({ config, logger }: AppDependencies) {
+export function createApp({ config, logger, alert }: AppDependencies) {
   const app = new Hono<AppEnv>().basePath('/api');
 
   app.use(async (c, next) => {
@@ -68,15 +73,35 @@ export function createApp({ config, logger }: AppDependencies) {
   });
 
   // Routes are chained so that AppType carries them to the SPA's typed client (hc).
-  const routes = app.get('/health', async (c) =>
-    (await isDatabaseReady())
-      ? c.json({ status: 'ok', version: config.appVersion })
-      : c.json({ status: 'unavailable', version: config.appVersion }, 503),
-  );
+  const routes = app
+    .get('/health', async (c) =>
+      (await isDatabaseReady())
+        ? c.json({ status: 'ok', version: config.appVersion })
+        : c.json({ status: 'unavailable', version: config.appVersion }, 503),
+    )
+    // Public until auth exists; the session will be required from then on (spec stack §11).
+    .post(
+      '/client-errors',
+      bodyLimit({ maxSize: CLIENT_ERROR_MAX_BYTES }),
+      validator('json', (value, c) => {
+        const report = clientErrorReport.safeParse(value);
+        return report.success ? report.data : c.json({ error: 'invalid' }, 400);
+      }),
+      (c) => {
+        logger.error(
+          { clientError: c.req.valid('json'), requestId: c.var.requestId },
+          'client error',
+        );
+        alert.down('browser error');
+        return c.body(null, 204);
+      },
+    );
 
   app.onError((error, c) => {
     if (error instanceof HTTPException) return error.getResponse();
     logger.error({ err: error, requestId: c.var.requestId }, 'unexpected error');
+    // The type and the route template only: an error message may quote user content.
+    alert.down(failureReason(error, `${c.req.method} ${routePath(c, -1)}`));
     return c.json({ error: 'internal' }, 500);
   });
 

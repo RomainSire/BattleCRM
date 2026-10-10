@@ -33,6 +33,8 @@ const apiEnv = z.object({
   APP_ORIGIN: z.url().transform((url) => new URL(url).origin),
   /** The Traefik network: the only peers whose X-Forwarded-For is believed. */
   TRUSTED_PROXIES: subnets,
+  /** The push monitor "BattleCRM API" of uptime-kuma (spec stack §11); without it, no alert is sent. */
+  UPTIME_KUMA_PUSH_URL: z.preprocess((value) => value || undefined, z.url().optional()),
   PORT: z.coerce.number().int().positive().default(3000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
@@ -52,6 +54,7 @@ export function loadConfig(env: Env) {
     appVersion: parsed.APP_VERSION,
     trustedOrigins: [parsed.APP_ORIGIN],
     trustedProxies: parsed.TRUSTED_PROXIES,
+    uptimeKumaPushUrl: parsed.UPTIME_KUMA_PUSH_URL,
     port: parsed.PORT,
     logLevel: parsed.LOG_LEVEL,
   };
