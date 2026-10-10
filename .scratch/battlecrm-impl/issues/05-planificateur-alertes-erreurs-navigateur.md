@@ -26,3 +26,10 @@
 - **Vérifié à la main** : l'API lancée contre un faux uptime-kuma envoie `up` au démarrage, `down` sur une erreur du navigateur, et attend la réponse d'un ping lent avant de s'arrêter au `SIGTERM`.
 - **Revue, laissé tel quel** : le message et la pile d'une erreur du navigateur sont journalisés comme le demande la spec §11, alors qu'ils peuvent citer du contenu ; Hono ne passe à `onError` que les `Error` (un `throw` d'autre chose, ou une `HTTPException` 5xx, n'alerte pas) ; les limites 2 000 / 20 000 sont répétées dans la SPA faute de `@battlecrm/contract` importable par l'API.
 - **Sur le VPS** : créer le moniteur push et renseigner `UPTIME_KUMA_PUSH_URL` dans `api.env` (`docs/ops/install.md`, étape 6).
+
+**2026-10-10, mise en service sur le VPS (Romain, accompagné par l'agent).** Livré en `v0.2.0`.
+
+- **Moniteur push « BattleCRM API »** : intervalle de battement de 600 s et non 300 (pour un moniteur push, c'est le délai sans ping avant la panne ; l'API bat toutes les 5 min), 0 nouvelle tentative. Vérifié à la main : un `up` et un `down` poussés notifient chacun tout de suite par Pushover. Le point laissé ouvert à l'implémentation (un `down` qui resterait « en attente ») est donc tranché par ce réglage.
+- **`api.env`** : `UPTIME_KUMA_PUSH_URL` ajoutée, puis `v0.2.0` relivrée à la main pour que l'API la lise. `/opt/docker/battlecrm` est fermé aux autres comptes (750) : la commande est `sudo -u battlecrm-deploy /opt/docker/battlecrm/deploy.sh v0.2.0`, sans `cd`.
+- **Vérifié en vrai** : `up` au démarrage de l'API (moniteur vert), puis un `POST /api/client-errors` valide donne 204, la notification de panne, et le retour au vert au `up` suivant.
+- `docs/ops/install.md` mis à jour (étape 6 et « Livrer une version »).

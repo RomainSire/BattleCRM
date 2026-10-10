@@ -92,7 +92,7 @@ Les rôles sont créés au premier démarrage de Postgres, sur un volume vide : 
 Dans uptime-kuma, qui alerte par Pushover :
 
 - un moniteur HTTP sur `https://app.battlecrm.romainsire.com/api/health` ;
-- un moniteur push « BattleCRM API », intervalle de battement de 5 min, réglé pour alerter après ~10 min sans ping et dès qu'un `down` est poussé (à vérifier une fois en poussant un `down` à la main) : son URL, jusqu'au jeton (sans `?status=…`), va dans `api.env` (`UPTIME_KUMA_PUSH_URL`) et est lue au démarrage de l'API, donc à la livraison suivante. L'API y envoie `up` toutes les 5 min, et `down` sur toute exception imprévue ou erreur du navigateur ;
+- un moniteur push « BattleCRM API », intervalle de battement de 600 s et 0 nouvelle tentative : il alerte après 10 min sans ping (l'API envoie `up` toutes les 5 min, un ping raté est donc toléré) et dès qu'un `down` est poussé. L'enregistrer avant d'essayer son URL (sinon : `Monitor not found or not active`), puis pousser un `up` et un `down` à la main (`curl '<URL>?status=down&msg=test'`) : chacun doit notifier. Son URL, jusqu'au jeton (sans `?status=…`), va dans `api.env` (`UPTIME_KUMA_PUSH_URL`) et est lue au démarrage de l'API : à la livraison suivante, ou tout de suite en relivrant le tag en place (voir [Livrer une version](#livrer-une-version)). L'API y envoie `up` au démarrage puis toutes les 5 min, et `down` sur toute exception imprévue ou erreur du navigateur ;
 - un moniteur push « BattleCRM sauvegardes », intervalle 25 h : son URL va dans `backup.env`.
 
 Puis, dans la crontab de root (`crontab -e`) :
@@ -114,4 +114,4 @@ git push --follow-tags
 
 Le workflow `release` refuse un tag hors de `main` ou différent de la version du `package.json`, rejoue la CI, pousse les images `0.2.0` et `sha-<court>`, lance `deploy.sh v0.2.0`, puis crée la GitHub Release.
 
-`deploy.sh` passe les migrations (un échec arrête tout, l'API en place continue), redémarre, attend `/api/health`, et revient tout seul au tag de `deployed_tag` si quelque chose échoue. Pour revenir en arrière à la main : Actions → release → Run workflow, avec un tag déjà livré, ou `./deploy.sh v0.1.0` sur le VPS. Le retour arrière ne défait que les images : chaque migration reste compatible avec la version précédente (expand/contract).
+`deploy.sh` passe les migrations (un échec arrête tout, l'API en place continue), redémarre, attend `/api/health`, et revient tout seul au tag de `deployed_tag` si quelque chose échoue. Pour revenir en arrière à la main : Actions → release → Run workflow, avec un tag déjà livré, ou, sur le VPS, `sudo -u battlecrm-deploy /opt/docker/battlecrm/deploy.sh v0.1.0` (sous cet utilisateur, qui possède le dossier, fermé aux autres comptes). Relivrer le tag en place sert aussi à faire relire un fichier de secrets modifié. Le retour arrière ne défait que les images : chaque migration reste compatible avec la version précédente (expand/contract).
