@@ -4,7 +4,7 @@
 
 **Blocked by:** 02, 03
 
-**Status:** ready-for-human
+**Status:** resolved
 
 L'écriture des fichiers (images, compose, scripts, workflows, docs) est à la portée d'un agent ; l'installation sur le VPS, les secrets, le DNS, la bascule V1 et l'essai de restauration demandent Romain. Les notes d'infrastructure de `.private/` ne sont jamais copiées dans un fichier suivi.
 
@@ -13,9 +13,9 @@ L'écriture des fichiers (images, compose, scripts, workflows, docs) est à la p
 - [x] `deploy.sh <tag>` : tag validé, `migrate` (échec = arrêt), `up -d`, attente de `/api/health`, retour automatique au `deployed_tag` ; dépose `ops/backup.sh`
 - [x] Workflow `release` : refuse un tag hors de `main`, rejoue la CI, pousse `1.2.3` et `sha-<court>`, lance `deploy.sh` en SSH (commande forcée, utilisateur `battlecrm-deploy`), crée la GitHub Release ; retour arrière par `workflow_dispatch`
 - [x] Vérifié : `pnpm version` crée bien le tag préfixé `v` dans le workspace (spec stack §15)
-- [ ] `ops/backup.sh` : `pg_dump -Fc` à 3 h, rétention 30 jours, ping d'un moniteur push distinct ; `docs/ops/restore.md` écrit et restauration essayée une fois à la main (**essayée sur une pile de test ; reste à le faire sur le VPS**, case suivante)
+- [x] `ops/backup.sh` : `pg_dump -Fc` à 3 h, rétention 30 jours, ping d'un moniteur push distinct ; `docs/ops/restore.md` écrit et restauration essayée une fois à la main (sur une pile de test, puis sur le VPS)
 - [x] Harnais e2e : compose e2e contre les images construites, Playwright Firefox et Chromium, un test de fumée sur `/api/health` et la coque, job CI parallèle
-- [ ] Sur le VPS (Romain) : V1 supprimée sans dump, ancienne clé retirée, DNS `app.battlecrm.romainsire.com`, secrets écrits en 600, moniteurs uptime-kuma créés, première release livrée
+- [x] Sur le VPS (Romain) : V1 supprimée sans dump, ancienne clé retirée du dépôt (voir le commentaire du 2026-10-10), DNS `app.battlecrm.romainsire.com`, secrets écrits en 600, moniteurs uptime-kuma créés, première release livrée
 
 ## Comments
 
@@ -36,3 +36,11 @@ L'écriture des fichiers (images, compose, scripts, workflows, docs) est à la p
 **2026-10-09, CI (agent).** Le premier push a échoué avant tout code : Docker Hub refusait les pulls anonymes des runners (`toomanyrequests`), y compris celui de `services: postgres`, et l'échec s'est répété à la relance. Chaque job qui tire des images passe d'abord par `.github/actions/docker-hub-mirror` (qui tire de `mirror.gcr.io` les quatre images épinglées). Le job `check` démarre son Postgres par `compose.dev.yml` après ce réglage, au lieu d'un conteneur `services:` lancé avant toute étape ; l'initdb y crée les rôles, l'étape `01-roles.sh` à la main disparaît.
 
 **2026-10-09, CI (agent), suite.** Régler le démon sur `mirror.gcr.io` (`registry-mirrors`) n'a pas suffi : le run suivant est encore allé sur Docker Hub, qui ne répondait plus (timeout sur `auth.docker.io`). L'action tire désormais elle-même chaque image de `mirror.gcr.io`, puis lui donne son nom Docker Hub : compose et les builds la trouvent en local et ne contactent plus Docker Hub. La liste vient des `compose.*.yml` et des `FROM` des Dockerfiles, sans rien à tenir à jour. Vérifié dans un Docker isolé où Docker Hub est injoignable : le pull direct échoue, le build de l'image web et `compose.dev.yml up --wait` passent.
+
+**2026-10-10, installation sur le VPS (Romain, guidé par un agent).** `v0.1.0` est livrée : `/api/health` répond `{"status":"ok","version":"0.1.0"}`, la SPA 200, l'hôte de la landing 204.
+
+- **V1** : conteneurs, réseau, volume `battlecrm_pgdata` et dossier supprimés, sans dump. Les anciens secrets du dépôt avaient déjà disparu. **Écart** : l'ancienne clé de déploiement reste dans l'`authorized_keys` du compte personnel, car d'autres applications du VPS déploient avec elle ; ce dépôt n'en détient plus la partie privée. La remplacer par une clé verrouillée par application est un chantier du VPS, hors de ce ticket.
+- **Trouvé à l'installation, reporté dans `install.md`** : `sshd` filtrait les comptes (`AllowUsers`), il a fallu y ajouter `battlecrm-deploy` ; le port SSH n'est pas le 22, donc `DEPLOY_PORT` et `ssh-keyscan -p`.
+- **Trouvé à l'installation, corrigé dans `backup.env.example`** : `backup.sh` charge `backup.env` comme du shell, et l'URL d'un moniteur push contient des `&`. Sans guillemets simples, la variable reste vide et la sauvegarde réussit sans envoyer le ping.
+- **Paquets GHCR** : nés publics, contrairement à ce que prévoyait `install.md` ; la première release est passée du premier coup, GitHub Release comprise.
+- **Sauvegardes** : `backup.sh` lancé à la main (dump écrit, moniteur push au vert), cron de root à 3 h, puis essai de restauration de `restore.md` dans une base à part (1 migration), base d'essai supprimée.

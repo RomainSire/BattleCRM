@@ -40,6 +40,18 @@ ssh-keygen -t ed25519 -N '' -C battlecrm-deploy -f battlecrm-deploy
 restrict,command="/opt/docker/battlecrm/deploy.sh" ssh-ed25519 AAAA… battlecrm-deploy
 ```
 
+Si `sshd` filtre les comptes, y ajouter `battlecrm-deploy`, sinon la connexion est refusée quelle que soit la clé :
+
+```sh
+sshd -T | grep -iE '^(allowusers|allowgroups)'   # rien : pas de filtre
+```
+
+Une fois `deploy.sh` installé (étape 4), essayer la clé depuis le poste : sans tag valide, rien n'est livré, et la réponse attendue est `usage: deploy.sh vMAJOR.MINOR.PATCH (got '')`.
+
+```sh
+ssh -p <port> -i battlecrm-deploy -o IdentitiesOnly=yes battlecrm-deploy@<hôte>
+```
+
 ## 4. Fichiers de `/opt/docker/battlecrm`
 
 `deploy.sh` s'installe à la main et ne se remplace jamais tout seul (c'est lui qu'ouvre la clé) : depuis `main` la première fois, puis depuis le tag d'une release qui le modifie :
@@ -60,7 +72,7 @@ Les secrets, un fichier par service, d'après les `ops/prod/*.example` du dépô
 | `postgres.env` | superutilisateur, mots de passe des rôles propriétaire et applicatif |
 | `migrate.env` | `MIGRATION_DATABASE_URL`, rôle propriétaire |
 | `api.env` | `DATABASE_URL` (rôle applicatif), `TRUSTED_PROXIES` |
-| `backup.env` | `BACKUP_PUSH_URL` (étape 6) |
+| `backup.env` | `BACKUP_PUSH_URL` (étape 6), entre guillemets simples : `backup.sh` charge ce fichier comme du shell |
 
 Des mots de passe générés, par exemple `openssl rand -hex 32` (sans caractère à échapper dans une URL). `TRUSTED_PROXIES` est le sous-réseau de `traefik-public` :
 
@@ -72,8 +84,8 @@ Les rôles sont créés au premier démarrage de Postgres, sur un volume vide : 
 
 ## 5. GitHub
 
-- Secrets du dépôt : `DEPLOY_SSH_KEY` (la clé privée), `DEPLOY_HOST`, `DEPLOY_KNOWN_HOSTS` (la sortie de `ssh-keyscan -t ed25519 <hôte>`, vérifiée contre l'empreinte du VPS) et, si le port SSH n'est pas 22, `DEPLOY_PORT`.
-- Les paquets `battlecrm-api` et `battlecrm-web` n'existent qu'après le premier push d'images, et naissent privés : la première release échoue donc au `pull` de `deploy.sh` (sans rien toucher). Les passer alors en public (Packages → Package settings → Change visibility), puis relancer la livraison : Actions → release → Run workflow, avec le même tag. Le VPS les tire ensuite sans jeton.
+- Secrets du dépôt : `DEPLOY_SSH_KEY` (la clé privée), `DEPLOY_HOST`, `DEPLOY_KNOWN_HOSTS` (la sortie de `ssh-keyscan -t ed25519 <hôte>`, avec `-p <port>` si le port SSH n'est pas 22, vérifiée contre l'empreinte du VPS : `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`) et, hors du port 22, `DEPLOY_PORT`. `DEPLOY_HOST` s'écrit exactement comme dans le `ssh-keyscan`.
+- Les paquets `battlecrm-api` et `battlecrm-web` n'existent qu'après le premier push d'images. À la première release (2026-10-10), ils sont nés publics et le VPS les a tirés sans jeton. S'ils naissaient privés, la release échouerait au `pull` de `deploy.sh` (sans rien toucher) : les passer alors en public (Packages → Package settings → Change visibility), puis relancer la livraison : Actions → release → Run workflow, avec le même tag.
 
 ## 6. Sauvegardes et alertes (spec stack §11, §12)
 
