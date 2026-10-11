@@ -7,16 +7,20 @@ import { csrf } from 'hono/csrf';
 import { HTTPException } from 'hono/http-exception';
 import { routePath } from 'hono/route';
 import { secureHeaders } from 'hono/secure-headers';
-import { validator } from 'hono/validator';
 import type { Logger } from 'pino';
 
 import { failureReason, type Alert } from './alert.ts';
+import { createAuth, type Hibp } from './auth/index.ts';
 import { CLIENT_ERROR_MAX_BYTES, clientErrorReport } from './client-errors.ts';
 import { resolveClientIp } from './client-ip.ts';
 import type { Clock } from './clock.ts';
 import type { Config } from './config.ts';
 import { isDatabaseReady } from './db/index.ts';
+import { createEmailSender, type EmailTransport } from './email/index.ts';
+import type { InFlight } from './in-flight.ts';
+import { jsonBody } from './json-body.ts';
 import type { Random } from './random.ts';
+import { initializeSettings } from './settings/index.ts';
 
 /** The composition root: every boundary is injected, so a test drives time and randomness. */
 export type AppDependencies = {
@@ -25,6 +29,10 @@ export type AppDependencies = {
   random: Random;
   logger: Logger;
   alert: Alert;
+  email: EmailTransport;
+  hibp: Hibp;
+  /** The sends never awaited, which a shutdown waits for. */
+  inFlight: InFlight;
 };
 
 export type AppEnv = {
@@ -38,8 +46,27 @@ export type AppEnv = {
   };
 };
 
-export function createApp({ config, logger, alert }: AppDependencies) {
+export function createApp({
+  config,
+  clock,
+  random,
+  logger,
+  alert,
+  email,
+  hibp,
+  inFlight,
+}: AppDependencies) {
   const app = new Hono<AppEnv>().basePath('/api');
+  const auth = createAuth({
+    config,
+    clock,
+    random,
+    logger,
+    hibp,
+    sendEmail: createEmailSender({ transport: email, logger, alert, inFlight }),
+    // Each module writes what a new User starts with (Standard stages will join with their ticket).
+    onAccountCreated: [initializeSettings],
+  });
 
   app.use(async (c, next) => {
     const start = performance.now();
@@ -79,14 +106,12 @@ export function createApp({ config, logger, alert }: AppDependencies) {
         ? c.json({ status: 'ok', version: config.appVersion })
         : c.json({ status: 'unavailable', version: config.appVersion }, 503),
     )
-    // Public until auth exists; the session will be required from then on (spec stack §11).
+    .route('/', auth.routes)
     .post(
       '/client-errors',
+      auth.requireUser,
       bodyLimit({ maxSize: CLIENT_ERROR_MAX_BYTES }),
-      validator('json', (value, c) => {
-        const report = clientErrorReport.safeParse(value);
-        return report.success ? report.data : c.json({ error: 'invalid' }, 400);
-      }),
+      jsonBody(clientErrorReport),
       (c) => {
         logger.error(
           { clientError: c.req.valid('json'), requestId: c.var.requestId },
@@ -105,7 +130,7 @@ export function createApp({ config, logger, alert }: AppDependencies) {
     return c.json({ error: 'internal' }, 500);
   });
 
-  return routes;
+  return { app: routes, jobs: auth.jobs };
 }
 
-export type AppType = ReturnType<typeof createApp>;
+export type AppType = ReturnType<typeof createApp>['app'];

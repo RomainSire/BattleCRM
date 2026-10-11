@@ -48,7 +48,7 @@ extension Firefox (plus tard) ─► /api/* en jeton bearer
 - **Lint** : Oxlint en mode typé, règles natives seules. **Format** : Prettier + `prettier-plugin-tailwindcss`.
 - **Commande unique `pnpm check`** (format, lint, types, tests), scripts pnpm récursifs, ni Turborepo ni hooks git.
 - **Interdictions outillées** :
-  - entrer dans le dossier d'un autre module de l'API (`no-restricted-imports`) : on passe par son `index.ts` ;
+  - entrer dans le dossier d'un autre module de l'API (`no-restricted-imports`) : on passe par son `index.ts`. Seule exception : un `tables.ts` importe le `tables.ts` d'un autre module pour une clé étrangère (drizzle-kit charge ces fichiers seuls), avec un commentaire de désactivation qui le dit ;
   - `withoutIsolation` hors de `auth/` et `migrate` ; aucun `schema` passé à `drizzle()` (`db.query…` ne compile pas) ;
   - `packages/domain` sans dépendance, `lib: ["ES2024"]` sans DOM, `types: []`, `crypto` et `performance` interdits, `Date.now` et `Math.random` interdits si Oxlint le permet (sinon revue) ;
   - paquets bannis, avec l'alternative dans le message : `@base-ui/react`, `@radix-ui/*`, `radix-ui`, `cmdk`, `vaul`, `sonner`, `next-themes`, `react-router`, `i18next`, `react-i18next`, `@prisma/client`, `drizzle-zod`.

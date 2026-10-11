@@ -3,6 +3,7 @@ NOTE.md
 .private/
 
 node_modules/
+*.local
 dist/
 coverage/
 *.tsbuildinfo

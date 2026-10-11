@@ -33,6 +33,17 @@ const apiEnv = z.object({
   APP_ORIGIN: z.url().transform((url) => new URL(url).origin),
   /** The Traefik network: the only peers whose X-Forwarded-For is believed. */
   TRUSTED_PROXIES: subnets,
+  /** Signs the session cookie of Better Auth. */
+  BETTER_AUTH_SECRET: z.string().min(32),
+  /** Closed unless explicitly opened (ST-10); an attempt already started can still be verified. */
+  SIGNUPS_OPEN: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  /** The Gmail account that sends the e-mails, with an app password (spec stack §8). */
+  SMTP_USER: z.email(),
+  SMTP_PASSWORD: z.string().min(1),
+  EMAIL_FROM_NAME: z.preprocess((value) => value || undefined, z.string().default('BattleCRM')),
   /** The push monitor "BattleCRM API" of uptime-kuma (spec stack §11); without it, no alert is sent. */
   UPTIME_KUMA_PUSH_URL: z.preprocess((value) => value || undefined, z.url().optional()),
   PORT: z.coerce.number().int().positive().default(3000),
@@ -52,7 +63,16 @@ export function loadConfig(env: Env) {
   return {
     databaseUrl: parsed.DATABASE_URL,
     appVersion: parsed.APP_VERSION,
+    /** Links in e-mails are built on it. */
+    appOrigin: parsed.APP_ORIGIN,
     trustedOrigins: [parsed.APP_ORIGIN],
+    authSecret: parsed.BETTER_AUTH_SECRET,
+    signupsOpen: parsed.SIGNUPS_OPEN,
+    smtp: {
+      user: parsed.SMTP_USER,
+      password: parsed.SMTP_PASSWORD,
+      fromName: parsed.EMAIL_FROM_NAME,
+    },
     trustedProxies: parsed.TRUSTED_PROXIES,
     uptimeKumaPushUrl: parsed.UPTIME_KUMA_PUSH_URL,
     port: parsed.PORT,

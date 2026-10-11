@@ -10,10 +10,10 @@ import { createAppRouter } from './router.tsx';
 
 import './index.css';
 
-const reportError = createClientErrorReporter(
-  createApiClient(),
-  import.meta.env.VITE_APP_VERSION ?? 'dev',
-);
+const api = createApiClient();
+const queryClient = createQueryClient();
+
+const reportError = createClientErrorReporter(api, import.meta.env.VITE_APP_VERSION ?? 'dev');
 reportUncaughtErrors(reportError);
 
 applyDocumentLanguage();
@@ -29,6 +29,6 @@ createRoot(root, {
   },
 }).render(
   <StrictMode>
-    <App router={createAppRouter()} queryClient={createQueryClient()} />
+    <App router={createAppRouter({ api, queryClient })} queryClient={queryClient} />
   </StrictMode>,
 );

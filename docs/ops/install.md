@@ -71,7 +71,7 @@ Les secrets, un fichier par service, d'après les `ops/prod/*.example` du dépô
 | `.env` | `APP_HOST`, `SITE_HOST` (lus par compose) |
 | `postgres.env` | superutilisateur, mots de passe des rôles propriétaire et applicatif |
 | `migrate.env` | `MIGRATION_DATABASE_URL`, rôle propriétaire |
-| `api.env` | `DATABASE_URL` (rôle applicatif), `TRUSTED_PROXIES`, `UPTIME_KUMA_PUSH_URL` (étape 6, facultatif) |
+| `api.env` | `DATABASE_URL` (rôle applicatif), `TRUSTED_PROXIES`, `BETTER_AUTH_SECRET` (`openssl rand -base64 48` ; le changer déconnecte tout le monde), `SMTP_USER` et `SMTP_PASSWORD` (le Gmail d'envoi et un mot de passe d'application), `SIGNUPS_OPEN=false`, `UPTIME_KUMA_PUSH_URL` (étape 6, facultatif) |
 | `backup.env` | `BACKUP_PUSH_URL` (étape 6), entre guillemets simples : `backup.sh` charge ce fichier comme du shell |
 
 Des mots de passe générés, par exemple `openssl rand -hex 32` (sans caractère à échapper dans une URL). `TRUSTED_PROXIES` est le sous-réseau de `traefik-public` :

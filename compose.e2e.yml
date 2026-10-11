@@ -45,6 +45,11 @@ services:
     environment:
       DATABASE_URL: postgres://battlecrm_app:app@postgres:5432/battlecrm
       APP_ORIGIN: http://localhost:8080
+      BETTER_AUTH_SECRET: e2e-secret-e2e-secret-e2e-secret-e2e
+      SIGNUPS_OPEN: 'true'
+      # No e-mail leaves the e2e stack: these credentials open nothing.
+      SMTP_USER: e2e@example.com
+      SMTP_PASSWORD: unused
     depends_on:
       migrate:
         condition: service_completed_successfully

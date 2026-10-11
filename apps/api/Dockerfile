@@ -7,7 +7,8 @@ WORKDIR /repo
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 RUN pnpm fetch
 COPY . .
-RUN pnpm install --offline --frozen-lockfile --filter @battlecrm/api \
+# "...": with the workspace packages the API bundles, whose install compiles the messages.
+RUN pnpm install --offline --frozen-lockfile --filter '@battlecrm/api...' \
   && pnpm --filter @battlecrm/api build \
   && pnpm --filter @battlecrm/api deploy --prod /out
 

@@ -8,9 +8,7 @@ test('the API answers its health check through the edge', async ({ request }) =>
   expect(response.headers()['x-app-version']).toBe('e2e');
 });
 
-test('the shell opens under the production headers, without a blocked resource', async ({
-  page,
-}) => {
+test('the SPA opens under the production headers, without a blocked resource', async ({ page }) => {
   await page.addInitScript(() => {
     window.cspViolations = [];
     document.addEventListener('securitypolicyviolation', (event) => {
@@ -26,9 +24,11 @@ test('the shell opens under the production headers, without a blocked resource',
   expect(headers['content-security-policy']).toContain("frame-ancestors 'none'");
   expect(headers['strict-transport-security']).toContain('max-age=');
   expect(headers['x-content-type-options']).toBe('nosniff');
-  await expect(page.getByRole('main')).toBeAttached();
-  await expect(page.getByRole('link', { name: 'Aller au contenu' })).toBeAttached();
-  await expect(page.getByRole('navigation').first()).toBeVisible();
+  // Nobody is signed in: the app leads to signing in, and the API says sign-ups are open here.
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Connexion' })).toBeVisible();
+  await page.getByRole('link', { name: 'Créer un compte' }).click();
+  await expect(page.getByRole('textbox', { name: 'E-mail' })).toBeVisible();
   expect(await page.evaluate(() => window.cspViolations)).toEqual([]);
   expect(errors).toEqual([]);
 });
@@ -52,7 +52,7 @@ test('the landing host answers without content until the landing exists', async 
 
 declare global {
   interface Window {
-    /** Filled by the init script of the shell test. */
+    /** Filled by the init script of the SPA test. */
     cspViolations: string[];
   }
 }

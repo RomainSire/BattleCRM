@@ -185,6 +185,94 @@
         ]
       }
     },
+    // The same rules without the ban on `withoutIsolation`: auth tables sit outside row level security (ADR 0010).
+    {
+      "files": ["apps/api/src/auth/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@base-ui/react",
+                "message": "UI primitives come from the ejected shadcn components on React Aria (spec stack §3)."
+              },
+              {
+                "name": "radix-ui",
+                "message": "UI primitives come from the ejected shadcn components on React Aria (spec stack §3)."
+              },
+              {
+                "name": "cmdk",
+                "message": "The command palette is the ejected Autocomplete on React Aria (spec stack §3)."
+              },
+              {
+                "name": "vaul",
+                "message": "Use the React Aria Sheet, full screen on mobile (spec stack §3)."
+              },
+              {
+                "name": "sonner",
+                "message": "Use the hand-written toast on React Aria UNSTABLE_Toast (spec stack §3)."
+              },
+              {
+                "name": "next-themes",
+                "message": "Use the hand-written theme provider (spec stack §3)."
+              },
+              {
+                "name": "react-router",
+                "message": "Use TanStack Router (spec stack §3)."
+              },
+              {
+                "name": "i18next",
+                "message": "Use Paraglide from @battlecrm/i18n (spec stack §2)."
+              },
+              {
+                "name": "react-i18next",
+                "message": "Use Paraglide from @battlecrm/i18n (spec stack §2)."
+              },
+              {
+                "name": "@prisma/client",
+                "message": "Use Drizzle inside withUser (spec stack §5.2)."
+              },
+              {
+                "name": "drizzle-zod",
+                "message": "Write the Zod schemas by hand in @battlecrm/contract (spec stack §2)."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@radix-ui/*"],
+                "message": "UI primitives come from the ejected shadcn components on React Aria (spec stack §3)."
+              },
+              {
+                "group": [
+                  ".*/**/prospecting/**",
+                  "!.*/**/prospecting/index.ts",
+                  ".*/**/battles/**",
+                  "!.*/**/battles/index.ts",
+                  ".*/**/funnel/**",
+                  "!.*/**/funnel/index.ts",
+                  ".*/**/organizations/**",
+                  "!.*/**/organizations/index.ts",
+                  ".*/**/settings/**",
+                  "!.*/**/settings/index.ts",
+                  ".*/**/views/**",
+                  "!.*/**/views/index.ts",
+                  ".*/**/auth/**",
+                  "!.*/**/auth/index.ts",
+                  ".*/**/db/**",
+                  "!.*/**/db/index.ts",
+                  ".*/**/jobs/**",
+                  "!.*/**/jobs/index.ts",
+                  ".*/**/email/**",
+                  "!.*/**/email/index.ts"
+                ],
+                "message": "Go through the other module's index.ts, never inside its folder (spec stack §5.2)."
+              }
+            ]
+          }
+        ]
+      }
+    },
     {
       "files": ["packages/domain/**"],
       "rules": {

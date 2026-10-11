@@ -2,9 +2,11 @@ import { serve } from '@hono/node-server';
 
 import { failureReason, noAlert, uptimeKumaAlert } from './alert.ts';
 import { createApp } from './app.ts';
+import { haveIBeenPwned } from './auth/index.ts';
 import { systemClock } from './clock.ts';
 import { loadConfig } from './config.ts';
 import { closeDatabase, openDatabase } from './db/index.ts';
+import { gmailTransport } from './email/index.ts';
 import { createInFlight } from './in-flight.ts';
 import { createScheduler } from './jobs/index.ts';
 import { createLogger } from './logger.ts';
@@ -19,13 +21,22 @@ const alert = config.uptimeKumaPushUrl
   ? uptimeKumaAlert({ pushUrl: config.uptimeKumaPushUrl, logger, inFlight })
   : noAlert;
 
-const app = createApp({ config, clock: systemClock, random: cryptoRandom, logger, alert });
+const { app, jobs } = createApp({
+  config,
+  clock: systemClock,
+  random: cryptoRandom,
+  logger,
+  alert,
+  email: gmailTransport(config.smtp),
+  hibp: haveIBeenPwned(),
+  inFlight,
+});
 const server = serve({ fetch: app.fetch, port: config.port }, ({ port }) =>
   logger.info({ port, version: config.appVersion }, 'listening'),
 );
 
-// Each module registers its jobs here with its ticket (spec stack §10.6); the loop already proves the API is up.
-const scheduler = createScheduler({ jobs: [], alert, logger });
+// Each module brings its jobs (spec stack §10.6); the loop also proves the API is up.
+const scheduler = createScheduler({ jobs, alert, logger });
 scheduler.start();
 
 process.once('SIGTERM', () => {

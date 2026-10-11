@@ -2,6 +2,8 @@ import { HTTPException } from 'hono/http-exception';
 import { describe, expect, test } from 'vitest';
 
 import { testApp, testConfig } from '../test/app.ts';
+import { makeUser } from '../test/factories/user.ts';
+import { postJson } from '../test/http.ts';
 
 describe('GET /api/health', () => {
   test('answers 200 with the version once the database is migrated', async () => {
@@ -138,16 +140,26 @@ describe('an unexpected exception in a route', () => {
 });
 
 async function reportClientError(body: unknown) {
-  const { app, alert, logs } = testApp();
-  const response = await app.request('/api/client-errors', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Origin: 'https://app.battlecrm.test' },
-    body: typeof body === 'string' ? body : JSON.stringify(body),
-  });
-  return { response, alert, logs };
+  const harness = testApp();
+  const { cookie, userId } = await makeUser(harness);
+  const response = await postJson(harness.app, '/api/client-errors', body, cookie);
+  return { response, userId, alert: harness.alert, logs: harness.logs };
 }
 
 describe('POST /api/client-errors', () => {
+  test('requires a session: without one, nothing is logged and nothing alerts', async () => {
+    const { app, alert, logs } = testApp();
+
+    const response = await postJson(app, '/api/client-errors', {
+      message: 'x is undefined',
+      version: '1.2.3',
+    });
+
+    expect(response.status).toBe(401);
+    expect(alert.downs).toEqual([]);
+    expect(logs()).not.toContainEqual(expect.objectContaining({ msg: 'client error' }));
+  });
+
   test('logs the message, the stack and the version of the SPA, then alerts down', async () => {
     const { response, alert, logs } = await reportClientError({
       message: 'x is undefined',
