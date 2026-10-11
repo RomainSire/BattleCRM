@@ -1,12 +1,10 @@
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@battlecrm/contract';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 
 import type { Config } from '../config.ts';
 import type { Database } from '../db/index.ts';
 import { account, session, user, verification } from './tables.ts';
-
-export const PASSWORD_MIN_LENGTH = 15;
-export const PASSWORD_MAX_LENGTH = 128;
 
 const DAY = 24 * 60 * 60;
 

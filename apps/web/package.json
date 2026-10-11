@@ -8,6 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@battlecrm/contract": "workspace:*",
     "@battlecrm/i18n": "workspace:*",
     "@battlecrm/theme": "workspace:*",
     "@tanstack/react-query": "^5.104.1",

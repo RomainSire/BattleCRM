@@ -29,6 +29,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@battlecrm/contract": "workspace:*",
     "@battlecrm/i18n": "workspace:*",
     "@types/node": "catalog:",
     "@types/nodemailer": "^8.0.2",

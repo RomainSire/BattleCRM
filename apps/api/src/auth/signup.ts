@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { SIGNUP_RESEND_DELAY_SECONDS } from '@battlecrm/contract';
 import { and, eq, gt, lt, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 
@@ -12,7 +13,7 @@ import type { Hibp } from './hibp.ts';
 import { account, pendingSignup, user } from './tables.ts';
 
 const LINK_LIFETIME_MS = 24 * 60 * 60 * 1000;
-const RESEND_DELAY_MS = 60 * 1000;
+const RESEND_DELAY_MS = SIGNUP_RESEND_DELAY_SECONDS * 1000;
 const UNVERIFIED_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** What a module learns when an account is created, in the transaction that creates it. */

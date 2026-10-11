@@ -1,3 +1,4 @@
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@battlecrm/contract';
 import { locales } from '@battlecrm/i18n/runtime';
 import { Hono, type Context } from 'hono';
 import { setSignedCookie } from 'hono/cookie';
@@ -14,13 +15,7 @@ import type { Job } from '../jobs/index.ts';
 import { jsonBody } from '../json-body.ts';
 import type { Random } from '../random.ts';
 import { isTimeZone } from '../settings/index.ts';
-import {
-  ALLOWED_NATIVE_ROUTES,
-  createBetterAuth,
-  PASSWORD_MAX_LENGTH,
-  PASSWORD_MIN_LENGTH,
-  type BetterAuth,
-} from './better-auth.ts';
+import { ALLOWED_NATIVE_ROUTES, createBetterAuth, type BetterAuth } from './better-auth.ts';
 import type { Hibp } from './hibp.ts';
 import { createSignup, type OnAccountCreated } from './signup.ts';
 

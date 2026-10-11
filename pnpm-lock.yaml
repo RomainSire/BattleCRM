@@ -263,6 +263,9 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
+      '@battlecrm/contract':
+        specifier: workspace:*
+        version: link:../../packages/contract
       '@battlecrm/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -287,6 +290,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@battlecrm/contract':
+        specifier: workspace:*
+        version: link:../../packages/contract
       '@battlecrm/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n

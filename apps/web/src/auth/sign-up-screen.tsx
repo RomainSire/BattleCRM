@@ -1,3 +1,4 @@
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
 import { getLocale } from '@battlecrm/i18n/runtime';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,10 +12,6 @@ import { useLocale } from '../i18n.ts';
 import { configQuery, useApi } from '../session.ts';
 import { authLinkClass, AuthScreen } from './auth-layout.tsx';
 import { CheckInbox } from './check-inbox.tsx';
-
-// The rules of the API (spec stack §7): a length, nothing else.
-const PASSWORD_MIN_LENGTH = 15;
-const PASSWORD_MAX_LENGTH = 128;
 
 type Refusal = 'password_compromised' | 'password_check_unavailable' | 'signups_closed' | 'error';
 

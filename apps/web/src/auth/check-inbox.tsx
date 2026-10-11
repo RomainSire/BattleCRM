@@ -1,3 +1,4 @@
+import { SIGNUP_RESEND_DELAY_SECONDS } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -5,9 +6,6 @@ import { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button.tsx';
 import { useApi } from '../session.ts';
 import { AuthScreen } from './auth-layout.tsx';
-
-/** Between two sends of the link; the API enforces it too. */
-const RESEND_DELAY_SECONDS = 60;
 
 /** “Check your inbox”: the same screen whether the address was free or already had an account (ST-13). */
 export function CheckInbox({
@@ -20,7 +18,9 @@ export function CheckInbox({
   onWrongAddress: () => void;
 }) {
   const api = useApi();
-  const [sendableAt, setSendableAt] = useState(() => Date.now() + RESEND_DELAY_SECONDS * 1000);
+  const [sendableAt, setSendableAt] = useState(
+    () => Date.now() + SIGNUP_RESEND_DELAY_SECONDS * 1000,
+  );
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -33,14 +33,14 @@ export function CheckInbox({
       const response = await api.signup.resend.$post({ json: { attemptId } });
       if (response.status === 429) return (await response.json()).retryAfterSeconds;
       if (!response.ok) throw new Error(`POST /api/signup/resend answered ${response.status}`);
-      return RESEND_DELAY_SECONDS;
+      return SIGNUP_RESEND_DELAY_SECONDS;
     },
     onSuccess: (waitSeconds) => {
       setNow(Date.now());
       setSendableAt(Date.now() + waitSeconds * 1000);
     },
   });
-  const resent = resend.isSuccess && resend.data === RESEND_DELAY_SECONDS;
+  const resent = resend.isSuccess && resend.data === SIGNUP_RESEND_DELAY_SECONDS;
 
   return (
     <AuthScreen title={m.auth_check_inbox_title()}>

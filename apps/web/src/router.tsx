@@ -39,7 +39,7 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({ component: Root 
 
 /** `null` without a session; `undefined` when the API cannot say (offline: the app stays readable, ADR 0004). */
 const currentSession = ({ queryClient, api }: RouterContext) =>
-  queryClient.ensureQueryData(sessionQuery(api)).catch(() => undefined);
+  queryClient.query(sessionQuery(api)).catch(() => undefined);
 
 // Every screen of the app: without a session, it leads to signing in.
 const appRoute = createRoute({
@@ -57,7 +57,7 @@ const authRoute = createRoute({
   id: 'auth',
   // What a visitor may do, known before the first render; a failure shows on the screen that needs it.
   loader: ({ context }) =>
-    context.queryClient.ensureQueryData(configQuery(context.api)).catch(() => undefined),
+    context.queryClient.query(configQuery(context.api)).catch(() => undefined),
   component: AuthLayout,
   errorComponent: AuthError,
 });
