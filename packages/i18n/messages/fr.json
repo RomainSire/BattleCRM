@@ -54,5 +54,8 @@
   "email_account_exists_ignore": "Si ce n'était pas toi, tu n'as rien à faire.",
   "auth_email_invalid": "Saisis une adresse e-mail valide.",
   "auth_link_invalid_restart": "Recommencer l'inscription",
-  "auth_link_invalid_body": "Il a expiré ou a déjà servi."
+  "auth_link_invalid_body": "Il a expiré ou a déjà servi.",
+  "auth_sign_in_failed": "Adresse e-mail ou mot de passe incorrect.",
+  "auth_too_many_attempts": "Trop de tentatives. Réessaie dans 15 minutes, ou réinitialise ton mot de passe.",
+  "sign_out": "Se déconnecter"
 }

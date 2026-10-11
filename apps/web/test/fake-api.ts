@@ -18,7 +18,9 @@ export function fakeApi(routes: Record<string, Handler> = {}) {
   const fetch: typeof globalThis.fetch = async (input, init) => {
     const request = new Request(input, init);
     const route = `${request.method} ${new URL(request.url).pathname}`;
-    const body: unknown = request.method === 'GET' ? undefined : await request.json();
+    // A POST may carry no body at all, as signing out does.
+    const text = await request.text();
+    const body: unknown = text === '' ? undefined : JSON.parse(text);
     requests.push({ route, body });
     return handlers[route]?.(body) ?? new Response(null, { status: 404 });
   };

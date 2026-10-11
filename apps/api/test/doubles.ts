@@ -7,12 +7,20 @@ import { cryptoRandom, type Random } from '../src/random.ts';
 export type TestClock = Clock & {
   /** Moves time forward by an ISO 8601 duration made of days, hours, minutes and seconds (`P7D`, `PT15M1S`). */
   advance(duration: string): void;
+  /** How long the app slept, in milliseconds: each sleep moves the clock at once. */
+  slept: number[];
 };
 
 export function testClock(start = '2026-01-05T09:00:00Z'): TestClock {
   let now = new Date(start).getTime();
+  const slept: number[] = [];
   return {
     now: () => new Date(now),
+    slept,
+    async sleep(milliseconds) {
+      slept.push(milliseconds);
+      now += milliseconds;
+    },
     advance(duration) {
       const match = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(duration);
       if (!match || duration === 'P' || duration.endsWith('T'))
@@ -26,7 +34,7 @@ export function testClock(start = '2026-01-05T09:00:00Z'): TestClock {
   };
 }
 
-/** Returns the given values in order, so a test chooses the outcome of every draw; link tokens stay really random. */
+/** Returns the given values in order, so a test chooses the outcome of every draw; link tokens and bytes stay really random. */
 export function scriptedRandom(...values: number[]): Random {
   const queue = [...values];
   return {
@@ -38,6 +46,7 @@ export function scriptedRandom(...values: number[]): Random {
       return value;
     },
     token: () => cryptoRandom.token(),
+    bytes: (length) => cryptoRandom.bytes(length),
   };
 }
 

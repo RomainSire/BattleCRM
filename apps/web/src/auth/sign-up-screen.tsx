@@ -3,9 +3,10 @@ import { m } from '@battlecrm/i18n';
 import { getLocale } from '@battlecrm/i18n/runtime';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { FieldError, Form, Link, Text, TextField } from 'react-aria-components';
+import { Form, Link, Text, TextField } from 'react-aria-components';
 
 import { Button } from '../components/ui/button.tsx';
+import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
 import { Input } from '../components/ui/input.tsx';
 import { Label } from '../components/ui/label.tsx';
 import { useLocale } from '../i18n.ts';
@@ -102,7 +103,7 @@ export function SignUpScreen() {
         >
           <Label>{m.auth_email()}</Label>
           <Input />
-          <FieldError className="text-sm" />
+          <FieldErrorMessage />
         </TextField>
         <TextField
           name="password"
@@ -131,15 +132,15 @@ export function SignUpScreen() {
           <Text slot="description" className="text-sm text-muted-foreground">
             {m.auth_password_help()}
           </Text>
-          <FieldError className="text-sm" />
+          <FieldErrorMessage />
         </TextField>
         <Button type="submit" isDisabled={signUp.isPending}>
           {m.auth_create_account()}
         </Button>
-        <p role="alert" className="text-sm empty:hidden">
+        <ErrorMessage>
           {refused === 'password_check_unavailable' && m.auth_password_check_unavailable()}
           {failed && m.auth_error()}
-        </p>
+        </ErrorMessage>
       </Form>
       <SignInLink />
     </AuthScreen>

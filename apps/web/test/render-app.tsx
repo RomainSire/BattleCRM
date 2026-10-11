@@ -16,5 +16,5 @@ export async function renderApp(path = '/', api = fakeApi()) {
     history: createMemoryHistory({ initialEntries: [path] }),
   });
   const screen = await render(<App router={router} queryClient={queryClient} />);
-  return { screen, router, api };
+  return { screen, router, api, queryClient };
 }

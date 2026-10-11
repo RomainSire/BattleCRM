@@ -1,6 +1,7 @@
 import { m } from '@battlecrm/i18n';
 import { useId } from 'react';
 
+import { Account } from '../shell/account.tsx';
 import { NavLink } from '../shell/nav-link.tsx';
 import { underMore, underMoreOnDesktop } from '../shell/navigation.ts';
 import type { NavigationEntry } from '../shell/navigation.ts';
@@ -18,6 +19,8 @@ export function MoreScreen() {
         </h2>
         <EntryList entries={underMoreOnDesktop} labelledBy={onDesktopId} />
       </section>
+      {/* Until Settings has its Account section (spec UX §3.2): a phone must be able to sign out. */}
+      <Account className="border-t pt-2" buttonClassName="min-h-11 text-foreground" />
     </Screen>
   );
 }

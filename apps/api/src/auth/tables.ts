@@ -1,8 +1,18 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  bigint,
+  boolean,
+  check,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 // Every table of this module sits outside row level security: it is read before the User is known (ADR 0010).
-// The first four are Better Auth's: property names are its field names, ids come from the database (uuidv7).
+// The first five are Better Auth's: property names are its field names, ids come from the database (uuidv7).
 // A test compares them with what the installed Better Auth expects.
 
 const id = () =>
@@ -75,6 +85,15 @@ export const verification = pgTable(
   (table) => [index('verification_identifier_idx').on(table.identifier)],
 );
 
+/** The counters of Better Auth's own limiter, by IP address and path (spec stack §7). */
+export const rateLimit = pgTable('rate_limit', {
+  id: id(),
+  key: text().notNull().unique(),
+  count: integer().notNull(),
+  /** Milliseconds since the epoch, as Better Auth writes them. */
+  lastRequest: bigint('last_request', { mode: 'number' }).notNull(),
+});
+
 /**
  * One row per sign-up attempt (spec stack §7): the account only exists once its link is clicked,
  * with the password of that very attempt. An address that already has an account gets a row too,
@@ -100,3 +119,17 @@ export const pendingSignup = pgTable(
     check('pending_signup_locale_check', sql`${table.locale} in ('fr', 'en')`),
   ],
 );
+
+/**
+ * The sign-in counter of one address (ST-15), whether it has an account or not: both answer alike.
+ * A row counts failures no 15 quiet minutes separate; a successful sign-in erases it.
+ */
+export const loginAttempt = pgTable('login_attempt', {
+  /** Lower case, as Better Auth looks it up. */
+  email: text().primaryKey(),
+  failures: integer().notNull(),
+  /** When the latest attempt was, or will be, let through: the growing delay and the 15 minutes count from it. */
+  lastAttemptAt: instant('last_attempt_at').notNull(),
+  /** Set by the 10th failure: until then, even the right password is refused. */
+  blockedUntil: instant('blocked_until'),
+});

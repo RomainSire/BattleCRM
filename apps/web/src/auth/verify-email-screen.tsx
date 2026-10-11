@@ -1,6 +1,7 @@
 import { m } from '@battlecrm/i18n';
 import { Link } from 'react-aria-components';
 
+import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useLocale } from '../i18n.ts';
 import { authLinkClass, AuthScreen } from './auth-layout.tsx';
 
@@ -33,7 +34,7 @@ export function AuthError() {
   useLocale();
   return (
     <AuthScreen title="BattleCRM">
-      <p role="alert">{m.auth_error()}</p>
+      <ErrorMessage>{m.auth_error()}</ErrorMessage>
     </AuthScreen>
   );
 }

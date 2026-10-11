@@ -40,10 +40,14 @@ export const BREACHED_PASSWORD = 'password-password-password';
 /**
  * The app as main.ts composes it, with a test clock, scripted randomness, a recording alert,
  * a recording e-mail transport, a fake Have I Been Pwned and the log lines kept in memory.
+ * `startsAt` sets its clock; a test that runs a purge starts before every other test, whose rows it then spares.
  */
-export function testApp(env: Partial<typeof testEnv> = {}) {
+export function testApp(
+  env: Partial<typeof testEnv> = {},
+  { startsAt }: { startsAt?: string } = {},
+) {
   const { logger, logs, output } = testLogger();
-  const clock = testClock();
+  const clock = testClock(startsAt);
   const alert = recordingAlert();
   const email = recordingEmail();
   const hibp = fakeHibp(BREACHED_PASSWORD);

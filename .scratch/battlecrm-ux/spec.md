@@ -37,9 +37,10 @@ Source : [07](issues/07-direction-visuelle.md) ; prototype `prototype/07-directi
 | Retard (ambre) | `#a84d06` | `#f59e0b` | Relances en retard, Alliés « à relancer », compteur de la navigation |
 | Bientôt (ambre clair) | texte `#8a5a14`, jauge `#b07c1a` | texte `#fcd34d`, jauge `#d4a24c` | Alliés « bientôt » (jauge du Rythme, Jours sans contact) |
 | Neutre (gris) | point `#a1a1aa`, texte `#63636b` | point `#71717a`, texte `#a1a1aa` | sans suite, en cours, Vivier, archivé, délai dépassé, Champion dans une jauge, Allié sans signal |
+| Erreur (rouge) | `#b91c1c` | `#f87171` | message d'erreur (saisie, refus, panne), contour du champ en défaut ; jamais un résultat |
 
 - **« Bientôt » contrôlé le 2026-10-08** sur les fonds zinc (clair `#ffffff` / `#f4f4f5`, sombre `#18181b` / `#27272a`) : texte clair 5,4:1 à 5,9:1, jauge claire 3,3:1 à 3,7:1, texte sombre 10,3:1 à 12,3:1, jauge sombre 6,4:1 à 7,7:1. La jauge `#e2b062` du prototype C03 (1,8:1 à 2:1) ne passait pas le 3:1 des composants. Le palier et le nombre de jours, toujours écrits, distinguent « bientôt » de « à relancer » sans dépendre de l'écart entre les deux ambres.
-- **Pas de rouge**, nulle part.
+- **Rouge réservé aux erreurs** (amendé le 2026-10-11, ticket d'implémentation 07) : rôle **Erreur**, clair `#b91c1c`, sombre `#f87171`, pour une erreur de saisie, un refus de l'API ou une panne, et rien d'autre. Tout message d'erreur de l'app est dans cette couleur, en gras ; hors d'un champ, il porte une icône ; le champ en défaut prend un contour de la même couleur, son message juste dessous (jamais la couleur seule). **Jamais de rouge pour un résultat** : sans suite, retard, délai dépassé, taux, Allié à relancer restent neutres ou ambre.
 - **Un seul bouton plein par écran.** Les actions de ligne sont des boutons neutres, la première en gras. Une action qui sort de la routine (« Clôturer… ») porte un contour d'accent.
 - **Contraste** : 4,5:1 pour le texte, 3:1 pour les formes et composants, dans les deux thèmes.
 - **Thème** clair et sombre, qui suit le système par défaut, modifiable (Système / Clair / Sombre), **par appareil** (§11).
@@ -614,7 +615,7 @@ Règles que les tickets UX avaient ajoutées ou modifiées sans les consigner. *
 - [0007 — Les États Vivier, En prospection, Allié et Archivé remplacent actif, en pause, clos et gagné](../../docs/adr/0007-etats-vivier-en-prospection-allie-archive.md)
 - ADR 0003 amendé : l'Objectif d'entrées conserve sa valeur en vigueur semaine par semaine.
 
-Envisagés sans être retenus comme ADR (décisions de produit, réversibles, consignées dans cette spec) : WCAG 2.2 AA en entier ; e-mail et mot de passe seulement ; pas de rouge ni de taux personnels.
+Envisagés sans être retenus comme ADR (décisions de produit, réversibles, consignées dans cette spec) : WCAG 2.2 AA en entier ; e-mail et mot de passe seulement ; pas de rouge pour les résultats (réservé aux erreurs) ni de taux personnels.
 
 ## 14. Pas encore spécifié
 

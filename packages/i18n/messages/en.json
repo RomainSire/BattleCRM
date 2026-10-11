@@ -54,5 +54,8 @@
   "email_account_exists_ignore": "If it was not you, there is nothing to do.",
   "auth_email_invalid": "Enter a valid email address.",
   "auth_link_invalid_restart": "Sign up again",
-  "auth_link_invalid_body": "It has expired or was already used."
+  "auth_link_invalid_body": "It has expired or was already used.",
+  "auth_sign_in_failed": "Incorrect email address or password.",
+  "auth_too_many_attempts": "Too many attempts. Try again in 15 minutes, or reset your password.",
+  "sign_out": "Sign out"
 }

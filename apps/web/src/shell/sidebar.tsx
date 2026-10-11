@@ -3,6 +3,7 @@ import { Keyboard, Plus, Search } from 'lucide-react';
 import { useId } from 'react';
 
 import { Button } from '../components/ui/button.tsx';
+import { Account } from './account.tsx';
 import { Kbd } from './kbd.tsx';
 import { Brand } from './logo.tsx';
 import { NavLink } from './nav-link.tsx';
@@ -10,7 +11,6 @@ import { experimentation, prospecting, settings } from './navigation.ts';
 import type { NavigationEntry } from './navigation.ts';
 
 // The palette, quick add and shortcuts help plug into these buttons with their tickets (41, 13).
-// The account's address and the sign-out button arrive with signing in (ticket 07).
 
 /** The desktop navigation (spec UX §3.1). */
 export function Sidebar() {
@@ -55,6 +55,7 @@ export function Sidebar() {
           </span>
           <Kbd>?</Kbd>
         </Button>
+        <Account />
       </div>
     </nav>
   );

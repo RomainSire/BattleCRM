@@ -22,6 +22,20 @@
       "when": 1791732378255,
       "tag": "0002_auth_and_settings_access",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791747769778,
+      "tag": "0003_login_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791747770437,
+      "tag": "0004_login_limits_access",
+      "breakpoints": true
     }
   ]
 }

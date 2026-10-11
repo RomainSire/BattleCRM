@@ -10,6 +10,7 @@ import {
 import type { NavigateOptions, RouterHistory, ToOptions } from '@tanstack/react-router';
 import { m } from '@battlecrm/i18n';
 import { RouterProvider } from 'react-aria-components';
+import { z } from 'zod';
 
 import { AuthLayout } from './auth/auth-layout.tsx';
 import { SignInScreen } from './auth/sign-in-screen.tsx';
@@ -41,12 +42,32 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({ component: Root 
 const currentSession = ({ queryClient, api }: RouterContext) =>
   queryClient.query(sessionQuery(api)).catch(() => undefined);
 
-// Every screen of the app: without a session, it leads to signing in.
+/** Where signing in leads when no page was asked for. */
+const LANDING = '/today';
+
+/**
+ * The page a deep link asked for, replayed once signed in (ST-22): a path of this app, never another site.
+ * Anything else is dropped rather than refused: no second slash, no backslash, nor any blank a browser would skip.
+ */
+const destinationSearch = z.object({
+  redirect: z
+    .string()
+    .regex(/^\/(?![/\\])\S*$/)
+    .optional()
+    .catch(undefined),
+});
+
+// Every screen of the app: without a session, it leads to signing in, which remembers the page asked for.
 const appRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'app',
-  beforeLoad: async ({ context }) => {
-    if ((await currentSession(context)) === null) throw redirect({ to: '/sign-in', replace: true });
+  beforeLoad: async ({ context, location }) => {
+    if ((await currentSession(context)) !== null) return;
+    throw redirect({
+      to: '/sign-in',
+      search: location.href === LANDING ? {} : { redirect: location.href },
+      replace: true,
+    });
   },
   component: AppShell,
 });
@@ -62,14 +83,24 @@ const authRoute = createRoute({
   errorComponent: AuthError,
 });
 
-/** Signing in or up makes no sense with a session: back to the app. */
-const redirectSignedIn = async ({ context }: { context: RouterContext }) => {
-  if (await currentSession(context)) throw redirect({ to: '/today', replace: true });
+/** Signing in or up makes no sense with a session: back to the app, on the page asked for if any. */
+const redirectSignedIn = async ({
+  context,
+  search,
+}: {
+  context: RouterContext;
+  search: z.infer<typeof destinationSearch>;
+}) => {
+  if (!(await currentSession(context))) return;
+  throw search.redirect === undefined
+    ? redirect({ to: LANDING, replace: true })
+    : redirect({ href: search.redirect, replace: true });
 };
 
 const signInRoute = createRoute({
   getParentRoute: () => authRoute,
   path: '/sign-in',
+  validateSearch: destinationSearch,
   beforeLoad: redirectSignedIn,
   component: SignInScreen,
 });
@@ -77,7 +108,7 @@ const signInRoute = createRoute({
 const signUpRoute = createRoute({
   getParentRoute: () => authRoute,
   path: '/sign-up',
-  beforeLoad: redirectSignedIn,
+  beforeLoad: ({ context }) => redirectSignedIn({ context, search: {} }),
   component: SignUpScreen,
 });
 
@@ -92,7 +123,7 @@ const verifyEmailRoute = createRoute({
     if (!response.ok) throw new Error('POST /api/signup/verify failed');
     // The click signs this device in, and lands on Today without a toast.
     queryClient.setQueryData(sessionQuery(api).queryKey, await response.json());
-    throw redirect({ to: '/today', replace: true });
+    throw redirect({ to: LANDING, replace: true });
   },
   // The link works once: never ask again for the same visit.
   staleTime: Infinity,
@@ -105,7 +136,7 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   beforeLoad: () => {
-    throw redirect({ to: '/today', replace: true });
+    throw redirect({ to: LANDING, replace: true });
   },
 });
 

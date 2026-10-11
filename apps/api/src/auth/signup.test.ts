@@ -431,7 +431,8 @@ describe('the purge job', () => {
     const attemptId = await startAttempt(harness, old);
     harness.clock.advance('PT1H1S');
 
-    for (const job of harness.jobs) await job.run();
+    // This job alone: seven days later, the purge of the sign-in counters would erase those other tests rely on.
+    await harness.jobs.find(({ name }) => name === 'purge unverified sign-ups')?.run();
 
     // The oldest attempt is gone: its link is dead even after a fresh 24 hours would have been granted.
     expect((await click(harness, await firstToken(harness, old))).status).toBe(400);

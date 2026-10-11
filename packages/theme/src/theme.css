@@ -1,6 +1,7 @@
 /*
  * Design tokens of spec UX §2, shared by the SPA and the landing page.
- * One variable per meaning, in both themes; no red and no `--destructive` anywhere.
+ * One variable per meaning, in both themes. Red is the Error role alone: an input error, a failure;
+ * never an outcome (no result, overdue, a rate), and no `--destructive`.
  * Import after `tailwindcss`. The dark theme is the `dark` class on <html>.
  */
 
@@ -36,6 +37,9 @@
   /* Neutral (grey): no result, in progress, Pool, archived, window elapsed. */
   --neutral-dot: #a1a1aa;
   --neutral-text: #63636b;
+
+  /* Error (red): an input error or a failure, text and field outline. Nothing else. */
+  --error: #b91c1c;
 }
 
 .dark {
@@ -61,6 +65,8 @@
 
   --neutral-dot: #71717a;
   --neutral-text: #a1a1aa;
+
+  --error: #f87171;
 }
 
 @theme inline {
@@ -79,6 +85,7 @@
   --color-soon-gauge: var(--soon-gauge);
   --color-neutral-dot: var(--neutral-dot);
   --color-neutral-text: var(--neutral-text);
+  --color-error: var(--error);
 
   /* 6 px for controls, 8 px for cards. */
   --radius-control: 6px;
