@@ -25,8 +25,9 @@ export async function purgeExpiredSessionsAndCounters(now: Date) {
 }
 
 /**
- * Scheduled: an expired link of ours, told by the prefix of its identifier, is refused but never erased
- * by a click. The rows Better Auth writes in the same table are left alone. Returns how many went.
+ * Scheduled: an expired row of `verification`, told by the prefix of its identifier, is refused but never
+ * erased by a click: a link of ours, or the challenge of a sign-in left at its code. Any other row
+ * Better Auth writes in the same table is left alone. Returns how many went.
  */
 export async function purgeExpiredLinks(prefix: string, now: Date): Promise<number> {
   const purged = await withoutIsolation((db) =>

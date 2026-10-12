@@ -13,6 +13,7 @@ import { newPasswordRefusal, type Hibp } from './hibp.ts';
 import type { LoginAttempts } from './login-attempts.ts';
 import { purgeExpiredLinks } from './purge.ts';
 import { account, session, user, verification } from './tables.ts';
+import type { TwoFactor } from './two-factor.ts';
 import { hashToken } from './token-hash.ts';
 
 const RESET_LINK_LIFETIME_MS = 60 * 60 * 1000;
@@ -44,7 +45,8 @@ async function setPassword(tx: Transaction, owner: Owner, passwordHash: string, 
 /**
  * The two ways a password changes once the account exists (spec stack §7): the home-made end of a reset,
  * by a single-use link of one hour, and a change by a signed-in User. Both check the new password against
- * known breaches, sign the other devices out and tell the User by e-mail.
+ * known breaches, sign the other devices out and tell the User by e-mail. A reset also takes a code
+ * of the second factor when the account has one.
  */
 export function createPasswords({
   config,
@@ -54,6 +56,7 @@ export function createPasswords({
   hibp,
   sendEmail,
   loginAttempts,
+  twoFactor,
   hashPassword,
 }: {
   config: Config;
@@ -63,6 +66,7 @@ export function createPasswords({
   hibp: Hibp;
   sendEmail: SendEmail;
   loginAttempts: LoginAttempts;
+  twoFactor: TwoFactor;
   hashPassword: (password: string) => Promise<string>;
 }) {
   /** The security e-mail of both journeys; “It wasn't me” leads to a new password. */
@@ -129,18 +133,29 @@ export function createPasswords({
 
     /**
      * The end of a reset: the link is used up by the request that changes the password, which ends
-     * every session of the User and lifts the block of its address. A refused password leaves the link
-     * alone. The caller then signs this device in.
+     * every session of the User and lifts the block of its address. An account with a second factor
+     * gives a code too (spec UX §5.9). A refused password or code leaves the link alone.
+     * The caller then signs this device in.
      */
     async completeReset({
       token,
       password,
+      code,
     }: {
       token: string;
       password: string;
+      code?: string | undefined;
     }): Promise<
       | { id: string; email: string }
-      | { refused: 'invalid_link' | 'password_compromised' | 'password_check_unavailable' }
+      | {
+          refused:
+            | 'invalid_link'
+            | 'two_factor_required'
+            | 'invalid_code'
+            | 'too_many_attempts'
+            | 'password_compromised'
+            | 'password_check_unavailable';
+        }
     > {
       const now = clock.now();
       const link = and(
@@ -155,12 +170,18 @@ export function createPasswords({
           .where(link),
       );
       if (!owner) return { refused: 'invalid_link' };
-      // Ticket 11: the second factor of `owner` is asked for here, before the link is used up.
+      const codeAwaited = await twoFactor.isEnabled(owner.id);
+      if (codeAwaited && code === undefined) return { refused: 'two_factor_required' };
       const refused = await newPasswordRefusal(hibp, logger, password);
       if (refused) return { refused };
       const passwordHash = await hashPassword(password);
       // Read before anything changes: once the password is set, nothing may fail the answer.
       const { locale } = await languageAndTimeZoneOf(owner.id, now);
+      // Last before the change: a backup code is used up by the check, and only a reset about to go
+      // through may cost one.
+      const denied =
+        codeAwaited && code !== undefined ? await twoFactor.check(owner, code) : undefined;
+      if (denied) return { refused: denied };
       const used = await withoutIsolation((db) =>
         db.transaction(async (tx) => {
           // Two requests with the same link: a single one deletes the row.

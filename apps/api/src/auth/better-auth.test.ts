@@ -10,9 +10,9 @@ import { testBetterAuth, testBetterAuthOptions } from '../../test/better-auth.ts
 import { makeUser } from '../../test/factories/user.ts';
 import { postJson } from '../../test/http.ts';
 import { ALLOWED_NATIVE_ROUTES } from './better-auth.ts';
-import { account, rateLimit, session, user, verification } from './tables.ts';
+import { account, rateLimit, session, twoFactor, user, verification } from './tables.ts';
 
-const tables = { account, rateLimit, session, user, verification };
+const tables = { account, rateLimit, session, twoFactor, user, verification };
 
 type Endpoint = { path?: string; options?: { method?: string | string[] } };
 
@@ -59,6 +59,14 @@ test('the native routes of Better Auth are the ones we know', async () => {
       "POST /sign-in/social",
       "POST /sign-out",
       "POST /sign-up/email",
+      "POST /two-factor/disable",
+      "POST /two-factor/enable",
+      "POST /two-factor/generate-backup-codes",
+      "POST /two-factor/get-totp-uri",
+      "POST /two-factor/send-otp",
+      "POST /two-factor/verify-backup-code",
+      "POST /two-factor/verify-otp",
+      "POST /two-factor/verify-totp",
       "POST /unlink-account",
       "POST /update-session",
       "POST /update-user",
@@ -85,11 +93,16 @@ test('a native route outside the allowlist answers 404, whatever Better Auth wou
   }
 });
 
-test('the allowlist is signing in and signing out, which exist and are served', async () => {
+test('the allowlist is signing in, in one or two steps, and signing out, which exist and are served', async () => {
   const { app } = testApp();
   const routes = await nativeRoutes();
 
-  expect(ALLOWED_NATIVE_ROUTES).toEqual(['POST /sign-in/email', 'POST /sign-out']);
+  expect(ALLOWED_NATIVE_ROUTES).toEqual([
+    'POST /sign-in/email',
+    'POST /sign-out',
+    'POST /two-factor/verify-backup-code',
+    'POST /two-factor/verify-totp',
+  ]);
   for (const allowed of ALLOWED_NATIVE_ROUTES) {
     expect(routes).toContain(allowed);
     const response = await postJson(app, `/api/auth${allowed.replace('POST ', '')}`, {});
@@ -97,13 +110,16 @@ test('the allowlist is signing in and signing out, which exist and are served', 
   }
 });
 
-test('the limiter by IP address counts in the database, 30 sign-ins per 15 minutes', async () => {
+test('the limiter by IP address counts in the database, 30 sign-ins and 30 codes per 15 minutes', async () => {
   const auth = await testBetterAuth();
 
   expect(auth.options.rateLimit).toEqual({
     enabled: true,
     storage: 'database',
-    customRules: { '/sign-in/email': { window: 900, max: 30 } },
+    customRules: {
+      '/sign-in/email': { window: 900, max: 30 },
+      '/two-factor/*': { window: 900, max: 30 },
+    },
   });
 });
 
@@ -115,6 +131,12 @@ test('sessions are opaque, read in the database every time, and slide over 90 da
     updateAge: 24 * 60 * 60,
     cookieCache: { enabled: false },
   });
+});
+
+test('expired links and challenges are left to the scheduled purge', async () => {
+  const auth = await testBetterAuth();
+
+  expect(auth.options.verification).toEqual({ disableCleanup: true });
 });
 
 // No server option turns "trust this device" off (spec stack §15): the hook is proved on an endpoint

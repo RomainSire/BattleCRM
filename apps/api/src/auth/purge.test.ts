@@ -121,7 +121,42 @@ test('the link of a change of address is erased once expired, never before', asy
   expect(await links()).toEqual([]);
 });
 
-test('a row of Better Auth in the same table is left alone', async () => {
+test('the challenge of a sign-in left at its code is erased once expired, never before', async () => {
+  const harness = longAgo();
+  const challenge = `2fa-${randomUUID()}`;
+  const now = harness.clock.now();
+  const expiresAt = new Date(now.getTime() + 10 * 60_000);
+  const rows = () =>
+    withoutIsolation((db) =>
+      db
+        .select()
+        .from(verification)
+        .where(like(verification.identifier, `%${challenge}`)),
+    );
+  // As the plugin writes them: who the code is awaited from, and how many wrong ones were given.
+  await withoutIsolation((db) =>
+    db.insert(verification).values([
+      { identifier: challenge, value: 'x', expiresAt, createdAt: now, updatedAt: now },
+      {
+        identifier: `2fa-attempts-${challenge}`,
+        value: '0',
+        expiresAt,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]),
+  );
+
+  harness.clock.advance('PT10M');
+  await purge(harness);
+  expect(await rows()).toHaveLength(2);
+
+  harness.clock.advance('PT1S');
+  await purge(harness);
+  expect(await rows()).toEqual([]);
+});
+
+test('any other row of Better Auth in the same table is left alone', async () => {
   const harness = longAgo();
   const identifier = `native-${randomUUID()}`;
   const past = new Date(harness.clock.now().getTime() - 1000);

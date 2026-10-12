@@ -8,11 +8,19 @@ import { renderApp } from '../../test/render-app.tsx';
 const PASSWORD = 'correct horse battery staple';
 const SIGN_IN = 'POST /api/auth/sign-in/email';
 const SIGN_OUT = 'POST /api/auth/sign-out';
+const TOTP = 'POST /api/auth/two-factor/verify-totp';
+const BACKUP_CODE = 'POST /api/auth/two-factor/verify-backup-code';
 
 const accepted = { [SIGN_IN]: () => Response.json({ email: 'jane@example.com' }) };
 const refused = {
   [SIGN_IN]: () => Response.json({ error: 'invalid_credentials' }, { status: 401 }),
 };
+/** An account with a second factor: the password is right, a code is awaited. */
+const codeAwaited = { [SIGN_IN]: () => Response.json({ twoFactorRequired: true }) };
+const signedIn = () => Response.json({ email: 'jane@example.com' });
+const codeRefusedWith = (error: string, status = 401) => ({
+  [TOTP]: () => Response.json({ error }, { status }),
+});
 
 type Screen = Awaited<ReturnType<typeof renderApp>>['screen'];
 
@@ -23,6 +31,22 @@ async function fillSignIn(
   await screen.getByRole('textbox', { name: 'E-mail' }).fill(email);
   await screen.getByLabelText('Mot de passe', { exact: true }).fill(password);
   await screen.getByRole('button', { name: 'Se connecter' }).click();
+}
+
+const codeField = (screen: Screen) => screen.getByRole('textbox', { name: 'Code' });
+
+async function giveCode(screen: Screen, code = '123456') {
+  await codeField(screen).fill(code);
+  await screen.getByRole('button', { name: 'Valider' }).click();
+}
+
+/**
+ * The pointer is where “Se connecter” was pressed, now over “Valider”: off it, and once its colour
+ * has settled, as axe measures no hover elsewhere.
+ */
+async function pointerOff(screen: Screen) {
+  await heading(screen, 'Double authentification').hover();
+  await expect.poll(() => document.getAnimations().length).toBe(0);
 }
 
 /** What `var(--error)` resolves to in the current theme. */
@@ -171,6 +195,137 @@ describe('signing in', () => {
   });
 });
 
+describe('signing in with a second factor', () => {
+  test('the password leads to the code, and a code of the app to Today', async () => {
+    const { screen, router, api } = await renderApp(
+      '/sign-in',
+      fakeApi({ ...signedOut, ...codeAwaited, [TOTP]: signedIn }),
+    );
+
+    await fillSignIn(screen);
+
+    await expect.element(heading(screen, 'Double authentification')).toBeVisible();
+    expect(router.state.location.pathname).toBe('/sign-in');
+    await expect.element(codeField(screen)).toHaveAttribute('autocomplete', 'one-time-code');
+    await expect
+      .element(
+        screen.getByText(
+          "Saisis le code à 6 chiffres de ton application d'authentification, ou un de tes codes de secours.",
+        ),
+      )
+      .toBeVisible();
+
+    await giveCode(screen, '123 456');
+
+    await expect.element(heading(screen, "Aujourd'hui")).toBeVisible();
+    expect(api.sent(TOTP)).toEqual([{ route: TOTP, body: { code: '123 456' } }]);
+    expect(api.sent(BACKUP_CODE)).toEqual([]);
+    await expect.element(screen.getByText('jane@example.com')).toBeVisible();
+  });
+
+  test('anything but six digits is sent as a backup code', async () => {
+    const { screen, api } = await renderApp(
+      '/sign-in',
+      fakeApi({ ...signedOut, ...codeAwaited, [BACKUP_CODE]: signedIn }),
+    );
+    await fillSignIn(screen);
+
+    await giveCode(screen, 'aB3de-Fg7hi');
+
+    await expect.element(heading(screen, "Aujourd'hui")).toBeVisible();
+    expect(api.sent(BACKUP_CODE)).toEqual([{ route: BACKUP_CODE, body: { code: 'aB3de-Fg7hi' } }]);
+    expect(api.sent(TOTP)).toEqual([]);
+  });
+
+  test('a deep link is kept across both steps', async () => {
+    const { screen, router } = await renderApp(
+      '/battles?view=history',
+      fakeApi({ ...signedOut, ...codeAwaited, [TOTP]: signedIn }),
+    );
+    await fillSignIn(screen);
+
+    await giveCode(screen);
+
+    await expect.element(heading(screen, 'Battles')).toBeVisible();
+    expect(router.state.location.href).toBe('/battles?view=history');
+  });
+
+  test('a wrong code is said on its field, until it is corrected', async () => {
+    const { screen } = await renderApp(
+      '/sign-in',
+      fakeApi({ ...signedOut, ...codeAwaited, ...codeRefusedWith('invalid_code') }),
+    );
+    await fillSignIn(screen);
+
+    await giveCode(screen);
+
+    await expect.element(codeField(screen)).toBeInvalid();
+    await expect.element(screen.getByText('Code incorrect.')).toBeVisible();
+    await expect.element(heading(screen, 'Double authentification')).toBeVisible();
+
+    await codeField(screen).fill('654321');
+
+    await expect.element(screen.getByText('Code incorrect.')).not.toBeInTheDocument();
+  });
+
+  test('a first step that no longer stands leads back to the password, which was kept', async () => {
+    const { screen } = await renderApp(
+      '/sign-in',
+      fakeApi({ ...signedOut, ...codeAwaited, ...codeRefusedWith('challenge_expired') }),
+    );
+    await fillSignIn(screen);
+
+    await giveCode(screen);
+
+    await expect.element(heading(screen, 'Connexion')).toBeVisible();
+    await expect
+      .element(screen.getByRole('alert'))
+      .toHaveTextContent('La connexion a pris trop de temps. Recommence avec ton mot de passe.');
+    await expect
+      .element(screen.getByLabelText('Mot de passe', { exact: true }))
+      .toHaveValue(PASSWORD);
+
+    await screen.getByRole('button', { name: 'Se connecter' }).click();
+
+    await expect.element(heading(screen, 'Double authentification')).toBeVisible();
+    await expect.element(codeField(screen)).toHaveValue('');
+  });
+
+  test('too many wrong codes are said, and so is a failure of the API', async () => {
+    const blocked = await renderApp(
+      '/sign-in',
+      fakeApi({ ...signedOut, ...codeAwaited, ...codeRefusedWith('too_many_attempts', 429) }),
+    );
+    await fillSignIn(blocked.screen);
+    await giveCode(blocked.screen);
+    await expect
+      .element(blocked.screen.getByRole('alert'))
+      .toHaveTextContent('Trop de tentatives. Réessaie dans 15 minutes.');
+    await blocked.screen.unmount();
+
+    const broken = await renderApp(
+      '/sign-in',
+      fakeApi({ ...signedOut, ...codeAwaited, [TOTP]: () => new Response(null, { status: 500 }) }),
+    );
+    await fillSignIn(broken.screen);
+    await giveCode(broken.screen);
+    await expect
+      .element(broken.screen.getByRole('alert'))
+      .toHaveTextContent("Quelque chose n'a pas fonctionné.");
+  });
+
+  test('“Back to sign-in” gives the first step again', async () => {
+    const { screen } = await renderApp('/sign-in', fakeApi({ ...signedOut, ...codeAwaited }));
+    await fillSignIn(screen);
+    await expect.element(heading(screen, 'Double authentification')).toBeVisible();
+
+    await screen.getByRole('button', { name: 'Retour à la connexion' }).click();
+
+    await expect.element(heading(screen, 'Connexion')).toBeVisible();
+    await expect.element(screen.getByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
 describe('a deep link without a session', () => {
   test('leads to signing in, then back to the page asked for', async () => {
     const { screen, router } = await renderApp(
@@ -298,6 +453,22 @@ describe.each(['light', 'dark'] as const)('axe finds nothing in the %s theme', (
     await fillSignIn(screen);
 
     await expect.element(screen.getByRole('alert')).toBeVisible();
+    await expectNoAxeViolations();
+  });
+
+  test('on the code of the second factor and its refusal', async () => {
+    const { screen } = await renderApp(
+      '/sign-in',
+      fakeApi({ ...signedOut, ...codeAwaited, ...codeRefusedWith('invalid_code') }),
+    );
+    await fillSignIn(screen);
+    await pointerOff(screen);
+    await expectNoAxeViolations();
+
+    await giveCode(screen);
+
+    await expect.element(screen.getByText('Code incorrect.')).toBeVisible();
+    await pointerOff(screen);
     await expectNoAxeViolations();
   });
 

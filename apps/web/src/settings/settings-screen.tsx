@@ -5,6 +5,7 @@ import { Screen } from '../screens/screen.tsx';
 import { ChangeEmail } from './change-email.tsx';
 import { ChangePassword } from './change-password.tsx';
 import { ConnectedDevices } from './connected-devices.tsx';
+import { TwoFactor } from './two-factor.tsx';
 
 const cardClass = 'rounded-card border p-4';
 
@@ -23,6 +24,9 @@ export function SettingsScreen() {
         </div>
         <div className={cardClass}>
           <ChangePassword />
+        </div>
+        <div className={cardClass}>
+          <TwoFactor />
         </div>
         <div className={cardClass}>
           <ConnectedDevices />

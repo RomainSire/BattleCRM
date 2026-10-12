@@ -13,11 +13,14 @@ import { configQuery, sessionQuery, useApi } from '../session.ts';
 import { authLinkClass, AuthScreen } from './auth-layout.tsx';
 import { EmailField } from './email-field.tsx';
 import { PasswordField } from './password-field.tsx';
+import { SignInCode } from './sign-in-code.tsx';
 
 const route = getRouteApi('/auth/sign-in');
 
 type Outcome =
-  { email: string } | { refused: 'invalid_credentials' | 'too_many_attempts' | 'error' };
+  | { email: string }
+  | { twoFactorRequired: true }
+  | { refused: 'invalid_credentials' | 'too_many_attempts' | 'error' };
 
 export function SignInScreen() {
   useLocale();
@@ -28,6 +31,17 @@ export function SignInScreen() {
   const { data: config } = useQuery(configQuery(api));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // With a second factor, the password opens nothing yet: a code is asked for next (ST-18).
+  const [step, setStep] = useState<'password' | 'code' | 'expired'>('password');
+
+  async function signedIn(session: { email: string }) {
+    // Whatever a previous User left on this device goes before anything is shown.
+    clearDeviceData(queryClient);
+    queryClient.setQueryData(sessionQuery(api).queryKey, session);
+    // Back to the page a deep link asked for (ST-22), Today otherwise.
+    if (search.redirect === undefined) await router.navigate({ to: '/today', replace: true });
+    else await router.navigate({ href: search.redirect, replace: true });
+  }
 
   const signIn = useMutation({
     mutationFn: async (): Promise<Outcome> => {
@@ -40,12 +54,8 @@ export function SignInScreen() {
     },
     onSuccess: async (outcome) => {
       if ('refused' in outcome) return;
-      // Whatever a previous User left on this device goes before anything is shown.
-      clearDeviceData(queryClient);
-      queryClient.setQueryData(sessionQuery(api).queryKey, outcome);
-      // Back to the page a deep link asked for (ST-22), Today otherwise.
-      if (search.redirect === undefined) await router.navigate({ to: '/today', replace: true });
-      else await router.navigate({ href: search.redirect, replace: true });
+      if ('twoFactorRequired' in outcome) setStep('code');
+      else await signedIn(outcome);
     },
   });
   const refused =
@@ -57,7 +67,26 @@ export function SignInScreen() {
   const edit = (set: (value: string) => void) => (value: string) => {
     set(value);
     if (signIn.data !== undefined) signIn.reset();
+    if (step === 'expired') setStep('password');
   };
+
+  if (step === 'code') {
+    return (
+      <AuthScreen title={m.auth_two_factor_title()}>
+        <SignInCode
+          onSignedIn={signedIn}
+          onExpired={() => {
+            signIn.reset();
+            setStep('expired');
+          }}
+          onBack={() => {
+            signIn.reset();
+            setStep('password');
+          }}
+        />
+      </AuthScreen>
+    );
+  }
 
   return (
     <AuthScreen title={m.auth_sign_in_title()}>
@@ -84,6 +113,7 @@ export function SignInScreen() {
           {m.auth_sign_in()}
         </Button>
         <ErrorMessage>
+          {step === 'expired' && signIn.data === undefined && m.auth_two_factor_expired()}
           {refused === 'invalid_credentials' && m.auth_sign_in_failed()}
           {refused === 'too_many_attempts' && m.auth_too_many_attempts()}
           {(signIn.isError || refused === 'error') && m.auth_error()}

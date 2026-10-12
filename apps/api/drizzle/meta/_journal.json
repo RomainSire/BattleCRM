@@ -50,6 +50,20 @@
       "when": 1791831638479,
       "tag": "0006_known_device_access",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791836051802,
+      "tag": "0007_two_factor",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791836052569,
+      "tag": "0008_two_factor_access",
+      "breakpoints": true
     }
   ]
 }

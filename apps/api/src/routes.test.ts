@@ -17,6 +17,8 @@ const PUBLIC_ROUTES = [
   'GET /api/health',
   'POST /api/auth/sign-in/email',
   'POST /api/auth/sign-out',
+  'POST /api/auth/two-factor/verify-backup-code',
+  'POST /api/auth/two-factor/verify-totp',
   'POST /api/password-reset',
   'POST /api/password-reset/complete',
   'POST /api/signup',

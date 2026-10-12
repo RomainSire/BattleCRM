@@ -10,16 +10,27 @@ import { clearDeviceData } from '../device-data.ts';
 import { useLocale } from '../i18n.ts';
 import { sessionQuery, useApi } from '../session.ts';
 import { authLinkClass, AuthScreen } from './auth-layout.tsx';
+import { CodeField } from './code-field.tsx';
 import { PasswordField } from './password-field.tsx';
 
 type Outcome =
   | { email: string }
-  | { refused: 'invalid_link' | 'password_compromised' | 'password_check_unavailable' | 'error' };
+  | {
+      refused:
+        | 'invalid_link'
+        | 'two_factor_required'
+        | 'invalid_code'
+        | 'too_many_attempts'
+        | 'password_compromised'
+        | 'password_check_unavailable'
+        | 'error';
+    };
 
 /**
  * The link of the reset e-mail (spec UX §5.9). Its token travels in the fragment, which reaches no server
  * log, and is only sent with the new password: opening the link uses nothing up. A new password signs
- * this device in and every other one out.
+ * this device in and every other one out. An account with a second factor is asked for a code too:
+ * the API says so when the new password arrives without one.
  */
 export function ResetPasswordScreen() {
   useLocale();
@@ -28,19 +39,31 @@ export function ResetPasswordScreen() {
   const router = useRouter();
   const token = useRouterState({ select: (state) => state.location.hash });
   const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [codeAwaited, setCodeAwaited] = useState(false);
 
   const reset = useMutation({
     mutationFn: async (): Promise<Outcome> => {
-      const response = await api['password-reset'].complete.$post({ json: { token, password } });
+      const response = await api['password-reset'].complete.$post({
+        json: { token, password, ...(codeAwaited ? { code } : {}) },
+      });
       if (response.status === 200) return response.json();
-      if (response.status === 400 || response.status === 503) {
+      if (
+        response.status === 400 ||
+        response.status === 403 ||
+        response.status === 429 ||
+        response.status === 503
+      ) {
         const { error } = await response.json();
         return { refused: error === 'invalid' ? 'error' : error };
       }
       return { refused: 'error' };
     },
     onSuccess: async (outcome) => {
-      if ('refused' in outcome) return;
+      if ('refused' in outcome) {
+        if (outcome.refused === 'two_factor_required') setCodeAwaited(true);
+        return;
+      }
       // Whatever a previous User left on this device goes before anything is shown.
       clearDeviceData(queryClient);
       queryClient.setQueryData(sessionQuery(api).queryKey, outcome);
@@ -70,9 +93,12 @@ export function ResetPasswordScreen() {
     <AuthScreen title={m.auth_reset_password_title()}>
       <Form
         className="flex flex-col gap-4"
-        validationErrors={
-          refused === 'password_compromised' ? { password: m.auth_password_compromised() } : {}
-        }
+        validationErrors={{
+          ...(refused === 'password_compromised'
+            ? { password: m.auth_password_compromised() }
+            : {}),
+          ...(refused === 'invalid_code' ? { code: m.auth_two_factor_invalid() } : {}),
+        }}
         onSubmit={(event) => {
           event.preventDefault();
           reset.mutate();
@@ -84,11 +110,15 @@ export function ResetPasswordScreen() {
           onChange={setPassword}
           isNew
         />
+        {codeAwaited && (
+          <CodeField description={m.auth_two_factor_reset_help()} value={code} onChange={setCode} />
+        )}
         <Button type="submit" isDisabled={reset.isPending}>
           {m.auth_change_password()}
         </Button>
         <ErrorMessage>
           {refused === 'password_check_unavailable' && m.auth_password_check_unavailable()}
+          {refused === 'too_many_attempts' && m.account_too_many_attempts()}
           {(reset.isError || refused === 'error') && m.auth_error()}
         </ErrorMessage>
       </Form>

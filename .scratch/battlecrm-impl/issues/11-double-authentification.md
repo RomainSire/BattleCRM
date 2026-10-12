@@ -4,10 +4,40 @@
 
 **Blocked by:** 09
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Plugin `twoFactor` : activation avec mot de passe, QR code et clé copiable, code de confirmation
-- [ ] 10 codes de secours affichés une fois (Copier, Télécharger, case « J'ai mis mes codes en lieu sûr ») ; nombre restant par une route maison, mention à 3 ou moins ; régénération avec mot de passe
-- [ ] Connexion en deux temps ; codes TOTP et de secours dans les compteurs de `login_attempt`
-- [ ] Réinitialisation du mot de passe : code 2FA exigé quand elle est active
-- [ ] Désactivation avec mot de passe ; e-mails `two_factor_enabled` et `two_factor_disabled`
+- [x] Plugin `twoFactor` : activation avec mot de passe, QR code et clé copiable, code de confirmation
+- [x] 10 codes de secours affichés une fois (Copier, Télécharger, case « J'ai mis mes codes en lieu sûr ») ; nombre restant par une route maison, mention à 3 ou moins ; régénération avec mot de passe
+- [x] Connexion en deux temps ; codes TOTP et de secours dans les compteurs de `login_attempt`
+- [x] Réinitialisation du mot de passe : code 2FA exigé quand elle est active
+- [x] Désactivation avec mot de passe ; e-mails `two_factor_enabled` et `two_factor_disabled`
+
+## Comments
+
+**2026-10-12, implémentation (agent).**
+
+- **Plugin `twoFactor`** de Better Auth (TOTP, 10 codes de secours chiffrés). **Migrations** `0007_two_factor` (table `two_factor`, colonne `user.two_factor_enabled` avec défaut : compatible avec la version précédente) et `0008_two_factor_access` (`GRANT`, hors RLS) ; appliquées à la base de dev. Deux dépendances : `@better-auth/utils` (API, la version même de Better Auth, pour vérifier un code TOTP hors connexion) et `qrcode.react` (SPA).
+- **Liste blanche** : seuls `POST /api/auth/two-factor/verify-totp` et `verify-backup-code` s'ajoutent (seconde étape de la connexion), publics. Les autres endpoints du plugin (`enable`, `disable`, `generate-backup-codes`) ne sont appelés que par nos routes de compte, derrière la réauthentification ; `get-totp-uri`, `send-otp`, `verify-otp` restent à 404.
+- **Routes de compte** (session exigée) : `GET /api/account/two-factor` (`{ enabled: false }` ou `{ enabled: true, backupCodesLeft }`, la route maison du nombre restant), `POST /api/account/two-factor` (`{ password }` → `{ totpUri }`), `POST …/confirm` (`{ password, code }` → `{ backupCodes }`, affichés à ce moment seulement ; 400 `invalid_code`, 409 `not_started` / `already_enabled`), `POST …/backup-codes` (`{ password }` → `{ backupCodes }`), `POST …/disable` (`{ password }` → 204). Refus de mot de passe : 403 / 429 comme aux tickets 09 et 10 ; 409 `not_enabled` quand il n'y a rien à faire.
+- **Connexion en deux temps** : le mot de passe d'un compte protégé répond 200 `{ twoFactorRequired: true }` avec le cookie de défi du plugin (10 min), sans session ni appareil retenu ; le code ouvre la session, retient l'appareil et envoie `new_device` s'il y a lieu. Refus : 401 `invalid_code` ou `challenge_expired` (défi expiré, déjà servi, ou usé par 5 codes faux), 429 `too_many_attempts`. `trustDevice` n'atteint jamais Better Auth (nos schémas ne le laissent pas passer, en plus du hook).
+- **Compteurs de `login_attempt`** : chaque code (connexion, réinitialisation) est compté avant d'être regardé, sur l'adresse du compte. **Un mot de passe juste n'efface plus rien quand un code est attendu** (hook `after`) : sinon chaque connexion donnait un nouvel essai gratuit. Seul un code juste efface. Le verrou propre au plugin (10 codes faux → 15 min, par compte) reste actif à la connexion, en plus.
+- **Limite par IP** : la règle du plugin (3 requêtes / 10 s sur `/two-factor/*`) est remplacée par celle de la connexion (30 / 15 min), sinon trois fautes de frappe rapides affichaient « Réessaie dans 15 minutes ».
+- **Réinitialisation** : `code` facultatif dans le corps de `/api/password-reset/complete`. 2FA active sans code → 403 `two_factor_required` (l'écran affiche alors le champ) ; code faux → 403 `invalid_code` ; blocage → 429. Ordre : lien, code attendu ?, HIBP, empreinte, puis le code en dernier : un mot de passe refusé ne consomme aucun code de secours. Six chiffres = TOTP, sinon code de secours (vérification maison dans `auth/two-factor.ts`, le plugin n'en offrant aucune hors session ou défi).
+- **E-mails** `two_factor_enabled` et `two_factor_disabled`, dans la langue de l'Utilisateur (lue avant le changement), « Ce n'était pas moi » vers `/forgot-password`.
+- **Ménage** : `verification.disableCleanup` — Better Auth effaçait toutes les lignes expirées de `verification` à chaque lecture, selon l'horloge système (les tests des tickets 09 et 10 en devenaient instables). La tâche planifiée efface désormais aussi les défis 2FA expirés (préfixe `2fa-`).
+- **SPA** : étape « Double authentification » sur l'écran de connexion (un seul champ « Code » : six chiffres → TOTP, sinon code de secours ; le lien profond est conservé ; défi expiré → retour au mot de passe, gardé, avec un message) ; champ « Code » sur la réinitialisation quand l'API le demande ; carte « Double authentification » dans Réglages › Compte : mot de passe → QR code (noir sur blanc dans les deux thèmes) et clé copiable par groupes de quatre → code de confirmation → codes de secours (Copier, Télécharger en `.txt` sans requête, case « J'ai mis mes codes en lieu sûr », « Terminé » inactif tant qu'elle n'est pas cochée) ; une fois active : nombre restant, mention à 3 ou moins, « Régénérer les codes de secours » et « Désactiver » avec le mot de passe. Nouveaux composants : `CodeField`, `Checkbox`, `CopyButton`.
+- **Libellés à valider** : « Double authentification », « Saisis le code à 6 chiffres de ton application d'authentification, ou un de tes codes de secours. », « Code », « Valider », « Code incorrect. », « La connexion a pris trop de temps. Recommence avec ton mot de passe. », « Activer », « Scanne ce QR code… », « Clé », « Copier la clé », « Code de confirmation », « Confirmer », « Activée. », « Codes de secours restants : {n}. », « Il t'en reste peu : régénère-les. », « Régénérer les codes de secours », « Désactiver », « Chaque code sert une seule fois… », « Copier », « Copié. », « Télécharger », « Annuler », « Terminé », et les textes des deux e-mails.
+- **Revue (deux axes), corrigé** :
+  - **faille** : à la seconde étape, une requête portant la session d'un autre compte faisait vérifier le code de *ce* compte ; un code juste effaçait alors les compteurs de la victime et marquait l'appareil comme connu d'elle (aucune session n'était ouverte pour elle). Seul le cookie de défi est désormais transmis à Better Auth, et l'identifiant renvoyé est comparé à celui attendu (test) ;
+  - la confirmation porte aussi le mot de passe (« chaque requête sensible », ST-20) : la SPA garde en mémoire celui de l'étape précédente ;
+  - langue de l'e-mail lue avant d'activer ou de désactiver ; empreinte du mot de passe calculée avant de consommer un code à la réinitialisation ; limite par IP ; refus du presse-papiers signalé par `ErrorMessage` ; commentaire de `purgeExpiredLinks`.
+- **Revue, relevé et laissé, à trancher** :
+  - **« Ce n'était pas moi » de `two_factor_enabled` ne mène nulle part tant que le ticket 12 n'existe pas** : la réinitialisation exige un code du facteur que l'intrus vient d'enrôler ;
+  - deux fins de réinitialisation envoyées ensemble avec le même code de secours : l'une passe, l'autre répond `invalid_link` ; le code n'est consommé qu'une fois, mais une requête qui échouerait entre le code et la transaction en coûterait un ;
+  - `auth/two-factor.ts` relit le format de stockage du plugin (clé et codes chiffrés, préfixe `2fa-`, cookie `two_factor`) : à relire à chaque montée de version de Better Auth (ADR 0010) ; la vérification à la réinitialisation ne passe pas par le verrou propre au plugin, seulement par nos compteurs ;
+  - une clé demandée et jamais confirmée reste en base sans expirer (inutilisable sans le mot de passe) ; aucune des deux clés TOTP n'a de protection contre le rejeu d'un code dans sa fenêtre de 30 s (comportement du plugin) ;
+  - pas de terme au glossaire (`CONTEXT.md` n'a aucun terme d'authentification) ; le code dit `twoFactor` pour le plugin et `secondFactor` pour le code et le défi ;
+  - répétitions : trois routes de compte de même forme dans `auth/index.ts` (le reste de l'orchestration vit là, contrairement à `passwords` et `emailChange`), deux formulaires de mot de passe proches dans `two-factor.tsx`, la règle « six chiffres » côté SPA et côté API, deux gabarits d'e-mail qui ne diffèrent que par leurs textes ;
+  - **relevé hors ticket, existant** : après un envoi bloqué par un champ obligatoire vide, le message natif (en anglais : « Please fill out this field. ») ne disparaît qu'à la perte du focus ; le bouton remonte sous le pointeur et le premier clic peut se perdre (vu sur le formulaire 2FA, vaut pour les formulaires de Réglages) ;
+  - **relevé hors ticket, existant** : au survol, le bouton principal passe à 4,48:1 (blanc sur `accent/90`), sous le seuil de 4,5 ; les tests axe du ticket écartent le pointeur avant de mesurer ;
+  - pas de parcours e2e (ticket 45).

@@ -2,6 +2,7 @@ import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@battlecrm/contract';
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError, createAuthMiddleware, isAPIError } from 'better-auth/api';
+import { twoFactor as twoFactorPlugin } from 'better-auth/plugins/two-factor';
 import type { Logger } from 'pino';
 
 import type { Clock } from '../clock.ts';
@@ -9,12 +10,21 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/index.ts';
 import type { Random } from '../random.ts';
 import { LOGIN_WINDOW_MS, type LoginAttempts } from './login-attempts.ts';
-import { account, rateLimit, session, user, verification } from './tables.ts';
+import { account, rateLimit, session, twoFactor, user, verification } from './tables.ts';
 
 const DAY = 24 * 60 * 60;
 
 export const SIGN_IN_PATH = '/sign-in/email';
 export const SIGN_OUT_PATH = '/sign-out';
+/** The second step of a sign-in: a code of the authenticator app, or a backup code. */
+export const VERIFY_TOTP_PATH = '/two-factor/verify-totp';
+export const VERIFY_BACKUP_CODE_PATH = '/two-factor/verify-backup-code';
+/** Called by our own account routes only, behind a reauthentication: none of them is on the allowlist. */
+export const ENABLE_TWO_FACTOR_PATH = '/two-factor/enable';
+export const DISABLE_TWO_FACTOR_PATH = '/two-factor/disable';
+export const GENERATE_BACKUP_CODES_PATH = '/two-factor/generate-backup-codes';
+/** The cookie the plugin leaves between the password and the code: it names the challenge, in `verification`. */
+export const TWO_FACTOR_CHALLENGE_COOKIE = 'two_factor';
 
 /**
  * Native Better Auth endpoints reachable from outside, as `METHOD /path` under /api/auth (ADR 0010).
@@ -24,6 +34,8 @@ export const SIGN_OUT_PATH = '/sign-out';
 export const ALLOWED_NATIVE_ROUTES: readonly string[] = [
   `POST ${SIGN_IN_PATH}`,
   `POST ${SIGN_OUT_PATH}`,
+  `POST ${VERIFY_BACKUP_CODE_PATH}`,
+  `POST ${VERIFY_TOTP_PATH}`,
 ];
 
 /** Refused by the limiter of an address (ours) or of an IP address (Better Auth's): both answer 429. */
@@ -39,7 +51,7 @@ export type BetterAuthDependencies = {
 
 export type BetterAuth = ReturnType<typeof createBetterAuth>;
 
-/** Better Auth as the core: sessions, sign-in and password hashing; the journeys are written around it (ADR 0010). */
+/** Better Auth as the core: sessions, sign-in, password hashing and the second factor; the journeys are written around it (ADR 0010). */
 export function createBetterAuth(db: Database, dependencies: BetterAuthDependencies) {
   return betterAuth(betterAuthOptions(db, dependencies));
 }
@@ -57,7 +69,7 @@ export function betterAuthOptions(
     trustedOrigins: config.trustedOrigins,
     database: drizzleAdapter(db, {
       provider: 'pg',
-      schema: { user, session, account, verification, rateLimit },
+      schema: { user, session, account, verification, rateLimit, twoFactor },
     }),
     emailAndPassword: {
       enabled: true,
@@ -79,12 +91,22 @@ export function betterAuthOptions(
       // A revoked session stops working at once.
       cookieCache: { enabled: false },
     },
-    // By IP address, counted in the database: 30 sign-in attempts per 15 minutes (ST-15).
+    // Better Auth would erase every expired row of `verification` each time it reads one, by the system
+    // clock: the scheduled purge does it instead, by ours, and only for the rows it knows.
+    verification: { disableCleanup: true },
+    // TOTP and 10 single-use backup codes, kept encrypted (ST-18).
+    plugins: [twoFactorPlugin()],
+    // By IP address, counted in the database: 30 sign-in attempts, and as many codes, per 15 minutes (ST-15).
     // The address is the one `index.ts` hands over, resolved from Traefik's by `client-ip.ts`.
     rateLimit: {
       enabled: true,
       storage: 'database',
-      customRules: { [SIGN_IN_PATH]: { window: LOGIN_WINDOW_MS / 1000, max: 30 } },
+      // The plugin's own rule for a code, 3 per 10 seconds, would stop a User on three quick typos:
+      // codes get the rule of the sign-in they belong to, next to the counters by address.
+      customRules: {
+        [SIGN_IN_PATH]: { window: LOGIN_WINDOW_MS / 1000, max: 30 },
+        '/two-factor/*': { window: LOGIN_WINDOW_MS / 1000, max: 30 },
+      },
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
@@ -101,6 +123,10 @@ export function betterAuthOptions(
       }),
       after: createAuthMiddleware(async (ctx) => {
         if (ctx.path !== SIGN_IN_PATH || isAPIError(ctx.context.returned)) return;
+        // A right password proves half of an account with a second factor: its failures stay counted
+        // until the code is right too, or every sign-in would give a fresh run at the codes.
+        const opened = ctx.context.newSession;
+        if (!opened || opened.user['twoFactorEnabled'] === true) return;
         const email = emailOf(ctx.body);
         if (email !== undefined) await loginAttempts.succeeded(email);
       }),

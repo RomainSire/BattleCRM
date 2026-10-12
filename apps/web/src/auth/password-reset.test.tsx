@@ -22,6 +22,8 @@ const heading = (screen: Screen, name: string) => screen.getByRole('heading', { 
 const newPassword = (screen: Screen) =>
   screen.getByLabelText('Nouveau mot de passe', { exact: true });
 
+const code = (screen: Screen) => screen.getByRole('textbox', { name: 'Code' });
+
 async function askFor(screen: Screen, email = 'jane@example.com') {
   await screen.getByRole('textbox', { name: 'E-mail' }).fill(email);
   await screen.getByRole('button', { name: 'Envoyer le lien' }).click();
@@ -174,6 +176,66 @@ describe('the reset link', () => {
       .toBeVisible();
   });
 
+  test('an account with a second factor is asked for a code, then sends it with the password', async () => {
+    let attempts = 0;
+    const { screen, api } = await renderApp(
+      '/reset-password#the-token',
+      fakeApi({
+        ...signedOut,
+        [COMPLETE]: () => {
+          attempts += 1;
+          return attempts === 1
+            ? Response.json({ error: 'two_factor_required' }, { status: 403 })
+            : Response.json({ email: 'jane@example.com' });
+        },
+      }),
+    );
+    await expect.element(code(screen)).not.toBeInTheDocument();
+
+    await choose(screen);
+
+    await expect.element(code(screen)).toBeVisible();
+    await expect.element(code(screen)).toHaveAttribute('autocomplete', 'one-time-code');
+    await expect.element(screen.getByRole('alert')).not.toBeInTheDocument();
+    await expect.element(newPassword(screen)).toHaveValue(PASSWORD);
+
+    await code(screen).fill('123456');
+    await screen.getByRole('button', { name: 'Changer le mot de passe' }).click();
+
+    await expect.element(heading(screen, "Aujourd'hui")).toBeVisible();
+    expect(api.sent(COMPLETE)).toEqual([
+      { route: COMPLETE, body: { token: 'the-token', password: PASSWORD } },
+      { route: COMPLETE, body: { token: 'the-token', password: PASSWORD, code: '123456' } },
+    ]);
+  });
+
+  test('a wrong code is said on its field, too many of them under the form', async () => {
+    let refusal = { error: 'two_factor_required', status: 403 };
+    const { screen } = await renderApp(
+      '/reset-password#the-token',
+      fakeApi({
+        ...signedOut,
+        [COMPLETE]: () => Response.json({ error: refusal.error }, { status: refusal.status }),
+      }),
+    );
+    await choose(screen);
+    await code(screen).fill('123456');
+
+    refusal = { error: 'invalid_code', status: 403 };
+    await screen.getByRole('button', { name: 'Changer le mot de passe' }).click();
+
+    await expect.element(code(screen)).toBeInvalid();
+    await expect.element(screen.getByText('Code incorrect.')).toBeVisible();
+
+    refusal = { error: 'too_many_attempts', status: 429 };
+    await code(screen).fill('654321');
+    await screen.getByRole('button', { name: 'Changer le mot de passe' }).click();
+
+    await expect
+      .element(screen.getByRole('alert'))
+      .toHaveTextContent('Trop de tentatives. Réessaie dans 15 minutes.');
+  });
+
   test('says when the password could not be checked, or when the API failed', async () => {
     const unavailable = await renderApp(
       '/reset-password#the-token',
@@ -230,6 +292,17 @@ describe.each(['light', 'dark'] as const)('axe finds nothing in the %s theme', (
     await themed();
     await expectNoAxeViolations();
     await reset.screen.unmount();
+
+    const withCode = await renderApp(
+      '/reset-password#the-token',
+      fakeApi({ ...signedOut, ...refusedWith('two_factor_required', 403) }),
+    );
+    await choose(withCode.screen);
+    await expect.element(code(withCode.screen)).toBeVisible();
+    // The button moved from under the pointer: its colour settles first.
+    await expect.poll(() => document.getAnimations().length).toBe(0);
+    await expectNoAxeViolations();
+    await withCode.screen.unmount();
 
     const invalid = await renderApp('/reset-password', fakeApi(signedOut));
     await expect.element(heading(invalid.screen, "Ce lien n'est plus valable")).toBeVisible();

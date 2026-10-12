@@ -13,7 +13,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 // Every table of this module sits outside row level security: it is read before the User is known (ADR 0010).
-// The first five are Better Auth's: property names are its field names, ids come from the database (uuidv7).
+// The first six are Better Auth's: property names are its field names, ids come from the database (uuidv7).
 // A test compares them with what the installed Better Auth expects.
 
 const id = () =>
@@ -32,6 +32,8 @@ export const user = pgTable('user', {
   image: text(),
   createdAt: instant('created_at').notNull(),
   updatedAt: instant('updated_at').notNull(),
+  /** Written by the `twoFactor` plugin once a first code confirmed the secret. */
+  twoFactorEnabled: boolean('two_factor_enabled').default(false),
 });
 
 export const session = pgTable(
@@ -84,6 +86,32 @@ export const verification = pgTable(
     updatedAt: instant('updated_at').notNull(),
   },
   (table) => [index('verification_identifier_idx').on(table.identifier)],
+);
+
+/**
+ * The second factor of a User (ST-18), written by the `twoFactor` plugin: at most one row each,
+ * `verified` once a first code confirmed the secret.
+ */
+export const twoFactor = pgTable(
+  'two_factor',
+  {
+    id: id(),
+    /** The TOTP secret, encrypted with the secret of Better Auth. */
+    secret: text().notNull(),
+    /** The backup codes still unused, a JSON list encrypted the same way. */
+    backupCodes: text('backup_codes').notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    verified: boolean().default(true),
+    /** The plugin's own lock, by account, next to our counters by address. */
+    failedVerificationCount: integer('failed_verification_count').default(0),
+    lockedUntil: instant('locked_until'),
+  },
+  (table) => [
+    index('two_factor_secret_idx').on(table.secret),
+    index('two_factor_user_id_idx').on(table.userId),
+  ],
 );
 
 /** The counters of Better Auth's own limiter, by IP address and path (spec stack §7). */

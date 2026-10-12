@@ -130,6 +130,26 @@ export const templates = {
       action: { label: m.email_not_me({}, { locale }), url: notMeUrl },
       after: [],
     }),
+  two_factor_enabled: ({ notMeUrl }: { notMeUrl: string }, locale: Locale) =>
+    layout(locale, {
+      subject: m.email_two_factor_enabled_subject({}, { locale }),
+      before: [
+        m.email_two_factor_enabled_intro({}, { locale }),
+        m.email_two_factor_not_me({}, { locale }),
+      ],
+      action: { label: m.email_not_me({}, { locale }), url: notMeUrl },
+      after: [],
+    }),
+  two_factor_disabled: ({ notMeUrl }: { notMeUrl: string }, locale: Locale) =>
+    layout(locale, {
+      subject: m.email_two_factor_disabled_subject({}, { locale }),
+      before: [
+        m.email_two_factor_disabled_intro({}, { locale }),
+        m.email_two_factor_not_me({}, { locale }),
+      ],
+      action: { label: m.email_not_me({}, { locale }), url: notMeUrl },
+      after: [],
+    }),
   new_device: (
     {
       browser,
