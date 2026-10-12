@@ -110,6 +110,26 @@ export const templates = {
       action: { label: m.email_not_me({}, { locale }), url: notMeUrl },
       after: [],
     }),
+  email_change_confirm: ({ url }: { url: string }, locale: Locale) =>
+    layout(locale, {
+      subject: m.email_change_confirm_subject({}, { locale }),
+      before: [m.email_change_confirm_intro({}, { locale })],
+      action: { label: m.email_change_confirm_action({}, { locale }), url },
+      after: [m.email_change_confirm_ignore({}, { locale })],
+    }),
+  email_change_notice: (
+    { newEmail, notMeUrl }: { newEmail: string; notMeUrl: string },
+    locale: Locale,
+  ) =>
+    layout(locale, {
+      subject: m.email_change_notice_subject({}, { locale }),
+      before: [
+        m.email_change_notice_intro({ email: newEmail }, { locale }),
+        m.email_change_notice_not_me({}, { locale }),
+      ],
+      action: { label: m.email_not_me({}, { locale }), url: notMeUrl },
+      after: [],
+    }),
   new_device: (
     {
       browser,

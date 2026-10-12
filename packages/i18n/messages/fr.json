@@ -93,5 +93,21 @@
   "email_password_changed_subject": "Ton mot de passe a été modifié",
   "email_password_changed_intro": "Le mot de passe de ton compte BattleCRM vient d'être modifié. Tes autres appareils ont été déconnectés.",
   "email_password_changed_not_me": "Si c'était toi, tu n'as rien à faire. Sinon, choisis tout de suite un nouveau mot de passe.",
-  "email_not_me": "Ce n'était pas moi"
+  "email_not_me": "Ce n'était pas moi",
+  "email_change_confirm_subject": "Confirme ta nouvelle adresse e-mail",
+  "email_change_confirm_intro": "Clique sur ce lien pour utiliser cette adresse avec ton compte BattleCRM. Il est valable 1 heure et ne sert qu'une fois.",
+  "email_change_confirm_action": "Confirmer cette adresse",
+  "email_change_confirm_ignore": "Si tu n'as rien demandé, ignore cet e-mail : rien ne change.",
+  "email_change_notice_subject": "Changement d'adresse e-mail demandé",
+  "email_change_notice_intro": "Un changement d'adresse e-mail vient d'être demandé pour ton compte BattleCRM, vers {email}. Il prendra effet au clic sur le lien envoyé à cette adresse.",
+  "email_change_notice_not_me": "Si c'était toi, tu n'as rien à faire. Sinon, choisis tout de suite un nouveau mot de passe : la demande sera annulée.",
+  "account_email_title": "E-mail",
+  "account_email_current": "Ton adresse : {email}",
+  "account_email_body": "Le changement prend effet quand tu cliques sur le lien envoyé à la nouvelle adresse.",
+  "account_new_email": "Nouvelle adresse e-mail",
+  "account_change_email": "Changer d'e-mail",
+  "account_email_sent": "Un lien vient de partir à {email}. Ton adresse changera quand tu cliqueras dessus : il est valable 1 heure.",
+  "account_email_link_new": "Refaire la demande dans les Réglages",
+  "account_email_changing": "Changement d'adresse…",
+  "account_email_same": "C'est déjà ton adresse."
 }

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { eq } from 'drizzle-orm';
+import { eq, like } from 'drizzle-orm';
 import { expect, test } from 'vitest';
 
 import { testApp } from '../../test/app.ts';
@@ -85,6 +85,32 @@ test('a reset link is erased once expired, never before', async () => {
   const links = () =>
     withoutIsolation((db) => db.select().from(verification).where(eq(verification.value, email)));
   await postJson(harness.app, '/api/password-reset', { email });
+
+  harness.clock.advance('PT1H');
+  await purge(harness);
+  expect(await links()).toHaveLength(1);
+
+  harness.clock.advance('PT1S');
+  await purge(harness);
+  expect(await links()).toEqual([]);
+});
+
+test('the link of a change of address is erased once expired, never before', async () => {
+  const harness = longAgo();
+  const { userId, password, cookie } = await makeUser(harness);
+  const links = () =>
+    withoutIsolation((db) =>
+      db
+        .select()
+        .from(verification)
+        .where(like(verification.value, `${userId} %`)),
+    );
+  await postJson(
+    harness.app,
+    '/api/account/email',
+    { password, email: `new-${randomUUID()}@example.com` },
+    cookie,
+  );
 
   harness.clock.advance('PT1H');
   await purge(harness);

@@ -2,6 +2,7 @@ import { m } from '@battlecrm/i18n';
 import { useId } from 'react';
 
 import { Screen } from '../screens/screen.tsx';
+import { ChangeEmail } from './change-email.tsx';
 import { ChangePassword } from './change-password.tsx';
 import { ConnectedDevices } from './connected-devices.tsx';
 
@@ -14,6 +15,7 @@ export function SettingsScreen() {
         <h2 id={accountId} className="text-base font-semibold">
           {m.settings_account()}
         </h2>
+        <ChangeEmail />
         <ChangePassword />
         <ConnectedDevices />
       </section>

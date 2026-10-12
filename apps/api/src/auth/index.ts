@@ -18,6 +18,7 @@ import { isTimeZone } from '../settings/index.ts';
 import { createBetterAuth, SIGN_IN_PATH, SIGN_OUT_PATH, type BetterAuth } from './better-auth.ts';
 import type { Hibp } from './hibp.ts';
 import { createDevices } from './devices.ts';
+import { createEmailChange } from './email-change.ts';
 import { createLoginAttempts } from './login-attempts.ts';
 import { createPasswords } from './passwords.ts';
 import { purgeExpiredSessionsAndCounters } from './purge.ts';
@@ -51,7 +52,7 @@ const signupRequest = z.object({
     .transform((value) => (isTimeZone(value) ? value : 'UTC')),
 });
 const resendRequest = z.object({ attemptId: z.uuid() });
-const verifyRequest = z.object({ token: linkToken });
+const linkRequest = z.object({ token: linkToken });
 const signInRequest = z.object({
   email: emailAddress,
   // Not the rule of the sign-up: a password too short is a wrong password like any other.
@@ -64,6 +65,8 @@ const passwordChangeRequest = z.object({
   password: currentPassword,
   newPassword: chosenPassword,
 });
+
+const emailChangeRequest = z.object({ password: currentPassword, email: emailAddress });
 
 const PASSWORD_REFUSAL_STATUS = {
   password_compromised: 400,
@@ -122,7 +125,9 @@ export function createAuth({
     hashPassword,
   });
 
-  // Tickets 10 and 11 put it in front of their own sensitive routes.
+  const emailChange = createEmailChange({ config, clock, random, sendEmail });
+
+  // Ticket 11 puts it in front of its own sensitive routes.
   const reauthenticate = createReauthentication({
     loginAttempts,
     verifyPassword: async (hash, password) =>
@@ -221,7 +226,7 @@ export function createAuth({
       if (outcome === 'sent') return c.body(null, 204);
       return c.json({ error: 'too_soon' as const, ...outcome }, 429);
     })
-    .post('/signup/verify', jsonBody(verifyRequest), async (c) => {
+    .post('/signup/verify', jsonBody(linkRequest), async (c) => {
       const account = await signup.verify(c.req.valid('json').token);
       if (!account) return c.json({ error: 'invalid_link' as const }, 400);
       c.set('userId', account.userId);
@@ -278,6 +283,21 @@ export function createAuth({
       if (refused) return c.json({ error: refused }, PASSWORD_REFUSAL_STATUS[refused]);
       return c.body(null, 204);
     })
+    // The home-made change of address (ADR 0010): the native `/change-email` stays off the allowlist.
+    // The same answer whether the new address is free or taken.
+    .post('/account/email', requireUser, jsonBody(emailChangeRequest), async (c) => {
+      const { password, email } = c.req.valid('json');
+      const denied = await reauthenticate(c.var.userId, password);
+      if (denied) return c.json({ error: denied }, REAUTHENTICATION_STATUS[denied]);
+      await emailChange.request(c.var.userId, email);
+      return c.body(null, 204);
+    })
+    // The link sent to the new address. It opens no session: it needs the one of the User who asked.
+    .post('/account/email/confirm', requireUser, jsonBody(linkRequest), async (c) => {
+      const changed = await emailChange.confirm(c.var.userId, c.req.valid('json').token);
+      if (!changed) return c.json({ error: 'invalid_link' as const }, 400);
+      return c.json(changed, 200);
+    })
     // Connected devices (spec UX §5.9). Ending a session is not a sensitive action: no password is asked.
     .get('/sessions', requireUser, async (c) =>
       c.json({ sessions: await listSessions(c.var.userId, c.var.sessionId, clock.now()) }, 200),
@@ -310,6 +330,7 @@ export function createAuth({
           ...(await purgeExpiredSessionsAndCounters(clock.now())),
           loginAttempts: await loginAttempts.purgeExpired(),
           resetLinks: await passwords.purgeExpiredLinks(),
+          emailChangeLinks: await emailChange.purgeExpiredLinks(),
         };
         if (Object.values(purged).some((count) => count > 0)) {
           logger.info({ purged }, 'expired sessions and counters purged');

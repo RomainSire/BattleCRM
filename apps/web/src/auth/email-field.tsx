@@ -7,11 +7,13 @@ import { Label } from '../components/ui/label.tsx';
 
 /** The address of an account, as every authentication screen asks for it. */
 export function EmailField({
+  label = m.auth_email(),
   value,
   onChange,
   autoComplete,
   inputClassName = '',
 }: {
+  label?: string;
   value: string;
   onChange: (value: string) => void;
   /** `username` where a password manager fills a sign-in, `email` elsewhere. */
@@ -30,7 +32,7 @@ export function EmailField({
       }
       className="flex flex-col gap-1.5"
     >
-      <Label>{m.auth_email()}</Label>
+      <Label>{label}</Label>
       <Input className={inputClassName} />
       <FieldErrorMessage />
     </TextField>

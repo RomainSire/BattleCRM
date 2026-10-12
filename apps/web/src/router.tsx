@@ -23,6 +23,7 @@ import { clearDeviceData } from './device-data.ts';
 import { MoreScreen } from './screens/more-screen.tsx';
 import { Screen } from './screens/screen.tsx';
 import { configQuery, sessionQuery, type ApiClient } from './session.ts';
+import { ChangingEmail, InvalidEmailLinkScreen } from './settings/change-email-link.tsx';
 import { SettingsScreen } from './settings/settings-screen.tsx';
 import { AppShell } from './shell/app-shell.tsx';
 
@@ -207,6 +208,25 @@ const settingsRoute = createRoute({
   component: SettingsScreen,
 });
 
+// The link sent to a new address (spec UX §5.9). It opens no session: without one, signing in comes first
+// and leads back here, token included. Posted by the loader, like the verification link.
+const changeEmailRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/change-email',
+  loader: async ({ context: { api, queryClient }, location }) => {
+    const response = await api.account.email.confirm.$post({ json: { token: location.hash } });
+    if (response.status === 400) return;
+    if (!response.ok) throw new Error('POST /api/account/email/confirm failed');
+    // The Account section shows the new address.
+    queryClient.setQueryData(sessionQuery(api).queryKey, await response.json());
+    throw redirect({ to: '/settings', replace: true });
+  },
+  // The link works once: never ask again for the same visit.
+  staleTime: Infinity,
+  pendingComponent: ChangingEmail,
+  component: InvalidEmailLinkScreen,
+});
+
 const moreRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/more',
@@ -224,6 +244,7 @@ const routeTree = rootRoute.addChildren([
     positioningsRoute,
     insightsRoute,
     settingsRoute,
+    changeEmailRoute,
     moreRoute,
   ]),
   authRoute.addChildren([

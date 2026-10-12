@@ -29,7 +29,8 @@ const refusedWith = (error: string, status: number) => ({
 type Screen = Awaited<ReturnType<typeof renderApp>>['screen'];
 
 const form = (screen: Screen) => screen.getByRole('form', { name: 'Mot de passe' });
-const current = (screen: Screen) => screen.getByLabelText('Mot de passe actuel', { exact: true });
+const current = (screen: Screen) =>
+  form(screen).getByLabelText('Mot de passe actuel', { exact: true });
 const next = (screen: Screen) => screen.getByLabelText('Nouveau mot de passe', { exact: true });
 
 async function change(screen: Screen, { password = CURRENT, newPassword = NEW } = {}) {

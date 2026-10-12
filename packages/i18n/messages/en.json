@@ -93,5 +93,21 @@
   "email_password_changed_subject": "Your password was changed",
   "email_password_changed_intro": "The password of your BattleCRM account was just changed. Your other devices were signed out.",
   "email_password_changed_not_me": "If it was you, there is nothing to do. If not, choose a new password right away.",
-  "email_not_me": "It wasn't me"
+  "email_not_me": "It wasn't me",
+  "email_change_confirm_subject": "Confirm your new email address",
+  "email_change_confirm_intro": "Click this link to use this address with your BattleCRM account. It is valid for 1 hour and works only once.",
+  "email_change_confirm_action": "Confirm this address",
+  "email_change_confirm_ignore": "If you did not ask for anything, ignore this email: nothing changes.",
+  "email_change_notice_subject": "Email address change requested",
+  "email_change_notice_intro": "A change of email address was just requested for your BattleCRM account, to {email}. It takes effect when the link sent to that address is clicked.",
+  "email_change_notice_not_me": "If it was you, there is nothing to do. If not, choose a new password right away: the request will be cancelled.",
+  "account_email_title": "Email",
+  "account_email_current": "Your address: {email}",
+  "account_email_body": "The change takes effect when you click the link sent to the new address.",
+  "account_new_email": "New email address",
+  "account_change_email": "Change email",
+  "account_email_sent": "A link was just sent to {email}. Your address will change when you click it: it is valid for 1 hour.",
+  "account_email_link_new": "Ask again in Settings",
+  "account_email_changing": "Changing address…",
+  "account_email_same": "This is already your address."
 }

@@ -1,4 +1,4 @@
-import { and, eq, gt, like, lt, ne, sql } from 'drizzle-orm';
+import { and, eq, gt, like, ne, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 
 import type { Clock } from '../clock.ts';
@@ -8,8 +8,10 @@ import type { Locale } from '../email/index.ts';
 import type { SendEmail } from '../email/index.ts';
 import type { Random } from '../random.ts';
 import { languageAndTimeZoneOf } from '../settings/index.ts';
+import { cancelEmailChanges } from './email-change.ts';
 import { newPasswordRefusal, type Hibp } from './hibp.ts';
 import type { LoginAttempts } from './login-attempts.ts';
+import { purgeExpiredLinks } from './purge.ts';
 import { account, session, user, verification } from './tables.ts';
 import { hashToken } from './token-hash.ts';
 
@@ -26,13 +28,17 @@ const resetLinksOf = (email: string) =>
 
 type Owner = { id: string; email: string };
 
-/** The new password of a User; whatever reset link was on its way opens nothing any more. */
+/**
+ * The new password of a User; whatever reset link was on its way opens nothing any more, and a change of
+ * address under way is cancelled: it is what “It wasn't me” promises in the e-mail that warned of it.
+ */
 async function setPassword(tx: Transaction, owner: Owner, passwordHash: string, now: Date) {
   await tx
     .update(account)
     .set({ password: passwordHash, updatedAt: now })
     .where(and(eq(account.userId, owner.id), eq(account.providerId, 'credential')));
   await tx.delete(verification).where(resetLinksOf(owner.email));
+  await cancelEmailChanges(tx, owner.id);
 }
 
 /**
@@ -202,19 +208,6 @@ export function createPasswords({
     },
 
     /** Scheduled: an expired reset link is refused, never erased by a click. Returns how many went. */
-    async purgeExpiredLinks(): Promise<number> {
-      const purged = await withoutIsolation((db) =>
-        db
-          .delete(verification)
-          .where(
-            and(
-              like(verification.identifier, `${RESET_PREFIX}%`),
-              lt(verification.expiresAt, clock.now()),
-            ),
-          )
-          .returning({ id: verification.id }),
-      );
-      return purged.length;
-    },
+    purgeExpiredLinks: () => purgeExpiredLinks(RESET_PREFIX, clock.now()),
   };
 }
