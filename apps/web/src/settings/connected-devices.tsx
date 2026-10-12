@@ -57,14 +57,14 @@ export function ConnectedDevices() {
         {m.devices_title()}
       </h3>
       {sessions.data && (
-        <ul aria-labelledby={titleId} className="flex flex-col divide-y rounded-control border">
+        <ul aria-labelledby={titleId} className="flex flex-col divide-y">
           {sessions.data.map((session) => {
             const device = [
               session.browser ?? m.device_unknown_browser(),
               session.os ?? m.device_unknown_os(),
             ].join(' · ');
             return (
-              <li key={session.id} className="flex items-center justify-between gap-3 px-3 py-2">
+              <li key={session.id} className="flex items-center justify-between gap-3 py-2">
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate text-sm">{device}</span>
                   <span className="text-xs text-muted-foreground">
