@@ -14,6 +14,8 @@ import { z } from 'zod';
 
 import { createApiClient } from './api-client.ts';
 import { AuthLayout } from './auth/auth-layout.tsx';
+import { ForgotPasswordScreen } from './auth/forgot-password-screen.tsx';
+import { ResetPasswordScreen } from './auth/reset-password-screen.tsx';
 import { SignInScreen } from './auth/sign-in-screen.tsx';
 import { SignUpScreen } from './auth/sign-up-screen.tsx';
 import { AuthError, InvalidLinkScreen, VerifyingEmail } from './auth/verify-email-screen.tsx';
@@ -115,6 +117,20 @@ const signUpRoute = createRoute({
   component: SignUpScreen,
 });
 
+// Both stay open with a session: “It wasn't me”, in a security e-mail, leads to the first (spec UX §5.9).
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => authRoute,
+  path: '/forgot-password',
+  component: ForgotPasswordScreen,
+});
+
+// The link of the reset e-mail, its token in the fragment like the verification link's.
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => authRoute,
+  path: '/reset-password',
+  component: ResetPasswordScreen,
+});
+
 // The link of the verification e-mail. Its token travels in the fragment, which reaches no server log,
 // and is posted by the loader: once per visit, where an effect would run twice in development.
 const verifyEmailRoute = createRoute({
@@ -210,7 +226,13 @@ const routeTree = rootRoute.addChildren([
     settingsRoute,
     moreRoute,
   ]),
-  authRoute.addChildren([signInRoute, signUpRoute, verifyEmailRoute]),
+  authRoute.addChildren([
+    signInRoute,
+    signUpRoute,
+    verifyEmailRoute,
+    forgotPasswordRoute,
+    resetPasswordRoute,
+  ]),
 ]);
 
 /**

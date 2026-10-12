@@ -8,7 +8,7 @@ import { useLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 
 /** The sessions of the User, this device first. */
-const sessionsQuery = (api: ApiClient) =>
+export const sessionsQuery = (api: ApiClient) =>
   queryOptions({
     queryKey: ['sessions'],
     queryFn: async () => {

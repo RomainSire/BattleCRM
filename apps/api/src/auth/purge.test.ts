@@ -7,7 +7,7 @@ import { testApp } from '../../test/app.ts';
 import { makeUser } from '../../test/factories/user.ts';
 import { postJson } from '../../test/http.ts';
 import { withoutIsolation } from '../db/index.ts';
-import { loginAttempt, rateLimit, session } from './tables.ts';
+import { loginAttempt, rateLimit, session, verification } from './tables.ts';
 
 type Harness = ReturnType<typeof testApp>;
 
@@ -77,6 +77,41 @@ test('the counter of an IP address is erased 15 minutes after its last request',
 
   expect(await counter(keys.old)).toEqual([]);
   expect(await counter(keys.recent)).toHaveLength(1);
+});
+
+test('a reset link is erased once expired, never before', async () => {
+  const harness = longAgo();
+  const { email } = await makeUser(harness);
+  const links = () =>
+    withoutIsolation((db) => db.select().from(verification).where(eq(verification.value, email)));
+  await postJson(harness.app, '/api/password-reset', { email });
+
+  harness.clock.advance('PT1H');
+  await purge(harness);
+  expect(await links()).toHaveLength(1);
+
+  harness.clock.advance('PT1S');
+  await purge(harness);
+  expect(await links()).toEqual([]);
+});
+
+test('a row of Better Auth in the same table is left alone', async () => {
+  const harness = longAgo();
+  const identifier = `native-${randomUUID()}`;
+  const past = new Date(harness.clock.now().getTime() - 1000);
+  await withoutIsolation((db) =>
+    db
+      .insert(verification)
+      .values({ identifier, value: 'x', expiresAt: past, createdAt: past, updatedAt: past }),
+  );
+
+  await purge(harness);
+
+  expect(
+    await withoutIsolation((db) =>
+      db.select().from(verification).where(eq(verification.identifier, identifier)),
+    ),
+  ).toHaveLength(1);
 });
 
 test('says how many rows went, and nothing when none did', async () => {

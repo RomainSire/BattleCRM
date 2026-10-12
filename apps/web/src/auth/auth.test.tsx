@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { commands, page } from 'vitest/browser';
+import { commands, page, userEvent } from 'vitest/browser';
 
 import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi, signedOut } from '../../test/fake-api.ts';
@@ -152,6 +152,31 @@ describe('signing up', () => {
 
     await screen.getByRole('button', { name: 'Masquer' }).click();
     await expect.element(password).toHaveAttribute('type', 'password');
+  });
+
+  test('the eye sits inside the field and says what it does, in a tooltip too', async () => {
+    const { screen } = await renderApp('/sign-up', fakeApi(signedOut));
+    const password = screen.getByLabelText('Mot de passe', { exact: true });
+    const eye = screen.getByRole('button', { name: 'Afficher' });
+    await expect.element(eye).toBeVisible();
+    const frame = password.element().closest('[data-slot=input-group]');
+    expect(frame?.contains(eye.element())).toBe(true);
+
+    // Reached by the keyboard right after the field: the tooltip shows at once.
+    await password.click();
+    await userEvent.keyboard('{Tab}');
+    await expect.element(eye).toHaveFocus();
+    await expect.element(screen.getByRole('tooltip')).toHaveTextContent('Afficher');
+    const tip = screen.getByRole('tooltip').element().getBoundingClientRect();
+    const button = eye.element().getBoundingClientRect();
+    expect(tip.bottom).toBeLessThanOrEqual(button.top);
+    expect(button.top - tip.bottom).toBeLessThan(16);
+    expect(tip.left).toBeLessThan(button.right);
+    expect(tip.right).toBeGreaterThan(button.left);
+
+    await userEvent.keyboard('{Enter}');
+    await expect.element(password).toHaveAttribute('type', 'text');
+    await expect.element(screen.getByRole('button', { name: 'Masquer' })).toHaveFocus();
   });
 
   test('a password under 15 characters or a malformed address is refused before any request', async () => {

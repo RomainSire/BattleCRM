@@ -19,7 +19,13 @@ import { createBetterAuth, SIGN_IN_PATH, SIGN_OUT_PATH, type BetterAuth } from '
 import type { Hibp } from './hibp.ts';
 import { createDevices } from './devices.ts';
 import { createLoginAttempts } from './login-attempts.ts';
+import { createPasswords } from './passwords.ts';
 import { purgeExpiredSessionsAndCounters } from './purge.ts';
+import {
+  createReauthentication,
+  currentPassword,
+  REAUTHENTICATION_STATUS,
+} from './reauthentication.ts';
 import { listSessions, revokeOtherSessions, revokeSession } from './sessions.ts';
 import { createSignup, type OnAccountCreated } from './signup.ts';
 
@@ -28,11 +34,15 @@ export type { AccountCreated, OnAccountCreated } from './signup.ts';
 
 const NATIVE_BASE_PATH = '/api/auth';
 
+// Lower case, as Better Auth looks an address up.
+const emailAddress = z.string().trim().toLowerCase().pipe(z.email().max(254));
+// No other rule than the length (spec stack §7).
+const chosenPassword = z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH);
+const linkToken = z.string().min(1).max(200);
+
 const signupRequest = z.object({
-  // Lower case, as Better Auth looks an address up.
-  email: z.string().trim().toLowerCase().pipe(z.email().max(254)),
-  // No other rule than the length (spec stack §7).
-  password: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH),
+  email: emailAddress,
+  password: chosenPassword,
   locale: z.enum(locales),
   /** Detected by the browser; one the API does not know falls back to UTC rather than blocking the sign-up. */
   timeZone: z
@@ -41,12 +51,24 @@ const signupRequest = z.object({
     .transform((value) => (isTimeZone(value) ? value : 'UTC')),
 });
 const resendRequest = z.object({ attemptId: z.uuid() });
-const verifyRequest = z.object({ token: z.string().min(1).max(200) });
+const verifyRequest = z.object({ token: linkToken });
 const signInRequest = z.object({
-  email: z.string().trim().toLowerCase().pipe(z.email().max(254)),
+  email: emailAddress,
   // Not the rule of the sign-up: a password too short is a wrong password like any other.
-  password: z.string().min(1).max(PASSWORD_MAX_LENGTH),
+  password: currentPassword,
 });
+const passwordResetRequest = z.object({ email: emailAddress });
+const passwordResetCompletion = z.object({ token: linkToken, password: chosenPassword });
+/** A sensitive request: `password` is the current one, checked every time (ST-20). */
+const passwordChangeRequest = z.object({
+  password: currentPassword,
+  newPassword: chosenPassword,
+});
+
+const PASSWORD_REFUSAL_STATUS = {
+  password_compromised: 400,
+  password_check_unavailable: 503,
+} as const;
 /** What Better Auth answers a sign-in with; its session token stays out of our own answer. */
 const nativeSignIn = z.object({ user: z.object({ id: z.string(), email: z.string() }) });
 
@@ -86,6 +108,27 @@ export function createAuth({
 
   const devices = createDevices({ config, clock, random, sendEmail });
 
+  const hashPassword = async (password: string) =>
+    (await betterAuthContext()).password.hash(password);
+
+  const passwords = createPasswords({
+    config,
+    clock,
+    random,
+    logger,
+    hibp,
+    sendEmail,
+    loginAttempts,
+    hashPassword,
+  });
+
+  // Tickets 10 and 11 put it in front of their own sensitive routes.
+  const reauthenticate = createReauthentication({
+    loginAttempts,
+    verifyPassword: async (hash, password) =>
+      (await betterAuthContext()).password.verify({ hash, password }),
+  });
+
   const signup = createSignup({
     config,
     clock,
@@ -94,7 +137,7 @@ export function createAuth({
     hibp,
     sendEmail,
     onAccountCreated,
-    hashPassword: async (password) => (await betterAuthContext()).password.hash(password),
+    hashPassword,
   });
 
   /** The session of a request, read in the database every time; slides its expiry and its cookie. */
@@ -170,11 +213,7 @@ export function createAuth({
     .post('/signup', jsonBody(signupRequest), async (c) => {
       const outcome = await signup.start(c.req.valid('json'));
       if ('attemptId' in outcome) return c.json(outcome, 202);
-      const status = {
-        signups_closed: 403,
-        password_compromised: 400,
-        password_check_unavailable: 503,
-      } as const;
+      const status = { signups_closed: 403, ...PASSWORD_REFUSAL_STATUS } as const;
       return c.json({ error: outcome.refused }, status[outcome.refused]);
     })
     .post('/signup/resend', jsonBody(resendRequest), async (c) => {
@@ -213,6 +252,32 @@ export function createAuth({
       if (!response.ok) throw new Error(`Better Auth answered ${response.status} to a sign-out`);
       return c.body(null, 204);
     })
+    // Forgot your password (spec UX §5.9): the same answer whether the address has an account or not (ST-13).
+    .post('/password-reset', jsonBody(passwordResetRequest), async (c) => {
+      await passwords.requestReset(c.req.valid('json').email);
+      return c.body(null, 204);
+    })
+    // The home-made end of a reset (ADR 0010): the native `/reset-password` stays off the allowlist.
+    .post('/password-reset/complete', jsonBody(passwordResetCompletion), async (c) => {
+      const outcome = await passwords.completeReset(c.req.valid('json'));
+      if ('refused' in outcome) {
+        const status = { invalid_link: 400, ...PASSWORD_REFUSAL_STATUS } as const;
+        return c.json({ error: outcome.refused }, status[outcome.refused]);
+      }
+      c.set('userId', outcome.id);
+      await openSession(c, outcome.id);
+      // Remembered without the “new device” e-mail: the User was just told the password changed.
+      await devices.signedIn(c, outcome, { announce: false });
+      return c.json({ email: outcome.email }, 200);
+    })
+    .post('/account/password', requireUser, jsonBody(passwordChangeRequest), async (c) => {
+      const { password, newPassword } = c.req.valid('json');
+      const denied = await reauthenticate(c.var.userId, password);
+      if (denied) return c.json({ error: denied }, REAUTHENTICATION_STATUS[denied]);
+      const refused = await passwords.change(c.var.userId, c.var.sessionId, newPassword);
+      if (refused) return c.json({ error: refused }, PASSWORD_REFUSAL_STATUS[refused]);
+      return c.body(null, 204);
+    })
     // Connected devices (spec UX §5.9). Ending a session is not a sensitive action: no password is asked.
     .get('/sessions', requireUser, async (c) =>
       c.json({ sessions: await listSessions(c.var.userId, c.var.sessionId, clock.now()) }, 200),
@@ -244,6 +309,7 @@ export function createAuth({
         const purged = {
           ...(await purgeExpiredSessionsAndCounters(clock.now())),
           loginAttempts: await loginAttempts.purgeExpired(),
+          resetLinks: await passwords.purgeExpiredLinks(),
         };
         if (Object.values(purged).some((count) => count > 0)) {
           logger.info({ purged }, 'expired sessions and counters purged');

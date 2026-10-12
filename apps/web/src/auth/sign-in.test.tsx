@@ -34,6 +34,9 @@ function errorColour() {
   return color;
 }
 
+/** What carries the outline of a field: the frame it shares with a button, or the field itself. */
+const outlined = (field: Element) => field.closest('[data-slot=input-group]') ?? field;
+
 const heading = (screen: Screen, name: string) => screen.getByRole('heading', { level: 1, name });
 
 beforeEach(() => page.viewport(1280, 800));
@@ -96,7 +99,9 @@ describe('signing in', () => {
     await expect.element(alert).toBeVisible();
     expect(getComputedStyle(alert.element()).color).toBe(errorColour());
     for (const field of [email, password]) {
-      await expect.poll(() => getComputedStyle(field.element()).borderColor).toBe(errorColour());
+      await expect
+        .poll(() => getComputedStyle(outlined(field.element())).borderColor)
+        .toBe(errorColour());
     }
 
     await password.fill('another password');

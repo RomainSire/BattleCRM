@@ -123,7 +123,9 @@ describe('connected devices, in the Account section of Settings', () => {
     const { screen } = await renderApp('/settings', withSessions(laptop));
 
     await expect.element(devices(screen)).toHaveTextContent('Firefox · Linux');
-    await expect.element(screen.getByRole('main').getByRole('button')).not.toBeInTheDocument();
+    await expect
+      .element(screen.getByRole('main').getByRole('button', { name: /^Déconnecter/ }))
+      .not.toBeInTheDocument();
   });
 
   test('a session that was already gone is no error: the list follows', async () => {
@@ -197,7 +199,10 @@ describe('connected devices, in the Account section of Settings', () => {
     const { screen } = await renderApp('/settings', withSessions(laptop, phone));
     await expect.element(devices(screen)).toHaveTextContent('Safari · iOS');
 
-    const buttons = screen.getByRole('main').getByRole('button').elements();
+    const buttons = [
+      ...devices(screen).getByRole('button').elements(),
+      ...screen.getByRole('button', { name: 'Déconnecter tous les autres' }).elements(),
+    ];
     expect(buttons).toHaveLength(2);
     for (const button of buttons) {
       expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);

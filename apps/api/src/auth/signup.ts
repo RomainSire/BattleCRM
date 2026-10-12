@@ -7,7 +7,7 @@ import type { Config } from '../config.ts';
 import { withoutIsolation, withUser, type Transaction } from '../db/index.ts';
 import type { Locale, SendEmail } from '../email/index.ts';
 import type { Random } from '../random.ts';
-import type { Hibp } from './hibp.ts';
+import { newPasswordRefusal, type Hibp } from './hibp.ts';
 import { account, pendingSignup, user } from './tables.ts';
 import { hashToken } from './token-hash.ts';
 
@@ -92,16 +92,8 @@ export function createSignup({
       | { refused: 'signups_closed' | 'password_compromised' | 'password_check_unavailable' }
     > {
       if (!config.signupsOpen) return { refused: 'signups_closed' };
-      try {
-        if (await hibp.isCompromised(request.password)) return { refused: 'password_compromised' };
-      } catch (error) {
-        // Unreachable means refused: an unchecked password never gets in.
-        logger.warn(
-          { error: error instanceof Error ? error.name : 'Error' },
-          'password check unavailable',
-        );
-        return { refused: 'password_check_unavailable' };
-      }
+      const refused = await newPasswordRefusal(hibp, logger, request.password);
+      if (refused) return { refused };
       const passwordHash = await hashPassword(request.password);
       const now = clock.now();
       const link = newLink(now);

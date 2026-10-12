@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
 
+import type { Logger } from 'pino';
+
 /** Have I Been Pwned, behind an interface so that tests never reach the network. */
 export type Hibp = {
   /** Rejects when the service cannot answer: the caller then refuses the password (spec stack §7). */
@@ -24,4 +26,26 @@ export function haveIBeenPwned(fetch: typeof globalThis.fetch = globalThis.fetch
       });
     },
   };
+}
+
+/**
+ * A new password is checked at the sign-up, at a change and at a reset (spec stack §7): resolves to why
+ * it is not taken, if it is not. The union is spelled out wherever it reaches a route: the SPA's typed
+ * client cannot name an alias of this module.
+ */
+export async function newPasswordRefusal(
+  hibp: Hibp,
+  logger: Logger,
+  password: string,
+): Promise<'password_compromised' | 'password_check_unavailable' | undefined> {
+  try {
+    return (await hibp.isCompromised(password)) ? 'password_compromised' : undefined;
+  } catch (error) {
+    // Unreachable means refused: an unchecked password never gets in.
+    logger.warn(
+      { error: error instanceof Error ? error.name : 'Error' },
+      'password check unavailable',
+    );
+    return 'password_check_unavailable';
+  }
 }

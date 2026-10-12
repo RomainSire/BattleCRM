@@ -39,9 +39,14 @@ export function createDevices({
     /**
      * A session was just opened for this User by this request: its device is remembered and keeps
      * its cookie. The User is told when the account already knew other devices and not this one;
-     * the first device of an account is the one that created it.
+     * the first device of an account is the one that created it. `announce: false` when the User hears
+     * of this session otherwise, as after a password reset.
      */
-    async signedIn(c: Context<AppEnv>, user: { id: string; email: string }): Promise<void> {
+    async signedIn(
+      c: Context<AppEnv>,
+      user: { id: string; email: string },
+      { announce = true }: { announce?: boolean } = {},
+    ): Promise<void> {
       const held = getCookie(c, DEVICE_COOKIE, 'host');
       // A device another account already knows keeps its cookie: one browser, several accounts.
       const token = held !== undefined && DEVICE_TOKEN.test(held) ? held : random.token();
@@ -72,7 +77,7 @@ export function createDevices({
           .limit(1);
         return others.length > 0;
       });
-      if (!isNew) return;
+      if (!isNew || !announce) return;
       sendEmail(
         user.email,
         'new_device',

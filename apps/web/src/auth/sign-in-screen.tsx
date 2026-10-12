@@ -2,16 +2,17 @@ import { m } from '@battlecrm/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
-import { Form, Link, TextField } from 'react-aria-components';
+import { Form, Link } from 'react-aria-components';
 
 import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
-import { Input, invalidInputClass } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
+import { ErrorMessage } from '../components/ui/error-message.tsx';
+import { invalidInputClass } from '../components/ui/input.tsx';
 import { clearDeviceData } from '../device-data.ts';
 import { useLocale } from '../i18n.ts';
 import { configQuery, sessionQuery, useApi } from '../session.ts';
 import { authLinkClass, AuthScreen } from './auth-layout.tsx';
+import { EmailField } from './email-field.tsx';
+import { PasswordField } from './password-field.tsx';
 
 const route = getRouteApi('/auth/sign-in');
 
@@ -27,7 +28,6 @@ export function SignInScreen() {
   const { data: config } = useQuery(configQuery(api));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [passwordShown, setPasswordShown] = useState(false);
 
   const signIn = useMutation({
     mutationFn: async (): Promise<Outcome> => {
@@ -68,44 +68,18 @@ export function SignInScreen() {
           signIn.mutate();
         }}
       >
-        <TextField
-          name="email"
+        <EmailField
           value={email}
           onChange={edit(setEmail)}
           autoComplete="username"
-          inputMode="email"
-          validate={(value) =>
-            /^\S+@\S+\.\S+$/.test(value.trim()) ? null : m.auth_email_invalid()
-          }
-          className="flex flex-col gap-1.5"
-        >
-          <Label>{m.auth_email()}</Label>
-          <Input className={refusedInput} />
-          <FieldErrorMessage />
-        </TextField>
+          inputClassName={refusedInput}
+        />
         {/* No rule on the password here: whatever is wrong gets the one message below (ST-13). */}
-        <TextField
-          name="password"
-          type={passwordShown ? 'text' : 'password'}
+        <PasswordField
           value={password}
           onChange={edit(setPassword)}
-          autoComplete="current-password"
-          isRequired
-          className="flex flex-col gap-1.5"
-        >
-          <Label>{m.auth_password()}</Label>
-          <div className="flex gap-2">
-            <Input className={refusedInput} />
-            <Button
-              variant="outline"
-              aria-pressed={passwordShown}
-              onPress={() => setPasswordShown((shown) => !shown)}
-            >
-              {passwordShown ? m.auth_password_hide() : m.auth_password_show()}
-            </Button>
-          </div>
-          <FieldErrorMessage />
-        </TextField>
+          groupClassName={refusedInput}
+        />
         <Button type="submit" isDisabled={signIn.isPending}>
           {m.auth_sign_in()}
         </Button>
@@ -115,6 +89,11 @@ export function SignInScreen() {
           {(signIn.isError || refused === 'error') && m.auth_error()}
         </ErrorMessage>
       </Form>
+      <p>
+        <Link href="/forgot-password" className={authLinkClass}>
+          {m.auth_forgot_password()}
+        </Link>
+      </p>
       {/* Closed sign-ups: the link disappears (spec UX §5.9). */}
       {config?.signupsOpen === true && (
         <p>

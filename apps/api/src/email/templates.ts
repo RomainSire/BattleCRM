@@ -93,6 +93,23 @@ export const templates = {
         m.email_account_exists_ignore({}, { locale }),
       ],
     }),
+  password_reset_link: ({ url }: { url: string }, locale: Locale) =>
+    layout(locale, {
+      subject: m.email_password_reset_subject({}, { locale }),
+      before: [m.email_password_reset_intro({}, { locale })],
+      action: { label: m.email_password_reset_action({}, { locale }), url },
+      after: [m.email_password_reset_ignore({}, { locale })],
+    }),
+  password_changed: ({ notMeUrl }: { notMeUrl: string }, locale: Locale) =>
+    layout(locale, {
+      subject: m.email_password_changed_subject({}, { locale }),
+      before: [
+        m.email_password_changed_intro({}, { locale }),
+        m.email_password_changed_not_me({}, { locale }),
+      ],
+      action: { label: m.email_not_me({}, { locale }), url: notMeUrl },
+      after: [],
+    }),
   new_device: (
     {
       browser,
@@ -123,7 +140,7 @@ export const templates = {
         ].join(' · '),
         m.email_new_device_not_me({}, { locale }),
       ],
-      action: { label: m.email_new_device_action({}, { locale }), url: notMeUrl },
+      action: { label: m.email_not_me({}, { locale }), url: notMeUrl },
       after: [],
     });
   },

@@ -1,18 +1,17 @@
-import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
 import { getLocale } from '@battlecrm/i18n/runtime';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Form, Link, Text, TextField } from 'react-aria-components';
+import { Form, Link } from 'react-aria-components';
 
 import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
-import { Input } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
+import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useLocale } from '../i18n.ts';
 import { configQuery, useApi } from '../session.ts';
 import { authLinkClass, AuthScreen } from './auth-layout.tsx';
 import { CheckInbox } from './check-inbox.tsx';
+import { EmailField } from './email-field.tsx';
+import { PasswordField } from './password-field.tsx';
 
 type Refusal = 'password_compromised' | 'password_check_unavailable' | 'signups_closed' | 'error';
 
@@ -23,7 +22,6 @@ export function SignUpScreen() {
   const { data: config, isPending: configPending } = useQuery(configQuery(api));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [passwordShown, setPasswordShown] = useState(false);
   const [attemptId, setAttemptId] = useState<string>();
 
   const signUp = useMutation({
@@ -90,50 +88,8 @@ export function SignUpScreen() {
           signUp.mutate();
         }}
       >
-        <TextField
-          name="email"
-          value={email}
-          onChange={setEmail}
-          autoComplete="email"
-          inputMode="email"
-          validate={(value) =>
-            /^\S+@\S+\.\S+$/.test(value.trim()) ? null : m.auth_email_invalid()
-          }
-          className="flex flex-col gap-1.5"
-        >
-          <Label>{m.auth_email()}</Label>
-          <Input />
-          <FieldErrorMessage />
-        </TextField>
-        <TextField
-          name="password"
-          type={passwordShown ? 'text' : 'password'}
-          value={password}
-          onChange={setPassword}
-          autoComplete="new-password"
-          validate={(value) => {
-            if (value.length < PASSWORD_MIN_LENGTH) return m.auth_password_help();
-            if (value.length > PASSWORD_MAX_LENGTH) return m.auth_password_too_long();
-            return null;
-          }}
-          className="flex flex-col gap-1.5"
-        >
-          <Label>{m.auth_password()}</Label>
-          <div className="flex gap-2">
-            <Input />
-            <Button
-              variant="outline"
-              aria-pressed={passwordShown}
-              onPress={() => setPasswordShown((shown) => !shown)}
-            >
-              {passwordShown ? m.auth_password_hide() : m.auth_password_show()}
-            </Button>
-          </div>
-          <Text slot="description" className="text-sm text-muted-foreground">
-            {m.auth_password_help()}
-          </Text>
-          <FieldErrorMessage />
-        </TextField>
+        <EmailField value={email} onChange={setEmail} autoComplete="email" />
+        <PasswordField value={password} onChange={setPassword} isNew />
         <Button type="submit" isDisabled={signUp.isPending}>
           {m.auth_create_account()}
         </Button>
