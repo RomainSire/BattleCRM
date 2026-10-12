@@ -36,6 +36,20 @@
       "when": 1791747770437,
       "tag": "0004_login_limits_access",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791831637888,
+      "tag": "0005_known_device",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791831638479,
+      "tag": "0006_known_device_access",
+      "breakpoints": true
     }
   ]
 }

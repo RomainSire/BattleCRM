@@ -4,9 +4,26 @@
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Cookie d'appareil `__Host-`, aléatoire, longue durée, qui survit à la déconnexion ; empreinte dans `known_device`
-- [ ] E-mail `new_device` (avec « Ce n'était pas moi ») à une connexion réussie sans cookie connu ; rien pour la première session du compte
-- [ ] Section Compte de Réglages : appareils connectés (navigateur et système, dernière activité, appareil courant repéré), Déconnecter, Déconnecter tous les autres
-- [ ] Un appareil dont la session a été révoquée reçoit 401 et efface ses données locales avant de proposer la reconnexion (ST-04)
+- [x] Cookie d'appareil `__Host-`, aléatoire, longue durée, qui survit à la déconnexion ; empreinte dans `known_device`
+- [x] E-mail `new_device` (avec « Ce n'était pas moi ») à une connexion réussie sans cookie connu ; rien pour la première session du compte
+- [x] Section Compte de Réglages : appareils connectés (navigateur et système, dernière activité, appareil courant repéré), Déconnecter, Déconnecter tous les autres
+- [x] Un appareil dont la session a été révoquée reçoit 401 et efface ses données locales avant de proposer la reconnexion (ST-04)
+
+## Comments
+
+**2026-10-12, implémentation (agent).**
+
+- **Cookie d'appareil** : `__Host-battlecrm.device`, 43 caractères tirés par `Random.token`, HttpOnly, Secure, `SameSite=Lax`, `Path=/`, 400 jours (le plafond des navigateurs), reposé à chaque connexion. La déconnexion n'y touche pas. Une valeur qui n'a pas cette forme est ignorée et remplacée.
+- **Table `known_device`** (`user_id`, `token_hash`, `created_at`, clé primaire sur les deux premiers), hors RLS : seul le SHA-256 du cookie est gardé. Un même navigateur garde un seul cookie pour plusieurs comptes ; chaque compte a sa ligne. Migrations `0005_known_device` et `0006_known_device_access` : une table neuve et son `GRANT`, compatible avec la version précédente.
+- **Détection** (`auth/devices.ts`, `devices.signedIn`) : appelée par les deux routes qui ouvrent une session, la connexion et le clic du lien d'inscription. Une ligne insérée alors que le compte en avait déjà une autre vaut un e-mail ; des connexions envoyées ensemble depuis le même appareil n'en envoient qu'un (test). **Ticket 11** : avec la 2FA, l'appel doit passer après la vérification du code, pas après le mot de passe.
+- **« Première session du compte »** : c'est « le compte ne connaît encore aucun appareil ». Le clic du lien d'inscription enregistre le premier, sans e-mail. **À trancher** : les comptes créés avant cette version n'ont aucune ligne, donc leur prochaine connexion est silencieuse, d'où qu'elle vienne (relevé par la revue ; un test fixe ce comportement).
+- **E-mail `new_device`** : dans la langue de l'Utilisateur et la date dans son fuseau (« Firefox · Linux · 5 janvier 2026 à 10:00 UTC+1 »), bouton « Ce n'était pas moi » vers `/forgot-password` (la page arrive au ticket 09, comme le lien de `account_exists`). `settings` gagne `languageAndTimeZoneOf(userId, at)`, lue avant d'enregistrer l'appareil : si elle échoue, la connexion suivante prévient encore.
+- **Navigateur et système** : `auth/user-agent.ts`, écrit à la main (Edge, Opera, Firefox, Chrome, Safari ; Android, iOS, Windows, macOS, ChromeOS, Linux), `null` sinon, que l'écran et l'e-mail disent « Navigateur inconnu » / « Système inconnu ».
+- **Routes** (toutes derrière `requireUser`, sans mot de passe : ce ne sont pas des actions sensibles) : `GET /api/sessions` (`{ sessions: [{ id, browser, os, lastActiveAt, current }] }`, l'appareil courant d'abord, sessions expirées écartées), `POST /api/sessions/:id/revoke` (204 ; 404 `not_found` pour la session d'un autre, une inconnue ou la courante, qui se termine par « Se déconnecter »), `POST /api/sessions/revoke-others` (204). Écrites sur la table `session` : les endpoints natifs de Better Auth rendent les jetons à la page et révoquent par jeton. Une session se nomme par son id, jamais par son jeton (test).
+- **Dernière activité** : `session.updated_at`, que Better Auth n'écrit qu'une fois par jour (`updateAge`) : connue au jour près, affichée comme une date.
+- **Session révoquée (ST-04)** : rien ne la met en cache, la requête suivante de l'appareil répond 401 `unauthenticated` (test). Côté SPA, le client d'API signale tout 401 ; si l'appareil se croyait connecté, `createAppRouter` efface ses données (`clearDeviceData`), oublie la session et relance la garde, qui mène à `/sign-in?redirect=<page>`. Un 401 de connexion refusée n'est pas concerné (pas de session). `createAppRouter` construit désormais le client d'API (`fetch` en paramètre). **Tickets 09 et 11** : un mot de passe faux sur une action sensible ne doit pas répondre 401, sinon l'appareil se déconnecte.
+- **SPA** : `SettingsScreen` avec la seule section « Compte » et ses « Appareils connectés » (`apps/web/src/settings/`) : une ligne par session, « Cet appareil » à la place de la date pour la session courante (sa dernière écriture peut dater d'hier), « Déconnecter » sur chaque autre (nom accessible « Déconnecter Safari · iOS »), « Déconnecter tous les autres » s'il y en a. Sans confirmation ; 44 px sur mobile ; axe dans les deux thèmes. « Se déconnecter » reste dans la barre latérale et dans « Plus » (ticket 20).
+- **Revue (deux axes), corrigé** : la langue et le fuseau lus avant l'insertion ; `sessionId` retiré de `AppEnv` (il ne sert qu'aux routes d'`auth`).
+- **Revue, relevé et laissé** : aucun terme ajouté à `CONTEXT.md` (appareil et session sont du vocabulaire d'authentification, comme le reste du module) ; `languageAndTimeZoneOf` ouvre son propre `withUser` au lieu de recevoir une `tx` (l'appelant est hors isolation) ; le cookie d'appareil n'est reposé qu'à la connexion, donc un appareil utilisé plus de 400 jours sans se reconnecter redevient « nouveau » ; un appareil révoqué ne l'apprend qu'à son prochain appel d'API, et seuls les Réglages en font un aujourd'hui ; `known_device` n'est jamais purgée ; l'effacement « données + session » est écrit deux fois (`router.tsx`, `shell/account.tsx`) ; pas de parcours e2e (même raison qu'au ticket 07).

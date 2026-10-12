@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import { SIGNUP_RESEND_DELAY_SECONDS } from '@battlecrm/contract';
 import { and, eq, gt, lt, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
@@ -11,6 +9,7 @@ import type { Locale, SendEmail } from '../email/index.ts';
 import type { Random } from '../random.ts';
 import type { Hibp } from './hibp.ts';
 import { account, pendingSignup, user } from './tables.ts';
+import { hashToken } from './token-hash.ts';
 
 const LINK_LIFETIME_MS = 24 * 60 * 60 * 1000;
 const RESEND_DELAY_MS = SIGNUP_RESEND_DELAY_SECONDS * 1000;
@@ -31,8 +30,6 @@ export type SignupDependencies = {
   hashPassword: (password: string) => Promise<string>;
   onAccountCreated: OnAccountCreated[];
 };
-
-const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
 /** The home-made sign-up (spec stack §7): an attempt per submission, the account at the click. */
 export function createSignup({

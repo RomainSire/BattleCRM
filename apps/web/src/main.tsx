@@ -1,7 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { createApiClient } from './api-client.ts';
 import { App } from './app.tsx';
 import { createClientErrorReporter, reportUncaughtErrors } from './client-errors.ts';
 import { applyDocumentLanguage } from './i18n.ts';
@@ -10,10 +9,13 @@ import { createAppRouter } from './router.tsx';
 
 import './index.css';
 
-const api = createApiClient();
 const queryClient = createQueryClient();
+const router = createAppRouter({ queryClient });
 
-const reportError = createClientErrorReporter(api, import.meta.env.VITE_APP_VERSION ?? 'dev');
+const reportError = createClientErrorReporter(
+  router.options.context.api,
+  import.meta.env.VITE_APP_VERSION ?? 'dev',
+);
 reportUncaughtErrors(reportError);
 
 applyDocumentLanguage();
@@ -29,6 +31,6 @@ createRoot(root, {
   },
 }).render(
   <StrictMode>
-    <App router={createAppRouter({ api, queryClient })} queryClient={queryClient} />
+    <App router={router} queryClient={queryClient} />
   </StrictMode>,
 );

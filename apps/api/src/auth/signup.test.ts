@@ -169,7 +169,8 @@ describe('clicking the link', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ email });
     const [cookie, ...others] = response.headers.getSetCookie();
-    expect(others).toEqual([]);
+    // With the cookie that makes this device the first one the account knows (ST-17).
+    expect(others).toEqual([expect.stringMatching(/^__Host-battlecrm\.device=/)]);
     expect(cookie).toMatch(/^__Secure-battlecrm\.session_token=[^;]+;/);
     expect(cookie).toContain('HttpOnly');
     expect(cookie).toContain('Secure');

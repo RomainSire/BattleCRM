@@ -57,5 +57,18 @@
   "auth_link_invalid_body": "Il a expiré ou a déjà servi.",
   "auth_sign_in_failed": "Adresse e-mail ou mot de passe incorrect.",
   "auth_too_many_attempts": "Trop de tentatives. Réessaie dans 15 minutes, ou réinitialise ton mot de passe.",
-  "sign_out": "Se déconnecter"
+  "sign_out": "Se déconnecter",
+  "email_new_device_subject": "Nouvelle connexion à ton compte BattleCRM",
+  "email_new_device_intro": "Ton compte vient d'être ouvert depuis un appareil qui ne s'y était jamais connecté :",
+  "email_new_device_not_me": "Si c'était toi, tu n'as rien à faire. Sinon, choisis un nouveau mot de passe : tous tes appareils seront déconnectés.",
+  "email_new_device_action": "Ce n'était pas moi",
+  "device_unknown_browser": "Navigateur inconnu",
+  "device_unknown_os": "Système inconnu",
+  "settings_account": "Compte",
+  "devices_title": "Appareils connectés",
+  "devices_this_device": "Cet appareil",
+  "devices_last_active": "Dernière activité : {date}",
+  "devices_sign_out": "Déconnecter",
+  "devices_sign_out_named": "Déconnecter {device}",
+  "devices_sign_out_others": "Déconnecter tous les autres"
 }

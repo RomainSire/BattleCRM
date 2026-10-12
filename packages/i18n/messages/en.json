@@ -57,5 +57,18 @@
   "auth_link_invalid_body": "It has expired or was already used.",
   "auth_sign_in_failed": "Incorrect email address or password.",
   "auth_too_many_attempts": "Too many attempts. Try again in 15 minutes, or reset your password.",
-  "sign_out": "Sign out"
+  "sign_out": "Sign out",
+  "email_new_device_subject": "New sign-in to your BattleCRM account",
+  "email_new_device_intro": "Your account was just opened from a device that had never signed in to it:",
+  "email_new_device_not_me": "If it was you, there is nothing to do. If not, choose a new password: all your devices will be signed out.",
+  "email_new_device_action": "It wasn't me",
+  "device_unknown_browser": "Unknown browser",
+  "device_unknown_os": "Unknown system",
+  "settings_account": "Account",
+  "devices_title": "Connected devices",
+  "devices_this_device": "This device",
+  "devices_last_active": "Last active: {date}",
+  "devices_sign_out": "Sign out",
+  "devices_sign_out_named": "Sign out {device}",
+  "devices_sign_out_others": "Sign out all the others"
 }

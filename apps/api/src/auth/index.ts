@@ -17,8 +17,10 @@ import type { Random } from '../random.ts';
 import { isTimeZone } from '../settings/index.ts';
 import { createBetterAuth, SIGN_IN_PATH, SIGN_OUT_PATH, type BetterAuth } from './better-auth.ts';
 import type { Hibp } from './hibp.ts';
+import { createDevices } from './devices.ts';
 import { createLoginAttempts } from './login-attempts.ts';
 import { purgeExpiredSessionsAndCounters } from './purge.ts';
+import { listSessions, revokeOtherSessions, revokeSession } from './sessions.ts';
 import { createSignup, type OnAccountCreated } from './signup.ts';
 
 export { haveIBeenPwned, type Hibp } from './hibp.ts';
@@ -47,6 +49,9 @@ const signInRequest = z.object({
 });
 /** What Better Auth answers a sign-in with; its session token stays out of our own answer. */
 const nativeSignIn = z.object({ user: z.object({ id: z.string(), email: z.string() }) });
+
+/** What `requireUser` leaves behind it: the User of the request and the session that proved it. */
+type SignedInEnv = AppEnv & { Variables: { userId: string; sessionId: string } };
 
 /**
  * The only module that knows Better Auth and the auth tables (ADR 0010). To the others it only
@@ -79,6 +84,8 @@ export function createAuth({
     ));
   const betterAuthContext = async () => (await betterAuth()).$context;
 
+  const devices = createDevices({ config, clock, random, sendEmail });
+
   const signup = createSignup({
     config,
     clock,
@@ -91,14 +98,14 @@ export function createAuth({
   });
 
   /** The session of a request, read in the database every time; slides its expiry and its cookie. */
-  async function readSession(c: Context<AppEnv>) {
+  async function readSession(c: Context) {
     const auth = await betterAuth();
     const { headers, response } = await auth.api.getSession({
       headers: c.req.raw.headers,
       returnHeaders: true,
     });
     for (const cookie of headers.getSetCookie()) c.header('Set-Cookie', cookie, { append: true });
-    return response?.user;
+    return response ?? undefined;
   }
 
   /** Opens a session on this device, as Better Auth would: same table, same signed cookie. */
@@ -142,10 +149,12 @@ export function createAuth({
     return response;
   }
 
-  const requireUser = createMiddleware<AppEnv>(async (c, next) => {
-    const user = await readSession(c);
-    if (!user) return c.json({ error: 'unauthenticated' }, 401);
-    c.set('userId', user.id);
+  // A session ended from another device stops here at once: nothing caches it (ST-16).
+  const requireUser = createMiddleware<SignedInEnv>(async (c, next) => {
+    const signedIn = await readSession(c);
+    if (!signedIn) return c.json({ error: 'unauthenticated' as const }, 401);
+    c.set('userId', signedIn.user.id);
+    c.set('sessionId', signedIn.session.id);
     return next();
   });
 
@@ -153,10 +162,10 @@ export function createAuth({
   const routes = new Hono<AppEnv>()
     .get('/config', (c) => c.json({ signupsOpen: config.signupsOpen }))
     .get('/session', async (c) => {
-      const user = await readSession(c);
-      if (!user) return c.json({ error: 'unauthenticated' as const }, 401);
-      c.set('userId', user.id);
-      return c.json({ email: user.email }, 200);
+      const signedIn = await readSession(c);
+      if (!signedIn) return c.json({ error: 'unauthenticated' as const }, 401);
+      c.set('userId', signedIn.user.id);
+      return c.json({ email: signedIn.user.email }, 200);
     })
     .post('/signup', jsonBody(signupRequest), async (c) => {
       const outcome = await signup.start(c.req.valid('json'));
@@ -178,6 +187,8 @@ export function createAuth({
       if (!account) return c.json({ error: 'invalid_link' as const }, 400);
       c.set('userId', account.userId);
       await openSession(c, account.userId);
+      // The first device of the account: remembered, and worth no e-mail.
+      await devices.signedIn(c, { id: account.userId, email: account.email });
       return c.json({ email: account.email }, 200);
     })
     // The allowlist (ADR 0010): only the native endpoints that have a route here, under their own path,
@@ -193,6 +204,7 @@ export function createAuth({
       if (!response.ok) throw new Error(`Better Auth answered ${response.status} to a sign-in`);
       const { user } = nativeSignIn.parse(await response.json());
       c.set('userId', user.id);
+      await devices.signedIn(c, user);
       return c.json({ email: user.email }, 200);
     })
     // This device only, whether it had a session or not.
@@ -200,6 +212,22 @@ export function createAuth({
       const response = await native(c, SIGN_OUT_PATH, {});
       if (!response.ok) throw new Error(`Better Auth answered ${response.status} to a sign-out`);
       return c.body(null, 204);
+    })
+    // Connected devices (spec UX §5.9). Ending a session is not a sensitive action: no password is asked.
+    .get('/sessions', requireUser, async (c) =>
+      c.json({ sessions: await listSessions(c.var.userId, c.var.sessionId, clock.now()) }, 200),
+    )
+    .post('/sessions/revoke-others', requireUser, async (c) => {
+      await revokeOtherSessions(c.var.userId, c.var.sessionId);
+      return c.body(null, 204);
+    })
+    .post('/sessions/:id/revoke', requireUser, async (c) => {
+      const id = z.uuid().safeParse(c.req.param('id'));
+      if (!id.success) return c.json({ error: 'invalid' as const }, 400);
+      // Another User's session, the current one and an unknown id answer alike.
+      return (await revokeSession(c.var.userId, c.var.sessionId, id.data))
+        ? c.body(null, 204)
+        : c.json({ error: 'not_found' as const }, 404);
     });
 
   const jobs: Job[] = [

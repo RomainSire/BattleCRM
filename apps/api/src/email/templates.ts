@@ -93,6 +93,40 @@ export const templates = {
         m.email_account_exists_ignore({}, { locale }),
       ],
     }),
+  new_device: (
+    {
+      browser,
+      os,
+      at,
+      timeZone,
+      notMeUrl,
+    }: { browser: string | null; os: string | null; at: Date; timeZone: string; notMeUrl: string },
+    locale: Locale,
+  ) => {
+    const date = new Intl.DateTimeFormat(locale, {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone,
+      timeZoneName: 'short',
+    }).format(at);
+    return layout(locale, {
+      subject: m.email_new_device_subject({}, { locale }),
+      before: [
+        m.email_new_device_intro({}, { locale }),
+        [
+          browser ?? m.device_unknown_browser({}, { locale }),
+          os ?? m.device_unknown_os({}, { locale }),
+          date,
+        ].join(' · '),
+        m.email_new_device_not_me({}, { locale }),
+      ],
+      action: { label: m.email_new_device_action({}, { locale }), url: notMeUrl },
+      after: [],
+    });
+  },
 } satisfies Record<string, (params: never, locale: Locale) => RenderedEmail>;
 
 export type Template = keyof typeof templates;

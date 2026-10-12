@@ -12,13 +12,16 @@ import { m } from '@battlecrm/i18n';
 import { RouterProvider } from 'react-aria-components';
 import { z } from 'zod';
 
+import { createApiClient } from './api-client.ts';
 import { AuthLayout } from './auth/auth-layout.tsx';
 import { SignInScreen } from './auth/sign-in-screen.tsx';
 import { SignUpScreen } from './auth/sign-up-screen.tsx';
 import { AuthError, InvalidLinkScreen, VerifyingEmail } from './auth/verify-email-screen.tsx';
+import { clearDeviceData } from './device-data.ts';
 import { MoreScreen } from './screens/more-screen.tsx';
 import { Screen } from './screens/screen.tsx';
 import { configQuery, sessionQuery, type ApiClient } from './session.ts';
+import { SettingsScreen } from './settings/settings-screen.tsx';
 import { AppShell } from './shell/app-shell.tsx';
 
 type RouterContext = { queryClient: QueryClient; api: ApiClient };
@@ -185,7 +188,7 @@ const insightsRoute = createRoute({
 const settingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/settings',
-  component: () => <Screen title={m.settings()} />,
+  component: SettingsScreen,
 });
 
 const moreRoute = createRoute({
@@ -210,11 +213,36 @@ const routeTree = rootRoute.addChildren([
   authRoute.addChildren([signInRoute, signUpRoute, verifyEmailRoute]),
 ]);
 
+/**
+ * The router and the API client it hands to every screen. `fetch` is how the client reaches the API:
+ * the browser's own, unless a test answers in its place.
+ */
 export function createAppRouter({
+  queryClient,
+  fetch,
   history,
-  ...context
-}: RouterContext & { history?: RouterHistory }) {
-  return createRouter({ routeTree, context, ...(history === undefined ? {} : { history }) });
+}: {
+  queryClient: QueryClient;
+  fetch?: typeof globalThis.fetch;
+  history?: RouterHistory;
+}) {
+  const api = createApiClient(fetch, {
+    // A 401 on a device that believed itself signed in: its session was ended from elsewhere.
+    // What it kept goes first, then the guard of the app leads to signing in again (ST-04).
+    onUnauthenticated: () => {
+      const { queryKey } = sessionQuery(api);
+      if (!queryClient.getQueryData(queryKey)) return;
+      clearDeviceData(queryClient);
+      queryClient.setQueryData(queryKey, null);
+      void router.invalidate();
+    },
+  });
+  const router = createRouter({
+    routeTree,
+    context: { api, queryClient },
+    ...(history === undefined ? {} : { history }),
+  });
+  return router;
 }
 
 declare module '@tanstack/react-router' {

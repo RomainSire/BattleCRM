@@ -16,7 +16,7 @@ export function postJson(
   path: string,
   body: unknown,
   cookie?: string,
-  { ip = randomIp() }: { ip?: string } = {},
+  { ip = randomIp(), userAgent }: { ip?: string; userAgent?: string } = {},
 ) {
   return app.request(
     path,
@@ -27,6 +27,7 @@ export function postJson(
         Origin: testConfig.appOrigin,
         'X-Forwarded-For': ip,
         ...(cookie === undefined ? {} : { Cookie: cookie }),
+        ...(userAgent === undefined ? {} : { 'User-Agent': userAgent }),
       },
       body: typeof body === 'string' ? body : JSON.stringify(body),
     },
@@ -36,6 +37,14 @@ export function postJson(
 
 /** What @hono/node-server binds: the peer is Traefik, inside TRUSTED_PROXIES. */
 const behindTraefik = { incoming: { socket: { remoteAddress: '172.18.0.2' } } };
+
+/** The cookie that tells a device from another, as a browser keeps it across sign-outs. */
+export const DEVICE_COOKIE = '__Host-battlecrm.device';
+
+/** The device cookie among the `name=value` pairs a browser holds, or `''`. */
+export function deviceCookie(cookies: string): string {
+  return cookies.split('; ').find((pair) => pair.startsWith(`${DEVICE_COOKIE}=`)) ?? '';
+}
 
 /** The `name=value` pairs a browser would send back after this response. */
 export function cookiesOf(response: Response): string {

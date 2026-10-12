@@ -6,6 +6,7 @@ import {
   index,
   integer,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
@@ -133,3 +134,20 @@ export const loginAttempt = pgTable('login_attempt', {
   /** Set by the 10th failure: until then, even the right password is refused. */
   blockedUntil: instant('blocked_until'),
 });
+
+/**
+ * The devices an account has signed in from (ST-17), one row per device cookie.
+ * A successful sign-in whose cookie has no row here comes from a new device.
+ */
+export const knownDevice = pgTable(
+  'known_device',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    /** SHA-256 of the device cookie: the value itself only exists in the browser. */
+    tokenHash: text('token_hash').notNull(),
+    createdAt: instant('created_at').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.tokenHash] })],
+);

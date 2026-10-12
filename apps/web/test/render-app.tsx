@@ -1,7 +1,6 @@
 import { createMemoryHistory } from '@tanstack/react-router';
 import { render } from 'vitest-browser-react';
 
-import { createApiClient } from '../src/api-client.ts';
 import { App } from '../src/app.tsx';
 import { createQueryClient } from '../src/query-client.ts';
 import { createAppRouter } from '../src/router.tsx';
@@ -11,7 +10,7 @@ import { fakeApi } from './fake-api.ts';
 export async function renderApp(path = '/', api = fakeApi()) {
   const queryClient = createQueryClient();
   const router = createAppRouter({
-    api: createApiClient(api.fetch),
+    fetch: api.fetch,
     queryClient,
     history: createMemoryHistory({ initialEntries: [path] }),
   });
