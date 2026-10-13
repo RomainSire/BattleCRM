@@ -53,6 +53,10 @@ const currentSession = ({ queryClient, api }: RouterContext) =>
 /** Where signing in leads when no page was asked for. */
 const LANDING = '/today';
 
+// Zod compiles its object parsers with `new Function`, which the CSP forbids (`script-src 'self'`).
+// It must be set before the first schema: Zod probes for eval as soon as one is built.
+z.config({ jitless: true });
+
 /**
  * The page a deep link asked for, replayed once signed in (ST-22): a path of this app, never another site.
  * Anything else is dropped rather than refused: no second slash, no backslash, nor any blank a browser would skip.
