@@ -17,10 +17,13 @@ import type { Clock } from './clock.ts';
 import type { Config } from './config.ts';
 import { isDatabaseReady } from './db/index.ts';
 import { createEmailSender, type EmailTransport } from './email/index.ts';
+import { createGestures } from './gestures/index.ts';
 import type { InFlight } from './in-flight.ts';
 import { jsonBody } from './json-body.ts';
+import { createProspecting } from './prospecting/index.ts';
 import type { Random } from './random.ts';
 import { initializeSettings } from './settings/index.ts';
+import { createViews, summaryChanges } from './views/index.ts';
 
 /** The composition root: every boundary is injected, so a test drives time and randomness. */
 export type AppDependencies = {
@@ -68,6 +71,17 @@ export function createApp({
     onAccountCreated: [initializeSettings],
   });
 
+  const { requireUser } = auth;
+  const prospecting = createProspecting({ clock, requireUser, changesOf: summaryChanges });
+  // Each module brings the inverse of its own gestures (ADR 0011).
+  const gestures = createGestures({
+    clock,
+    requireUser,
+    inverses: { ...prospecting.inverses },
+    changesOf: summaryChanges,
+  });
+  const views = createViews({ requireUser });
+
   app.use(async (c, next) => {
     const start = performance.now();
     // Always generated here: an id sent by the client could forge or collide log lines.
@@ -107,6 +121,9 @@ export function createApp({
         : c.json({ status: 'unavailable', version: config.appVersion }, 503),
     )
     .route('/', auth.routes)
+    .route('/', prospecting.routes)
+    .route('/', gestures.routes)
+    .route('/', views.routes)
     .post(
       '/client-errors',
       auth.requireUser,

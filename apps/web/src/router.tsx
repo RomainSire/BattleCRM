@@ -20,6 +20,7 @@ import { SignInScreen } from './auth/sign-in-screen.tsx';
 import { SignUpScreen } from './auth/sign-up-screen.tsx';
 import { CancellingRecovery, RecoveryCancelledScreen } from './auth/two-factor-recovery.tsx';
 import { AuthError, InvalidLinkScreen, VerifyingEmail } from './auth/verify-email-screen.tsx';
+import { ContactsScreen } from './contacts/contacts-screen.tsx';
 import { clearDeviceData } from './device-data.ts';
 import { MoreScreen } from './screens/more-screen.tsx';
 import { Screen } from './screens/screen.tsx';
@@ -70,6 +71,9 @@ const appRoute = createRoute({
   id: 'app',
   beforeLoad: async ({ context, location }) => {
     if ((await currentSession(context)) !== null) return;
+    // A session ended from elsewhere while this device was closed: what it kept goes first (ST-04).
+    clearDeviceData(context.queryClient);
+    context.queryClient.setQueryData(sessionQuery(context.api).queryKey, null);
     throw redirect({
       to: '/sign-in',
       search: location.href === LANDING ? {} : { redirect: location.href },
@@ -143,6 +147,8 @@ const verifyEmailRoute = createRoute({
     if (response.status === 400) return;
     if (!response.ok) throw new Error('POST /api/signup/verify failed');
     // The click signs this device in, and lands on Today without a toast.
+    // Whatever a previous User left on this device goes before anything is shown.
+    clearDeviceData(queryClient);
     queryClient.setQueryData(sessionQuery(api).queryKey, await response.json());
     throw redirect({ to: LANDING, replace: true });
   },
@@ -197,7 +203,7 @@ const circleRoute = createRoute({
 const contactsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/contacts',
-  component: () => <Screen title={m.contacts()} />,
+  component: ContactsScreen,
 });
 
 const funnelRoute = createRoute({

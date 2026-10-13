@@ -1,10 +1,11 @@
 type Handler = (body: unknown) => Response;
 
-/** What the API answers when a test says nothing else: a signed-in User without a second factor, sign-ups open. */
+/** What the API answers when a test says nothing else: a signed-in User without a second factor nor a Contact, sign-ups open. */
 const defaults: Record<string, Handler> = {
   'GET /api/session': () => Response.json({ email: 'jane@example.com' }),
   'GET /api/config': () => Response.json({ signupsOpen: true }),
   'GET /api/account/two-factor': () => Response.json({ enabled: false }),
+  'GET /api/summary': () => Response.json({ contacts: [] }),
 };
 
 /** No session on this device. */

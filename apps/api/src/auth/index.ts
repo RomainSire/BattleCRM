@@ -44,6 +44,8 @@ import { createTwoFactorRecovery } from './two-factor-recovery.ts';
 import { createTwoFactor, secondFactorCode } from './two-factor.ts';
 
 export { haveIBeenPwned, type Hibp } from './hibp.ts';
+/** What a route of another module puts first: it sets `c.var.userId` or answers 401. */
+export type RequireUser = ReturnType<typeof createAuth>['requireUser'];
 export type { AccountCreated, OnAccountCreated } from './signup.ts';
 
 const NATIVE_BASE_PATH = '/api/auth';

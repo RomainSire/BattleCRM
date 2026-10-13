@@ -161,5 +161,22 @@
   "auth_recovery_cancelling": "Cancelling…",
   "auth_recovery_cancelled_title": "Recovery cancelled",
   "auth_recovery_cancelled_body": "Two-factor authentication stays on for your account. If the request did not come from you, someone knows your password: choose a new one.",
-  "auth_recovery_new_password": "Choose a new password"
+  "auth_recovery_new_password": "Choose a new password",
+  "undo": "Undo",
+  "undone": "Undone.",
+  "undo_too_late": "This can no longer be undone.",
+  "undo_failed": "Undo didn't work. Try again in a moment.",
+  "notifications": "Notifications",
+  "add_contact": "Add a Contact",
+  "contact_name": "Name",
+  "contact_name_required": "Enter a name.",
+  "contact_added_to_pool": "{name} added to the Pool",
+  "contacts_empty_title": "No Contacts yet",
+  "contacts_empty_body": "Add someone to prospect: only a name is required.",
+  "contacts_load_error": "Your Contacts could not be loaded. Try again in a moment.",
+  "last_interaction": "Last Interaction:",
+  "status_pool": "Pool",
+  "status_prospecting": "Prospecting",
+  "status_ally": "Ally",
+  "status_archived": "Archived"
 }

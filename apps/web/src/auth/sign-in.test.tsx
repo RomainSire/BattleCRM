@@ -386,7 +386,17 @@ describe('signing out', () => {
 
   test('from the sidebar: no confirmation, the device keeps nothing, back to signing in', async () => {
     const { screen, router, api, queryClient } = await renderApp('/contacts', fakeApi(signsOut));
-    queryClient.setQueryData(['summary'], { contacts: ['Jane Doe'] });
+    queryClient.setQueryData(['summary'], {
+      contacts: [
+        {
+          id: '01990000-0000-7000-8000-000000000001',
+          name: 'Jean Dupont',
+          status: 'pool',
+          lastInteractionAt: '2026-01-06T09:00:00.000Z',
+          lastInteractionOn: '2026-01-06',
+        },
+      ],
+    });
     const menu = screen.getByRole('navigation', { name: 'Menu principal' });
     await expect.element(menu.getByText('jane@example.com')).toBeVisible();
 

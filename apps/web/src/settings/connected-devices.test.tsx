@@ -234,7 +234,17 @@ describe('a device whose session was ended from elsewhere (ST-04)', () => {
     await expect
       .element(screen.getByRole('heading', { level: 1 }))
       .toHaveTextContent("Aujourd'hui");
-    queryClient.setQueryData(['summary'], { contacts: ['Jane Doe'] });
+    queryClient.setQueryData(['summary'], {
+      contacts: [
+        {
+          id: '01990000-0000-7000-8000-000000000001',
+          name: 'Jean Dupont',
+          status: 'pool',
+          lastInteractionAt: '2026-01-06T09:00:00.000Z',
+          lastInteractionOn: '2026-01-06',
+        },
+      ],
+    });
 
     await screen
       .getByRole('navigation', { name: 'Menu principal' })

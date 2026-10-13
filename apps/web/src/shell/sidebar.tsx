@@ -10,10 +10,10 @@ import { NavLink } from './nav-link.tsx';
 import { experimentation, prospecting, settings } from './navigation.ts';
 import type { NavigationEntry } from './navigation.ts';
 
-// The palette, quick add and shortcuts help plug into these buttons with their tickets (41, 13).
+// The palette and shortcuts help plug into these buttons with their ticket (41).
 
-/** The desktop navigation (spec UX §3.1). */
-export function Sidebar() {
+/** The desktop navigation (spec UX §3.1). `onAdd` opens the quick add of a Contact. */
+export function Sidebar({ onAdd }: { onAdd: () => void }) {
   return (
     <nav
       aria-label={m.main_menu()}
@@ -33,7 +33,7 @@ export function Sidebar() {
         </span>
         <Kbd>Ctrl K</Kbd>
       </Button>
-      <Button variant="ghost" className="justify-between" aria-keyshortcuts="N">
+      <Button variant="ghost" className="justify-between" aria-keyshortcuts="N" onPress={onAdd}>
         <span className="flex items-center gap-2">
           <Plus />
           {m.add()}

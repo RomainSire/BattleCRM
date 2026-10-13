@@ -93,7 +93,8 @@ Modules profonds dans `apps/api/src/<module>/`, chacun **seul à écrire ses tab
 | `battles` | ouvrir, clôturer, Verdict, Champion, Historique des Champions |
 | `funnel` | Étapes (ordre, archivage), Positionnements (copie modifiée, pièces jointes) ; exporte `stageOrder(tx)` |
 | `organizations` | unicité normalisée, fusion |
-| `settings` | préférences et valeurs en vigueur ; exporte `localDateOf(tx, instant)`, `activityGoalOn(tx, date)`, `entryGoalForWeek(tx, monday)` et les écritures « à partir du lendemain / du lundi suivant » |
+| `gestures` | table `gesture` et `POST /gestures/:id/undo` (§5.4) ; exporte `recordGesture(tx, …)`, que chaque geste appelle, et reçoit de chaque module l'inverse de ses gestes (ajouté le 2026-10-13, ticket d'implémentation 13) |
+| `settings` | préférences et valeurs en vigueur ; exporte `localDateOf(tx, userId, instant)` (le `userId` sert au filtre applicatif, ADR 0009), `activityGoalOn(tx, date)`, `entryGoalForWeek(tx, monday)` et les écritures « à partir du lendemain / du lundi suivant » |
 | `views` | lectures par vue (`GET /summary`, Aujourd'hui, Indicateurs, Activité, Taux de passage), `daily_pick` ; lit les tables des autres modules (sauf `auth`), n'écrit que les siennes |
 | `auth` | Better Auth et parcours maison (§7) ; n'expose que « qui est l'Utilisateur » (`c.var.userId` ou 401) |
 | `db` | `withUser(userId, fn)` pour tous ; `withoutIsolation` pour `auth` seul |

@@ -161,5 +161,22 @@
   "auth_recovery_cancelling": "Annulation en cours…",
   "auth_recovery_cancelled_title": "Récupération annulée",
   "auth_recovery_cancelled_body": "La double authentification reste active sur ton compte. Si la demande ne venait pas de toi, quelqu'un connaît ton mot de passe : choisis-en un nouveau.",
-  "auth_recovery_new_password": "Choisir un nouveau mot de passe"
+  "auth_recovery_new_password": "Choisir un nouveau mot de passe",
+  "undo": "Annuler",
+  "undone": "Annulé.",
+  "undo_too_late": "Ce geste ne peut plus être annulé.",
+  "undo_failed": "L'annulation n'a pas fonctionné. Réessaie dans un instant.",
+  "notifications": "Notifications",
+  "add_contact": "Ajouter un Contact",
+  "contact_name": "Nom",
+  "contact_name_required": "Saisis un nom.",
+  "contact_added_to_pool": "{name} est ajouté au Vivier",
+  "contacts_empty_title": "Aucun Contact pour l'instant",
+  "contacts_empty_body": "Ajoute une personne à prospecter : seul son nom est obligatoire.",
+  "contacts_load_error": "Tes Contacts n'ont pas pu être chargés. Réessaie dans un instant.",
+  "last_interaction": "Dernière Interaction :",
+  "status_pool": "Vivier",
+  "status_prospecting": "En prospection",
+  "status_ally": "Allié",
+  "status_archived": "Archivé"
 }
