@@ -64,6 +64,20 @@
       "when": 1791836052569,
       "tag": "0008_two_factor_access",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791905156491,
+      "tag": "0009_two_factor_recovery",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791905157185,
+      "tag": "0010_two_factor_recovery_access",
+      "breakpoints": true
     }
   ]
 }

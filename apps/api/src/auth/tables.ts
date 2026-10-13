@@ -179,3 +179,24 @@ export const knownDevice = pgTable(
   },
   (table) => [primaryKey({ columns: [table.userId, table.tokenHash] })],
 );
+
+/**
+ * A recovery of the second factor under way (ST-19), at most one per User: asked for by someone who
+ * gave the password and has no code left, it turns the second factor off once `dueAt` comes, unless
+ * a link of its e-mails, a real code or a new password cancels it. The row goes when it ends.
+ */
+export const twoFactorRecovery = pgTable('two_factor_recovery', {
+  id: id(),
+  userId: uuid('user_id')
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  /** SHA-256 of the token of “Cancel” in the first e-mail: the token itself only exists there. */
+  tokenHash: text('token_hash').notNull(),
+  /** The same for the reminder, which carries a link of its own: the first one keeps working. */
+  reminderTokenHash: text('reminder_token_hash'),
+  requestedAt: instant('requested_at').notNull(),
+  dueAt: instant('due_at').notNull(),
+  /** Set by the scheduled task in the transaction that decides to send the reminder. */
+  remindedAt: instant('reminded_at'),
+});

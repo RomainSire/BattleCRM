@@ -13,7 +13,8 @@ import { newPasswordRefusal, type Hibp } from './hibp.ts';
 import type { LoginAttempts } from './login-attempts.ts';
 import { purgeExpiredLinks } from './purge.ts';
 import { account, session, user, verification } from './tables.ts';
-import type { TwoFactor } from './two-factor.ts';
+import { cancelTwoFactorRecovery } from './two-factor-recovery.ts';
+import { endSecondFactorChallenges, type TwoFactor } from './two-factor.ts';
 import { hashToken } from './token-hash.ts';
 
 const RESET_LINK_LIFETIME_MS = 60 * 60 * 1000;
@@ -31,7 +32,8 @@ type Owner = { id: string; email: string };
 
 /**
  * The new password of a User; whatever reset link was on its way opens nothing any more, and a change of
- * address under way is cancelled: it is what “It wasn't me” promises in the e-mail that warned of it.
+ * address or a recovery of the second factor under way is cancelled: it is what “It wasn't me” promises
+ * in the e-mail that warned of it.
  */
 async function setPassword(tx: Transaction, owner: Owner, passwordHash: string, now: Date) {
   await tx
@@ -40,6 +42,9 @@ async function setPassword(tx: Transaction, owner: Owner, passwordHash: string, 
     .where(and(eq(account.userId, owner.id), eq(account.providerId, 'credential')));
   await tx.delete(verification).where(resetLinksOf(owner.email));
   await cancelEmailChanges(tx, owner.id);
+  await cancelTwoFactorRecovery(tx, owner.id);
+  // Else someone who had the old password could ask for the recovery again, without the new one.
+  await endSecondFactorChallenges(tx, owner.id);
 }
 
 /**

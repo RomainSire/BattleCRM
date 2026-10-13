@@ -71,6 +71,39 @@ function layout(
   };
 }
 
+/** An instant as an e-mail writes it: in the time zone of the User, which it names (spec stack §8). */
+const formatInstant = (at: Date, timeZone: string, locale: Locale) =>
+  new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone,
+    timeZoneName: 'short',
+  }).format(at);
+
+/** What both e-mails of a recovery under way take: when it ends, and the two ways to stop it. */
+type RecoveryUnderWay = { dueAt: Date; timeZone: string; cancelUrl: string; notMeUrl: string };
+
+function recoveryUnderWay(
+  { dueAt, timeZone, cancelUrl, notMeUrl }: RecoveryUnderWay,
+  locale: Locale,
+  subject: string,
+  intro: (inputs: { date: string }, options: { locale: Locale }) => string,
+) {
+  return layout(locale, {
+    subject,
+    before: [
+      intro({ date: formatInstant(dueAt, timeZone, locale) }, { locale }),
+      m.email_two_factor_recovery_not_me({}, { locale }),
+    ],
+    action: { label: m.email_two_factor_recovery_cancel({}, { locale }), url: cancelUrl },
+    // Cancelling is not enough against someone who knows the password and may ask again.
+    after: [{ label: m.email_two_factor_recovery_new_password({}, { locale }), url: notMeUrl }],
+  });
+}
+
 /** Each template is `(params, locale) → { subject, text, html }`, its texts in Paraglide `email_*` (spec stack §8). */
 export const templates = {
   verify_email: ({ url }: { url: string }, locale: Locale) =>
@@ -160,15 +193,7 @@ export const templates = {
     }: { browser: string | null; os: string | null; at: Date; timeZone: string; notMeUrl: string },
     locale: Locale,
   ) => {
-    const date = new Intl.DateTimeFormat(locale, {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZone,
-      timeZoneName: 'short',
-    }).format(at);
+    const date = formatInstant(at, timeZone, locale);
     return layout(locale, {
       subject: m.email_new_device_subject({}, { locale }),
       before: [
@@ -184,6 +209,30 @@ export const templates = {
       after: [],
     });
   },
+  two_factor_recovery_started: (params: RecoveryUnderWay, locale: Locale) =>
+    recoveryUnderWay(
+      params,
+      locale,
+      m.email_two_factor_recovery_started_subject({}, { locale }),
+      m.email_two_factor_recovery_started_intro,
+    ),
+  two_factor_recovery_reminder: (params: RecoveryUnderWay, locale: Locale) =>
+    recoveryUnderWay(
+      params,
+      locale,
+      m.email_two_factor_recovery_reminder_subject({}, { locale }),
+      m.email_two_factor_recovery_reminder_intro,
+    ),
+  two_factor_recovery_completed: ({ notMeUrl }: { notMeUrl: string }, locale: Locale) =>
+    layout(locale, {
+      subject: m.email_two_factor_recovery_completed_subject({}, { locale }),
+      before: [
+        m.email_two_factor_recovery_completed_intro({}, { locale }),
+        m.email_two_factor_not_me({}, { locale }),
+      ],
+      action: { label: m.email_not_me({}, { locale }), url: notMeUrl },
+      after: [],
+    }),
 } satisfies Record<string, (params: never, locale: Locale) => RenderedEmail>;
 
 export type Template = keyof typeof templates;

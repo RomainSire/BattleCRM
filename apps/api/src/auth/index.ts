@@ -40,6 +40,7 @@ import {
 } from './reauthentication.ts';
 import { listSessions, revokeOtherSessions, revokeSession } from './sessions.ts';
 import { createSignup, type OnAccountCreated } from './signup.ts';
+import { createTwoFactorRecovery } from './two-factor-recovery.ts';
 import { createTwoFactor, secondFactorCode } from './two-factor.ts';
 
 export { haveIBeenPwned, type Hibp } from './hibp.ts';
@@ -152,6 +153,8 @@ export function createAuth({
     secretKey: async () => (await betterAuthContext()).secretConfig,
   });
 
+  const twoFactorRecovery = createTwoFactorRecovery({ config, clock, random, sendEmail });
+
   const passwords = createPasswords({
     config,
     clock,
@@ -254,10 +257,10 @@ export function createAuth({
       .split(/;\s*/)
       .find((pair) => pair.startsWith(`${name}=`));
     if (!identifier || cookie === undefined) return undefined;
-    // Expired or not, Better Auth says: here it only names the address the attempt counts for.
+    // Expired or not, Better Auth says of a code: here it only names the address the attempt counts for.
     const challenge = await context.internalAdapter.findVerificationValue(identifier);
     const awaited = challenge && (await twoFactor.ownerOf(challenge.value));
-    return awaited && { awaited, cookie };
+    return awaited && { awaited, cookie, expiresAt: challenge.expiresAt };
   }
 
   /**
@@ -290,6 +293,8 @@ export function createAuth({
       throw new Error('Better Auth took the code of another User than the one awaited');
     }
     await loginAttempts.succeeded(awaited.email);
+    // Whoever has a real code has not lost the second factor (ST-19).
+    await twoFactorRecovery.cancel(awaited.id);
     c.set('userId', awaited.id);
     await devices.signedIn(c, awaited);
     return c.json({ email: awaited.email }, 200);
@@ -357,6 +362,26 @@ export function createAuth({
     )
     .post(`/auth${VERIFY_BACKUP_CODE_PATH}`, jsonBody(codeRequest), (c) =>
       secondStep(c, VERIFY_BACKUP_CODE_PATH, c.req.valid('json').code),
+    )
+    // The second factor is lost (ST-19): asked from the code screen, by the challenge the password left,
+    // and by nothing else. It opens no session and turns nothing off before 7 days.
+    .post('/two-factor-recovery', async (c) => {
+      const challenge = await challengeOf(c);
+      if (
+        !challenge ||
+        challenge.expiresAt <= clock.now() ||
+        !(await twoFactor.isEnabled(challenge.awaited.id))
+      ) {
+        return c.json({ error: 'challenge_expired' as const }, 401);
+      }
+      const { dueAt } = await twoFactorRecovery.request(challenge.awaited);
+      return c.json({ dueAt: dueAt.toISOString() }, 200);
+    })
+    // “Cancel”, in the e-mails of a recovery: the link is the proof, no session is asked.
+    .post('/two-factor-recovery/cancel', jsonBody(linkRequest), async (c) =>
+      (await twoFactorRecovery.cancelByLink(c.req.valid('json').token))
+        ? c.body(null, 204)
+        : c.json({ error: 'invalid_link' as const }, 400),
     )
     // This device only, whether it had a session or not.
     .post(`/auth${SIGN_OUT_PATH}`, async (c) => {
@@ -485,6 +510,8 @@ export function createAuth({
       if (response.status === 429) return c.json({ error: 'too_many_attempts' as const }, 429);
       if (!response.ok)
         throw new Error(`Better Auth answered ${response.status} to turning it off`);
+      // A recovery under way has nothing left to turn off, and must not reach a second factor set up later.
+      await twoFactorRecovery.cancel(owner.id);
       sendSecurityEmail('two_factor_disabled');
       return c.body(null, 204);
     })
@@ -525,6 +552,15 @@ export function createAuth({
         };
         if (Object.values(purged).some((count) => count > 0)) {
           logger.info({ purged }, 'expired sessions and counters purged');
+        }
+      },
+    },
+    {
+      name: 'two-factor recovery deadlines',
+      async run() {
+        const done = await twoFactorRecovery.runDeadlines();
+        if (done.completed > 0 || done.reminded > 0) {
+          logger.info(done, 'two-factor recovery deadlines');
         }
       },
     },

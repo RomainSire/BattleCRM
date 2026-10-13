@@ -424,7 +424,9 @@ describe('SIGNUPS_OPEN', () => {
 
 describe('the purge job', () => {
   test('erases the attempts never verified after 7 days, and only those', async () => {
-    const harness = testApp();
+    // Long before the clock of the other tests: seven days later, the purge still spares the sign-ups
+    // they are in the middle of.
+    const harness = testApp({}, { startsAt: '2024-01-05T09:00:00Z' });
     const [old, recent] = [newEmail(), newEmail()];
     await signUp(harness, { email: old });
     harness.clock.advance('P6DT23H');

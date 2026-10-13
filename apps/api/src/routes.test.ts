@@ -24,6 +24,8 @@ const PUBLIC_ROUTES = [
   'POST /api/signup',
   'POST /api/signup/resend',
   'POST /api/signup/verify',
+  'POST /api/two-factor-recovery',
+  'POST /api/two-factor-recovery/cancel',
 ];
 
 test('the public routes all exist', () => {

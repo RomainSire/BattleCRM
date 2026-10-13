@@ -18,6 +18,7 @@ import { ForgotPasswordScreen } from './auth/forgot-password-screen.tsx';
 import { ResetPasswordScreen } from './auth/reset-password-screen.tsx';
 import { SignInScreen } from './auth/sign-in-screen.tsx';
 import { SignUpScreen } from './auth/sign-up-screen.tsx';
+import { CancellingRecovery, RecoveryCancelledScreen } from './auth/two-factor-recovery.tsx';
 import { AuthError, InvalidLinkScreen, VerifyingEmail } from './auth/verify-email-screen.tsx';
 import { clearDeviceData } from './device-data.ts';
 import { MoreScreen } from './screens/more-screen.tsx';
@@ -151,6 +152,27 @@ const verifyEmailRoute = createRoute({
   component: InvalidLinkScreen,
 });
 
+// “Cancel”, in the e-mails of a recovery of the second factor (ST-19). Open with or without a session:
+// the link is the proof. Posted by the loader, like the verification link.
+const cancelRecoveryRoute = createRoute({
+  getParentRoute: () => authRoute,
+  path: '/cancel-two-factor-recovery',
+  loader: async ({ context: { api }, location }) => {
+    const response = await api['two-factor-recovery'].cancel.$post({
+      json: { token: location.hash },
+    });
+    if (response.status === 400) return false;
+    if (!response.ok) throw new Error('POST /api/two-factor-recovery/cancel failed');
+    return true;
+  },
+  // The link works once: never ask again for the same visit.
+  staleTime: Infinity,
+  pendingComponent: CancellingRecovery,
+  component: function CancelRecovery() {
+    return <RecoveryCancelledScreen cancelled={cancelRecoveryRoute.useLoaderData()} />;
+  },
+});
+
 // Today is the landing screen (spec UX §3.2).
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -253,6 +275,7 @@ const routeTree = rootRoute.addChildren([
     verifyEmailRoute,
     forgotPasswordRoute,
     resetPasswordRoute,
+    cancelRecoveryRoute,
   ]),
 ]);
 

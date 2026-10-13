@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button.tsx';
 import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useApi } from '../session.ts';
 import { CodeField, isTotpCode } from './code-field.tsx';
+import { RecoveryRequest } from './two-factor-recovery.tsx';
 
 type Outcome =
   | { email: string }
@@ -28,6 +29,8 @@ export function SignInCode({
 }) {
   const api = useApi();
   const [code, setCode] = useState('');
+  // Neither the app nor a backup code: the recovery is explained, then asked for (ST-19).
+  const [lost, setLost] = useState(false);
 
   const verify = useMutation({
     mutationFn: async (): Promise<Outcome> => {
@@ -47,6 +50,23 @@ export function SignInCode({
   });
   const refused =
     !verify.isPending && verify.data && 'refused' in verify.data ? verify.data.refused : undefined;
+
+  const backToSignIn = (
+    <p>
+      <Button variant="link" className="h-auto px-0 underline" onPress={onBack}>
+        {m.auth_back_to_sign_in()}
+      </Button>
+    </p>
+  );
+
+  if (lost) {
+    return (
+      <>
+        <RecoveryRequest onExpired={onExpired} onBackToCode={() => setLost(false)} />
+        {backToSignIn}
+      </>
+    );
+  }
 
   return (
     <>
@@ -76,10 +96,11 @@ export function SignInCode({
         </ErrorMessage>
       </Form>
       <p>
-        <Button variant="link" className="h-auto px-0 underline" onPress={onBack}>
-          {m.auth_back_to_sign_in()}
+        <Button variant="link" className="h-auto px-0 underline" onPress={() => setLost(true)}>
+          {m.auth_recovery_lost()}
         </Button>
       </p>
+      {backToSignIn}
     </>
   );
 }

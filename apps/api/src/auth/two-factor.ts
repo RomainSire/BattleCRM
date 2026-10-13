@@ -1,16 +1,16 @@
 import { createOTP } from '@better-auth/utils/otp';
 import { symmetricDecrypt, symmetricEncrypt, type SecretConfig } from 'better-auth/crypto';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, like } from 'drizzle-orm';
 import { z } from 'zod';
 
 import type { Clock } from '../clock.ts';
 import type { Config } from '../config.ts';
-import { withoutIsolation } from '../db/index.ts';
+import { withoutIsolation, type Transaction } from '../db/index.ts';
 import type { SendEmail } from '../email/index.ts';
 import { languageAndTimeZoneOf } from '../settings/index.ts';
 import type { LoginAttempts } from './login-attempts.ts';
 import { purgeExpiredLinks } from './purge.ts';
-import { twoFactor, user } from './tables.ts';
+import { twoFactor, user, verification } from './tables.ts';
 
 /** A code as typed: of the authenticator app or a backup one, spaces left out. */
 export const secondFactorCode = z
@@ -25,6 +25,17 @@ const TOTP_CODE = /^\d{6}$/;
 const CHALLENGE_PREFIX = '2fa-';
 
 type Owner = { id: string; email: string };
+
+/**
+ * Whatever sign-in of a User awaited its code no longer does: the password that opened it is not the
+ * password any more, and its challenge must not ask for a recovery either. A challenge names its User as value.
+ */
+export const endSecondFactorChallenges = (tx: Transaction, userId: string) =>
+  tx
+    .delete(verification)
+    .where(
+      and(like(verification.identifier, `${CHALLENGE_PREFIX}%`), eq(verification.value, userId)),
+    );
 
 /** The second factor of a User once a first code confirmed it. */
 async function confirmedOf(userId: string) {
