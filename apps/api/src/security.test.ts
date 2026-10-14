@@ -204,6 +204,14 @@ const CROSS_ACCESS: Record<
       body: { name: 'Bob was here' },
     };
   },
+  'POST /api/contacts/:id/change-status': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice);
+    return {
+      id: contact.id,
+      state: () => getJson(harness, alice, '/api/summary'),
+      body: { status: 'archived' },
+    };
+  },
   'GET /api/contacts/:id/record': async (harness, alice) => {
     const { contact } = await addContact(harness, alice);
     return { id: contact.id, state: () => getJson(harness, alice, '/api/summary') };

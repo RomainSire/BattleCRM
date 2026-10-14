@@ -2,6 +2,7 @@ import {
   CONTACT_STATUSES,
   ORGANIZATION_TYPES,
   type AddableContactStatus,
+  type ContactStatus,
   type OrganizationType,
 } from '@battlecrm/contract';
 import { z } from 'zod';
@@ -26,6 +27,10 @@ export const summaryContact = z.strictObject({
   linkedinUrl: z.string().nullable(),
   lastInteractionAt: z.iso.datetime(),
   lastInteractionOn: z.iso.date(),
+  /** The local days of its Funnel entries, the earliest first. */
+  funnelEntryDays: z.array(z.iso.date()),
+  /** The reason of the change that put it in its Status, if the User gave one. */
+  statusReason: z.string().nullable(),
 });
 
 /** A Stage as the working summary carries it, in the order of the Funnel. */
@@ -104,8 +109,33 @@ export async function editContact(
   return { contact, organization: changes.organizations[0], undoToken };
 }
 
+/**
+ * The Status of a Contact changed the way a User changes it, and the token that takes the gesture
+ * back.
+ */
+export async function changeStatus(
+  harness: Harness,
+  user: { cookie: string },
+  contactId: string,
+  body: { status: ContactStatus; stageId?: string; reason?: string },
+) {
+  const response = await postJson(
+    harness.app,
+    `/api/contacts/${contactId}/change-status`,
+    body,
+    user.cookie,
+  );
+  if (response.status !== 200) throw new Error(`changeStatus: the API answered ${response.status}`);
+  const { changes, undoToken } = gestureAnswer.parse(await response.json());
+  const [contact] = changes.contacts;
+  if (!contact) throw new Error('changeStatus: no Contact in the answer');
+  return { contact, undoToken };
+}
+
 /** The whole working summary, as `GET /api/summary` answers it. */
 export const summary = z.strictObject({
+  /** The time zone of the User in effect now: what its today is read in. */
+  timeZone: z.string(),
   contacts: z.array(summaryContact),
   stages: z.array(summaryStage),
   organizations: z.array(summaryOrganization),

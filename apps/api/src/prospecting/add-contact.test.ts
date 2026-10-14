@@ -58,6 +58,8 @@ test('adding a Contact puts it in the Pool and answers with its row of the summa
         linkedinUrl: null,
         lastInteractionAt: '2026-01-05T09:00:00.000Z',
         lastInteractionOn: '2026-01-05',
+        funnelEntryDays: [],
+        statusReason: null,
       },
     ],
     removedContactIds: [],
@@ -212,7 +214,11 @@ test('added Prospecting, a Contact enters the Funnel at the first Stage: a Funne
     status: 'prospecting',
   });
 
-  expect(added).toMatchObject({ status: 'prospecting', stageId: first!.id });
+  expect(added).toMatchObject({
+    status: 'prospecting',
+    stageId: first!.id,
+    funnelEntryDays: ['2026-01-06'],
+  });
   const rows = await rowsOf(user);
   expect(rows.contacts).toMatchObject([{ status: 'prospecting', stageId: first!.id }]);
   expect(rows.interactions).toMatchObject([

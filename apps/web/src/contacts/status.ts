@@ -1,4 +1,4 @@
-import type { ContactStatus } from '@battlecrm/contract';
+import { CONTACT_STATUSES, type ContactStatus } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
 
 import type { Summary, SummaryContact } from '../summary.ts';
@@ -19,3 +19,27 @@ export function prospectingStageOf(
   if (contact.status !== 'prospecting') return undefined;
   return stages.find(({ id }) => id === contact.stageId)?.name;
 }
+
+/** A change of Status the User opens: one target, or the choice of it first (spec UX §6.11). */
+export const STATUS_GESTURES = ['choose', ...CONTACT_STATUSES] as const;
+export type StatusGesture = (typeof STATUS_GESTURES)[number];
+
+/** The verb that leads to each Status (spec UX §6.11), as a button opens it… */
+export const STATUS_VERB: Record<ContactStatus, () => string> = {
+  prospecting: m.verb_bring_in,
+  ally: m.verb_add_to_circle,
+  pool: m.verb_back_to_pool,
+  archived: m.verb_archive,
+};
+
+/** …and as the panel validates it. */
+export const STATUS_ACTION: Record<ContactStatus, () => string> = {
+  prospecting: m.action_bring_in,
+  ally: m.action_add_to_circle,
+  pool: m.action_back_to_pool,
+  archived: m.action_archive,
+};
+
+/** The Statuses a Contact can go to: every other one, in this order (spec UX §5.3). */
+export const otherStatuses = (current: ContactStatus): ContactStatus[] =>
+  (['prospecting', 'ally', 'pool', 'archived'] as const).filter((status) => status !== current);

@@ -6,7 +6,7 @@ import { effectiveTimeZone, userSettings } from './tables.ts';
 import { localDate } from './time-zone.ts';
 
 /** The time zone in effect at an instant. A time zone takes effect on its local day, read in the zone in effect until then. */
-async function timeZoneAt(tx: Transaction, userId: string, at: Date): Promise<string> {
+export async function timeZoneAt(tx: Transaction, userId: string, at: Date): Promise<string> {
   const [first, ...changes] = await tx
     .select({ effectiveFrom: effectiveTimeZone.effectiveFrom, value: effectiveTimeZone.value })
     .from(effectiveTimeZone)

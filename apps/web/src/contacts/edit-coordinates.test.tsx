@@ -154,6 +154,22 @@ async function typeOrganization(coordinates: ReturnType<typeof page.getByRole>, 
   await expect.element(page.getByRole('listbox')).not.toBeInTheDocument();
 }
 
+/**
+ * Types in the Organization field, then chooses in the list it opened, once the list is done coming
+ * in: clicked while it moves, the click is retried after a scroll, which closes the list.
+ */
+async function chooseOrganization(
+  coordinates: ReturnType<typeof page.getByRole>,
+  text: string,
+  option: string,
+) {
+  await organizationField(coordinates).fill(text);
+  await expect.element(page.getByRole('option', { name: option })).toBeVisible();
+  await expect.poll(() => document.getAnimations().length).toBe(0);
+  await page.getByRole('option', { name: option }).click();
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument();
+}
+
 afterEach(async () => {
   await commands.emulateColorScheme('light');
 });
@@ -240,8 +256,7 @@ test('another Organization says what changes: the new Target, the Trial, no Inte
   const { api, coordinates } = await editJulie();
   await expect.element(coordinates.getByText('Ce qui change')).not.toBeInTheDocument();
 
-  await organizationField(coordinates).fill('nord');
-  await page.getByRole('option', { name: 'Nordika' }).click();
+  await chooseOrganization(coordinates, 'nord', 'Nordika');
   await expect.element(organizationField(coordinates)).toHaveValue('Nordika');
 
   const what = coordinates.getByRole('region', { name: 'Ce qui change' });
@@ -282,8 +297,7 @@ test('a new Organization is created with its type, which must be chosen', async 
 test('“No Organization” empties the field: the Target becomes unknown', async () => {
   const { api, coordinates } = await editJulie();
 
-  await organizationField(coordinates).fill('cap');
-  await page.getByRole('option', { name: 'Aucune Organisation' }).click();
+  await chooseOrganization(coordinates, 'cap', 'Aucune Organisation');
 
   await expect.element(organizationField(coordinates)).toHaveValue('');
   const what = coordinates.getByRole('region', { name: 'Ce qui change' });

@@ -87,7 +87,7 @@ export function createApp({
     changesOf: summaryChanges,
     members: organizationMembers,
   });
-  const views = createViews({ requireUser });
+  const views = createViews({ clock, requireUser });
 
   app.use(async (c, next) => {
     const start = performance.now();

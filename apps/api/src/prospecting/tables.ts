@@ -90,7 +90,7 @@ export const contact = pgTable(
 );
 
 /** What an Interaction records; each gesture that writes one adds its kind here. */
-export const INTERACTION_KINDS = ['contact_added'] as const;
+export const INTERACTION_KINDS = ['contact_added', 'status_changed'] as const;
 /** Adding a Contact, like a change of Stage or of Status, is neither outbound nor inbound. */
 export const INTERACTION_DIRECTIONS = ['outbound', 'inbound', 'none'] as const;
 

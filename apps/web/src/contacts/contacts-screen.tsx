@@ -89,6 +89,10 @@ function ContactRow({
         {contact.status === 'prospecting' && (
           <span className="text-xs text-neutral-text">{m.no_next_action()}</span>
         )}
+        {/* Archived, greyed with its reason (spec UX §5.10). */}
+        {archived && contact.statusReason && (
+          <span className="truncate text-xs text-neutral-text">{contact.statusReason}</span>
+        )}
       </span>
       <span className="shrink-0 self-start text-xs text-muted-foreground tabular-nums">
         <span className="sr-only">{m.last_interaction()} </span>

@@ -22,6 +22,7 @@ import { CancellingRecovery, RecoveryCancelledScreen } from './auth/two-factor-r
 import { AuthError, InvalidLinkScreen, VerifyingEmail } from './auth/verify-email-screen.tsx';
 import { ContactPage } from './contacts/contact-record.tsx';
 import { ContactsScreen } from './contacts/contacts-screen.tsx';
+import { STATUS_GESTURES } from './contacts/status.ts';
 import { clearDeviceData } from './device-data.ts';
 import { OrganizationPage } from './organizations/organization-page.tsx';
 import { MoreScreen } from './screens/more-screen.tsx';
@@ -206,11 +207,17 @@ const circleRoute = createRoute({
   component: () => <Screen title={m.circle()} />,
 });
 
+/** The change of Status open on a record (spec UX §6.11), kept by the address (ST-70). */
+const statusToSearch = z.enum(STATUS_GESTURES).optional().catch(undefined);
+
 const contactsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/contacts',
-  // The Contact whose record is open in the panel (ST-70); anything else is dropped.
-  validateSearch: z.object({ contact: z.uuid().optional().catch(undefined) }),
+  // The Contact whose record is open in the panel, and its change of Status open (ST-70); anything else is dropped.
+  validateSearch: z.object({
+    contact: z.uuid().optional().catch(undefined),
+    statusTo: statusToSearch,
+  }),
   component: ContactsScreen,
 });
 
@@ -218,6 +225,7 @@ const contactsRoute = createRoute({
 const contactRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/contacts/$contactId',
+  validateSearch: z.object({ statusTo: statusToSearch }),
   component: function ContactRecordPage() {
     const { contactId } = contactRoute.useParams();
     return <ContactPage key={contactId} contactId={contactId} />;

@@ -13,7 +13,9 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-accent text-accent-foreground hover:bg-accent/90',
+        // Darker on hover: lighter, the white text of the light theme fell under 4.5:1 (spec UX §2).
+        default:
+          'bg-accent text-accent-foreground hover:bg-[color-mix(in_oklab,var(--accent),black_12%)]',
         outline:
           'border-border bg-background hover:bg-surface hover:text-foreground aria-expanded:bg-surface aria-expanded:text-foreground',
         secondary: 'bg-surface text-foreground hover:bg-border aria-expanded:bg-surface',

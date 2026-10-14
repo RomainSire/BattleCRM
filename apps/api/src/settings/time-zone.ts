@@ -1,3 +1,5 @@
+import { localDay } from '@battlecrm/domain';
+
 /** Whether the runtime knows this IANA time zone. */
 export function isTimeZone(value: string): boolean {
   try {
@@ -7,8 +9,5 @@ export function isTimeZone(value: string): boolean {
   }
 }
 
-/** The local day (`YYYY-MM-DD`) of an instant in a time zone. */
-export function localDate(timeZone: string, instant: Date): string {
-  // The Swedish locale writes dates as ISO 8601.
-  return new Intl.DateTimeFormat('sv', { timeZone, dateStyle: 'short' }).format(instant);
-}
+/** The local day (`YYYY-MM-DD`) of an instant in a time zone, as the SPA reads it too. */
+export const localDate = (timeZone: string, instant: Date): string => localDay(instant, timeZone);

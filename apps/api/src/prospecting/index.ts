@@ -6,8 +6,10 @@ import {
   CONTACT_NAME_MAX_LENGTH,
   CONTACT_NOTE_MAX_LENGTH,
   CONTACT_PHONE_MAX_LENGTH,
+  CONTACT_STATUSES,
   ORGANIZATION_NAME_MAX_LENGTH,
   ORGANIZATION_TYPES,
+  STATUS_REASON_MAX_LENGTH,
 } from '@battlecrm/contract';
 import { normalizeLinkedInUrl } from '@battlecrm/domain';
 import { and, eq } from 'drizzle-orm';
@@ -105,13 +107,35 @@ const addContactRequest = coordinates
 const editContactRequest = coordinates.refine(oneOrganization, { path: ['newOrganization'] });
 
 /**
+ * A change of Status (spec UX §6.11): to Prospecting, at the Stage chosen or else the last one reached;
+ * to any other Status, the Contact keeps its last Stage, and none is chosen. The reason is optional.
+ */
+const changeStatusRequest = z
+  .object({
+    status: z.enum(CONTACT_STATUSES),
+    stageId: z.uuid().optional(),
+    reason: optionalText(STATUS_REASON_MAX_LENGTH),
+  })
+  .refine(({ status, stageId }) => stageId === undefined || status === 'prospecting', {
+    path: ['stageId'],
+  });
+
+/**
  * A gesture the data refuses, possibly after it wrote: thrown so that its transaction rolls back,
  * then answered.
  */
 class Refusal extends Error {
   readonly status: 400 | 404 | 409;
   readonly body:
-    | { error: 'not_found' | 'unknown_stage' | 'unknown_organization' | 'organization_taken' }
+    | {
+        error:
+          | 'not_found'
+          | 'unknown_stage'
+          | 'stage_required'
+          | 'same_status'
+          | 'unknown_organization'
+          | 'organization_taken';
+      }
     | { error: 'linkedin_url_taken'; contactId: string };
 
   constructor(status: Refusal['status'], body: Refusal['body']) {
@@ -182,6 +206,43 @@ const contactEdited = z.object({
   before: editedCoordinates,
   createdOrganizationId: z.uuid().optional(),
 });
+
+/** What the inverse of a change of Status needs: the Interaction that recorded it, and what it changed. */
+const statusChanged = z.object({
+  interactionId: z.uuid(),
+  before: z.object({ status: z.enum(CONTACT_STATUSES), stageId: z.uuid().nullable() }),
+});
+
+/**
+ * Takes a change of Status back: the Contact gets its Status and its Stage back, and the change leaves
+ * no trace, no Funnel entry either (ST-39). Refused when it would put the Contact back Prospecting at
+ * a Stage archived since: only a Contact of another Status may keep one.
+ */
+const restoreStatus: Inverse = async (tx, { userId, contactId, payload }) => {
+  const { interactionId, before } = statusChanged.parse(payload);
+  if (
+    before.status === 'prospecting' &&
+    !(await stageOrder(tx, userId)).some(({ id }) => id === before.stageId)
+  ) {
+    return 'superseded';
+  }
+  await tx
+    .delete(statusChange)
+    .where(and(eq(statusChange.userId, userId), eq(statusChange.interactionId, interactionId)));
+  await tx
+    .delete(interaction)
+    .where(and(eq(interaction.userId, userId), eq(interaction.id, interactionId)));
+  await tx
+    .update(contact)
+    .set(before)
+    .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+  return {
+    contactIds: [contactId],
+    removedContactIds: [],
+    organizationIds: [],
+    removedOrganizationIds: [],
+  };
+};
 
 /** The Contacts of an Organization, as its own gestures read and move them (spec stack §5.2). */
 export const organizationMembers: OrganizationMembers = {
@@ -441,11 +502,91 @@ export function createProspecting<Changes>({
       });
       if (answer instanceof Refusal) return c.json(answer.body, answer.status);
       return c.json(answer, 200);
+    })
+    // Bring in…, Back to Pool…, Add to Circle…, Archive… (spec UX §6.11): any Status to any other,
+    // dated when it is written down, never earlier (ST-39).
+    .post('/contacts/:id/change-status', requireUser, jsonBody(changeStatusRequest), async (c) => {
+      const { userId } = c.var;
+      const id = z.uuid().safeParse(c.req.param('id'));
+      // Another User's Contact, an unknown one and an id that is none answer alike.
+      if (!id.success) return c.json({ error: 'not_found' as const }, 404);
+      const contactId = id.data;
+      const { status, stageId, reason } = c.req.valid('json');
+      const now = clock.now();
+      const answer = await withUser(userId, async (tx) => {
+        await lockContact(tx, contactId);
+        const [before] = await tx
+          .select({ status: contact.status, stageId: contact.stageId })
+          .from(contact)
+          .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+        if (!before) throw new Refusal(404, { error: 'not_found' });
+        if (before.status === status) throw new Refusal(409, { error: 'same_status' });
+        // Out of Prospecting, the Contact keeps the last Stage it reached: where it left the Funnel.
+        let stageAfter = before.stageId;
+        if (status === 'prospecting') {
+          // The last Stage reached unless one is chosen; never an archived one.
+          const wanted = stageId ?? before.stageId;
+          const entered = (await stageOrder(tx, userId)).find((stage) => stage.id === wanted);
+          if (!entered) {
+            throw new Refusal(400, {
+              error: stageId === undefined ? 'stage_required' : 'unknown_stage',
+            });
+          }
+          stageAfter = entered.id;
+        }
+        await tx
+          .update(contact)
+          .set({ status, stageId: stageAfter })
+          .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+        // An Interaction neither outbound nor inbound; to Prospecting, a Funnel entry dated today.
+        const [recorded] = await tx
+          .insert(interaction)
+          .values({
+            userId,
+            contactId,
+            kind: 'status_changed',
+            direction: 'none',
+            occurredAt: now,
+            localDate: await localDateOf(tx, userId, now),
+            recordedAt: now,
+          })
+          .returning({ id: interaction.id });
+        if (!recorded) throw new Error('An Interaction was not recorded');
+        await tx.insert(statusChange).values({
+          userId,
+          contactId,
+          interactionId: recorded.id,
+          fromStatus: before.status,
+          toStatus: status,
+          stageId: stageAfter,
+          reason,
+        });
+        const undoToken = await recordGesture(tx, {
+          userId,
+          kind: 'status_changed',
+          contactId,
+          payload: { interactionId: recorded.id, before } satisfies z.infer<typeof statusChanged>,
+          now,
+        });
+        const changes = await changesOf(tx, userId, {
+          contactIds: [contactId],
+          removedContactIds: [],
+          organizationIds: [],
+          removedOrganizationIds: [],
+        });
+        return { changes, undoToken };
+      }).catch((error: unknown) => {
+        if (error instanceof Refusal) return error;
+        throw error;
+      });
+      if (answer instanceof Refusal) return c.json(answer.body, answer.status);
+      return c.json(answer, 200);
     });
 
   const inverses = {
     contact_added: removeAddedContact,
     contact_edited: restoreEditedContact,
+    status_changed: restoreStatus,
   } satisfies Inverses;
   return { routes, inverses };
 }

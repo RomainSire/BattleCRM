@@ -1,14 +1,16 @@
-import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
 import type { AppEnv } from '../app.ts';
 import type { RequireUser } from '../auth/index.ts';
+import type { Clock } from '../clock.ts';
 import { withUser, type Transaction } from '../db/index.ts';
 import { FUNNEL_ORDER, stage } from '../funnel/index.ts';
 import type { Touched } from '../gestures/index.ts';
 import { organization } from '../organizations/index.ts';
 import { contact, interaction, statusChange } from '../prospecting/index.ts';
+import { timeZoneAt } from '../settings/index.ts';
 
 /**
  * The Contacts of the working summary (ADR 0012), the latest Interaction first: all of them, or the
@@ -26,6 +28,45 @@ async function summaryContacts(tx: Transaction, userId: string, ids?: string[]) 
     .where(and(eq(interaction.userId, userId), ids && inArray(interaction.contactId, ids)))
     .orderBy(interaction.contactId, desc(interaction.occurredAt), desc(interaction.id))
     .as('latest');
+  // Each Funnel entry, by the local day it was written down on (ST-49): the SPA counts those of a week.
+  const entries = tx
+    .select({
+      contactId: statusChange.contactId,
+      // As text: a `date` stays a `YYYY-MM-DD` string, never a JavaScript date (spec stack §6).
+      days: sql<
+        string[]
+      >`array_agg(${interaction.localDate}::text order by ${interaction.occurredAt}, ${interaction.id})`.as(
+        'days',
+      ),
+    })
+    .from(statusChange)
+    .innerJoin(
+      interaction,
+      and(eq(interaction.userId, userId), eq(interaction.id, statusChange.interactionId)),
+    )
+    .where(
+      and(
+        eq(statusChange.userId, userId),
+        eq(statusChange.toStatus, 'prospecting'),
+        ids && inArray(statusChange.contactId, ids),
+      ),
+    )
+    .groupBy(statusChange.contactId)
+    .as('entries');
+  // The change that put the Contact in its Status: its reason, shown with it (spec UX §5.3, §5.10).
+  const current = tx
+    .selectDistinctOn([statusChange.contactId], {
+      contactId: statusChange.contactId,
+      reason: statusChange.reason,
+    })
+    .from(statusChange)
+    .innerJoin(
+      interaction,
+      and(eq(interaction.userId, userId), eq(interaction.id, statusChange.interactionId)),
+    )
+    .where(and(eq(statusChange.userId, userId), ids && inArray(statusChange.contactId, ids)))
+    .orderBy(statusChange.contactId, desc(interaction.occurredAt), desc(interaction.id))
+    .as('current_status');
   const rows = await tx
     .select({
       id: contact.id,
@@ -40,12 +81,20 @@ async function summaryContacts(tx: Transaction, userId: string, ids?: string[]) 
       linkedinUrl: contact.linkedinUrl,
       lastInteractionAt: latest.occurredAt,
       lastInteractionOn: latest.localDate,
+      funnelEntryDays: entries.days,
+      statusReason: current.reason,
     })
     .from(contact)
     .innerJoin(latest, eq(latest.contactId, contact.id))
+    .leftJoin(entries, eq(entries.contactId, contact.id))
+    .leftJoin(current, eq(current.contactId, contact.id))
     .where(and(eq(contact.userId, userId), ids && inArray(contact.id, ids)))
     .orderBy(desc(latest.occurredAt), desc(contact.id));
-  return rows.map((row) => ({ ...row, lastInteractionAt: row.lastInteractionAt.toISOString() }));
+  return rows.map((row) => ({
+    ...row,
+    lastInteractionAt: row.lastInteractionAt.toISOString(),
+    funnelEntryDays: row.funnelEntryDays ?? [],
+  }));
 }
 
 /** Every Stage of the User, archived ones too: a Contact may keep one as the last it reached. In the order of the Funnel. */
@@ -122,12 +171,14 @@ export async function summaryChanges(tx: Transaction, userId: string, touched: T
 }
 
 /** The reads, one per view (spec stack §5.2): this module reads the tables of the others and writes none of them. */
-export function createViews({ requireUser }: { requireUser: RequireUser }) {
+export function createViews({ clock, requireUser }: { clock: Clock; requireUser: RequireUser }) {
   const routes = new Hono<AppEnv>()
     // The whole working summary, in one read; it grows with each ticket (ADR 0012).
     .get('/summary', requireUser, async (c) => {
       const { userId } = c.var;
       const summary = await withUser(userId, async (tx) => ({
+        // What “today” is read in, on the device too.
+        timeZone: await timeZoneAt(tx, userId, clock.now()),
         contacts: await summaryContacts(tx, userId),
         stages: await summaryStages(tx, userId),
         organizations: await summaryOrganizations(tx, userId),

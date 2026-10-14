@@ -2,15 +2,18 @@ import { m } from '@battlecrm/i18n';
 import { targetOf } from '@battlecrm/domain';
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { cn } from 'cn';
 import type { InferResponseType } from 'hono/client';
 import { X } from 'lucide-react';
-import { useId, useRef, useState, type ReactNode, type Ref } from 'react';
+import { useId, useRef, useState, type ReactNode, type Ref, type RefObject } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 
 import { Button } from '../components/ui/button.tsx';
 import { ErrorMessage } from '../components/ui/error-message.tsx';
+import { MenuItem, MoreActions } from '../components/ui/menu.tsx';
 import { useLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
+import { isModalOpen, useShortcuts } from '../shortcuts.ts';
 import {
   contactRecordKey,
   summaryQuery,
@@ -18,11 +21,19 @@ import {
   type SummaryContact,
   type SummaryOrganization,
 } from '../summary.ts';
+import { ChangeStatusPanel, useStatusGesture } from './change-status.tsx';
 import { ContactName } from './contact-name.tsx';
 import { EditCoordinates } from './edit-coordinates.tsx';
 import { formatLocalDay } from './format.ts';
 import { targetText } from './organization-field.tsx';
-import { prospectingStageOf, STATUS_LABEL } from './status.ts';
+import {
+  otherStatuses,
+  prospectingStageOf,
+  STATUS_GESTURES,
+  STATUS_LABEL,
+  STATUS_VERB,
+  type StatusGesture,
+} from './status.ts';
 
 /** What the record of a Contact reads beyond the summary: its note and its thread. */
 type ContactRecord = InferResponseType<ApiClient['contacts'][':id']['record']['$get'], 200>;
@@ -103,12 +114,15 @@ function RecordHeader({
   level,
   headingId,
   headingRef,
+  onChangeStatus,
 }: {
   contact: SummaryContact;
   summary: Summary;
   level: 1 | 2;
   headingId?: string;
   headingRef?: Ref<HTMLHeadingElement>;
+  /** The pill of the Status opens “Change status…” (spec UX §5.3). */
+  onChangeStatus: () => void;
 }) {
   const Heading = level === 1 ? 'h1' : 'h2';
   const organization = organizationOf(contact, summary);
@@ -134,7 +148,15 @@ function RecordHeader({
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
         {stage && <Pill>{stage}</Pill>}
-        <Pill>{STATUS_LABEL[contact.status]()}</Pill>
+        <Button
+          variant="outline"
+          size="xs"
+          className="font-normal text-neutral-text max-md:min-h-11"
+          aria-label={m.status_pill_label({ status: STATUS_LABEL[contact.status]() })}
+          onPress={onChangeStatus}
+        >
+          {STATUS_LABEL[contact.status]()}
+        </Button>
         {contact.linkedinUrl && (
           <a
             href={contact.linkedinUrl}
@@ -230,7 +252,10 @@ function Coordinates({
       value: record?.note && <span className="whitespace-pre-line">{record.note}</span>,
     },
     { label: m.contact_stage(), value: prospectingStageOf(contact, summary.stages) },
-    { label: m.contact_status(), value: STATUS_LABEL[contact.status]() },
+    {
+      label: m.contact_status(),
+      value: [STATUS_LABEL[contact.status](), contact.statusReason].filter(Boolean).join(' · '),
+    },
   ];
   return (
     <section aria-labelledby={headingId} className={className}>
@@ -279,6 +304,114 @@ function Coordinates({
   );
 }
 
+/** What the record says of the Status of the Contact, before its actions (spec UX §5.3). */
+function nextActionText(contact: SummaryContact, summary: Summary): string {
+  switch (contact.status) {
+    case 'pool': {
+      const last = summary.stages.find(({ id }) => id === contact.stageId);
+      return last ? m.next_action_pool({ stage: last.name }) : m.next_action_pool_never();
+    }
+    // Its Follow-up and its Trial come with tickets 21 and 28.
+    case 'prospecting':
+      return m.no_next_action();
+    // Its Days since contact come with the Circle (ticket 36).
+    case 'ally':
+      return STATUS_LABEL.ally();
+    default:
+      return STATUS_LABEL.archived();
+  }
+}
+
+const isStatusGesture = (key: unknown): key is StatusGesture =>
+  STATUS_GESTURES.some((gesture) => gesture === key);
+
+/**
+ * The block Next action (spec UX §5.3): what the Status of the Contact calls for, its full button, and
+ * the verbs of the other Statuses: as secondary buttons on the page (from the desktop width), under `⋯`
+ * everywhere, with “Change status…”.
+ */
+function NextAction({
+  contact,
+  summary,
+  level,
+  showsVerbs,
+  onGesture,
+}: {
+  contact: SummaryContact;
+  summary: Summary;
+  level: 2 | 3;
+  showsVerbs: boolean;
+  onGesture: (gesture: StatusGesture) => void;
+}) {
+  const headingId = useId();
+  const Heading = level === 2 ? 'h2' : 'h3';
+  const isOut = contact.status === 'pool' || contact.status === 'archived';
+  // Out of the Funnel, the way back is the action of the moment.
+  const primary = isOut ? 'prospecting' : undefined;
+  const others = otherStatuses(contact.status).filter((status) => status !== primary);
+  return (
+    <section aria-labelledby={headingId} className="flex flex-col gap-2 rounded-card border p-3">
+      <Heading id={headingId} className="text-xs font-semibold text-muted-foreground uppercase">
+        {m.next_action()}
+      </Heading>
+      <p>{nextActionText(contact, summary)}</p>
+      {contact.status === 'archived' && (
+        <>
+          {contact.statusReason && <p>{m.next_action_reason({ reason: contact.statusReason })}</p>}
+          <p>{m.next_action_archived()}</p>
+        </>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        {primary && (
+          <Button className="max-md:min-h-11" onPress={() => onGesture(primary)}>
+            {STATUS_VERB[primary]()}
+          </Button>
+        )}
+        {showsVerbs &&
+          others.map((status) => (
+            <Button
+              key={status}
+              variant="outline"
+              className="max-md:hidden"
+              onPress={() => onGesture(status)}
+              size={level === 3 ? 'sm' : 'default'}
+            >
+              {STATUS_VERB[status]()}
+            </Button>
+          ))}
+        <MoreActions
+          onAction={(key) => {
+            if (isStatusGesture(key)) onGesture(key);
+          }}
+        >
+          {others.map((status) => (
+            <MenuItem key={status} id={status}>
+              {STATUS_VERB[status]()}
+            </MenuItem>
+          ))}
+          <MenuItem id="choose">{m.verb_change_status()}</MenuItem>
+        </MoreActions>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * `S` opens “Change status…” on the record that has the focus (spec UX §3.3): anywhere on its page,
+ * within its panel only.
+ */
+function useChangeStatusKey(open: () => void, scope?: RefObject<HTMLElement | null>) {
+  useShortcuts({
+    s: (event) => {
+      if (isModalOpen()) return;
+      if (scope && !scope.current?.contains(document.activeElement)) return;
+      // Or the letter would be typed into the field that takes the focus.
+      event.preventDefault();
+      open();
+    },
+  });
+}
+
 /** While the summary is read: nothing, or why it cannot be. */
 const SummaryMissing = ({ isError }: { isError: boolean }) => (
   <ErrorMessage>{isError && m.contacts_load_error()}</ErrorMessage>
@@ -303,6 +436,9 @@ export function ContactPanel({
   useLocale();
   const { summary, contact, isError } = useSummaryContact(contactId);
   const headingId = useId();
+  const panelRef = useRef<HTMLElement>(null);
+  const status = useStatusGesture();
+  useChangeStatusKey(() => status.open('choose'), panelRef);
   const close = (
     <Button variant="ghost" size="icon-sm" aria-label={m.close()} onPress={onClose}>
       <X />
@@ -318,48 +454,74 @@ export function ContactPanel({
     );
   }
   return (
-    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape from any control inside the panel, while the focus is there.
-    <section
-      aria-labelledby={headingId}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') onClose();
-      }}
-      className="flex flex-col gap-3 rounded-card border p-4"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <RecordHeader
+    <>
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape from any control inside the panel, while the focus is there. */}
+      <section
+        ref={panelRef}
+        aria-labelledby={headingId}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') onClose();
+        }}
+        className={cn(
+          'flex flex-col gap-3 rounded-card border p-4',
+          // An archived record is greyed (spec UX §5.3).
+          contact.status === 'archived' && 'bg-surface text-muted-foreground',
+        )}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <RecordHeader
+            contact={contact}
+            summary={summary}
+            level={2}
+            headingId={headingId}
+            headingRef={headingRef}
+            onChangeStatus={() => status.open('choose')}
+          />
+          {close}
+        </div>
+        <NextAction
           contact={contact}
           summary={summary}
-          level={2}
-          headingId={headingId}
-          headingRef={headingRef}
+          level={3}
+          // Archived, the ways back are all in sight (spec UX §5.3).
+          showsVerbs={contact.status === 'archived'}
+          onGesture={status.open}
         />
-        {close}
-      </div>
-      <Tabs>
-        <TabList aria-label={contact.name} className="flex gap-1 border-b pb-2">
-          <Tab id="thread" className={tabClass}>
-            {m.contact_thread()}
-          </Tab>
-          <Tab id="details" className={tabClass}>
-            {m.contact_details()}
-          </Tab>
-        </TabList>
-        <TabPanel id="thread" className="rounded-control pt-3 focus-ring">
-          <Thread contactId={contactId} summary={summary} />
-        </TabPanel>
-        <TabPanel id="details" className="rounded-control pt-3 focus-ring">
-          <Coordinates contact={contact} summary={summary} level={3} />
-        </TabPanel>
-      </Tabs>
-      <Link
-        to="/contacts/$contactId"
-        params={{ contactId }}
-        className="self-start rounded-control text-accent-text underline-offset-4 focus-ring hover:underline"
-      >
-        {m.open_as_page()}
-      </Link>
-    </section>
+        <Tabs>
+          <TabList aria-label={contact.name} className="flex gap-1 border-b pb-2">
+            <Tab id="thread" className={tabClass}>
+              {m.contact_thread()}
+            </Tab>
+            <Tab id="details" className={tabClass}>
+              {m.contact_details()}
+            </Tab>
+          </TabList>
+          <TabPanel id="thread" className="rounded-control pt-3 focus-ring">
+            <Thread contactId={contactId} summary={summary} />
+          </TabPanel>
+          <TabPanel id="details" className="rounded-control pt-3 focus-ring">
+            <Coordinates contact={contact} summary={summary} level={3} />
+          </TabPanel>
+        </Tabs>
+        <Link
+          to="/contacts/$contactId"
+          params={{ contactId }}
+          className="self-start rounded-control text-accent-text underline-offset-4 focus-ring hover:underline"
+        >
+          {m.open_as_page()}
+        </Link>
+      </section>
+      {/* Out of the panel: its Escape is the gesture's own. */}
+      {status.gesture && (
+        <ChangeStatusPanel
+          key={`${contact.id}:${status.gesture}`}
+          contact={contact}
+          summary={summary}
+          gesture={status.gesture}
+          onClose={status.close}
+        />
+      )}
+    </>
   );
 }
 
@@ -368,13 +530,23 @@ export function ContactPage({ contactId }: { contactId: string }) {
   useLocale();
   const { summary, contact, isError } = useSummaryContact(contactId);
   const threadHeadingId = useId();
+  const status = useStatusGesture();
+  useChangeStatusKey(() => {
+    if (contact) status.open('choose');
+  });
   const backToContacts = (
     <Link to="/contacts" className="rounded-control underline-offset-4 focus-ring hover:underline">
       {m.contacts()}
     </Link>
   );
   return (
-    <div className="flex flex-col gap-4 px-4 py-5 md:px-6">
+    <div
+      className={cn(
+        'flex flex-col gap-4 px-4 py-5 md:px-6',
+        // An archived record is greyed (spec UX §5.3).
+        contact?.status === 'archived' && 'text-muted-foreground',
+      )}
+    >
       <title>{`${contact?.name ?? m.contacts()} · BattleCRM`}</title>
       {!summary ? (
         <SummaryMissing isError={isError} />
@@ -394,7 +566,19 @@ export function ContactPage({ contactId }: { contactId: string }) {
               </li>
             </ol>
           </nav>
-          <RecordHeader contact={contact} summary={summary} level={1} />
+          <RecordHeader
+            contact={contact}
+            summary={summary}
+            level={1}
+            onChangeStatus={() => status.open('choose')}
+          />
+          <NextAction
+            contact={contact}
+            summary={summary}
+            level={2}
+            showsVerbs
+            onGesture={status.open}
+          />
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
             {/* Stacked on mobile, the Coordinates come first (spec UX §5.3). */}
             <Coordinates
@@ -413,6 +597,15 @@ export function ContactPage({ contactId }: { contactId: string }) {
               <Thread contactId={contactId} summary={summary} />
             </section>
           </div>
+          {status.gesture && (
+            <ChangeStatusPanel
+              key={`${contact.id}:${status.gesture}`}
+              contact={contact}
+              summary={summary}
+              gesture={status.gesture}
+              onClose={status.close}
+            />
+          )}
         </>
       )}
     </div>

@@ -31,6 +31,8 @@ const contact = <F extends { id: string; lastInteractionAt: string; lastInteract
   email: null as string | null,
   phone: null as string | null,
   linkedinUrl: null as string | null,
+  funnelEntryDays: [] as string[],
+  statusReason: null as string | null,
   ...fields,
 });
 const JULIE = contact({
@@ -68,6 +70,7 @@ const PAUL = contact({
   name: 'Paul Lefèvre',
   status: 'archived',
   stageId: OUTREACH.id,
+  statusReason: 'A changé de métier',
   lastInteractionAt: '2026-01-05T09:00:00.000Z',
   lastInteractionOn: '2026-01-05',
 });
@@ -164,6 +167,10 @@ test('All leaves the Archived out and says how many; each chip shows its Status'
 
   await page.getByRole('button', { name: 'Afficher' }).click();
   await expect.poll(names).toEqual(['Paul Lefèvre']);
+  // Greyed, with its reason (spec UX §5.10).
+  await expect
+    .element(page.getByRole('link', { name: /Paul Lefèvre/ }))
+    .toHaveTextContent('A changé de métier');
   await expect
     .element(chip('Archivés').element().closest('label')!)
     .toHaveAttribute('data-selected', 'true');

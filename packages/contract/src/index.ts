@@ -29,3 +29,14 @@ export const CONTACT_EMAIL_MAX_LENGTH = 254;
 export const CONTACT_PHONE_MAX_LENGTH = 40;
 export const CONTACT_LINKEDIN_URL_MAX_LENGTH = 500;
 export const CONTACT_NOTE_MAX_LENGTH = 5000;
+
+/** The reason of a change of Status, optional (CONTEXT.md, Status). */
+export const STATUS_REASON_MAX_LENGTH = 500;
+
+// What the User sets in Settings (ticket 20); until then, the defaults of the spec (CONTEXT.md).
+/** Funnel entries per week, from Monday to Sunday. */
+export const DEFAULT_ENTRY_GOAL = 5;
+/** Days between two check-ins with each Ally. */
+export const DEFAULT_CHECK_IN_RHYTHM_DAYS = 28;
+/** Allies the User wants to keep up with. */
+export const DEFAULT_CIRCLE_SIZE_GOAL = 10;
