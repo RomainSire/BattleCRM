@@ -14,3 +14,4 @@ export {
 export { targetOf, type OrganizationType, type Target } from './target.ts';
 export { contactsMatching, type SearchableContact } from './search.ts';
 export { addDays, funnelEntriesInWeek, localDay, mondayOf, nextMondayAfter } from './days.ts';
+export { activityOn, followUpSignal, type FollowUpSignal } from './follow-up.ts';

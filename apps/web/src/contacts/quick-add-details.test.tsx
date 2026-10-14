@@ -36,6 +36,8 @@ const contactRow = (fields: Record<string, unknown>) => ({
   linkedinUrl: null,
   lastInteractionAt: '2026-01-06T09:00:00.000Z',
   lastInteractionOn: '2026-01-06',
+  followUp: null,
+  prospectingActionDays: [],
   ...fields,
 });
 

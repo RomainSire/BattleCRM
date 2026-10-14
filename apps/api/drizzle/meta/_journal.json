@@ -148,6 +148,20 @@
       "when": 1791987035586,
       "tag": "0020_settings_access",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792003049902,
+      "tag": "0021_follow_ups",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792003050632,
+      "tag": "0022_follow_ups_access",
+      "breakpoints": true
     }
   ]
 }

@@ -33,6 +33,8 @@ const contact = <F extends { id: string; lastInteractionAt: string; lastInteract
   linkedinUrl: null as string | null,
   funnelEntryDays: [] as string[],
   statusReason: null as string | null,
+  followUp: null as { dueOn: string; note: string | null } | null,
+  prospectingActionDays: [] as string[],
   ...fields,
 });
 const JULIE = contact({

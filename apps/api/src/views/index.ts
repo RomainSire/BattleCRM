@@ -9,7 +9,13 @@ import { withUser, type Transaction } from '../db/index.ts';
 import { FUNNEL_ORDER, stage } from '../funnel/index.ts';
 import type { Touched } from '../gestures/index.ts';
 import { organization } from '../organizations/index.ts';
-import { contact, interaction, statusChange } from '../prospecting/index.ts';
+import {
+  contact,
+  followUp,
+  interaction,
+  PROSPECTING_ACTION_KINDS,
+  statusChange,
+} from '../prospecting/index.ts';
 import { settingsOf, timeZoneAt } from '../settings/index.ts';
 
 /**
@@ -53,6 +59,38 @@ async function summaryContacts(tx: Transaction, userId: string, ids?: string[]) 
     )
     .groupBy(statusChange.contactId)
     .as('entries');
+  // Each Prospecting action, by its local day (ST-41): the SPA counts the Activity of a day.
+  const actions = tx
+    .select({
+      contactId: interaction.contactId,
+      days: sql<
+        string[]
+      >`array_agg(${interaction.localDate}::text order by ${interaction.localDate}, ${interaction.occurredAt}, ${interaction.id})`.as(
+        'action_days',
+      ),
+    })
+    .from(interaction)
+    .where(
+      and(
+        eq(interaction.userId, userId),
+        inArray(interaction.kind, [...PROSPECTING_ACTION_KINDS]),
+        ids && inArray(interaction.contactId, ids),
+      ),
+    )
+    .groupBy(interaction.contactId)
+    .as('actions');
+  // The scheduled Follow-up, at most one per Contact.
+  const scheduled = tx
+    .select({ contactId: followUp.contactId, dueOn: followUp.dueOn, note: followUp.note })
+    .from(followUp)
+    .where(
+      and(
+        eq(followUp.userId, userId),
+        eq(followUp.status, 'scheduled'),
+        ids && inArray(followUp.contactId, ids),
+      ),
+    )
+    .as('scheduled');
   // The change that put the Contact in its Status: its reason, shown with it (spec UX §5.3, §5.10).
   const current = tx
     .selectDistinctOn([statusChange.contactId], {
@@ -83,17 +121,24 @@ async function summaryContacts(tx: Transaction, userId: string, ids?: string[]) 
       lastInteractionOn: latest.localDate,
       funnelEntryDays: entries.days,
       statusReason: current.reason,
+      followUpDueOn: scheduled.dueOn,
+      followUpNote: scheduled.note,
+      prospectingActionDays: actions.days,
     })
     .from(contact)
     .innerJoin(latest, eq(latest.contactId, contact.id))
     .leftJoin(entries, eq(entries.contactId, contact.id))
     .leftJoin(current, eq(current.contactId, contact.id))
+    .leftJoin(scheduled, eq(scheduled.contactId, contact.id))
+    .leftJoin(actions, eq(actions.contactId, contact.id))
     .where(and(eq(contact.userId, userId), ids && inArray(contact.id, ids)))
     .orderBy(desc(latest.occurredAt), desc(contact.id));
-  return rows.map((row) => ({
+  return rows.map(({ followUpDueOn, followUpNote, ...row }) => ({
     ...row,
     lastInteractionAt: row.lastInteractionAt.toISOString(),
     funnelEntryDays: row.funnelEntryDays ?? [],
+    followUp: followUpDueOn === null ? null : { dueOn: followUpDueOn, note: followUpNote },
+    prospectingActionDays: row.prospectingActionDays ?? [],
   }));
 }
 
@@ -122,7 +167,8 @@ async function summaryOrganizations(tx: Transaction, userId: string, ids?: strin
 
 /**
  * What the record of a Contact reads beyond the summary, on demand (spec stack §3): its note, and its
- * thread from the latest Interaction to the earliest, each with the change of Status it recorded.
+ * thread from the latest Interaction to the earliest, each with its note and the change of Status it
+ * recorded.
  * `undefined` when the User has no such Contact.
  */
 async function contactRecord(tx: Transaction, userId: string, contactId: string) {
@@ -138,6 +184,7 @@ async function contactRecord(tx: Transaction, userId: string, contactId: string)
       direction: interaction.direction,
       occurredAt: interaction.occurredAt,
       localDate: interaction.localDate,
+      note: interaction.note,
       fromStatus: statusChange.fromStatus,
       toStatus: statusChange.toStatus,
       stageId: statusChange.stageId,

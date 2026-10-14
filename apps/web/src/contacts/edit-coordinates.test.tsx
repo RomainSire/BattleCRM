@@ -34,6 +34,8 @@ const JULIE = {
   linkedinUrl: 'https://linkedin.com/in/juliemartin',
   lastInteractionAt: '2026-01-08T09:00:00.000Z',
   lastInteractionOn: '2026-01-08',
+  followUp: null,
+  prospectingActionDays: [],
 };
 const INES = {
   ...JULIE,

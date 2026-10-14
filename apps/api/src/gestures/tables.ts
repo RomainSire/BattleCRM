@@ -17,7 +17,14 @@ import { user } from '../auth/tables.ts';
 import { contact } from '../prospecting/tables.ts';
 
 /** Every gesture “Undo” can take back; a new gesture adds its kind here, next to its inverse (ADR 0011). */
-export const GESTURE_KINDS = ['contact_added', 'contact_edited', 'status_changed'] as const;
+export const GESTURE_KINDS = [
+  'contact_added',
+  'contact_edited',
+  'status_changed',
+  'follow_up_scheduled',
+  'follow_up_canceled',
+  'followed_up',
+] as const;
 
 /** What “Undo” needs to take a gesture back (ADR 0011). A row lives 15 minutes at most, or until it is undone. */
 export const gesture = pgTable(

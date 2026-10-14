@@ -31,6 +31,10 @@ export const summaryContact = z.strictObject({
   funnelEntryDays: z.array(z.iso.date()),
   /** The reason of the change that put it in its Status, if the User gave one. */
   statusReason: z.string().nullable(),
+  /** Its scheduled Follow-up, if it has one. */
+  followUp: z.strictObject({ dueOn: z.iso.date(), note: z.string().nullable() }).nullable(),
+  /** The local days of its Prospecting actions, the earliest first: what the Activity is counted from. */
+  prospectingActionDays: z.array(z.iso.date()),
 });
 
 /** A Stage as the working summary carries it, in the order of the Funnel. */
@@ -131,6 +135,41 @@ export async function changeStatus(
   if (!contact) throw new Error('changeStatus: no Contact in the answer');
   return { contact, undoToken };
 }
+
+/** A gesture on the Follow-up of a Contact, made the way a User makes it, and the token that takes it back. */
+async function followUpGesture(
+  harness: Harness,
+  user: { cookie: string },
+  path: string,
+  body: object,
+) {
+  const response = await postJson(harness.app, path, body, user.cookie);
+  if (response.status !== 200) throw new Error(`${path}: the API answered ${response.status}`);
+  const { changes, undoToken } = gestureAnswer.parse(await response.json());
+  const [contact] = changes.contacts;
+  if (!contact) throw new Error(`${path}: no Contact in the answer`);
+  return { contact, undoToken };
+}
+
+/** A Follow-up scheduled, or modified, for a local day. */
+export const scheduleFollowUp = (
+  harness: Harness,
+  user: { cookie: string },
+  contactId: string,
+  body: { dueOn: string; note?: string },
+) => followUpGesture(harness, user, `/api/contacts/${contactId}/schedule-follow-up`, body);
+
+/** The scheduled Follow-up of a Contact, canceled. */
+export const cancelFollowUp = (harness: Harness, user: { cookie: string }, contactId: string) =>
+  followUpGesture(harness, user, `/api/contacts/${contactId}/cancel-follow-up`, {});
+
+/** “Follow up…”: the scheduled Follow-up of a Contact, done on a local day. */
+export const followUp = (
+  harness: Harness,
+  user: { cookie: string },
+  contactId: string,
+  body: { occurredOn: string; note?: string },
+) => followUpGesture(harness, user, `/api/contacts/${contactId}/follow-up`, body);
 
 /** A value in effect now, and as the User chose it last. */
 const dated = <Value extends z.ZodType>(value: Value) =>

@@ -58,6 +58,8 @@ const contact = (fields: Pick<Row, 'id' | 'name'> & Partial<Row>) => ({
   lastInteractionOn: '2026-01-08',
   funnelEntryDays: [] as string[],
   statusReason: null as string | null,
+  followUp: null as { dueOn: string; note: string | null } | null,
+  prospectingActionDays: [] as string[],
   ...fields,
 });
 

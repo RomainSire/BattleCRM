@@ -22,6 +22,7 @@ const contactRecord = z.strictObject({
       direction: z.enum(['outbound', 'inbound', 'none']),
       occurredAt: z.iso.datetime(),
       localDate: z.iso.date(),
+      note: z.string().nullable(),
       statusChange: z
         .strictObject({
           fromStatus: z.string().nullable(),
@@ -55,6 +56,7 @@ test('the record of a Contact carries its note and its thread: the addition open
         direction: 'none',
         occurredAt: contact.lastInteractionAt,
         localDate: contact.lastInteractionOn,
+        note: null,
         statusChange: {
           fromStatus: null,
           toStatus: 'prospecting',
@@ -83,6 +85,7 @@ test('the thread reads from the latest Interaction to the earliest', async () =>
         direction: 'none',
         occurredAt: later,
         localDate: '2026-01-07',
+        note: null,
         recordedAt: later,
       })
       .returning({ id: interaction.id });

@@ -90,7 +90,11 @@ export const contact = pgTable(
 );
 
 /** What an Interaction records; each gesture that writes one adds its kind here. */
-export const INTERACTION_KINDS = ['contact_added', 'status_changed'] as const;
+export const INTERACTION_KINDS = ['contact_added', 'status_changed', 'follow_up'] as const;
+/** The kinds that are Prospecting actions, what the Activity counts (CONTEXT.md). */
+export const PROSPECTING_ACTION_KINDS = [
+  'follow_up',
+] as const satisfies readonly (typeof INTERACTION_KINDS)[number][];
 /** Adding a Contact, like a change of Stage or of Status, is neither outbound nor inbound. */
 export const INTERACTION_DIRECTIONS = ['outbound', 'inbound', 'none'] as const;
 
@@ -107,6 +111,8 @@ export const interaction = pgTable(
     /** The local day of `occurredAt`, in the time zone in effect when it was written. */
     localDate: date('local_date').notNull(),
     recordedAt: instant('recorded_at').notNull(),
+    /** What the User wrote of it, if anything: a done Follow-up keeps the note it had. */
+    note: text(),
   },
   (table) => [
     unique('interaction_user_id_id_unique').on(table.userId, table.id),
@@ -121,6 +127,54 @@ export const interaction = pgTable(
       sql`${table.direction} in (${quoted(INTERACTION_DIRECTIONS)})`,
     ),
     index('interaction_contact_idx').on(table.userId, table.contactId, table.occurredAt),
+    check('interaction_note_check', sql`${table.note} <> ''`),
+  ],
+);
+
+/** Scheduled, then done or canceled (CONTEXT.md, Follow-up). */
+export const FOLLOW_UP_STATUSES = ['scheduled', 'done', 'canceled'] as const;
+
+/**
+ * A Follow-up of a Contact (CONTEXT.md): an outbound Interaction scheduled for a local day, at most one
+ * scheduled per Contact. Done, it points to the Interaction it became; it never references a Positioning.
+ */
+export const followUp = pgTable(
+  'follow_up',
+  {
+    id: id(),
+    userId: userId(),
+    contactId: uuid('contact_id').notNull(),
+    status: text({ enum: FOLLOW_UP_STATUSES }).notNull(),
+    /** The local day it is scheduled for: overdue once past, never moved by the app itself. */
+    dueOn: date('due_on').notNull(),
+    /** Why to follow up, what was said; optional. */
+    note: text(),
+    /** The Interaction it became, once done. */
+    interactionId: uuid('interaction_id'),
+    scheduledAt: instant('scheduled_at').notNull(),
+  },
+  (table) => [
+    unique('follow_up_user_id_id_unique').on(table.userId, table.id),
+    foreignKey({
+      name: 'follow_up_contact_fk',
+      columns: [table.userId, table.contactId],
+      foreignColumns: [contact.userId, contact.id],
+    }),
+    foreignKey({
+      name: 'follow_up_interaction_fk',
+      columns: [table.userId, table.interactionId],
+      foreignColumns: [interaction.userId, interaction.id],
+    }),
+    // At most one scheduled per Contact (spec stack §6).
+    uniqueIndex('follow_up_scheduled_unique')
+      .on(table.userId, table.contactId)
+      .where(sql`${table.status} = 'scheduled'`),
+    check('follow_up_status_check', sql`${table.status} in (${quoted(FOLLOW_UP_STATUSES)})`),
+    check(
+      'follow_up_done_check',
+      sql`(${table.status} = 'done') = (${table.interactionId} is not null)`,
+    ),
+    check('follow_up_note_check', sql`${table.note} <> ''`),
   ],
 );
 

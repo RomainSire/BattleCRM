@@ -1,9 +1,8 @@
 import { m } from '@battlecrm/i18n';
-import { targetOf } from '@battlecrm/domain';
-import { queryOptions, useQuery } from '@tanstack/react-query';
+import { followUpSignal, targetOf } from '@battlecrm/domain';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
-import type { InferResponseType } from 'hono/client';
 import { X } from 'lucide-react';
 import { useId, useRef, useState, type ReactNode, type Ref, type RefObject } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
@@ -11,11 +10,10 @@ import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 import { Button } from '../components/ui/button.tsx';
 import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { MenuItem, MoreActions } from '../components/ui/menu.tsx';
-import { useLocale } from '../i18n.ts';
-import { useApi, type ApiClient } from '../session.ts';
+import { useLocale, type Locale } from '../i18n.ts';
+import { useApi } from '../session.ts';
 import { isModalOpen, useShortcuts } from '../shortcuts.ts';
 import {
-  contactRecordKey,
   summaryQuery,
   type Summary,
   type SummaryContact,
@@ -23,7 +21,16 @@ import {
 } from '../summary.ts';
 import { ChangeStatusPanel, useStatusGesture } from './change-status.tsx';
 import { ContactName } from './contact-name.tsx';
+import { contactRecordQuery, type ThreadEntry } from './contact-record-query.ts';
 import { EditCoordinates } from './edit-coordinates.tsx';
+import {
+  FollowUpHead,
+  FollowUpPanels,
+  hasFollowUps,
+  isFollowUpDue,
+  todayOf,
+  useFollowUpGesture,
+} from './follow-up.tsx';
 import { formatLocalDay } from './format.ts';
 import { targetText } from './organization-field.tsx';
 import {
@@ -32,24 +39,9 @@ import {
   STATUS_GESTURES,
   STATUS_LABEL,
   STATUS_VERB,
+  type FollowUpGesture,
   type StatusGesture,
 } from './status.ts';
-
-/** What the record of a Contact reads beyond the summary: its note and its thread. */
-type ContactRecord = InferResponseType<ApiClient['contacts'][':id']['record']['$get'], 200>;
-type ThreadEntry = ContactRecord['thread'][number];
-
-/** Read on demand, when a record opens (spec stack §3); never kept on the device. */
-export const contactRecordQuery = (api: ApiClient, contactId: string) =>
-  queryOptions({
-    queryKey: contactRecordKey(contactId),
-    queryFn: async (): Promise<ContactRecord> => {
-      const response = await api.contacts[':id'].record.$get({ param: { id: contactId } });
-      if (!response.ok) throw new Error('GET /api/contacts/:id/record failed');
-      return response.json();
-    },
-    retry: false,
-  });
 
 /** The Contact of the summary, and its Organization; `contact` stays undefined while the summary is not read. */
 function useSummaryContact(contactId: string) {
@@ -73,8 +65,9 @@ function stageLabel(contact: SummaryContact, summary: Summary) {
   return stage.aim === null ? stage.name : `${stage.name} · ${stage.aim}`;
 }
 
-/** What an entry of the thread says: for now, the additions and the changes of Status, discreetly. */
-function threadEntryLabel({ statusChange }: ThreadEntry, summary: Summary) {
+/** What an entry of the thread says: the Follow-ups done, with their note; the additions and the changes of Status, discreetly. */
+function threadEntryLabel({ kind, note, statusChange }: ThreadEntry, summary: Summary) {
+  if (kind === 'follow_up') return [m.thread_follow_up(), note].filter(Boolean).join(' · ');
   if (!statusChange) return undefined;
   const { fromStatus, toStatus, stageId, reason } = statusChange;
   let label;
@@ -182,7 +175,14 @@ function Thread({ contactId, summary }: { contactId: string; summary: Summary })
   return (
     <ol aria-label={m.contact_thread()} className="flex flex-col gap-2">
       {record.thread.map((entry) => (
-        <li key={entry.id} className="flex justify-between gap-3 text-xs text-muted-foreground">
+        <li
+          key={entry.id}
+          className={cn(
+            'flex justify-between gap-3 text-xs',
+            // The changes of Stage and of Status are discreet (spec UX §5.3).
+            entry.direction === 'none' && 'text-muted-foreground',
+          )}
+        >
           <span>{threadEntryLabel(entry, summary)}</span>
           <time dateTime={entry.localDate} className="shrink-0">
             {formatLocalDay(entry.localDate, locale)}
@@ -304,19 +304,34 @@ function Coordinates({
   );
 }
 
+/** What a Contact Prospecting has next: its scheduled Follow-up, with its signal (spec UX §5.3). */
+function followUpText(dueOn: string, today: string, locale: Locale) {
+  switch (followUpSignal(dueOn, today)) {
+    case 'overdue':
+      return m.next_action_follow_up_overdue({ date: formatLocalDay(dueOn, locale) });
+    case 'today':
+      return m.next_action_follow_up_today();
+    default:
+      return m.next_action_follow_up_upcoming({ date: formatLocalDay(dueOn, locale) });
+  }
+}
+
 /** What the record says of the Status of the Contact, before its actions (spec UX §5.3). */
-function nextActionText(contact: SummaryContact, summary: Summary): string {
+function nextActionText(contact: SummaryContact, summary: Summary, locale: Locale): string {
+  const { followUp } = contact;
   switch (contact.status) {
     case 'pool': {
       const last = summary.stages.find(({ id }) => id === contact.stageId);
       return last ? m.next_action_pool({ stage: last.name }) : m.next_action_pool_never();
     }
-    // Its Follow-up and its Trial come with tickets 21 and 28.
+    // Its Trial comes with ticket 28.
     case 'prospecting':
-      return m.no_next_action();
-    // Its Days since contact come with the Circle (ticket 36).
+      return followUp ? followUpText(followUp.dueOn, todayOf(summary), locale) : m.no_next_action();
+    // Its Days since contact come with the Circle (ticket 36); a Follow-up comes first.
     case 'ally':
-      return STATUS_LABEL.ally();
+      return followUp
+        ? `${STATUS_LABEL.ally()} · ${followUpText(followUp.dueOn, todayOf(summary), locale)}`
+        : STATUS_LABEL.ally();
     default:
       return STATUS_LABEL.archived();
   }
@@ -324,6 +339,11 @@ function nextActionText(contact: SummaryContact, summary: Summary): string {
 
 const isStatusGesture = (key: unknown): key is StatusGesture =>
   STATUS_GESTURES.some((gesture) => gesture === key);
+
+/** The keys of the menu `⋯` for the Follow-up, apart from the Statuses. */
+const FOLLOW_UP_MENU = { 'follow-up:do': 'do', 'follow-up:schedule': 'schedule' } as const;
+const followUpOfKey = (key: unknown): FollowUpGesture | undefined =>
+  Object.entries(FOLLOW_UP_MENU).find(([candidate]) => candidate === key)?.[1];
 
 /**
  * The block Next action (spec UX §5.3): what the Status of the Contact calls for, its full button, and
@@ -336,25 +356,30 @@ function NextAction({
   level,
   showsVerbs,
   onGesture,
+  onFollowUp,
 }: {
   contact: SummaryContact;
   summary: Summary;
   level: 2 | 3;
   showsVerbs: boolean;
   onGesture: (gesture: StatusGesture) => void;
+  onFollowUp: (gesture: FollowUpGesture) => void;
 }) {
+  const locale = useLocale();
   const headingId = useId();
   const Heading = level === 2 ? 'h2' : 'h3';
   const isOut = contact.status === 'pool' || contact.status === 'archived';
   // Out of the Funnel, the way back is the action of the moment.
   const primary = isOut ? 'prospecting' : undefined;
   const others = otherStatuses(contact.status).filter((status) => status !== primary);
+  // A Follow-up due, today or overdue, is the action of the moment (spec UX §5.3).
+  const isDue = isFollowUpDue(contact, todayOf(summary));
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2 rounded-card border p-3">
       <Heading id={headingId} className="text-xs font-semibold text-muted-foreground uppercase">
         {m.next_action()}
       </Heading>
-      <p>{nextActionText(contact, summary)}</p>
+      <p>{nextActionText(contact, summary, locale)}</p>
       {contact.status === 'archived' && (
         <>
           {contact.statusReason && <p>{m.next_action_reason({ reason: contact.statusReason })}</p>}
@@ -365,6 +390,11 @@ function NextAction({
         {primary && (
           <Button className="max-md:min-h-11" onPress={() => onGesture(primary)}>
             {STATUS_VERB[primary]()}
+          </Button>
+        )}
+        {isDue && (
+          <Button className="max-md:min-h-11" onPress={() => onFollowUp('do')}>
+            {m.verb_follow_up()}
           </Button>
         )}
         {showsVerbs &&
@@ -382,8 +412,18 @@ function NextAction({
         <MoreActions
           onAction={(key) => {
             if (isStatusGesture(key)) onGesture(key);
+            const followUp = followUpOfKey(key);
+            if (followUp) onFollowUp(followUp);
           }}
         >
+          {contact.followUp && !isDue && (
+            <MenuItem id="follow-up:do">{m.verb_follow_up()}</MenuItem>
+          )}
+          {hasFollowUps(contact) && (
+            <MenuItem id="follow-up:schedule">
+              {contact.followUp ? m.verb_edit_follow_up() : m.verb_schedule_follow_up()}
+            </MenuItem>
+          )}
           {others.map((status) => (
             <MenuItem key={status} id={status}>
               {STATUS_VERB[status]()}
@@ -397,18 +437,30 @@ function NextAction({
 }
 
 /**
- * `S` opens “Change status…” on the record that has the focus (spec UX §3.3): anywhere on its page,
- * within its panel only.
+ * The keys of the record that has the focus (spec UX §3.3): anywhere on its page, within its panel
+ * only. `S` opens “Change status…”, `P` Schedule or Edit the follow-up, `F` Follow up…
  */
-function useChangeStatusKey(open: () => void, scope?: RefObject<HTMLElement | null>) {
+function useRecordKeys(
+  contact: SummaryContact | undefined,
+  status: ReturnType<typeof useStatusGesture>,
+  followUp: ReturnType<typeof useFollowUpGesture>,
+  scope?: RefObject<HTMLElement | null>,
+) {
+  const onKey = (open: () => void) => (event: KeyboardEvent) => {
+    if (!contact || isModalOpen()) return;
+    if (scope && !scope.current?.contains(document.activeElement)) return;
+    // Or the letter would be typed into the field that takes the focus.
+    event.preventDefault();
+    open();
+  };
   useShortcuts({
-    s: (event) => {
-      if (isModalOpen()) return;
-      if (scope && !scope.current?.contains(document.activeElement)) return;
-      // Or the letter would be typed into the field that takes the focus.
-      event.preventDefault();
-      open();
-    },
+    s: onKey(() => status.open('choose')),
+    p: onKey(() => {
+      if (contact && hasFollowUps(contact)) followUp.open('schedule');
+    }),
+    f: onKey(() => {
+      if (contact?.followUp) followUp.open('do');
+    }),
   });
 }
 
@@ -438,7 +490,8 @@ export function ContactPanel({
   const headingId = useId();
   const panelRef = useRef<HTMLElement>(null);
   const status = useStatusGesture();
-  useChangeStatusKey(() => status.open('choose'), panelRef);
+  const followUp = useFollowUpGesture();
+  useRecordKeys(contact, status, followUp, panelRef);
   const close = (
     <Button variant="ghost" size="icon-sm" aria-label={m.close()} onPress={onClose}>
       <X />
@@ -486,6 +539,7 @@ export function ContactPanel({
           // Archived, the ways back are all in sight (spec UX §5.3).
           showsVerbs={contact.status === 'archived'}
           onGesture={status.open}
+          onFollowUp={followUp.open}
         />
         <Tabs>
           <TabList aria-label={contact.name} className="flex gap-1 border-b pb-2">
@@ -497,6 +551,7 @@ export function ContactPanel({
             </Tab>
           </TabList>
           <TabPanel id="thread" className="rounded-control pt-3 focus-ring">
+            <FollowUpHead contact={contact} summary={summary} onGesture={followUp.open} />
             <Thread contactId={contactId} summary={summary} />
           </TabPanel>
           <TabPanel id="details" className="rounded-control pt-3 focus-ring">
@@ -521,6 +576,12 @@ export function ContactPanel({
           onClose={status.close}
         />
       )}
+      <FollowUpPanels
+        contact={contact}
+        summary={summary}
+        gesture={followUp.gesture}
+        onClose={followUp.close}
+      />
     </>
   );
 }
@@ -531,9 +592,8 @@ export function ContactPage({ contactId }: { contactId: string }) {
   const { summary, contact, isError } = useSummaryContact(contactId);
   const threadHeadingId = useId();
   const status = useStatusGesture();
-  useChangeStatusKey(() => {
-    if (contact) status.open('choose');
-  });
+  const followUp = useFollowUpGesture();
+  useRecordKeys(contact, status, followUp);
   const backToContacts = (
     <Link to="/contacts" className="rounded-control underline-offset-4 focus-ring hover:underline">
       {m.contacts()}
@@ -578,6 +638,7 @@ export function ContactPage({ contactId }: { contactId: string }) {
             level={2}
             showsVerbs
             onGesture={status.open}
+            onFollowUp={followUp.open}
           />
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
             {/* Stacked on mobile, the Coordinates come first (spec UX §5.3). */}
@@ -594,6 +655,7 @@ export function ContactPage({ contactId }: { contactId: string }) {
               >
                 {m.contact_thread()}
               </h2>
+              <FollowUpHead contact={contact} summary={summary} onGesture={followUp.open} />
               <Thread contactId={contactId} summary={summary} />
             </section>
           </div>
@@ -606,6 +668,12 @@ export function ContactPage({ contactId }: { contactId: string }) {
               onClose={status.close}
             />
           )}
+          <FollowUpPanels
+            contact={contact}
+            summary={summary}
+            gesture={followUp.gesture}
+            onClose={followUp.close}
+          />
         </>
       )}
     </div>

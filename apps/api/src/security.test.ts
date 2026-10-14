@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
 
 import { testApp } from '../test/app.ts';
-import { addContact, editContact } from '../test/factories/contact.ts';
+import { addContact, editContact, scheduleFollowUp } from '../test/factories/contact.ts';
 import { makeUser } from '../test/factories/user.ts';
 import { postJson } from '../test/http.ts';
 import { withUser } from './db/index.ts';
@@ -80,6 +80,7 @@ describe('catalogue', () => {
         'contact',
         'effective_activity_goal',
         'effective_entry_goal',
+        'follow_up',
         'gesture',
         'interaction',
         'organization',
@@ -122,6 +123,8 @@ describe('catalogue', () => {
         'status_change_contact_fk',
         'status_change_interaction_fk',
         'status_change_stage_fk',
+        'follow_up_contact_fk',
+        'follow_up_interaction_fk',
       ]),
     );
 
@@ -153,9 +156,11 @@ test('a query that forgot its filter only sees the rows of its User, in every bu
   const bob = await makeUser(harness);
   // Each User writes in every business table: a new one fails here until a gesture fills it.
   for (const user of [alice, bob]) {
-    await addContact(harness, user, 'Jean Dupont', {
+    const { contact } = await addContact(harness, user, 'Jean Dupont', {
+      status: 'prospecting',
       newOrganization: { name: 'Capgemini', type: 'consultancy' },
     });
+    await scheduleFollowUp(harness, user, contact.id, { dueOn: '2026-01-08' });
     await postJson(harness.app, '/api/settings', { activityGoal: 2, entryGoal: 6 }, user.cookie);
   }
 
@@ -213,6 +218,28 @@ const CROSS_ACCESS: Record<
       id: contact.id,
       state: () => getJson(harness, alice, '/api/summary'),
       body: { status: 'archived' },
+    };
+  },
+  'POST /api/contacts/:id/schedule-follow-up': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice, 'Jean Dupont', { status: 'prospecting' });
+    return {
+      id: contact.id,
+      state: () => getJson(harness, alice, '/api/summary'),
+      body: { dueOn: '2026-01-08' },
+    };
+  },
+  'POST /api/contacts/:id/cancel-follow-up': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice, 'Jean Dupont', { status: 'prospecting' });
+    await scheduleFollowUp(harness, alice, contact.id, { dueOn: '2026-01-08' });
+    return { id: contact.id, state: () => getJson(harness, alice, '/api/summary') };
+  },
+  'POST /api/contacts/:id/follow-up': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice, 'Jean Dupont', { status: 'prospecting' });
+    await scheduleFollowUp(harness, alice, contact.id, { dueOn: '2026-01-08' });
+    return {
+      id: contact.id,
+      state: () => getJson(harness, alice, '/api/summary'),
+      body: { occurredOn: '2026-01-05' },
     };
   },
   'GET /api/contacts/:id/record': async (harness, alice) => {
@@ -281,4 +308,5 @@ test('the id of another User answers 404 and changes nothing, on every route tha
     expect(response.status, `on ${route}`).toBe(404);
     expect(await state(), `on ${route}`).toEqual(before);
   }
-});
+  // Two Users and a gesture or two per route: it grows with the routes.
+}, 20_000);

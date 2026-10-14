@@ -43,3 +43,7 @@ export const STATUS_ACTION: Record<ContactStatus, () => string> = {
 /** The Statuses a Contact can go to: every other one, in this order (spec UX §5.3). */
 export const otherStatuses = (current: ContactStatus): ContactStatus[] =>
   (['prospecting', 'ally', 'pool', 'archived'] as const).filter((status) => status !== current);
+
+/** A gesture on the Follow-up the User opens: Schedule or Edit it, or Follow up… (spec UX §6.3, §6.5). */
+export const FOLLOW_UP_GESTURES = ['schedule', 'do'] as const;
+export type FollowUpGesture = (typeof FOLLOW_UP_GESTURES)[number];

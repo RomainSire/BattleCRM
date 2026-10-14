@@ -3,7 +3,7 @@ import {
   STATUS_REASON_MAX_LENGTH,
   type ContactStatus,
 } from '@battlecrm/contract';
-import { addDays, funnelEntriesInWeek, localDay } from '@battlecrm/domain';
+import { addDays, funnelEntriesInWeek } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
@@ -32,6 +32,7 @@ import { useSessionDraft } from '../session-draft.ts';
 import { settingsOf } from '../settings/use-settings.ts';
 import { applySummaryChanges, SUMMARY_KEY, type Summary, type SummaryContact } from '../summary.ts';
 import { notifyGesture } from '../undo.tsx';
+import { todayOf } from './follow-up.tsx';
 import { formatLocalDay } from './format.ts';
 import { otherStatuses, STATUS_ACTION, type StatusGesture } from './status.ts';
 
@@ -71,14 +72,10 @@ const draftSchema = z.object({
 });
 type Draft = z.infer<typeof draftSchema>;
 
-/** Today for the User, in its time zone: what the Funnel entries and the Circle are counted from. */
-const todayOf = (summary: Summary) => localDay(new Date(), summary.timeZone);
-
 /**
  * Bring in…, Back to Pool…, Add to Circle…, Archive…, or Change status… which chooses the target
  * first (spec UX §6.11): one panel, set to its target. The Stage to enter, the reason, the summary;
- * `Enter` validates, then “Undo”. Settling the Trial in progress comes with Trials (ticket 29), and
- * the scheduled Follow-up with Follow-ups (ticket 21).
+ * `Enter` validates, then “Undo”. Settling the Trial in progress comes with Trials (ticket 29).
  */
 export function ChangeStatusPanel({
   contact,
@@ -208,6 +205,12 @@ export function ChangeStatusPanel({
   }
   if (target === 'ally' && contact.status === 'prospecting' && lastStage) {
     recap.push(m.change_status_keeps_stage({ stage: lastStage.name }));
+  }
+  // Leaving Prospecting, or going to the Pool or Archived, cancels it (CONTEXT.md, Follow-up).
+  if (target !== undefined && target !== 'prospecting' && contact.followUp) {
+    recap.push(
+      m.change_status_cancels_follow_up({ date: formatLocalDay(contact.followUp.dueOn, locale) }),
+    );
   }
 
   return (

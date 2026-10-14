@@ -33,6 +33,9 @@ export const CONTACT_NOTE_MAX_LENGTH = 5000;
 /** The reason of a change of Status, optional (CONTEXT.md, Status). */
 export const STATUS_REASON_MAX_LENGTH = 500;
 
+/** The note of a Follow-up, which stays on its Interaction once it is done (CONTEXT.md, Follow-up). */
+export const FOLLOW_UP_NOTE_MAX_LENGTH = 2000;
+
 // What the User sets in Settings (spec UX §5.8), and what a new User starts with (CONTEXT.md).
 /** Prospecting actions per day; `null` once the User turned it off. */
 export const DEFAULT_ACTIVITY_GOAL = 1;

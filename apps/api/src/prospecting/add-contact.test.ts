@@ -60,6 +60,8 @@ test('adding a Contact puts it in the Pool and answers with its row of the summa
         lastInteractionOn: '2026-01-05',
         funnelEntryDays: [],
         statusReason: null,
+        followUp: null,
+        prospectingActionDays: [],
       },
     ],
     removedContactIds: [],
@@ -105,6 +107,7 @@ test('the addition is an Interaction neither outbound nor inbound, dated by the 
         occurredAt: now,
         localDate: '2026-01-06',
         recordedAt: now,
+        note: null,
       },
     ],
     // Its first Status is written down as a change from none.

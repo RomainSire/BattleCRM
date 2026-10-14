@@ -7,6 +7,7 @@ import {
   CONTACT_NOTE_MAX_LENGTH,
   CONTACT_PHONE_MAX_LENGTH,
   CONTACT_STATUSES,
+  FOLLOW_UP_NOTE_MAX_LENGTH,
   ORGANIZATION_NAME_MAX_LENGTH,
   ORGANIZATION_TYPES,
   STATUS_REASON_MAX_LENGTH,
@@ -36,10 +37,16 @@ import {
   type OrganizationMembers,
 } from '../organizations/index.ts';
 import { localDateOf } from '../settings/index.ts';
-import { contact, interaction, statusChange } from './tables.ts';
+import { contact, followUp, interaction, statusChange } from './tables.ts';
 
 // Read by `views`, which never writes them.
-export { contact, interaction, statusChange } from './tables.ts';
+export {
+  contact,
+  followUp,
+  interaction,
+  PROSPECTING_ACTION_KINDS,
+  statusChange,
+} from './tables.ts';
 
 /** An optional field of the Contact, trimmed: blank, it has no value. */
 const optionalText = (maxLength: number) =>
@@ -120,6 +127,22 @@ const changeStatusRequest = z
     path: ['stageId'],
   });
 
+/** The note of a Follow-up, or of the Interaction it becomes: blank, there is none. */
+const followUpNote = optionalText(FOLLOW_UP_NOTE_MAX_LENGTH);
+
+/**
+ * Schedule a follow-up, or Edit the follow-up when there is one (spec UX §6.5): its local day, today
+ * or later, and its note; a note left out is emptied.
+ */
+const scheduleFollowUpRequest = z.object({ dueOn: z.iso.date(), note: followUpNote });
+
+/** Follow up… (spec UX §6.3): the local day it was done on, today or earlier (ST-36), and its note. */
+const followUpRequest = z.object({ occurredOn: z.iso.date(), note: followUpNote });
+
+/** Only a Contact Prospecting and an Ally have a Follow-up (CONTEXT.md, Follow-up). */
+const hasFollowUps = (status: (typeof CONTACT_STATUSES)[number]) =>
+  status === 'prospecting' || status === 'ally';
+
 /**
  * A gesture the data refuses, possibly after it wrote: thrown so that its transaction rolls back,
  * then answered.
@@ -134,7 +157,11 @@ class Refusal extends Error {
           | 'stage_required'
           | 'same_status'
           | 'unknown_organization'
-          | 'organization_taken';
+          | 'organization_taken'
+          | 'no_follow_up_in_status'
+          | 'no_follow_up'
+          | 'past_day'
+          | 'future_day';
       }
     | { error: 'linkedin_url_taken'; contactId: string };
 
@@ -211,6 +238,8 @@ const contactEdited = z.object({
 const statusChanged = z.object({
   interactionId: z.uuid(),
   before: z.object({ status: z.enum(CONTACT_STATUSES), stageId: z.uuid().nullable() }),
+  // Absent from the gestures recorded before Follow-ups, and when there was none to cancel.
+  canceledFollowUpId: z.uuid().optional(),
 });
 
 /**
@@ -219,7 +248,7 @@ const statusChanged = z.object({
  * a Stage archived since: only a Contact of another Status may keep one.
  */
 const restoreStatus: Inverse = async (tx, { userId, contactId, payload }) => {
-  const { interactionId, before } = statusChanged.parse(payload);
+  const { interactionId, before, canceledFollowUpId } = statusChanged.parse(payload);
   if (
     before.status === 'prospecting' &&
     !(await stageOrder(tx, userId)).some(({ id }) => id === before.stageId)
@@ -236,13 +265,113 @@ const restoreStatus: Inverse = async (tx, { userId, contactId, payload }) => {
     .update(contact)
     .set(before)
     .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
-  return {
-    contactIds: [contactId],
-    removedContactIds: [],
-    organizationIds: [],
-    removedOrganizationIds: [],
-  };
+  if (canceledFollowUpId !== undefined) {
+    await setFollowUpStatus(tx, userId, canceledFollowUpId, 'scheduled');
+  }
+  return touchedContact(contactId);
 };
+
+/** The summary row of one Contact changed. */
+const touchedContact = (contactId: string) => ({
+  contactIds: [contactId],
+  removedContactIds: [],
+  organizationIds: [],
+  removedOrganizationIds: [],
+});
+
+/** The scheduled Follow-up of a Contact, if it has one. */
+async function scheduledFollowUp(tx: Transaction, userId: string, contactId: string) {
+  const [scheduled] = await tx
+    .select({ id: followUp.id, dueOn: followUp.dueOn, note: followUp.note })
+    .from(followUp)
+    .where(
+      and(
+        eq(followUp.userId, userId),
+        eq(followUp.contactId, contactId),
+        eq(followUp.status, 'scheduled'),
+      ),
+    );
+  return scheduled;
+}
+
+/** Cancels a Follow-up, or schedules it again, as it was. */
+const setFollowUpStatus = (
+  tx: Transaction,
+  userId: string,
+  followUpId: string,
+  status: 'scheduled' | 'canceled',
+) =>
+  tx
+    .update(followUp)
+    .set({ status })
+    .where(and(eq(followUp.userId, userId), eq(followUp.id, followUpId)));
+
+/** What the inverse of “Schedule a follow-up” needs: the Follow-up, and what it was before, if it was. */
+const followUpScheduled = z.object({
+  followUpId: z.uuid(),
+  before: z.object({ dueOn: z.iso.date(), note: z.string().nullable() }).nullable(),
+});
+
+/** Takes a scheduling back: a new Follow-up leaves no trace, a modified one gets its day and note back. */
+const restoreScheduledFollowUp: Inverse = async (tx, { userId, contactId, payload }) => {
+  const { followUpId, before } = followUpScheduled.parse(payload);
+  const where = and(eq(followUp.userId, userId), eq(followUp.id, followUpId));
+  if (before === null) await tx.delete(followUp).where(where);
+  else await tx.update(followUp).set(before).where(where);
+  return touchedContact(contactId);
+};
+
+/** What the inverse of a cancellation needs: the Follow-up canceled. */
+const followUpCanceled = z.object({ followUpId: z.uuid() });
+
+const restoreCanceledFollowUp: Inverse = async (tx, { userId, contactId, payload }) => {
+  const { followUpId } = followUpCanceled.parse(payload);
+  await setFollowUpStatus(tx, userId, followUpId, 'scheduled');
+  return touchedContact(contactId);
+};
+
+/** What the inverse of “Follow up…” needs: the Follow-up done, and the Interaction it became. */
+const followedUp = z.object({ followUpId: z.uuid(), interactionId: z.uuid() });
+
+/** Takes “Follow up…” back: the Interaction leaves no trace, and the Follow-up is scheduled again. */
+const restoreFollowedUp: Inverse = async (tx, { userId, contactId, payload }) => {
+  const { followUpId, interactionId } = followedUp.parse(payload);
+  await tx
+    .update(followUp)
+    .set({ status: 'scheduled', interactionId: null })
+    .where(and(eq(followUp.userId, userId), eq(followUp.id, followUpId)));
+  await tx
+    .delete(interaction)
+    .where(and(eq(interaction.userId, userId), eq(interaction.id, interactionId)));
+  return touchedContact(contactId);
+};
+
+/** Whole days from a local day to a later one. */
+const daysBetween = (from: string, to: string) =>
+  Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
+
+/**
+ * A gesture on one Contact, in its own transaction, the Contact locked first: what `act` answers, or
+ * the refusal it threw. `act` gets the Status of the Contact; an unknown Contact is refused.
+ */
+async function onContact<Answer>(
+  userId: string,
+  contactId: string,
+  act: (tx: Transaction, status: (typeof CONTACT_STATUSES)[number]) => Promise<Answer>,
+): Promise<Answer | Refusal> {
+  return withUser(userId, async (tx) => {
+    await lockContact(tx, contactId);
+    const [found] = await tx
+      .select({ status: contact.status })
+      .from(contact)
+      .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+    if (!found) throw new Refusal(404, { error: 'not_found' });
+    return act(tx, found.status);
+  }).catch((error: unknown) => {
+    if (error instanceof Refusal) return error;
+    throw error;
+  });
+}
 
 /** The Contacts of an Organization, as its own gestures read and move them (spec stack §5.2). */
 export const organizationMembers: OrganizationMembers = {
@@ -538,6 +667,11 @@ export function createProspecting<Changes>({
           .update(contact)
           .set({ status, stageId: stageAfter })
           .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+        // Leaving Prospecting cancels the scheduled Follow-up, as going to the Pool or Archived
+        // does; an Ally entering the Funnel keeps its own (CONTEXT.md, Follow-up).
+        const canceled =
+          status === 'prospecting' ? undefined : await scheduledFollowUp(tx, userId, contactId);
+        if (canceled) await setFollowUpStatus(tx, userId, canceled.id, 'canceled');
         // An Interaction neither outbound nor inbound; to Prospecting, a Funnel entry dated today.
         const [recorded] = await tx
           .insert(interaction)
@@ -565,7 +699,11 @@ export function createProspecting<Changes>({
           userId,
           kind: 'status_changed',
           contactId,
-          payload: { interactionId: recorded.id, before } satisfies z.infer<typeof statusChanged>,
+          payload: {
+            interactionId: recorded.id,
+            before,
+            canceledFollowUpId: canceled?.id,
+          } satisfies z.infer<typeof statusChanged>,
           now,
         });
         const changes = await changesOf(tx, userId, {
@@ -581,12 +719,136 @@ export function createProspecting<Changes>({
       });
       if (answer instanceof Refusal) return c.json(answer.body, answer.status);
       return c.json(answer, 200);
+    })
+    // Schedule a follow-up, or Edit the follow-up (spec UX §6.5): off the Cadence when there was none.
+    .post(
+      '/contacts/:id/schedule-follow-up',
+      requireUser,
+      jsonBody(scheduleFollowUpRequest),
+      async (c) => {
+        const { userId } = c.var;
+        const id = z.uuid().safeParse(c.req.param('id'));
+        if (!id.success) return c.json({ error: 'not_found' as const }, 404);
+        const contactId = id.data;
+        const { dueOn, note = null } = c.req.valid('json');
+        const now = clock.now();
+        const answer = await onContact(userId, contactId, async (tx, status) => {
+          if (!hasFollowUps(status)) throw new Refusal(409, { error: 'no_follow_up_in_status' });
+          if (dueOn < (await localDateOf(tx, userId, now))) {
+            throw new Refusal(400, { error: 'past_day' });
+          }
+          const before = await scheduledFollowUp(tx, userId, contactId);
+          let followUpId = before?.id;
+          if (followUpId === undefined) {
+            const [scheduled] = await tx
+              .insert(followUp)
+              .values({ userId, contactId, status: 'scheduled', dueOn, note, scheduledAt: now })
+              .returning({ id: followUp.id });
+            if (!scheduled) throw new Error('A Follow-up was not scheduled');
+            followUpId = scheduled.id;
+          } else {
+            await tx
+              .update(followUp)
+              .set({ dueOn, note })
+              .where(and(eq(followUp.userId, userId), eq(followUp.id, followUpId)));
+          }
+          const undoToken = await recordGesture(tx, {
+            userId,
+            kind: 'follow_up_scheduled',
+            contactId,
+            payload: {
+              followUpId,
+              before: before ? { dueOn: before.dueOn, note: before.note } : null,
+            } satisfies z.infer<typeof followUpScheduled>,
+            now,
+          });
+          return { changes: await changesOf(tx, userId, touchedContact(contactId)), undoToken };
+        });
+        if (answer instanceof Refusal) return c.json(answer.body, answer.status);
+        return c.json(answer, 200);
+      },
+    )
+    // Cancel the scheduled Follow-up (spec UX §5.3): it stays, canceled.
+    .post('/contacts/:id/cancel-follow-up', requireUser, async (c) => {
+      const { userId } = c.var;
+      const id = z.uuid().safeParse(c.req.param('id'));
+      if (!id.success) return c.json({ error: 'not_found' as const }, 404);
+      const contactId = id.data;
+      const now = clock.now();
+      const answer = await onContact(userId, contactId, async (tx) => {
+        const scheduled = await scheduledFollowUp(tx, userId, contactId);
+        if (!scheduled) throw new Refusal(409, { error: 'no_follow_up' });
+        await setFollowUpStatus(tx, userId, scheduled.id, 'canceled');
+        const undoToken = await recordGesture(tx, {
+          userId,
+          kind: 'follow_up_canceled',
+          contactId,
+          payload: { followUpId: scheduled.id } satisfies z.infer<typeof followUpCanceled>,
+          now,
+        });
+        return { changes: await changesOf(tx, userId, touchedContact(contactId)), undoToken };
+      });
+      if (answer instanceof Refusal) return c.json(answer.body, answer.status);
+      return c.json(answer, 200);
+    })
+    // Follow up… (spec UX §6.3): the scheduled Follow-up becomes an outbound Interaction, dated the
+    // local day entered (ST-36), a Prospecting action.
+    .post('/contacts/:id/follow-up', requireUser, jsonBody(followUpRequest), async (c) => {
+      const { userId } = c.var;
+      const id = z.uuid().safeParse(c.req.param('id'));
+      if (!id.success) return c.json({ error: 'not_found' as const }, 404);
+      const contactId = id.data;
+      const { occurredOn, note = null } = c.req.valid('json');
+      const now = clock.now();
+      const answer = await onContact(userId, contactId, async (tx) => {
+        const today = await localDateOf(tx, userId, now);
+        if (occurredOn > today) throw new Refusal(400, { error: 'future_day' });
+        const scheduled = await scheduledFollowUp(tx, userId, contactId);
+        if (!scheduled) throw new Refusal(409, { error: 'no_follow_up' });
+        // Its local day is the one entered; its instant, which only orders the thread, as many
+        // days before now.
+        const occurredAt = new Date(now.getTime() - daysBetween(occurredOn, today) * 86_400_000);
+        const [recorded] = await tx
+          .insert(interaction)
+          .values({
+            userId,
+            contactId,
+            kind: 'follow_up',
+            direction: 'outbound',
+            occurredAt,
+            localDate: occurredOn,
+            recordedAt: now,
+            note,
+          })
+          .returning({ id: interaction.id });
+        if (!recorded) throw new Error('An Interaction was not recorded');
+        await tx
+          .update(followUp)
+          .set({ status: 'done', interactionId: recorded.id })
+          .where(and(eq(followUp.userId, userId), eq(followUp.id, scheduled.id)));
+        const undoToken = await recordGesture(tx, {
+          userId,
+          kind: 'followed_up',
+          contactId,
+          payload: {
+            followUpId: scheduled.id,
+            interactionId: recorded.id,
+          } satisfies z.infer<typeof followedUp>,
+          now,
+        });
+        return { changes: await changesOf(tx, userId, touchedContact(contactId)), undoToken };
+      });
+      if (answer instanceof Refusal) return c.json(answer.body, answer.status);
+      return c.json(answer, 200);
     });
 
   const inverses = {
     contact_added: removeAddedContact,
     contact_edited: restoreEditedContact,
     status_changed: restoreStatus,
+    follow_up_scheduled: restoreScheduledFollowUp,
+    follow_up_canceled: restoreCanceledFollowUp,
+    followed_up: restoreFollowedUp,
   } satisfies Inverses;
   return { routes, inverses };
 }
