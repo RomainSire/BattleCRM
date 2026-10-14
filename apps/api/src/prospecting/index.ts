@@ -19,7 +19,13 @@ import type { RequireUser } from '../auth/index.ts';
 import type { Clock } from '../clock.ts';
 import { withUser, type Transaction } from '../db/index.ts';
 import { stageOrder } from '../funnel/index.ts';
-import { recordGesture, type ChangesOf, type Inverse, type Inverses } from '../gestures/index.ts';
+import {
+  lockContact,
+  recordGesture,
+  type ChangesOf,
+  type Inverse,
+  type Inverses,
+} from '../gestures/index.ts';
 import { jsonBody } from '../json-body.ts';
 import {
   createOrganization,
@@ -58,42 +64,53 @@ const linkedinUrl = z
   .optional();
 
 /**
- * In the Pool by default; a Stage is chosen for Prospecting only. At most one Organization: one of
- * the User's, or a new one with its type (spec UX §6.8).
+ * The Coordinates of a Contact, as the quick add and the edit take them (spec UX §6.8, §6.12): only
+ * the name is required. At most one Organization: one of the User's, or a new one with its type.
  */
-const addContactRequest = z
-  .object({
-    name: z.string().trim().min(1).max(CONTACT_NAME_MAX_LENGTH),
+const coordinates = z.object({
+  name: z.string().trim().min(1).max(CONTACT_NAME_MAX_LENGTH),
+  organizationId: z.uuid().optional(),
+  newOrganization: z
+    .object({
+      name: z.string().trim().min(1).max(ORGANIZATION_NAME_MAX_LENGTH),
+      type: z.enum(ORGANIZATION_TYPES),
+    })
+    .optional(),
+  linkedinUrl,
+  jobTitle: optionalText(CONTACT_JOB_TITLE_MAX_LENGTH),
+  email: optionalText(CONTACT_EMAIL_MAX_LENGTH),
+  phone: optionalText(CONTACT_PHONE_MAX_LENGTH),
+  note: optionalText(CONTACT_NOTE_MAX_LENGTH),
+});
+
+const oneOrganization = (body: z.infer<typeof coordinates>) =>
+  body.organizationId === undefined || body.newOrganization === undefined;
+
+/** In the Pool by default; a Stage is chosen for Prospecting only (spec UX §6.8). */
+const addContactRequest = coordinates
+  .extend({
     status: z.enum(ADDABLE_CONTACT_STATUSES).default('pool'),
     stageId: z.uuid().optional(),
-    organizationId: z.uuid().optional(),
-    newOrganization: z
-      .object({
-        name: z.string().trim().min(1).max(ORGANIZATION_NAME_MAX_LENGTH),
-        type: z.enum(ORGANIZATION_TYPES),
-      })
-      .optional(),
-    linkedinUrl,
-    jobTitle: optionalText(CONTACT_JOB_TITLE_MAX_LENGTH),
-    email: optionalText(CONTACT_EMAIL_MAX_LENGTH),
-    phone: optionalText(CONTACT_PHONE_MAX_LENGTH),
-    note: optionalText(CONTACT_NOTE_MAX_LENGTH),
   })
   .refine(({ status, stageId }) => stageId === undefined || status === 'prospecting', {
     path: ['stageId'],
   })
-  .refine((body) => body.organizationId === undefined || body.newOrganization === undefined, {
-    path: ['newOrganization'],
-  });
+  .refine(oneOrganization, { path: ['newOrganization'] });
+
+/**
+ * Every Coordinate at once (spec UX §6.12): one left out or blank is emptied. Neither the Stage nor the
+ * Status, which change by their own gestures; anything else sent is ignored.
+ */
+const editContactRequest = coordinates.refine(oneOrganization, { path: ['newOrganization'] });
 
 /**
  * A gesture the data refuses, possibly after it wrote: thrown so that its transaction rolls back,
  * then answered.
  */
 class Refusal extends Error {
-  readonly status: 400 | 409;
+  readonly status: 400 | 404 | 409;
   readonly body:
-    | { error: 'unknown_stage' | 'unknown_organization' | 'organization_taken' }
+    | { error: 'not_found' | 'unknown_stage' | 'unknown_organization' | 'organization_taken' }
     | { error: 'linkedin_url_taken'; contactId: string };
 
   constructor(status: Refusal['status'], body: Refusal['body']) {
@@ -124,18 +141,11 @@ const removeAddedContact: Inverse = async (tx, { userId, contactId, payload }) =
     .delete(interaction)
     .where(and(eq(interaction.userId, userId), eq(interaction.id, interactionId)));
   await tx.delete(contact).where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
-  const removedOrganizationIds: string[] = [];
-  if (createdOrganizationId !== undefined) {
-    const [member] = await tx
-      .select({ id: contact.id })
-      .from(contact)
-      .where(and(eq(contact.userId, userId), eq(contact.organizationId, createdOrganizationId)))
-      .limit(1);
-    if (!member) {
-      await deleteOrganization(tx, userId, createdOrganizationId);
-      removedOrganizationIds.push(createdOrganizationId);
-    }
-  }
+  const removedOrganizationIds =
+    createdOrganizationId !== undefined &&
+    (await removeCreatedOrganization(tx, userId, createdOrganizationId))
+      ? [createdOrganizationId]
+      : [];
   return {
     contactIds: [],
     removedContactIds: [contactId],
@@ -143,6 +153,106 @@ const removeAddedContact: Inverse = async (tx, { userId, contactId, payload }) =
     removedOrganizationIds,
   };
 };
+
+/** The columns an edit writes, read before it for the inverse. */
+const coordinateColumns = {
+  name: contact.name,
+  organizationId: contact.organizationId,
+  jobTitle: contact.jobTitle,
+  email: contact.email,
+  phone: contact.phone,
+  linkedinUrl: contact.linkedinUrl,
+  note: contact.note,
+};
+
+/** What an edit writes over, as the inverse restores it. */
+const editedCoordinates = z.object({
+  name: z.string(),
+  organizationId: z.uuid().nullable(),
+  jobTitle: z.string().nullable(),
+  email: z.string().nullable(),
+  phone: z.string().nullable(),
+  linkedinUrl: z.string().nullable(),
+  note: z.string().nullable(),
+});
+
+/** What the inverse of an edit needs: the Coordinates before it, and the Organization it created. */
+const contactEdited = z.object({
+  before: editedCoordinates,
+  createdOrganizationId: z.uuid().optional(),
+});
+
+/**
+ * Deletes the Organization a gesture created, unless a Contact belongs to it: one joined it since.
+ * Whether it went.
+ */
+async function removeCreatedOrganization(tx: Transaction, userId: string, organizationId: string) {
+  const [member] = await tx
+    .select({ id: contact.id })
+    .from(contact)
+    .where(and(eq(contact.userId, userId), eq(contact.organizationId, organizationId)))
+    .limit(1);
+  if (member) return false;
+  await deleteOrganization(tx, userId, organizationId);
+  return true;
+}
+
+/**
+ * Takes an edit back: the Coordinates are restored, and the Organization it created goes unless
+ * another Contact joined it (ADR 0011). Refused when a gesture on another Contact took the way back:
+ * the Organization restored is gone, or the LinkedIn profile restored is another Contact's now.
+ */
+const restoreEditedContact: Inverse = async (tx, { userId, contactId, payload }) => {
+  const { before, createdOrganizationId } = contactEdited.parse(payload);
+  if (
+    before.organizationId !== null &&
+    !(await isOrganizationOf(tx, userId, before.organizationId))
+  ) {
+    return 'superseded';
+  }
+  const owner = before.linkedinUrl && (await contactWithProfile(tx, userId, before.linkedinUrl));
+  if (owner && owner !== contactId) return 'superseded';
+  await tx
+    .update(contact)
+    .set(before)
+    .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+  const removedOrganizationIds =
+    createdOrganizationId !== undefined &&
+    (await removeCreatedOrganization(tx, userId, createdOrganizationId))
+      ? [createdOrganizationId]
+      : [];
+  return {
+    contactIds: [contactId],
+    removedContactIds: [],
+    organizationIds: [],
+    removedOrganizationIds,
+  };
+};
+
+/**
+ * The Organization the Contact belongs to after a gesture: one of the User's, a new one, or none; and
+ * the one the gesture created, if it did.
+ */
+async function chosenOrganization(
+  tx: Transaction,
+  userId: string,
+  {
+    organizationId,
+    newOrganization,
+  }: Pick<z.infer<typeof coordinates>, 'organizationId' | 'newOrganization'>,
+) {
+  if (organizationId !== undefined) {
+    if (!(await isOrganizationOf(tx, userId, organizationId))) {
+      throw new Refusal(400, { error: 'unknown_organization' });
+    }
+    return { organizationId, createdOrganizationId: undefined };
+  }
+  if (newOrganization === undefined)
+    return { organizationId: null, createdOrganizationId: undefined };
+  const created = await createOrganization(tx, userId, newOrganization);
+  if (created === null) throw new Refusal(409, { error: 'organization_taken' });
+  return { organizationId: created, createdOrganizationId: created };
+}
 
 /** The Contact of the User with this LinkedIn profile, if there is one. */
 async function contactWithProfile(tx: Transaction, userId: string, url: string) {
@@ -152,6 +262,17 @@ async function contactWithProfile(tx: Transaction, userId: string, url: string) 
     .where(and(eq(contact.userId, userId), eq(contact.linkedinUrl, url)));
   return found?.id;
 }
+
+/** Whether the database refused a write for this unique constraint. */
+const violates = (error: unknown, constraint: string): boolean =>
+  error instanceof Error &&
+  ((typeof error.cause === 'object' &&
+    error.cause !== null &&
+    'code' in error.cause &&
+    error.cause.code === '23505' &&
+    'constraint' in error.cause &&
+    error.cause.constraint === constraint) ||
+    violates(error.cause, constraint));
 
 /**
  * The gestures of the Contact (spec stack §5.2, §5.4): one endpoint each, in one transaction, which
@@ -182,14 +303,8 @@ export function createProspecting<Changes>({
           if (!entered) throw new Refusal(400, { error: 'unknown_stage' });
           enteredStageId = entered.id;
         }
-        if (organizationId !== undefined && !(await isOrganizationOf(tx, userId, organizationId))) {
-          throw new Refusal(400, { error: 'unknown_organization' });
-        }
-        const createdOrganizationId =
-          newOrganization && (await createOrganization(tx, userId, newOrganization));
-        if (createdOrganizationId === null) {
-          throw new Refusal(409, { error: 'organization_taken' });
-        }
+        const { organizationId: joinedOrganizationId, createdOrganizationId } =
+          await chosenOrganization(tx, userId, { organizationId, newOrganization });
         // The unique index decides (ST-64): another addition may have taken the profile meanwhile.
         const [added] = await tx
           .insert(contact)
@@ -198,7 +313,7 @@ export function createProspecting<Changes>({
             ...fields,
             status,
             stageId: enteredStageId,
-            organizationId: organizationId ?? createdOrganizationId,
+            organizationId: joinedOrganizationId,
             createdAt: now,
           })
           .onConflictDoNothing({ target: [contact.userId, contact.linkedinUrl] })
@@ -255,8 +370,77 @@ export function createProspecting<Changes>({
       });
       if (answer instanceof Refusal) return c.json(answer.body, answer.status);
       return c.json(answer, 201);
+    })
+    // The Coordinates, edited in place (spec UX §6.12): no Interaction, neither Stage nor Status.
+    .post('/contacts/:id/edit', requireUser, jsonBody(editContactRequest), async (c) => {
+      const { userId } = c.var;
+      const id = z.uuid().safeParse(c.req.param('id'));
+      // Another User's Contact, an unknown one and an id that is none answer alike.
+      if (!id.success) return c.json({ error: 'not_found' as const }, 404);
+      const contactId = id.data;
+      const { organizationId, newOrganization, ...fields } = c.req.valid('json');
+      const now = clock.now();
+      const answer = await withUser(userId, async (tx) => {
+        await lockContact(tx, contactId);
+        const [before] = await tx
+          .select(coordinateColumns)
+          .from(contact)
+          .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+        if (!before) throw new Refusal(404, { error: 'not_found' });
+        const chosen = await chosenOrganization(tx, userId, { organizationId, newOrganization });
+        // The unique index decides (ST-64), in a savepoint so that the owner can still be read.
+        const profile = fields.linkedinUrl ?? null;
+        await tx
+          .transaction((savepoint) =>
+            savepoint
+              .update(contact)
+              .set({
+                name: fields.name,
+                organizationId: chosen.organizationId,
+                jobTitle: fields.jobTitle ?? null,
+                email: fields.email ?? null,
+                phone: fields.phone ?? null,
+                linkedinUrl: profile,
+                note: fields.note ?? null,
+              })
+              .where(and(eq(contact.userId, userId), eq(contact.id, contactId))),
+          )
+          .catch(async (error: unknown) => {
+            if (profile === null || !violates(error, 'contact_linkedin_url_unique')) {
+              throw error;
+            }
+            const owner = await contactWithProfile(tx, userId, profile);
+            if (!owner) throw error;
+            throw new Refusal(409, { error: 'linkedin_url_taken', contactId: owner });
+          });
+        const undoToken = await recordGesture(tx, {
+          userId,
+          kind: 'contact_edited',
+          contactId,
+          payload: {
+            before,
+            createdOrganizationId: chosen.createdOrganizationId,
+          } satisfies z.infer<typeof contactEdited>,
+          now,
+        });
+        const changes = await changesOf(tx, userId, {
+          contactIds: [contactId],
+          removedContactIds: [],
+          organizationIds: chosen.createdOrganizationId ? [chosen.createdOrganizationId] : [],
+          removedOrganizationIds: [],
+        });
+        return { changes, undoToken };
+      }).catch((error: unknown) => {
+        if (error instanceof Refusal) return error;
+        throw error;
+      });
+      if (answer instanceof Refusal) return c.json(answer.body, answer.status);
+      return c.json(answer, 200);
     });
 
-  const inverses = { contact_added: removeAddedContact } satisfies Partial<Inverses>;
+  const inverses = {
+    contact_added: removeAddedContact,
+    contact_edited: restoreEditedContact,
+  } satisfies Inverses;
   return { routes, inverses };
 }

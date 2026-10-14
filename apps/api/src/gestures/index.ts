@@ -23,12 +23,13 @@ export type Touched = {
 
 /**
  * The inverse of a kind of gesture, written by its module next to the gesture: it deletes what the
- * gesture created and restores what it changed, in the transaction of the undo.
+ * gesture created and restores what it changed, in the transaction of the undo. `superseded` when a
+ * later gesture, on another Contact, left nothing to restore to; it then writes nothing.
  */
 export type Inverse = (
   tx: Transaction,
   made: { userId: string; contactId: string; payload: unknown },
-) => Promise<Touched>;
+) => Promise<Touched | 'superseded'>;
 
 /** The rows of the summary as a gesture, or its inverse, left them: read by `views`, in the same transaction. */
 export type ChangesOf<Changes> = (
@@ -42,9 +43,10 @@ export type Inverses = Record<GestureKind, Inverse>;
 
 /**
  * One at a time per Contact, until the transaction ends: an undo and a gesture on the same Contact
- * never cross, so the undo always sees the gesture that closes its way back.
+ * never cross, so the undo always sees the gesture that closes its way back. A gesture that reads the
+ * Contact before it writes takes it first, before any row lock, as the undo does.
  */
-const lockContact = (tx: Transaction, contactId: string) =>
+export const lockContact = (tx: Transaction, contactId: string) =>
   tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${contactId}, 0))`);
 
 /**
@@ -119,12 +121,13 @@ export function createGestures<Changes>({
         )
         .limit(1);
       if (later) return { refused: 'superseded' as const };
-      await tx.delete(gesture).where(and(eq(gesture.userId, userId), eq(gesture.id, made.id)));
       const touched = await inverses[made.kind](tx, {
         userId,
         contactId: made.contactId,
         payload: made.payload,
       });
+      if (touched === 'superseded') return { refused: touched };
+      await tx.delete(gesture).where(and(eq(gesture.userId, userId), eq(gesture.id, made.id)));
       return { changes: await changesOf(tx, userId, touched) };
     });
     if ('refused' in outcome) {

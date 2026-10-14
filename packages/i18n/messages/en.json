@@ -248,5 +248,15 @@
   "thread_added_pool": "Added to the Pool",
   "thread_added_prospecting": "Added Prospecting · {stage}",
   "thread_added_ally": "Added to the Circle",
-  "thread_status_changed": "{from} → {to}"
+  "thread_status_changed": "{from} → {to}",
+  "edit": "Edit",
+  "save": "Save",
+  "organization_none": "No Organization",
+  "contact_edited": "{name}'s contact details updated",
+  "contact_edit_changes": "What changes",
+  "contact_edit_changes_target": "New Target: {target}",
+  "contact_edit_changes_trial": "The Trial in progress keeps its starting Target",
+  "contact_edit_changes_no_interaction": "No Interaction is recorded",
+  "contact_edit_changes_organization_created": "The Organization {organization} is created",
+  "organization_taken_on_edit": "This Organization already exists: it is chosen instead, check then save."
 }

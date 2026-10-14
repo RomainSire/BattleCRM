@@ -120,6 +120,13 @@
       "when": 1791964192528,
       "tag": "0016_organizations_access",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791967892846,
+      "tag": "0017_contact_edited_gesture",
+      "breakpoints": true
     }
   ]
 }

@@ -81,6 +81,29 @@ export async function addContact(
   return { contact, organization: changes.organizations[0], undoToken };
 }
 
+/**
+ * The Coordinates of a Contact edited the way a User edits them, and the token that takes the gesture
+ * back; with the Organization it created, if it did.
+ */
+export async function editContact(
+  harness: Harness,
+  user: { cookie: string },
+  contactId: string,
+  fields: Record<string, unknown>,
+) {
+  const response = await postJson(
+    harness.app,
+    `/api/contacts/${contactId}/edit`,
+    fields,
+    user.cookie,
+  );
+  if (response.status !== 200) throw new Error(`editContact: the API answered ${response.status}`);
+  const { changes, undoToken } = gestureAnswer.parse(await response.json());
+  const [contact] = changes.contacts;
+  if (!contact) throw new Error('editContact: no Contact in the answer');
+  return { contact, organization: changes.organizations[0], undoToken };
+}
+
 /** The whole working summary, as `GET /api/summary` answers it. */
 export const summary = z.strictObject({
   contacts: z.array(summaryContact),

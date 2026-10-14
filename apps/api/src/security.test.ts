@@ -173,16 +173,27 @@ const getJson = async (harness: Harness, user: User, path: string): Promise<unkn
   (await harness.app.request(path, { headers: { Cookie: user.cookie } })).json();
 
 /**
- * For each route that names a row by its id: a row of Alice, and what Alice has, which a request of
- * Bob must neither change nor read.
+ * For each route that names a row by its id: a row of Alice, what Alice has, which a request of Bob
+ * must neither change nor read, and a body the route would accept, if it takes one.
  */
 const CROSS_ACCESS: Record<
   string,
-  (harness: Harness, alice: User) => Promise<{ id: string; state: () => Promise<unknown> }>
+  (
+    harness: Harness,
+    alice: User,
+  ) => Promise<{ id: string; state: () => Promise<unknown>; body?: object }>
 > = {
   'POST /api/gestures/:id/undo': async (harness, alice) => {
     const { undoToken } = await addContact(harness, alice);
     return { id: undoToken, state: () => getJson(harness, alice, '/api/summary') };
+  },
+  'POST /api/contacts/:id/edit': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice);
+    return {
+      id: contact.id,
+      state: () => getJson(harness, alice, '/api/summary'),
+      body: { name: 'Bob was here' },
+    };
   },
   'GET /api/contacts/:id/record': async (harness, alice) => {
     const { contact } = await addContact(harness, alice);
@@ -211,7 +222,7 @@ test('the id of another User answers 404 and changes nothing, on every route tha
   for (const route of routes) {
     const alice = await makeUser(harness);
     const bob = await makeUser(harness);
-    const { id, state } = await CROSS_ACCESS[route]!(harness, alice);
+    const { id, state, body = {} } = await CROSS_ACCESS[route]!(harness, alice);
     const before = await state();
     const [method, path = ''] = route.split(' ');
     const named = path.replace(/:\w+/, id);
@@ -219,7 +230,7 @@ test('the id of another User answers 404 and changes nothing, on every route tha
     const response =
       method === 'GET'
         ? await harness.app.request(named, { headers: { Cookie: bob.cookie } })
-        : await postJson(harness.app, named, {}, bob.cookie);
+        : await postJson(harness.app, named, body, bob.cookie);
 
     expect(response.status, `on ${route}`).toBe(404);
     expect(await state(), `on ${route}`).toEqual(before);

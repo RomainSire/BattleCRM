@@ -2,11 +2,10 @@ import { eq } from 'drizzle-orm';
 import { expect, test } from 'vitest';
 
 import { testApp } from '../../test/app.ts';
-import { addContact } from '../../test/factories/contact.ts';
+import { addContact, editContact } from '../../test/factories/contact.ts';
 import { makeUser } from '../../test/factories/user.ts';
 import { postJson } from '../../test/http.ts';
 import { withUser } from '../db/index.ts';
-import { recordGesture } from './index.ts';
 import { gesture } from './tables.ts';
 
 type Harness = ReturnType<typeof testApp>;
@@ -23,16 +22,7 @@ test('“Undo” is refused once a later gesture touched the same Contact', asyn
   const user = await makeUser(harness);
   const { contact, undoToken } = await addContact(harness, user);
   harness.clock.advance('PT1M');
-  // No second gesture on a Contact exists yet: this one stands for the next ticket's.
-  const later = await withUser(user.userId, (tx) =>
-    recordGesture(tx, {
-      userId: user.userId,
-      kind: 'contact_added',
-      contactId: contact.id,
-      payload: {},
-      now: harness.clock.now(),
-    }),
-  );
+  const { undoToken: later } = await editContact(harness, user, contact.id, { name: 'Jean-Marc' });
 
   const refused = await undo(harness, user, undoToken);
 

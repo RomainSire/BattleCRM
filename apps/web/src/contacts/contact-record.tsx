@@ -4,17 +4,18 @@ import { queryOptions, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { InferResponseType } from 'hono/client';
 import { X } from 'lucide-react';
-import { useId, type ReactNode, type Ref } from 'react';
+import { useId, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 
 import { Button } from '../components/ui/button.tsx';
 import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
-import { summaryQuery, type Summary, type SummaryContact } from '../summary.ts';
+import { contactRecordKey, summaryQuery, type Summary, type SummaryContact } from '../summary.ts';
 import { ContactName } from './contact-name.tsx';
+import { EditCoordinates } from './edit-coordinates.tsx';
 import { formatLocalDay } from './format.ts';
-import { ORGANIZATION_TYPE_LABEL } from './organization-field.tsx';
+import { targetText } from './organization-field.tsx';
 import { prospectingStageOf, STATUS_LABEL } from './status.ts';
 
 /** What the record of a Contact reads beyond the summary: its note and its thread. */
@@ -24,7 +25,7 @@ type ThreadEntry = ContactRecord['thread'][number];
 /** Read on demand, when a record opens (spec stack §3); never kept on the device. */
 export const contactRecordQuery = (api: ApiClient, contactId: string) =>
   queryOptions({
-    queryKey: ['contact-record', contactId],
+    queryKey: contactRecordKey(contactId),
     queryFn: async (): Promise<ContactRecord> => {
       const response = await api.contacts[':id'].record.$get({ param: { id: contactId } });
       if (!response.ok) throw new Error('GET /api/contacts/:id/record failed');
@@ -45,10 +46,8 @@ const organizationOf = (contact: SummaryContact, summary: Summary) =>
   summary.organizations.find(({ id }) => id === contact.organizationId);
 
 /** The Target of a Contact as the User reads it. */
-function targetLabel(contact: SummaryContact, summary: Summary) {
-  const target = targetOf(organizationOf(contact, summary));
-  return target === 'unknown' ? m.target_unknown() : ORGANIZATION_TYPE_LABEL[target]();
-}
+const targetLabel = (contact: SummaryContact, summary: Summary) =>
+  targetText(targetOf(organizationOf(contact, summary)));
 
 /** The Stage of a Contact Prospecting, with its aim. */
 function stageLabel(contact: SummaryContact, summary: Summary) {
@@ -151,7 +150,10 @@ function Thread({ contactId, summary }: { contactId: string; summary: Summary })
   );
 }
 
-/** The Coordinates of a Contact (spec UX §5.3); the note comes with the thread. */
+/**
+ * The Coordinates of a Contact (spec UX §5.3), edited in place by “Edit” (§6.12), which gets the focus
+ * back once the edit is saved or cancelled; the note comes with the thread.
+ */
 function Coordinates({
   contact,
   summary,
@@ -166,6 +168,8 @@ function Coordinates({
   const api = useApi();
   const { data: record } = useQuery(contactRecordQuery(api, contact.id));
   const headingId = useId();
+  const [isEditing, setIsEditing] = useState(false);
+  const editButton = useRef<HTMLButtonElement>(null);
   const Heading = level === 2 ? 'h2' : 'h3';
   const link = 'rounded-control text-accent-text underline-offset-4 focus-ring hover:underline';
   const rows: { label: string; value: ReactNode }[] = [
@@ -208,22 +212,47 @@ function Coordinates({
   ];
   return (
     <section aria-labelledby={headingId} className={className}>
-      <Heading
-        id={headingId}
-        className="mb-2 text-xs font-semibold text-muted-foreground uppercase"
-      >
-        {m.contact_coordinates()}
-      </Heading>
-      <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-1.5">
-        {rows
-          .filter(({ value }) => value)
-          .map(({ label, value }) => (
-            <div key={label} className="contents">
-              <dt className="text-muted-foreground">{label}</dt>
-              <dd className="break-words">{value}</dd>
-            </div>
-          ))}
-      </dl>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <Heading id={headingId} className="text-xs font-semibold text-muted-foreground uppercase">
+          {m.contact_coordinates()}
+        </Heading>
+        {!isEditing && (
+          <Button
+            ref={editButton}
+            variant="ghost"
+            size="xs"
+            className="max-md:min-h-11"
+            // The note, with the record, is edited too: it must be read first.
+            isDisabled={!record}
+            onPress={() => setIsEditing(true)}
+          >
+            {m.edit()}
+          </Button>
+        )}
+      </div>
+      {isEditing && record ? (
+        <EditCoordinates
+          contact={contact}
+          note={record.note}
+          summary={summary}
+          onDone={() => {
+            setIsEditing(false);
+            // Once the button is back.
+            requestAnimationFrame(() => editButton.current?.focus());
+          }}
+        />
+      ) : (
+        <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-1.5">
+          {rows
+            .filter(({ value }) => value)
+            .map(({ label, value }) => (
+              <div key={label} className="contents">
+                <dt className="text-muted-foreground">{label}</dt>
+                <dd className="break-words">{value}</dd>
+              </div>
+            ))}
+        </dl>
+      )}
     </section>
   );
 }

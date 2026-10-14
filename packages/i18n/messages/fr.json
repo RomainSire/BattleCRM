@@ -248,5 +248,15 @@
   "thread_added_pool": "Ajouté au Vivier",
   "thread_added_prospecting": "Ajouté En prospection · {stage}",
   "thread_added_ally": "Ajouté au Cercle",
-  "thread_status_changed": "{from} → {to}"
+  "thread_status_changed": "{from} → {to}",
+  "edit": "Modifier",
+  "save": "Enregistrer",
+  "organization_none": "Aucune Organisation",
+  "contact_edited": "Coordonnées de {name} modifiées",
+  "contact_edit_changes": "Ce qui change",
+  "contact_edit_changes_target": "Nouvelle Cible : {target}",
+  "contact_edit_changes_trial": "L'Essai en cours garde sa Cible de départ",
+  "contact_edit_changes_no_interaction": "Aucune Interaction n'est enregistrée",
+  "contact_edit_changes_organization_created": "L'Organisation {organization} est créée",
+  "organization_taken_on_edit": "Cette Organisation existe déjà : elle est choisie à la place, vérifie puis enregistre."
 }

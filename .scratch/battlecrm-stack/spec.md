@@ -93,7 +93,7 @@ Modules profonds dans `apps/api/src/<module>/`, chacun **seul à écrire ses tab
 | `battles` | ouvrir, clôturer, Verdict, Champion, Historique des Champions |
 | `funnel` | Étapes (ordre, archivage), Positionnements (copie modifiée, pièces jointes) ; exporte `stageOrder(tx, userId)` (le `userId` pour le filtre applicatif, ADR 0009) et `initializeFunnel`, les Étapes types à la création du compte |
 | `organizations` | unicité normalisée, fusion ; exporte `createOrganization(tx, userId, …)`, `isOrganizationOf` et `deleteOrganization` (le `userId` pour le filtre applicatif, ADR 0009) |
-| `gestures` | table `gesture` et `POST /gestures/:id/undo` (§5.4) ; exporte `recordGesture(tx, …)`, que chaque geste appelle, et reçoit de chaque module l'inverse de ses gestes (ajouté le 2026-10-13, ticket d'implémentation 13) |
+| `gestures` | table `gesture` et `POST /gestures/:id/undo` (§5.4) ; exporte `recordGesture(tx, …)`, que chaque geste appelle, et `lockContact(tx, contactId)`, que prend d'abord un geste qui lit le Contact avant de l'écrire ; reçoit de chaque module l'inverse de ses gestes (ajouté le 2026-10-13, ticket d'implémentation 13 ; `lockContact` le 2026-10-14, ticket 17) |
 | `settings` | préférences et valeurs en vigueur ; exporte `localDateOf(tx, userId, instant)` (le `userId` sert au filtre applicatif, ADR 0009), `activityGoalOn(tx, date)`, `entryGoalForWeek(tx, monday)` et les écritures « à partir du lendemain / du lundi suivant » |
 | `views` | lectures par vue (`GET /summary`, Aujourd'hui, Indicateurs, Activité, Taux de passage), `daily_pick` ; lit les tables des autres modules (sauf `auth`), n'écrit que les siennes |
 | `auth` | Better Auth et parcours maison (§7) ; n'expose que « qui est l'Utilisateur » (`c.var.userId` ou 401) |
@@ -113,7 +113,7 @@ Modules profonds dans `apps/api/src/<module>/`, chacun **seul à écrire ses tab
 ### 5.4 Gestes et « Annuler »
 
 - **Un endpoint par geste** (`POST /contacts/:id/use-positioning`…), une transaction chacun ; il renvoie les lignes du résumé changées et un `undoToken`.
-- **« Annuler »** (ADR 0011) : `POST /gestures/:id/undo` défait le geste dans une transaction (supprime ce qu'il a créé, restaure ce qu'il a modifié) d'après la table `gesture` ; chaque module écrit l'inverse de ses gestes. Accepté **15 min**, refusé si un geste ultérieur a touché le même Contact ou la même Battle. Le Tirage révélé survit ; une célébration affichée n'est pas défaite.
+- **« Annuler »** (ADR 0011) : `POST /gestures/:id/undo` défait le geste dans une transaction (supprime ce qu'il a créé, restaure ce qu'il a modifié) d'après la table `gesture` ; chaque module écrit l'inverse de ses gestes. Accepté **15 min**, refusé si un geste ultérieur a touché le même Contact ou la même Battle, ou si un geste sur un autre Contact a ôté ce qu'il faudrait restaurer (Organisation disparue, URL LinkedIn reprise ; ticket 17). Le Tirage révélé survit ; une célébration affichée n'est pas défaite.
 - **Compatibilité** : tout changement d'endpoint reste compatible avec la version précédente (expand/contract, règle de revue).
 
 ## 6. Données

@@ -11,10 +11,8 @@ import {
 import { findDuplicates, normalizeLinkedInUrl } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
-import { InfoIcon } from 'lucide-react';
-import { useDeferredValue, useId, useState, type ReactNode } from 'react';
-import { Form, Text, TextField } from 'react-aria-components';
+import { useDeferredValue, useId, useState } from 'react';
+import { Form, TextField } from 'react-aria-components';
 
 import { Button } from '../components/ui/button.tsx';
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog.tsx';
@@ -37,6 +35,7 @@ import {
   type SummaryContact,
 } from '../summary.ts';
 import { notifyGesture } from '../undo.tsx';
+import { contactLabel, DuplicateNote, LinkedInTaken } from './duplicate-notes.tsx';
 import {
   NO_ORGANIZATION,
   OrganizationField,
@@ -75,27 +74,9 @@ export function QuickAdd({
 /** A field of the Contact sent only when filled. */
 const filled = (text: string) => text.trim() || undefined;
 
-/** A Contact as the checks name it: “Jean Dupont · Capgemini”. */
-const contactLabel = (contact: SummaryContact, organizations: Summary['organizations']) => {
-  const organization = organizations.find(({ id }) => id === contact.organizationId);
-  return organization ? `${contact.name} · ${organization.name}` : contact.name;
-};
-
-/** What the duplicate checks found, only worth knowing (spec UX §6.8): discreet, never an error. */
-function DuplicateNote({ children }: { children: ReactNode }) {
-  if (!children) return null;
-  return (
-    <Text slot="description" className="flex items-start gap-1.5 text-sm text-neutral-text">
-      <InfoIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
-      <span>{children}</span>
-    </Text>
-  );
-}
-
 function QuickAddForm({ onDone }: { onDone: () => void }) {
   const api = useApi();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const stageFieldId = useId();
   // The summary the shell reads, not read again for a modal: the Stages of the Funnel, the
   // Organizations and the Contacts the checks compare with, without a round trip (ADR 0012).
@@ -229,22 +210,11 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
         />
         <FieldErrorMessage />
       </TextField>
-      {duplicates.sameLinkedIn && (
-        <ErrorMessage>
-          {m.contact_exists({ contact: contactLabel(duplicates.sameLinkedIn, organizations) })}{' '}
-          <Button
-            variant="link"
-            className="h-auto p-0 align-baseline"
-            onPress={() => {
-              const contactId = duplicates.sameLinkedIn?.id;
-              onDone();
-              void navigate({ to: '/contacts', search: { contact: contactId } });
-            }}
-          >
-            {m.open_contact()}
-          </Button>
-        </ErrorMessage>
-      )}
+      <LinkedInTaken
+        owner={duplicates.sameLinkedIn}
+        organizations={organizations}
+        onLeave={onDone}
+      />
       <SegmentedControl
         value={status}
         onChange={(value) => {

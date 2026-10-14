@@ -12,6 +12,9 @@ export type SummaryChanges = InferResponseType<ApiClient['contacts']['$post'], 2
 
 export const SUMMARY_KEY = ['summary'];
 
+/** What the record of a Contact reads beyond the summary, read on demand: its note and its thread. */
+export const contactRecordKey = (contactId: string) => ['contact-record', contactId];
+
 /** Read once for the whole app, kept on the device (device-data.ts), then updated by each gesture. */
 export const summaryQuery = (api: ApiClient) =>
   queryOptions({
@@ -26,11 +29,17 @@ export const summaryQuery = (api: ApiClient) =>
     retry: false,
   });
 
-/** Puts the rows a gesture answered with into the summary, instead of reading it all again. */
+/**
+ * Puts the rows a gesture answered with into the summary, instead of reading it all again; the
+ * records of the Contacts it changed, beyond the summary, are read again when shown.
+ */
 export async function applySummaryChanges(
   queryClient: QueryClient,
   changes: SummaryChanges,
 ): Promise<void> {
+  for (const { id } of changes.contacts) {
+    void queryClient.invalidateQueries({ queryKey: contactRecordKey(id) });
+  }
   // A read under way started before the gesture: its answer must not overwrite these rows.
   await queryClient.cancelQueries({ queryKey: SUMMARY_KEY });
   if (queryClient.getQueryData(SUMMARY_KEY) === undefined) {
