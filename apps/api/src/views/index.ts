@@ -10,7 +10,7 @@ import { FUNNEL_ORDER, stage } from '../funnel/index.ts';
 import type { Touched } from '../gestures/index.ts';
 import { organization } from '../organizations/index.ts';
 import { contact, interaction, statusChange } from '../prospecting/index.ts';
-import { timeZoneAt } from '../settings/index.ts';
+import { settingsOf, timeZoneAt } from '../settings/index.ts';
 
 /**
  * The Contacts of the working summary (ADR 0012), the latest Interaction first: all of them, or the
@@ -176,9 +176,11 @@ export function createViews({ clock, requireUser }: { clock: Clock; requireUser:
     // The whole working summary, in one read; it grows with each ticket (ADR 0012).
     .get('/summary', requireUser, async (c) => {
       const { userId } = c.var;
+      const now = clock.now();
       const summary = await withUser(userId, async (tx) => ({
         // What “today” is read in, on the device too.
-        timeZone: await timeZoneAt(tx, userId, clock.now()),
+        timeZone: await timeZoneAt(tx, userId, now),
+        settings: await settingsOf(tx, userId, now),
         contacts: await summaryContacts(tx, userId),
         stages: await summaryStages(tx, userId),
         organizations: await summaryOrganizations(tx, userId),

@@ -3,6 +3,7 @@ import { Keyboard, Plus, Search } from 'lucide-react';
 import { useId } from 'react';
 
 import { Button } from '../components/ui/button.tsx';
+import { useSettings } from '../settings/use-settings.ts';
 import { Account } from './account.tsx';
 import { Kbd } from './kbd.tsx';
 import { Brand } from './logo.tsx';
@@ -14,6 +15,8 @@ import type { NavigationEntry } from './navigation.ts';
 
 /** The desktop navigation (spec UX §3.1). `onAdd` opens the quick add of a Contact. */
 export function Sidebar({ onAdd }: { onAdd: () => void }) {
+  // A key that does nothing is not shown (spec UX §3.3).
+  const { singleKeyShortcuts } = useSettings();
   return (
     <nav
       aria-label={m.main_menu()}
@@ -33,12 +36,17 @@ export function Sidebar({ onAdd }: { onAdd: () => void }) {
         </span>
         <Kbd>Ctrl K</Kbd>
       </Button>
-      <Button variant="ghost" className="justify-between" aria-keyshortcuts="N" onPress={onAdd}>
+      <Button
+        variant="ghost"
+        className="justify-between"
+        {...(singleKeyShortcuts && { 'aria-keyshortcuts': 'N' })}
+        onPress={onAdd}
+      >
         <span className="flex items-center gap-2">
           <Plus />
           {m.add()}
         </span>
-        <Kbd>N</Kbd>
+        {singleKeyShortcuts && <Kbd>N</Kbd>}
       </Button>
       <NavGroup label={m.prospecting()} entries={prospecting} />
       <NavGroup label={m.experimentation()} entries={experimentation} />
@@ -47,13 +55,13 @@ export function Sidebar({ onAdd }: { onAdd: () => void }) {
         <Button
           variant="ghost"
           className="justify-between font-normal text-muted-foreground"
-          aria-keyshortcuts="Shift+?"
+          {...(singleKeyShortcuts && { 'aria-keyshortcuts': 'Shift+?' })}
         >
           <span className="flex items-center gap-2">
             <Keyboard />
             {m.shortcuts()}
           </span>
-          <Kbd>?</Kbd>
+          {singleKeyShortcuts && <Kbd>?</Kbd>}
         </Button>
         <Account />
       </div>

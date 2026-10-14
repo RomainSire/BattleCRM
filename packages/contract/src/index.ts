@@ -33,10 +33,23 @@ export const CONTACT_NOTE_MAX_LENGTH = 5000;
 /** The reason of a change of Status, optional (CONTEXT.md, Status). */
 export const STATUS_REASON_MAX_LENGTH = 500;
 
-// What the User sets in Settings (ticket 20); until then, the defaults of the spec (CONTEXT.md).
-/** Funnel entries per week, from Monday to Sunday. */
+// What the User sets in Settings (spec UX §5.8), and what a new User starts with (CONTEXT.md).
+/** Prospecting actions per day; `null` once the User turned it off. */
+export const DEFAULT_ACTIVITY_GOAL = 1;
+/** Funnel entries per week, from Monday to Sunday; `null` once the User turned it off. */
 export const DEFAULT_ENTRY_GOAL = 5;
+/** “Celebrate the goal reached” and “Single-key shortcuts” start on. */
+export const DEFAULT_CELEBRATE_GOAL = true;
+export const DEFAULT_SINGLE_KEY_SHORTCUTS = true;
 /** Days between two check-ins with each Ally. */
 export const DEFAULT_CHECK_IN_RHYTHM_DAYS = 28;
-/** Allies the User wants to keep up with. */
+/** Allies the User wants to keep up with; `null` once the User turned it off. */
 export const DEFAULT_CIRCLE_SIZE_GOAL = 10;
+/** The Default follow-up cadence: its intervals, each counted from the last outgoing Interaction, then the Response window. */
+export const DEFAULT_FOLLOW_UP_INTERVALS: readonly number[] = [3, 7, 14];
+export const DEFAULT_RESPONSE_WINDOW_DAYS = 14;
+
+/** The bounds of what Settings accept: a goal, a count of days, the length of a cadence. */
+export const GOAL_MAX = 999;
+export const SETTING_DAYS_MAX = 365;
+export const FOLLOW_UP_INTERVALS_MAX = 10;

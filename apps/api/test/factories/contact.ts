@@ -132,10 +132,28 @@ export async function changeStatus(
   return { contact, undoToken };
 }
 
+/** A value in effect now, and as the User chose it last. */
+const dated = <Value extends z.ZodType>(value: Value) =>
+  z.strictObject({ inEffect: value, chosen: value });
+
+/** Settings, as the summary carries them (spec UX §5.8). */
+const summarySettings = z.strictObject({
+  locale: z.enum(['fr', 'en']),
+  timeZone: dated(z.string()),
+  activityGoal: dated(z.int().nullable()),
+  entryGoal: dated(z.int().nullable()),
+  celebrateGoal: z.boolean(),
+  singleKeyShortcuts: z.boolean(),
+  checkInRhythmDays: z.int(),
+  circleSizeGoal: z.int().nullable(),
+  defaultCadence: z.strictObject({ intervals: z.array(z.int()), responseWindowDays: z.int() }),
+});
+
 /** The whole working summary, as `GET /api/summary` answers it. */
 export const summary = z.strictObject({
   /** The time zone of the User in effect now: what its today is read in. */
   timeZone: z.string(),
+  settings: summarySettings,
   contacts: z.array(summaryContact),
   stages: z.array(summaryStage),
   organizations: z.array(summaryOrganization),

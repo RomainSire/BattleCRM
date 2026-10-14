@@ -1,8 +1,5 @@
 import {
   CONTACT_STATUSES,
-  DEFAULT_CHECK_IN_RHYTHM_DAYS,
-  DEFAULT_CIRCLE_SIZE_GOAL,
-  DEFAULT_ENTRY_GOAL,
   STATUS_REASON_MAX_LENGTH,
   type ContactStatus,
 } from '@battlecrm/contract';
@@ -32,6 +29,7 @@ import {
 import { useLocale } from '../i18n.ts';
 import { useApi } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
+import { settingsOf } from '../settings/use-settings.ts';
 import { applySummaryChanges, SUMMARY_KEY, type Summary, type SummaryContact } from '../summary.ts';
 import { notifyGesture } from '../undo.tsx';
 import { formatLocalDay } from './format.ts';
@@ -114,6 +112,11 @@ export function ChangeStatusPanel({
   const today = todayOf(summary);
   const entryNumber = funnelEntriesInWeek(summary.contacts, today) + 1;
   const circleCount = summary.contacts.filter(({ status }) => status === 'ally').length + 1;
+  // The Entry goal of this week, whatever the User chose for the next ones; either may be off.
+  const settings = settingsOf(summary);
+  const entryGoal = settings.entryGoal.inEffect;
+  const circleGoal = settings.circleSizeGoal;
+  const rhythm = settings.checkInRhythmDays;
   const stageId = funnel.some(({ id }) => id === draft.stageId) ? draft.stageId : undefined;
   const isStageMissing = target === 'prospecting' && stageId === undefined;
 
@@ -160,15 +163,16 @@ export function ChangeStatusPanel({
   function changedMessage(changed: SummaryContact, to: ContactStatus): string {
     const { name } = changed;
     switch (to) {
-      case 'prospecting':
-        return m.status_changed_prospecting({
-          name,
-          stage: summary.stages.find(({ id }) => id === changed.stageId)?.name ?? '',
-          count: entryNumber,
-          goal: DEFAULT_ENTRY_GOAL,
-        });
+      case 'prospecting': {
+        const stage = summary.stages.find(({ id }) => id === changed.stageId)?.name ?? '';
+        return entryGoal === null
+          ? m.status_changed_prospecting_no_goal({ name, stage, count: entryNumber })
+          : m.status_changed_prospecting({ name, stage, count: entryNumber, goal: entryGoal });
+      }
       case 'ally':
-        return m.status_changed_ally({ name, count: circleCount, goal: DEFAULT_CIRCLE_SIZE_GOAL });
+        return circleGoal === null
+          ? m.status_changed_ally_no_goal({ name, count: circleCount })
+          : m.status_changed_ally({ name, count: circleCount, goal: circleGoal });
       case 'pool':
         return m.status_changed_pool({ name });
       default:
@@ -179,16 +183,27 @@ export function ChangeStatusPanel({
   /** The summary of what the change does (spec UX §1, §6.11). */
   const recap: string[] = [];
   if (target === 'prospecting') {
-    recap.push(m.change_status_entry_recap({ count: entryNumber, goal: DEFAULT_ENTRY_GOAL }));
+    recap.push(
+      entryGoal === null
+        ? m.change_status_entry_recap_no_goal({ count: entryNumber })
+        : m.change_status_entry_recap({ count: entryNumber, goal: entryGoal }),
+    );
   }
   if (target === 'ally') {
+    const nextCheckIn = formatLocalDay(addDays(today, rhythm), locale);
     recap.push(
-      m.change_status_circle_recap({
-        count: circleCount,
-        goal: DEFAULT_CIRCLE_SIZE_GOAL,
-        date: formatLocalDay(addDays(today, DEFAULT_CHECK_IN_RHYTHM_DAYS), locale),
-        days: DEFAULT_CHECK_IN_RHYTHM_DAYS,
-      }),
+      circleGoal === null
+        ? m.change_status_circle_recap_no_goal({
+            count: circleCount,
+            date: nextCheckIn,
+            days: rhythm,
+          })
+        : m.change_status_circle_recap({
+            count: circleCount,
+            goal: circleGoal,
+            date: nextCheckIn,
+            days: rhythm,
+          }),
     );
   }
   if (target === 'ally' && contact.status === 'prospecting' && lastStage) {

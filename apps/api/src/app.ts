@@ -24,7 +24,7 @@ import { jsonBody } from './json-body.ts';
 import { createOrganizations } from './organizations/index.ts';
 import { createProspecting, organizationMembers } from './prospecting/index.ts';
 import type { Random } from './random.ts';
-import { initializeSettings } from './settings/index.ts';
+import { createSettings, initializeSettings } from './settings/index.ts';
 import { createViews, summaryChanges } from './views/index.ts';
 
 /** The composition root: every boundary is injected, so a test drives time and randomness. */
@@ -87,6 +87,7 @@ export function createApp({
     changesOf: summaryChanges,
     members: organizationMembers,
   });
+  const settings = createSettings({ clock, requireUser });
   const views = createViews({ clock, requireUser });
 
   app.use(async (c, next) => {
@@ -131,6 +132,7 @@ export function createApp({
     .route('/', prospecting.routes)
     .route('/', organizations.routes)
     .route('/', gestures.routes)
+    .route('/', settings.routes)
     .route('/', views.routes)
     .post(
       '/client-errors',

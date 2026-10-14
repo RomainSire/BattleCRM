@@ -16,8 +16,16 @@ import { ErrorMessage } from './error-message.tsx';
 // Hand-written on React Aria's toast (spec stack §3): its timers stop while the region is hovered
 // or holds the focus, which no ready-made toast did (ST-62).
 
-/** What a notification says; `undoToken` gives it “Undo”, `isError` the Error colour (spec UX §2). */
-export type ToastContent = { message: string; undoToken?: string; isError?: boolean };
+/**
+ * What a notification says; `undoToken` gives it “Undo” for a gesture taken back on the server (ADR
+ * 0011), `undo` for a setting written back (spec UX §5.8); `isError` the Error colour (spec UX §2).
+ */
+export type ToastContent = {
+  message: string;
+  undoToken?: string;
+  undo?: () => Promise<void>;
+  isError?: boolean;
+};
 export type AppToast = QueuedToast<ToastContent>;
 
 /** At least 10 s (spec UX §1). */
@@ -84,7 +92,7 @@ function Toast({
           )}
         </Text>
       </ToastContentPrimitive>
-      {toast.content.undoToken !== undefined && (
+      {(toast.content.undoToken !== undefined || toast.content.undo !== undefined) && (
         <Button
           variant="outline"
           size="sm"

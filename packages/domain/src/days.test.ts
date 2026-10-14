@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 
-import { addDays, funnelEntriesInWeek, localDay, mondayOf } from './days.ts';
+import { addDays, funnelEntriesInWeek, localDay, mondayOf, nextMondayAfter } from './days.ts';
 
 test('the local day of an instant is read in a time zone', () => {
   const instant = new Date('2026-01-05T23:30:00Z');
@@ -20,6 +20,12 @@ test('a week runs from Monday to Sunday', () => {
   expect(mondayOf('2026-01-11')).toBe('2026-01-05');
   expect(mondayOf('2026-01-12')).toBe('2026-01-12');
   expect(mondayOf('2026-03-01')).toBe('2026-02-23');
+});
+
+test('the next Monday is the one after the week, even on a Sunday or a Monday', () => {
+  expect(nextMondayAfter('2026-10-11')).toBe('2026-10-12');
+  expect(nextMondayAfter('2026-10-12')).toBe('2026-10-19');
+  expect(nextMondayAfter('2026-10-14')).toBe('2026-10-19');
 });
 
 test('the Funnel entries of a week count every entry from Monday to Sunday, twice the same Contact too', () => {

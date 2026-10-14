@@ -78,6 +78,8 @@ describe('catalogue', () => {
     expect(business.map(({ name }) => name)).toEqual(
       expect.arrayContaining([
         'contact',
+        'effective_activity_goal',
+        'effective_entry_goal',
         'gesture',
         'interaction',
         'organization',
@@ -154,6 +156,7 @@ test('a query that forgot its filter only sees the rows of its User, in every bu
     await addContact(harness, user, 'Jean Dupont', {
       newOrganization: { name: 'Capgemini', type: 'consultancy' },
     });
+    await postJson(harness.app, '/api/settings', { activityGoal: 2, entryGoal: 6 }, user.cookie);
   }
 
   for (const { name } of await businessTables()) {

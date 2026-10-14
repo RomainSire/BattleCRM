@@ -12,22 +12,32 @@ export function notifyGesture(message: string, undoToken: string): void {
   notify({ message, undoToken });
 }
 
-/** A notification whose gesture can be taken back. */
-type Undoable = { key: string; undoToken: string };
+/** A notification whose gesture, or setting, can be taken back. */
+type Undoable = { key: string } & ({ undoToken: string } | { undo: () => Promise<void> });
 
-const undoable = ({ key, content: { undoToken } }: AppToast): Undoable | undefined =>
-  undoToken === undefined ? undefined : { key, undoToken };
+function undoable({ key, content: { undoToken, undo } }: AppToast): Undoable | undefined {
+  if (undoToken !== undefined) return { key, undoToken };
+  if (undo !== undefined) return { key, undo };
+  return undefined;
+}
 
 /**
  * The notifications of the app and “Undo”: by the button of a notification, or by Ctrl Z for the
- * latest one still shown. The gesture is taken back on the server (ADR 0011).
+ * latest one still shown. A gesture is taken back on the server (ADR 0011); a setting is written
+ * back as it was (spec UX §5.8).
  */
 export function UndoToasts() {
   useLocale();
   const api = useApi();
   const queryClient = useQueryClient();
   const undo = useMutation({
-    mutationFn: async ({ undoToken }: Undoable) => {
+    mutationFn: async (toast: Undoable) => {
+      // A setting is written back as it was: nothing to apply to the summary but what it stored.
+      if ('undo' in toast) {
+        await toast.undo();
+        return 'written_back';
+      }
+      const { undoToken } = toast;
       const response = await api.gestures[':id'].undo.$post({ param: { id: undoToken } });
       if (response.status === 200) return (await response.json()).changes;
       // Too late, or a later gesture touched the same Contact: this device may be behind.
@@ -41,7 +51,7 @@ export function UndoToasts() {
         await queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
         return;
       }
-      await applySummaryChanges(queryClient, changes);
+      if (changes !== 'written_back') await applySummaryChanges(queryClient, changes);
       notify({ message: m.undone() });
     },
     // The notification stays: “Undo” can be tried again.

@@ -22,6 +22,9 @@ export function mondayOf(day: string): string {
   return addDays(day, -((noonOf(day).getUTCDay() + 6) % 7));
 }
 
+/** The Monday after the week of a local day: when a change of the Entry goal takes effect (ADR 0003). */
+export const nextMondayAfter = (day: string): string => addDays(mondayOf(day), 7);
+
 /** The Funnel entries of the week of `today`: every entry counts, twice the same Contact too (CONTEXT.md). */
 export function funnelEntriesInWeek(
   contacts: readonly { funnelEntryDays: readonly string[] }[],

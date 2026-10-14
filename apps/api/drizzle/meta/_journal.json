@@ -134,6 +134,20 @@
       "when": 1791983646850,
       "tag": "0018_status_changed",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791987029103,
+      "tag": "0019_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791987035586,
+      "tag": "0020_settings_access",
+      "breakpoints": true
     }
   ]
 }

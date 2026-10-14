@@ -136,13 +136,17 @@ const threadOf = (reason: string | null) => ({
   ],
 });
 
-/** An API that changes the Status of any Contact as the server would, and takes it back. */
-function statusApi() {
+/**
+ * An API that changes the Status of any Contact as the server would, and takes it back. Without
+ * `settings`, a summary kept from before Settings: the defaults.
+ */
+function statusApi(settings?: object) {
   const contacts = [julie(), marc(), INES, PAUL, NINA, LEA];
   const routes: Parameters<typeof fakeApi>[0] = {
     'GET /api/summary': () =>
       Response.json({
         timeZone: TIME_ZONE,
+        ...(settings && { settings }),
         contacts,
         stages: [OUTREACH, AGENCY, OLD],
         organizations: [CAPGEMINI],
@@ -272,6 +276,46 @@ test('from the panel, “Add to Circle…” keeps the last Stage and says where
 
   await expect.element(page.getByText('Marc Petit entre au Cercle · 2/10')).toBeVisible();
   expect(api.sent(changeRoute(marc().id)).map(({ body }) => body)).toEqual([{ status: 'ally' }]);
+});
+
+test('the summaries read the goals and the rhythm of the User: a goal turned off shows the count alone', async () => {
+  await desktop();
+  const api = statusApi({
+    locale: 'fr',
+    timeZone: { inEffect: TIME_ZONE, chosen: TIME_ZONE },
+    activityGoal: { inEffect: 1, chosen: 1 },
+    // Turned off from next Monday: this week keeps its goal.
+    entryGoal: { inEffect: 4, chosen: null },
+    celebrateGoal: true,
+    singleKeyShortcuts: true,
+    checkInRhythmDays: 21,
+    circleSizeGoal: null,
+    defaultCadence: { intervals: [3, 7, 14], responseWindowDays: 14 },
+  });
+  await renderApp(`/contacts/${julie().id}`, api);
+  await page.getByRole('button', { name: 'Faire entrer…' }).click();
+  await expect
+    .element(page.getByRole('dialog', { name: 'Faire entrer Julie Martin' }))
+    .toHaveTextContent('Entrée n°3 cette semaine (3/4)');
+  await userEvent.keyboard('{Escape}');
+
+  await page
+    .getByRole('region', { name: 'Prochaine action' })
+    .getByRole('button', { name: 'Ajouter au Cercle…' })
+    .click();
+
+  const nextCheckIn = new Intl.DateTimeFormat('fr', {
+    dateStyle: 'medium',
+    timeZone: 'UTC',
+  }).format(new Date(`${addDays(today(), 21)}T12:00:00Z`));
+  const dialog = page.getByRole('dialog', { name: 'Ajouter Julie Martin au Cercle' });
+  await expect
+    .element(dialog)
+    .toHaveTextContent(`Cercle 2 · prochaines nouvelles d'ici le ${nextCheckIn} (Rythme 21 j)`);
+  await dialog.getByRole('button', { name: 'Ajouter au Cercle' }).click();
+  await expect
+    .element(page.getByText('Julie Martin entre au Cercle · 2', { exact: true }))
+    .toBeVisible();
 });
 
 test('“Change status…” (S) starts with the choice of the target, never the current Status; Escape gives the focus back', async () => {

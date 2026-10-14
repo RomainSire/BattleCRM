@@ -13,4 +13,4 @@ export {
 } from './duplicates.ts';
 export { targetOf, type OrganizationType, type Target } from './target.ts';
 export { contactsMatching, type SearchableContact } from './search.ts';
-export { addDays, funnelEntriesInWeek, localDay, mondayOf } from './days.ts';
+export { addDays, funnelEntriesInWeek, localDay, mondayOf, nextMondayAfter } from './days.ts';
