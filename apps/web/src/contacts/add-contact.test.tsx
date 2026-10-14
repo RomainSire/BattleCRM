@@ -548,6 +548,7 @@ test.each(['light', 'dark'] as const)(
     // The Stage shows for Prospecting, and the segment chosen takes the accent.
     await chooseStatus(screen, 'En prospection');
     await expect.element(screen.getByRole('combobox', { name: 'Étape' })).toBeVisible();
+    await animationsEnded();
     await expectNoAxeViolations();
     await chooseStatus(screen, 'Vivier');
 

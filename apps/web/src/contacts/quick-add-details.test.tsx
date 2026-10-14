@@ -174,8 +174,10 @@ test('a new Organization is created with its type, which must be chosen, and joi
     },
   ]);
   // The Organization came with the answer: the next quick add offers it.
+  await expect.element(dialog).not.toBeInTheDocument();
   await userEvent.keyboard('n');
-  await organizationField(screen.getByRole('dialog')).fill('sopra');
+  await expect.element(dialog.getByRole('textbox', { name: 'Nom' })).toHaveFocus();
+  await organizationField(dialog).fill('sopra');
   await expect
     .element(screen.getByRole('listbox').getByRole('option', { name: 'Sopra Steria' }))
     .toBeVisible();
