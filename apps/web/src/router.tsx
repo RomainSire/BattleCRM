@@ -22,7 +22,7 @@ import { CancellingRecovery, RecoveryCancelledScreen } from './auth/two-factor-r
 import { AuthError, InvalidLinkScreen, VerifyingEmail } from './auth/verify-email-screen.tsx';
 import { ContactPage } from './contacts/contact-record.tsx';
 import { ContactsScreen } from './contacts/contacts-screen.tsx';
-import { FOLLOW_UP_GESTURES, STATUS_GESTURES } from './contacts/status.ts';
+import { FOLLOW_UP_GESTURES, INTERACTION_GESTURES, STATUS_GESTURES } from './contacts/status.ts';
 import { clearDeviceData } from './device-data.ts';
 import { OrganizationPage } from './organizations/organization-page.tsx';
 import { MoreScreen } from './screens/more-screen.tsx';
@@ -207,6 +207,8 @@ const circleRoute = createRoute({
 const statusToSearch = z.enum(STATUS_GESTURES).optional().catch(undefined);
 /** The gesture on the Follow-up open on a record (spec UX §6.3, §6.5), kept by the address (ST-70). */
 const followUpSearch = z.enum(FOLLOW_UP_GESTURES).optional().catch(undefined);
+/** The gesture that records an Interaction open on a record (spec UX §6.2, §6.4), kept by the address (ST-70). */
+const interactionSearch = z.enum(INTERACTION_GESTURES).optional().catch(undefined);
 
 const contactsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -216,6 +218,7 @@ const contactsRoute = createRoute({
     contact: z.uuid().optional().catch(undefined),
     statusTo: statusToSearch,
     followUp: followUpSearch,
+    interaction: interactionSearch,
   }),
   component: ContactsScreen,
 });
@@ -224,7 +227,11 @@ const contactsRoute = createRoute({
 const contactRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/contacts/$contactId',
-  validateSearch: z.object({ statusTo: statusToSearch, followUp: followUpSearch }),
+  validateSearch: z.object({
+    statusTo: statusToSearch,
+    followUp: followUpSearch,
+    interaction: interactionSearch,
+  }),
   component: function ContactRecordPage() {
     const { contactId } = contactRoute.useParams();
     return <ContactPage key={contactId} contactId={contactId} />;

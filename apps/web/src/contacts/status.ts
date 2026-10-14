@@ -47,3 +47,7 @@ export const otherStatuses = (current: ContactStatus): ContactStatus[] =>
 /** A gesture on the Follow-up the User opens: Schedule or Edit it, or Follow up… (spec UX §6.3, §6.5). */
 export const FOLLOW_UP_GESTURES = ['schedule', 'do'] as const;
 export type FollowUpGesture = (typeof FOLLOW_UP_GESTURES)[number];
+
+/** A gesture that records an Interaction the User opens: Note an Interaction, or Replied… (spec UX §6.2, §6.4). */
+export const INTERACTION_GESTURES = ['note', 'reply'] as const;
+export type InteractionGesture = (typeof INTERACTION_GESTURES)[number];

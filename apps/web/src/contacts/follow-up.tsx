@@ -132,7 +132,7 @@ const send = {
  * Applies the answer of a gesture and says what was done, with “Undo”; `false` when the server
  * refused the day, or the Contact changed elsewhere: the summary is then read again.
  */
-async function settle(
+export async function settle(
   queryClient: ReturnType<typeof useQueryClient>,
   answer: Answer,
   message: (changed: SummaryContact) => string,
@@ -147,7 +147,7 @@ async function settle(
   return true;
 }
 
-const trimmed = (note: string) => {
+export const trimmed = (note: string) => {
   const text = note.trim();
   return text === '' ? {} : { note: text };
 };
@@ -157,7 +157,7 @@ const POSTPONE_DAYS = [1, 3, 7] as const;
 
 /** The quick days of “Schedule a follow-up” (spec UX §6.5), then any date. */
 const SCHEDULE_CHOICES = ['1', '3', '7', '14', 'other'] as const;
-/** The day “Follow up…” was done on (spec UX §6.3): today, yesterday, or any date before. */
+/** The day an Interaction was done on (spec UX §6.3): today, yesterday, or any date before. */
 const DONE_CHOICES = ['today', 'yesterday', 'other'] as const;
 
 const dayLabel = (choice: (typeof SCHEDULE_CHOICES)[number]) => {
@@ -419,16 +419,63 @@ function ScheduleFollowUpPanel({
   );
 }
 
-const doneDraft = z.object({
-  choice: z.enum(DONE_CHOICES),
-  otherDay: z.string(),
-  note: z.string(),
-});
+/** The day an Interaction was done on, as a panel keeps it. */
+export const doneDayDraft = { choice: z.enum(DONE_CHOICES), otherDay: z.string() };
+type DoneDayDraft = { choice: (typeof DONE_CHOICES)[number]; otherDay: string };
 
-const doneDay = (draft: z.infer<typeof doneDraft>, today: string) => {
-  if (draft.choice === 'today') return today;
-  return draft.choice === 'yesterday' ? addDays(today, -1) : draft.otherDay;
-};
+const doneDraft = z.object({ ...doneDayDraft, note: z.string() });
+
+/** The local day chosen, and whether it is one: today or earlier. */
+export function doneDayOf(draft: DoneDayDraft, today: string) {
+  let day = draft.otherDay;
+  if (draft.choice === 'today') day = today;
+  if (draft.choice === 'yesterday') day = addDays(today, -1);
+  return { day, isValid: /^\d{4}-\d{2}-\d{2}$/u.test(day) && day <= today };
+}
+
+/** Today, yesterday or a date before (spec UX §6.3): the day an Interaction was done on. */
+export function DoneDayField({
+  draft,
+  onChange,
+  today,
+}: {
+  draft: DoneDayDraft;
+  onChange: (draft: DoneDayDraft) => void;
+  today: string;
+}) {
+  return (
+    <>
+      <SegmentedControl
+        value={draft.choice}
+        onChange={(value) => {
+          const choice = DONE_CHOICES.find((candidate) => candidate === value);
+          if (choice) onChange({ ...draft, choice });
+        }}
+      >
+        <Label>{m.follow_up_day()}</Label>
+        <SegmentedControlItems className="flex-wrap">
+          {DONE_CHOICES.map((choice) => (
+            <SegmentedControlItem key={choice} value={choice}>
+              {choice === 'today'
+                ? m.follow_up_due_today()
+                : choice === 'yesterday'
+                  ? m.follow_up_yesterday()
+                  : m.follow_up_other_day()}
+            </SegmentedControlItem>
+          ))}
+        </SegmentedControlItems>
+      </SegmentedControl>
+      {draft.choice === 'other' && (
+        <DayField
+          value={draft.otherDay}
+          onChange={(otherDay) => onChange({ ...draft, otherDay })}
+          max={today}
+          error={m.follow_up_day_not_future()}
+        />
+      )}
+    </>
+  );
+}
 
 /**
  * Follow up… (spec UX §6.3): what to send (off the Cadence, the note of the Follow-up and the last
@@ -458,8 +505,7 @@ function FollowUpPanel({
     { choice: 'today' as const, otherDay: '', note: followUp?.note ?? '' },
     doneDraft,
   );
-  const occurredOn = doneDay(draft, today);
-  const isDayValid = /^\d{4}-\d{2}-\d{2}$/u.test(occurredOn) && occurredOn <= today;
+  const { day: occurredOn, isValid: isDayValid } = doneDayOf(draft, today);
   const activityGoal = settingsOf(summary).activityGoal.inEffect;
   const count = activityOn(summary.contacts, today) + 1;
   const close = () => {
@@ -530,34 +576,11 @@ function FollowUpPanel({
                 >
                   {m.follow_up_confirm()}
                 </h3>
-                <SegmentedControl
-                  value={draft.choice}
-                  onChange={(value) => {
-                    const choice = DONE_CHOICES.find((candidate) => candidate === value);
-                    if (choice) setDraft({ ...draft, choice });
-                  }}
-                >
-                  <Label>{m.follow_up_day()}</Label>
-                  <SegmentedControlItems className="flex-wrap">
-                    {DONE_CHOICES.map((choice) => (
-                      <SegmentedControlItem key={choice} value={choice}>
-                        {choice === 'today'
-                          ? m.follow_up_due_today()
-                          : choice === 'yesterday'
-                            ? m.follow_up_yesterday()
-                            : m.follow_up_other_day()}
-                      </SegmentedControlItem>
-                    ))}
-                  </SegmentedControlItems>
-                </SegmentedControl>
-                {draft.choice === 'other' && (
-                  <DayField
-                    value={draft.otherDay}
-                    onChange={(otherDay) => setDraft({ ...draft, otherDay })}
-                    max={today}
-                    error={m.follow_up_day_not_future()}
-                  />
-                )}
+                <DoneDayField
+                  draft={draft}
+                  onChange={(day) => setDraft({ ...draft, ...day })}
+                  today={today}
+                />
                 <NoteField
                   value={draft.note}
                   onChange={(note) => setDraft({ ...draft, note })}
@@ -626,7 +649,7 @@ export function FollowUpPanels({
 }
 
 /** `Enter` validates from any field but a text one (spec UX §3.3): a choice of day would not submit by itself. */
-function EnterSubmits({
+export function EnterSubmits({
   children,
 }: {
   children: (formRef: React.RefObject<HTMLFormElement | null>) => React.ReactNode;
@@ -679,21 +702,23 @@ function DayField({
   );
 }
 
-/** The optional note of a Follow-up, which stays on its Interaction once done. */
-function NoteField({
+/** The optional note of a Follow-up, which stays on its Interaction once done, or of an Interaction. */
+export function NoteField({
   value,
   onChange,
   takesFocus = false,
+  maxLength = FOLLOW_UP_NOTE_MAX_LENGTH,
 }: {
   value: string;
   onChange: (note: string) => void;
   takesFocus?: boolean;
+  maxLength?: number;
 }) {
   return (
     <TextField
       value={value}
       onChange={onChange}
-      maxLength={FOLLOW_UP_NOTE_MAX_LENGTH}
+      maxLength={maxLength}
       className="flex flex-col gap-1.5"
     >
       <Label>{m.follow_up_note()}</Label>
@@ -704,7 +729,7 @@ function NoteField({
 }
 
 /** The summary of what a gesture does (spec UX §1). */
-const Recap = ({ lines }: { lines: string[] }) => (
+export const Recap = ({ lines }: { lines: string[] }) => (
   <section aria-label={m.change_status_recap()} className="rounded-control border p-3">
     <ul className="list-disc pl-5">
       {lines.map((line) => (

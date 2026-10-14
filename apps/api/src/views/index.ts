@@ -34,6 +34,22 @@ async function summaryContacts(tx: Transaction, userId: string, ids?: string[]) 
     .where(and(eq(interaction.userId, userId), ids && inArray(interaction.contactId, ids)))
     .orderBy(interaction.contactId, desc(interaction.occurredAt), desc(interaction.id))
     .as('latest');
+  // The latest Interaction done, outbound or inbound: what the Days since contact count from.
+  const latestDone = tx
+    .selectDistinctOn([interaction.contactId], {
+      contactId: interaction.contactId,
+      localDate: interaction.localDate,
+    })
+    .from(interaction)
+    .where(
+      and(
+        eq(interaction.userId, userId),
+        inArray(interaction.direction, ['outbound', 'inbound']),
+        ids && inArray(interaction.contactId, ids),
+      ),
+    )
+    .orderBy(interaction.contactId, desc(interaction.occurredAt), desc(interaction.id))
+    .as('latest_done');
   // Each Funnel entry, by the local day it was written down on (ST-49): the SPA counts those of a week.
   const entries = tx
     .select({
@@ -119,6 +135,7 @@ async function summaryContacts(tx: Transaction, userId: string, ids?: string[]) 
       linkedinUrl: contact.linkedinUrl,
       lastInteractionAt: latest.occurredAt,
       lastInteractionOn: latest.localDate,
+      lastDoneInteractionOn: latestDone.localDate,
       funnelEntryDays: entries.days,
       statusReason: current.reason,
       followUpDueOn: scheduled.dueOn,
@@ -127,6 +144,7 @@ async function summaryContacts(tx: Transaction, userId: string, ids?: string[]) 
     })
     .from(contact)
     .innerJoin(latest, eq(latest.contactId, contact.id))
+    .leftJoin(latestDone, eq(latestDone.contactId, contact.id))
     .leftJoin(entries, eq(entries.contactId, contact.id))
     .leftJoin(current, eq(current.contactId, contact.id))
     .leftJoin(scheduled, eq(scheduled.contactId, contact.id))
@@ -167,8 +185,8 @@ async function summaryOrganizations(tx: Transaction, userId: string, ids?: strin
 
 /**
  * What the record of a Contact reads beyond the summary, on demand (spec stack §3): its note, and its
- * thread from the latest Interaction to the earliest, each with its note and the change of Status it
- * recorded.
+ * thread from the latest Interaction to the earliest, each with its note, the Channel of a reply and
+ * the change of Status it recorded.
  * `undefined` when the User has no such Contact.
  */
 async function contactRecord(tx: Transaction, userId: string, contactId: string) {
@@ -185,6 +203,7 @@ async function contactRecord(tx: Transaction, userId: string, contactId: string)
       occurredAt: interaction.occurredAt,
       localDate: interaction.localDate,
       note: interaction.note,
+      channel: interaction.channel,
       fromStatus: statusChange.fromStatus,
       toStatus: statusChange.toStatus,
       stageId: statusChange.stageId,

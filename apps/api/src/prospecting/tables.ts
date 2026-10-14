@@ -1,4 +1,4 @@
-import { CONTACT_STATUSES } from '@battlecrm/contract';
+import { CHANNELS, CONTACT_STATUSES, NOTED_INTERACTION_KINDS } from '@battlecrm/contract';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -90,7 +90,13 @@ export const contact = pgTable(
 );
 
 /** What an Interaction records; each gesture that writes one adds its kind here. */
-export const INTERACTION_KINDS = ['contact_added', 'status_changed', 'follow_up'] as const;
+export const INTERACTION_KINDS = [
+  'contact_added',
+  'status_changed',
+  'follow_up',
+  ...NOTED_INTERACTION_KINDS,
+  'reply',
+] as const;
 /** The kinds that are Prospecting actions, what the Activity counts (CONTEXT.md). */
 export const PROSPECTING_ACTION_KINDS = [
   'follow_up',
@@ -113,6 +119,8 @@ export const interaction = pgTable(
     recordedAt: instant('recorded_at').notNull(),
     /** What the User wrote of it, if anything: a done Follow-up keeps the note it had. */
     note: text(),
+    /** The Channel a reply came by; none for any other kind. */
+    channel: text({ enum: CHANNELS }),
   },
   (table) => [
     unique('interaction_user_id_id_unique').on(table.userId, table.id),
@@ -128,6 +136,11 @@ export const interaction = pgTable(
     ),
     index('interaction_contact_idx').on(table.userId, table.contactId, table.occurredAt),
     check('interaction_note_check', sql`${table.note} <> ''`),
+    check('interaction_channel_check', sql`${table.channel} in (${quoted(CHANNELS)})`),
+    check(
+      'interaction_reply_channel_check',
+      sql`(${table.kind} = 'reply') = (${table.channel} is not null)`,
+    ),
   ],
 );
 

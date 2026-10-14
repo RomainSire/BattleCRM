@@ -2,7 +2,9 @@ import {
   CONTACT_STATUSES,
   ORGANIZATION_TYPES,
   type AddableContactStatus,
+  type Channel,
   type ContactStatus,
+  type NotedInteractionKind,
   type OrganizationType,
 } from '@battlecrm/contract';
 import { z } from 'zod';
@@ -27,6 +29,8 @@ export const summaryContact = z.strictObject({
   linkedinUrl: z.string().nullable(),
   lastInteractionAt: z.iso.datetime(),
   lastInteractionOn: z.iso.date(),
+  /** The local day of its latest Interaction done, outbound or inbound, if it has one. */
+  lastDoneInteractionOn: z.iso.date().nullable(),
   /** The local days of its Funnel entries, the earliest first. */
   funnelEntryDays: z.array(z.iso.date()),
   /** The reason of the change that put it in its Status, if the User gave one. */
@@ -136,8 +140,8 @@ export async function changeStatus(
   return { contact, undoToken };
 }
 
-/** A gesture on the Follow-up of a Contact, made the way a User makes it, and the token that takes it back. */
-async function followUpGesture(
+/** A gesture on one Contact, made the way a User makes it, and the token that takes it back. */
+async function contactGesture(
   harness: Harness,
   user: { cookie: string },
   path: string,
@@ -157,11 +161,11 @@ export const scheduleFollowUp = (
   user: { cookie: string },
   contactId: string,
   body: { dueOn: string; note?: string },
-) => followUpGesture(harness, user, `/api/contacts/${contactId}/schedule-follow-up`, body);
+) => contactGesture(harness, user, `/api/contacts/${contactId}/schedule-follow-up`, body);
 
 /** The scheduled Follow-up of a Contact, canceled. */
 export const cancelFollowUp = (harness: Harness, user: { cookie: string }, contactId: string) =>
-  followUpGesture(harness, user, `/api/contacts/${contactId}/cancel-follow-up`, {});
+  contactGesture(harness, user, `/api/contacts/${contactId}/cancel-follow-up`, {});
 
 /** “Follow up…”: the scheduled Follow-up of a Contact, done on a local day. */
 export const followUp = (
@@ -169,7 +173,30 @@ export const followUp = (
   user: { cookie: string },
   contactId: string,
   body: { occurredOn: string; note?: string },
-) => followUpGesture(harness, user, `/api/contacts/${contactId}/follow-up`, body);
+) => contactGesture(harness, user, `/api/contacts/${contactId}/follow-up`, body);
+
+/** “Note an Interaction”: an outbound Interaction off any Positioning, on a local day. */
+export const noteInteraction = (
+  harness: Harness,
+  user: { cookie: string },
+  contactId: string,
+  body: { kind: NotedInteractionKind; occurredOn: string; note?: string },
+) => contactGesture(harness, user, `/api/contacts/${contactId}/note-interaction`, body);
+
+/** “Replied…”: a reply of the Contact, on a local day, and what comes next. */
+export const recordReply = (
+  harness: Harness,
+  user: { cookie: string },
+  contactId: string,
+  body: {
+    occurredOn: string;
+    channel: Channel;
+    note?: string;
+    cancelFollowUp?: boolean;
+    status?: 'prospecting' | 'ally';
+    stageId?: string;
+  },
+) => contactGesture(harness, user, `/api/contacts/${contactId}/record-reply`, body);
 
 /** A value in effect now, and as the User chose it last. */
 const dated = <Value extends z.ZodType>(value: Value) =>

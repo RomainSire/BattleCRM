@@ -177,7 +177,12 @@ test('“Follow up…” turns the Follow-up into an outbound Interaction dated 
   expect(response.status).toBe(200);
   const { changes, undoToken } = gestureAnswer.parse(await response.json());
   expect(changes.contacts).toEqual([
-    { ...jean, followUp: null, prospectingActionDays: ['2026-01-07'] },
+    {
+      ...jean,
+      followUp: null,
+      lastDoneInteractionOn: '2026-01-07',
+      prospectingActionDays: ['2026-01-07'],
+    },
   ]);
   expect((await summaryOf(harness, user)).contacts).toEqual(changes.contacts);
   const { followUps, interactions } = await rowsOf(user);

@@ -36,6 +36,17 @@ export const STATUS_REASON_MAX_LENGTH = 500;
 /** The note of a Follow-up, which stays on its Interaction once it is done (CONTEXT.md, Follow-up). */
 export const FOLLOW_UP_NOTE_MAX_LENGTH = 2000;
 
+/** The means by which the User and a Contact exchange (CONTEXT.md, Channel): what a reply came by. */
+export const CHANNELS = ['email', 'linkedin', 'phone', 'mail'] as const;
+export type Channel = (typeof CHANNELS)[number];
+
+/** What “Note an Interaction” records (spec UX §6.4): an outbound Interaction off any Positioning. */
+export const NOTED_INTERACTION_KINDS = ['call', 'meeting', 'message', 'other'] as const;
+export type NotedInteractionKind = (typeof NOTED_INTERACTION_KINDS)[number];
+
+/** The note of an Interaction the User writes down, outbound or a reply. */
+export const INTERACTION_NOTE_MAX_LENGTH = 2000;
+
 // What the User sets in Settings (spec UX §5.8), and what a new User starts with (CONTEXT.md).
 /** Prospecting actions per day; `null` once the User turned it off. */
 export const DEFAULT_ACTIVITY_GOAL = 1;

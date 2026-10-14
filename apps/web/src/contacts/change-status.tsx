@@ -26,7 +26,7 @@ import {
   SegmentedControlItem,
   SegmentedControlItems,
 } from '../components/ui/segmented-control.tsx';
-import { useLocale } from '../i18n.ts';
+import { useLocale, type Locale } from '../i18n.ts';
 import { useApi } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { settingsOf } from '../settings/use-settings.ts';
@@ -91,30 +91,18 @@ export function ChangeStatusPanel({
   const locale = useLocale();
   const api = useApi();
   const queryClient = useQueryClient();
-  const stageFieldId = useId();
-  const stageErrorId = useId();
   const formRef = useRef<HTMLFormElement>(null);
   // A target the Contact already has, from an address kept from before, is to be chosen again.
   const opened: StatusGesture = gesture === contact.status ? 'choose' : gesture;
-  const funnel = summary.stages.filter((stage) => !stage.archived);
   const lastStage = summary.stages.find(({ id }) => id === contact.stageId);
   const [draft, setDraft, clearDraft] = useSessionDraft<Draft>(
     `change-status:${contact.id}:${opened}`,
-    // The last Stage reached, unless it is archived or there is none: then one must be chosen.
-    { stageId: lastStage && !lastStage.archived ? lastStage.id : undefined, reason: '' },
+    { stageId: enteredStageOf(contact, summary), reason: '' },
     draftSchema,
   );
   const target = opened === 'choose' ? draft.target : opened;
   const [wasSent, setWasSent] = useState(false);
-  const today = todayOf(summary);
-  const entryNumber = funnelEntriesInWeek(summary.contacts, today) + 1;
-  const circleCount = summary.contacts.filter(({ status }) => status === 'ally').length + 1;
-  // The Entry goal of this week, whatever the User chose for the next ones; either may be off.
-  const settings = settingsOf(summary);
-  const entryGoal = settings.entryGoal.inEffect;
-  const circleGoal = settings.circleSizeGoal;
-  const rhythm = settings.checkInRhythmDays;
-  const stageId = funnel.some(({ id }) => id === draft.stageId) ? draft.stageId : undefined;
+  const stageId = stageInFunnel(summary, draft.stageId);
   const isStageMissing = target === 'prospecting' && stageId === undefined;
 
   const close = () => {
@@ -151,58 +139,13 @@ export function ChangeStatusPanel({
       const { changes, undoToken } = answer;
       await applySummaryChanges(queryClient, changes);
       const [changed] = changes.contacts;
-      if (changed) notifyGesture(changedMessage(changed, to), undoToken);
+      if (changed) notifyGesture(statusChangedMessage(changed, to, summary), undoToken);
       close();
     },
   });
 
-  /** What the notification says (spec UX §10), with the counts the summary showed. */
-  function changedMessage(changed: SummaryContact, to: ContactStatus): string {
-    const { name } = changed;
-    switch (to) {
-      case 'prospecting': {
-        const stage = summary.stages.find(({ id }) => id === changed.stageId)?.name ?? '';
-        return entryGoal === null
-          ? m.status_changed_prospecting_no_goal({ name, stage, count: entryNumber })
-          : m.status_changed_prospecting({ name, stage, count: entryNumber, goal: entryGoal });
-      }
-      case 'ally':
-        return circleGoal === null
-          ? m.status_changed_ally_no_goal({ name, count: circleCount })
-          : m.status_changed_ally({ name, count: circleCount, goal: circleGoal });
-      case 'pool':
-        return m.status_changed_pool({ name });
-      default:
-        return m.status_changed_archived({ name });
-    }
-  }
-
   /** The summary of what the change does (spec UX §1, §6.11). */
-  const recap: string[] = [];
-  if (target === 'prospecting') {
-    recap.push(
-      entryGoal === null
-        ? m.change_status_entry_recap_no_goal({ count: entryNumber })
-        : m.change_status_entry_recap({ count: entryNumber, goal: entryGoal }),
-    );
-  }
-  if (target === 'ally') {
-    const nextCheckIn = formatLocalDay(addDays(today, rhythm), locale);
-    recap.push(
-      circleGoal === null
-        ? m.change_status_circle_recap_no_goal({
-            count: circleCount,
-            date: nextCheckIn,
-            days: rhythm,
-          })
-        : m.change_status_circle_recap({
-            count: circleCount,
-            goal: circleGoal,
-            date: nextCheckIn,
-            days: rhythm,
-          }),
-    );
-  }
+  const recap = target === undefined ? [] : statusRecap(target, summary, locale);
   if (target === 'ally' && contact.status === 'prospecting' && lastStage) {
     recap.push(m.change_status_keeps_stage({ stage: lastStage.name }));
   }
@@ -255,38 +198,13 @@ export function ChangeStatusPanel({
               </SegmentedControl>
             )}
             {target === 'prospecting' && (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={stageFieldId}>{m.contact_stage()}</Label>
-                <select
-                  id={stageFieldId}
-                  // oxlint-disable-next-line jsx-a11y/no-autofocus -- the panel was just opened to enter the Funnel: its first field takes the focus, which closing gives back.
-                  autoFocus={opened !== 'choose'}
-                  value={stageId ?? ''}
-                  onChange={(event) =>
-                    setDraft({ ...draft, stageId: event.target.value || undefined })
-                  }
-                  aria-invalid={wasSent && isStageMissing}
-                  aria-describedby={wasSent && isStageMissing ? stageErrorId : undefined}
-                  className={cn(
-                    'h-8 w-full rounded-control border border-input bg-background px-2 text-base focus-ring max-md:h-11 md:text-sm',
-                    wasSent && isStageMissing && invalidInputClass,
-                  )}
-                >
-                  {stageId === undefined && (
-                    <option value="">{m.change_status_choose_stage()}</option>
-                  )}
-                  {funnel.map((stage) => (
-                    <option key={stage.id} value={stage.id}>
-                      {stage.name}
-                    </option>
-                  ))}
-                </select>
-                {wasSent && isStageMissing && (
-                  <div id={stageErrorId}>
-                    <ErrorMessage>{m.change_status_stage_required()}</ErrorMessage>
-                  </div>
-                )}
-              </div>
+              <StageField
+                summary={summary}
+                stageId={stageId}
+                onChange={(chosen) => setDraft({ ...draft, stageId: chosen })}
+                isMissing={wasSent && isStageMissing}
+                takesFocus={opened !== 'choose'}
+              />
             )}
             {target !== undefined && (
               <TextField
@@ -333,4 +251,134 @@ export function ChangeStatusPanel({
       </div>
     </GesturePanel>
   );
+}
+
+/** The Stage a Contact enters by default: the last one it reached, unless it is archived or there is none. */
+export function enteredStageOf(contact: SummaryContact, summary: Summary) {
+  const last = summary.stages.find(({ id }) => id === contact.stageId);
+  return last && !last.archived ? last.id : undefined;
+}
+
+/** The Stage chosen, while the Funnel still has it: archived meanwhile, it is to be chosen again. */
+export const stageInFunnel = (summary: Summary, stageId: string | undefined) =>
+  summary.stages.some(({ id, archived }) => id === stageId && !archived) ? stageId : undefined;
+
+/** The Stage a Contact enters the Funnel at, among the ones not archived; required when none is chosen. */
+export function StageField({
+  summary,
+  stageId,
+  onChange,
+  isMissing,
+  takesFocus = false,
+}: {
+  summary: Summary;
+  stageId: string | undefined;
+  onChange: (stageId: string | undefined) => void;
+  isMissing: boolean;
+  takesFocus?: boolean;
+}) {
+  const fieldId = useId();
+  const errorId = useId();
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={fieldId}>{m.contact_stage()}</Label>
+      <select
+        id={fieldId}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- the panel was just opened to enter the Funnel: its first field takes the focus, which closing gives back.
+        autoFocus={takesFocus}
+        value={stageId ?? ''}
+        onChange={(event) => onChange(event.target.value || undefined)}
+        aria-invalid={isMissing}
+        aria-describedby={isMissing ? errorId : undefined}
+        className={cn(
+          'h-8 w-full rounded-control border border-input bg-background px-2 text-base focus-ring max-md:h-11 md:text-sm',
+          isMissing && invalidInputClass,
+        )}
+      >
+        {stageId === undefined && <option value="">{m.change_status_choose_stage()}</option>}
+        {summary.stages
+          .filter((stage) => !stage.archived)
+          .map((stage) => (
+            <option key={stage.id} value={stage.id}>
+              {stage.name}
+            </option>
+          ))}
+      </select>
+      {isMissing && (
+        <div id={errorId}>
+          <ErrorMessage>{m.change_status_stage_required()}</ErrorMessage>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * What entering the Funnel or the Circle counts (spec UX §6.11): the Funnel entry of this week against
+ * its goal, the Circle against its size goal and the next check-in, a Rhythm after the last Interaction
+ * done (today unless said otherwise). Nothing for the other Statuses.
+ */
+export function statusRecap(
+  to: ContactStatus,
+  summary: Summary,
+  locale: Locale,
+  lastDoneOn?: string,
+): string[] {
+  const today = todayOf(summary);
+  // The Entry goal of this week, whatever the User chose for the next ones; either may be off.
+  const settings = settingsOf(summary);
+  if (to === 'prospecting') {
+    const count = funnelEntriesInWeek(summary.contacts, today) + 1;
+    const goal = settings.entryGoal.inEffect;
+    return [
+      goal === null
+        ? m.change_status_entry_recap_no_goal({ count })
+        : m.change_status_entry_recap({ count, goal }),
+    ];
+  }
+  if (to !== 'ally') return [];
+  const count = circleCountAfter(summary);
+  const goal = settings.circleSizeGoal;
+  const days = settings.checkInRhythmDays;
+  const date = formatLocalDay(addDays(lastDoneOn ?? today, days), locale);
+  return [
+    goal === null
+      ? m.change_status_circle_recap_no_goal({ count, date, days })
+      : m.change_status_circle_recap({ count, goal, date, days }),
+  ];
+}
+
+/** The Allies once one more joins the Circle. */
+const circleCountAfter = (summary: Summary) =>
+  summary.contacts.filter(({ status }) => status === 'ally').length + 1;
+
+/** What the notification of a change of Status says (spec UX §10), with the counts the summary showed before it. */
+export function statusChangedMessage(
+  changed: SummaryContact,
+  to: ContactStatus,
+  summary: Summary,
+): string {
+  const { name } = changed;
+  const settings = settingsOf(summary);
+  switch (to) {
+    case 'prospecting': {
+      const stage = summary.stages.find(({ id }) => id === changed.stageId)?.name ?? '';
+      const count = funnelEntriesInWeek(summary.contacts, todayOf(summary)) + 1;
+      const goal = settings.entryGoal.inEffect;
+      return goal === null
+        ? m.status_changed_prospecting_no_goal({ name, stage, count })
+        : m.status_changed_prospecting({ name, stage, count, goal });
+    }
+    case 'ally': {
+      const count = circleCountAfter(summary);
+      const goal = settings.circleSizeGoal;
+      return goal === null
+        ? m.status_changed_ally_no_goal({ name, count })
+        : m.status_changed_ally({ name, count, goal });
+    }
+    case 'pool':
+      return m.status_changed_pool({ name });
+    default:
+      return m.status_changed_archived({ name });
+  }
 }

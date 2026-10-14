@@ -6,8 +6,11 @@ import {
   CONTACT_NAME_MAX_LENGTH,
   CONTACT_NOTE_MAX_LENGTH,
   CONTACT_PHONE_MAX_LENGTH,
+  CHANNELS,
   CONTACT_STATUSES,
   FOLLOW_UP_NOTE_MAX_LENGTH,
+  INTERACTION_NOTE_MAX_LENGTH,
+  NOTED_INTERACTION_KINDS,
   ORGANIZATION_NAME_MAX_LENGTH,
   ORGANIZATION_TYPES,
   STATUS_REASON_MAX_LENGTH,
@@ -139,6 +142,34 @@ const scheduleFollowUpRequest = z.object({ dueOn: z.iso.date(), note: followUpNo
 /** Follow up… (spec UX §6.3): the local day it was done on, today or earlier (ST-36), and its note. */
 const followUpRequest = z.object({ occurredOn: z.iso.date(), note: followUpNote });
 
+/** The note of an Interaction the User writes down: blank, there is none. */
+const interactionNote = optionalText(INTERACTION_NOTE_MAX_LENGTH);
+
+/** Note an Interaction (spec UX §6.4): its kind, the local day it happened, today or earlier (ST-36), its note. */
+const noteInteractionRequest = z.object({
+  kind: z.enum(NOTED_INTERACTION_KINDS),
+  occurredOn: z.iso.date(),
+  note: interactionNote,
+});
+
+/**
+ * Replied… (spec UX §6.2): the local day of the reply, today or earlier, its Channel and note, never a
+ * nature; then the scheduled Follow-up canceled if asked, and, spontaneous from the Pool or Archived,
+ * the Contact brought in (at a Stage, as a change of Status takes it) or added to the Circle.
+ */
+const recordReplyRequest = z
+  .object({
+    occurredOn: z.iso.date(),
+    channel: z.enum(CHANNELS),
+    note: interactionNote,
+    cancelFollowUp: z.boolean().optional(),
+    status: z.enum(['prospecting', 'ally']).optional(),
+    stageId: z.uuid().optional(),
+  })
+  .refine(({ status, stageId }) => stageId === undefined || status === 'prospecting', {
+    path: ['stageId'],
+  });
+
 /** Only a Contact Prospecting and an Ally have a Follow-up (CONTEXT.md, Follow-up). */
 const hasFollowUps = (status: (typeof CONTACT_STATUSES)[number]) =>
   status === 'prospecting' || status === 'ally';
@@ -161,7 +192,9 @@ class Refusal extends Error {
           | 'no_follow_up_in_status'
           | 'no_follow_up'
           | 'past_day'
-          | 'future_day';
+          | 'future_day'
+          | 'check_in_instead'
+          | 'no_status_choice';
       }
     | { error: 'linkedin_url_taken'; contactId: string };
 
@@ -248,13 +281,28 @@ const statusChanged = z.object({
  * a Stage archived since: only a Contact of another Status may keep one.
  */
 const restoreStatus: Inverse = async (tx, { userId, contactId, payload }) => {
-  const { interactionId, before, canceledFollowUpId } = statusChanged.parse(payload);
-  if (
-    before.status === 'prospecting' &&
-    !(await stageOrder(tx, userId)).some(({ id }) => id === before.stageId)
-  ) {
-    return 'superseded';
-  }
+  const changed = statusChanged.parse(payload);
+  if (!(await canRestoreStatus(tx, userId, changed))) return 'superseded';
+  await takeBackStatusChange(tx, userId, contactId, changed);
+  return touchedContact(contactId);
+};
+
+/** Whether a change of Status can be taken back: never to Prospecting at a Stage archived since. */
+const canRestoreStatus = async (
+  tx: Transaction,
+  userId: string,
+  { before }: z.infer<typeof statusChanged>,
+) =>
+  before.status !== 'prospecting' ||
+  (await stageOrder(tx, userId)).some(({ id }) => id === before.stageId);
+
+/** Takes a change of Status back, with the Follow-up it canceled. */
+async function takeBackStatusChange(
+  tx: Transaction,
+  userId: string,
+  contactId: string,
+  { interactionId, before, canceledFollowUpId }: z.infer<typeof statusChanged>,
+) {
   await tx
     .delete(statusChange)
     .where(and(eq(statusChange.userId, userId), eq(statusChange.interactionId, interactionId)));
@@ -268,8 +316,7 @@ const restoreStatus: Inverse = async (tx, { userId, contactId, payload }) => {
   if (canceledFollowUpId !== undefined) {
     await setFollowUpStatus(tx, userId, canceledFollowUpId, 'scheduled');
   }
-  return touchedContact(contactId);
-};
+}
 
 /** The summary row of one Contact changed. */
 const touchedContact = (contactId: string) => ({
@@ -340,9 +387,7 @@ const restoreFollowedUp: Inverse = async (tx, { userId, contactId, payload }) =>
     .update(followUp)
     .set({ status: 'scheduled', interactionId: null })
     .where(and(eq(followUp.userId, userId), eq(followUp.id, followUpId)));
-  await tx
-    .delete(interaction)
-    .where(and(eq(interaction.userId, userId), eq(interaction.id, interactionId)));
+  await removeInteraction(tx, userId, interactionId);
   return touchedContact(contactId);
 };
 
@@ -350,23 +395,138 @@ const restoreFollowedUp: Inverse = async (tx, { userId, contactId, payload }) =>
 const daysBetween = (from: string, to: string) =>
   Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
 
+/** Where a Contact is: its Status, and its Stage (or the last one it reached). */
+type ContactPlace = { status: (typeof CONTACT_STATUSES)[number]; stageId: string | null };
+
+/**
+ * Changes the Status of a locked Contact (spec UX §6.11), dated now and never earlier (ST-39): what
+ * the inverse needs to take it back.
+ */
+async function changeStatus(
+  tx: Transaction,
+  userId: string,
+  contactId: string,
+  before: ContactPlace,
+  { status, stageId, reason }: z.infer<typeof changeStatusRequest>,
+  now: Date,
+): Promise<z.infer<typeof statusChanged>> {
+  if (before.status === status) throw new Refusal(409, { error: 'same_status' });
+  // Out of Prospecting, the Contact keeps the last Stage it reached: where it left the Funnel.
+  let stageAfter = before.stageId;
+  if (status === 'prospecting') {
+    // The last Stage reached unless one is chosen; never an archived one.
+    const wanted = stageId ?? before.stageId;
+    const entered = (await stageOrder(tx, userId)).find((stage) => stage.id === wanted);
+    if (!entered) {
+      throw new Refusal(400, {
+        error: stageId === undefined ? 'stage_required' : 'unknown_stage',
+      });
+    }
+    stageAfter = entered.id;
+  }
+  await tx
+    .update(contact)
+    .set({ status, stageId: stageAfter })
+    .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+  // Leaving Prospecting cancels the scheduled Follow-up, as going to the Pool or Archived
+  // does; an Ally entering the Funnel keeps its own (CONTEXT.md, Follow-up).
+  const canceled =
+    status === 'prospecting' ? undefined : await scheduledFollowUp(tx, userId, contactId);
+  if (canceled) await setFollowUpStatus(tx, userId, canceled.id, 'canceled');
+  // An Interaction neither outbound nor inbound; to Prospecting, a Funnel entry dated today.
+  const [recorded] = await tx
+    .insert(interaction)
+    .values({
+      userId,
+      contactId,
+      kind: 'status_changed',
+      direction: 'none',
+      occurredAt: now,
+      localDate: await localDateOf(tx, userId, now),
+      recordedAt: now,
+    })
+    .returning({ id: interaction.id });
+  if (!recorded) throw new Error('An Interaction was not recorded');
+  await tx.insert(statusChange).values({
+    userId,
+    contactId,
+    interactionId: recorded.id,
+    fromStatus: before.status,
+    toStatus: status,
+    stageId: stageAfter,
+    reason,
+  });
+  return { interactionId: recorded.id, before, canceledFollowUpId: canceled?.id };
+}
+
+/**
+ * When an Interaction the User dated happened (ST-36): its local day is the one entered, today or
+ * earlier; its instant, which only orders the thread, as many days before now.
+ */
+async function dayEntered(tx: Transaction, userId: string, occurredOn: string, now: Date) {
+  const today = await localDateOf(tx, userId, now);
+  if (occurredOn > today) throw new Refusal(400, { error: 'future_day' });
+  return {
+    occurredAt: new Date(now.getTime() - daysBetween(occurredOn, today) * 86_400_000),
+    localDate: occurredOn,
+    recordedAt: now,
+  };
+}
+
+/** Takes back a gesture that recorded one Interaction alone. */
+const removeInteraction = (tx: Transaction, userId: string, interactionId: string) =>
+  tx
+    .delete(interaction)
+    .where(and(eq(interaction.userId, userId), eq(interaction.id, interactionId)));
+
+/** What the inverse of “Note an Interaction” needs: the Interaction it recorded. */
+const interactionNoted = z.object({ interactionId: z.uuid() });
+
+const removeNotedInteraction: Inverse = async (tx, { userId, contactId, payload }) => {
+  await removeInteraction(tx, userId, interactionNoted.parse(payload).interactionId);
+  return touchedContact(contactId);
+};
+
+/** What the inverse of “Replied…” needs: the reply, the Follow-up it canceled, the change of Status it made. */
+const replyRecorded = z.object({
+  interactionId: z.uuid(),
+  canceledFollowUpId: z.uuid().optional(),
+  statusChanged: statusChanged.optional(),
+});
+
+/** Takes “Replied…” back: the reply leaves no trace, the Follow-up comes back, the Status too. */
+const removeReply: Inverse = async (tx, { userId, contactId, payload }) => {
+  const recorded = replyRecorded.parse(payload);
+  if (recorded.statusChanged && !(await canRestoreStatus(tx, userId, recorded.statusChanged))) {
+    return 'superseded';
+  }
+  if (recorded.statusChanged) {
+    await takeBackStatusChange(tx, userId, contactId, recorded.statusChanged);
+  }
+  await removeInteraction(tx, userId, recorded.interactionId);
+  if (recorded.canceledFollowUpId !== undefined) {
+    await setFollowUpStatus(tx, userId, recorded.canceledFollowUpId, 'scheduled');
+  }
+  return touchedContact(contactId);
+};
+
 /**
  * A gesture on one Contact, in its own transaction, the Contact locked first: what `act` answers, or
- * the refusal it threw. `act` gets the Status of the Contact; an unknown Contact is refused.
+ * the refusal it threw. `act` gets the Status and the Stage of the Contact; an unknown Contact is refused.
  */
 async function onContact<Answer>(
   userId: string,
   contactId: string,
-  act: (tx: Transaction, status: (typeof CONTACT_STATUSES)[number]) => Promise<Answer>,
+  act: (tx: Transaction, before: ContactPlace) => Promise<Answer>,
 ): Promise<Answer | Refusal> {
   return withUser(userId, async (tx) => {
     await lockContact(tx, contactId);
     const [found] = await tx
-      .select({ status: contact.status })
+      .select({ status: contact.status, stageId: contact.stageId })
       .from(contact)
       .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
     if (!found) throw new Refusal(404, { error: 'not_found' });
-    return act(tx, found.status);
+    return act(tx, found);
   }).catch((error: unknown) => {
     if (error instanceof Refusal) return error;
     throw error;
@@ -640,82 +800,17 @@ export function createProspecting<Changes>({
       // Another User's Contact, an unknown one and an id that is none answer alike.
       if (!id.success) return c.json({ error: 'not_found' as const }, 404);
       const contactId = id.data;
-      const { status, stageId, reason } = c.req.valid('json');
+      const wanted = c.req.valid('json');
       const now = clock.now();
-      const answer = await withUser(userId, async (tx) => {
-        await lockContact(tx, contactId);
-        const [before] = await tx
-          .select({ status: contact.status, stageId: contact.stageId })
-          .from(contact)
-          .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
-        if (!before) throw new Refusal(404, { error: 'not_found' });
-        if (before.status === status) throw new Refusal(409, { error: 'same_status' });
-        // Out of Prospecting, the Contact keeps the last Stage it reached: where it left the Funnel.
-        let stageAfter = before.stageId;
-        if (status === 'prospecting') {
-          // The last Stage reached unless one is chosen; never an archived one.
-          const wanted = stageId ?? before.stageId;
-          const entered = (await stageOrder(tx, userId)).find((stage) => stage.id === wanted);
-          if (!entered) {
-            throw new Refusal(400, {
-              error: stageId === undefined ? 'stage_required' : 'unknown_stage',
-            });
-          }
-          stageAfter = entered.id;
-        }
-        await tx
-          .update(contact)
-          .set({ status, stageId: stageAfter })
-          .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
-        // Leaving Prospecting cancels the scheduled Follow-up, as going to the Pool or Archived
-        // does; an Ally entering the Funnel keeps its own (CONTEXT.md, Follow-up).
-        const canceled =
-          status === 'prospecting' ? undefined : await scheduledFollowUp(tx, userId, contactId);
-        if (canceled) await setFollowUpStatus(tx, userId, canceled.id, 'canceled');
-        // An Interaction neither outbound nor inbound; to Prospecting, a Funnel entry dated today.
-        const [recorded] = await tx
-          .insert(interaction)
-          .values({
-            userId,
-            contactId,
-            kind: 'status_changed',
-            direction: 'none',
-            occurredAt: now,
-            localDate: await localDateOf(tx, userId, now),
-            recordedAt: now,
-          })
-          .returning({ id: interaction.id });
-        if (!recorded) throw new Error('An Interaction was not recorded');
-        await tx.insert(statusChange).values({
-          userId,
-          contactId,
-          interactionId: recorded.id,
-          fromStatus: before.status,
-          toStatus: status,
-          stageId: stageAfter,
-          reason,
-        });
+      const answer = await onContact(userId, contactId, async (tx, before) => {
         const undoToken = await recordGesture(tx, {
           userId,
           kind: 'status_changed',
           contactId,
-          payload: {
-            interactionId: recorded.id,
-            before,
-            canceledFollowUpId: canceled?.id,
-          } satisfies z.infer<typeof statusChanged>,
+          payload: await changeStatus(tx, userId, contactId, before, wanted, now),
           now,
         });
-        const changes = await changesOf(tx, userId, {
-          contactIds: [contactId],
-          removedContactIds: [],
-          organizationIds: [],
-          removedOrganizationIds: [],
-        });
-        return { changes, undoToken };
-      }).catch((error: unknown) => {
-        if (error instanceof Refusal) return error;
-        throw error;
+        return { changes: await changesOf(tx, userId, touchedContact(contactId)), undoToken };
       });
       if (answer instanceof Refusal) return c.json(answer.body, answer.status);
       return c.json(answer, 200);
@@ -732,7 +827,7 @@ export function createProspecting<Changes>({
         const contactId = id.data;
         const { dueOn, note = null } = c.req.valid('json');
         const now = clock.now();
-        const answer = await onContact(userId, contactId, async (tx, status) => {
+        const answer = await onContact(userId, contactId, async (tx, { status }) => {
           if (!hasFollowUps(status)) throw new Refusal(409, { error: 'no_follow_up_in_status' });
           if (dueOn < (await localDateOf(tx, userId, now))) {
             throw new Refusal(400, { error: 'past_day' });
@@ -801,25 +896,12 @@ export function createProspecting<Changes>({
       const { occurredOn, note = null } = c.req.valid('json');
       const now = clock.now();
       const answer = await onContact(userId, contactId, async (tx) => {
-        const today = await localDateOf(tx, userId, now);
-        if (occurredOn > today) throw new Refusal(400, { error: 'future_day' });
+        const day = await dayEntered(tx, userId, occurredOn, now);
         const scheduled = await scheduledFollowUp(tx, userId, contactId);
         if (!scheduled) throw new Refusal(409, { error: 'no_follow_up' });
-        // Its local day is the one entered; its instant, which only orders the thread, as many
-        // days before now.
-        const occurredAt = new Date(now.getTime() - daysBetween(occurredOn, today) * 86_400_000);
         const [recorded] = await tx
           .insert(interaction)
-          .values({
-            userId,
-            contactId,
-            kind: 'follow_up',
-            direction: 'outbound',
-            occurredAt,
-            localDate: occurredOn,
-            recordedAt: now,
-            note,
-          })
+          .values({ userId, contactId, kind: 'follow_up', direction: 'outbound', ...day, note })
           .returning({ id: interaction.id });
         if (!recorded) throw new Error('An Interaction was not recorded');
         await tx
@@ -840,6 +922,92 @@ export function createProspecting<Changes>({
       });
       if (answer instanceof Refusal) return c.json(answer.body, answer.status);
       return c.json(answer, 200);
+    })
+    // Note an Interaction (spec UX §6.4): outbound, off any Positioning and off the Activity. With an
+    // Ally, a free outbound Interaction is a Check-in, which has its own gesture (§6.14).
+    .post(
+      '/contacts/:id/note-interaction',
+      requireUser,
+      jsonBody(noteInteractionRequest),
+      async (c) => {
+        const { userId } = c.var;
+        const id = z.uuid().safeParse(c.req.param('id'));
+        if (!id.success) return c.json({ error: 'not_found' as const }, 404);
+        const contactId = id.data;
+        const { kind, occurredOn, note = null } = c.req.valid('json');
+        const now = clock.now();
+        const answer = await onContact(userId, contactId, async (tx, { status }) => {
+          if (status === 'ally') throw new Refusal(409, { error: 'check_in_instead' });
+          const day = await dayEntered(tx, userId, occurredOn, now);
+          const [recorded] = await tx
+            .insert(interaction)
+            .values({ userId, contactId, kind, direction: 'outbound', ...day, note })
+            .returning({ id: interaction.id });
+          if (!recorded) throw new Error('An Interaction was not recorded');
+          const undoToken = await recordGesture(tx, {
+            userId,
+            kind: 'interaction_noted',
+            contactId,
+            payload: { interactionId: recorded.id } satisfies z.infer<typeof interactionNoted>,
+            now,
+          });
+          return { changes: await changesOf(tx, userId, touchedContact(contactId)), undoToken };
+        });
+        if (answer instanceof Refusal) return c.json(answer.body, answer.status);
+        return c.json(answer, 200);
+      },
+    )
+    // Replied… (spec UX §6.2): an inbound Interaction, with no nature (ADR 0005). Spontaneous, from the
+    // Pool or Archived, it may bring the Contact in or add it to the Circle, dated now (ST-39).
+    .post('/contacts/:id/record-reply', requireUser, jsonBody(recordReplyRequest), async (c) => {
+      const { userId } = c.var;
+      const id = z.uuid().safeParse(c.req.param('id'));
+      if (!id.success) return c.json({ error: 'not_found' as const }, 404);
+      const contactId = id.data;
+      const {
+        occurredOn,
+        channel,
+        note = null,
+        cancelFollowUp = false,
+        status,
+        stageId,
+      } = c.req.valid('json');
+      const now = clock.now();
+      const answer = await onContact(userId, contactId, async (tx, before) => {
+        // Only out of the Funnel and of the Circle is there a choice of Status (spec UX §6.2).
+        if (status !== undefined && before.status !== 'pool' && before.status !== 'archived') {
+          throw new Refusal(409, { error: 'no_status_choice' });
+        }
+        const day = await dayEntered(tx, userId, occurredOn, now);
+        const scheduled = cancelFollowUp
+          ? await scheduledFollowUp(tx, userId, contactId)
+          : undefined;
+        if (cancelFollowUp && !scheduled) throw new Refusal(409, { error: 'no_follow_up' });
+        if (scheduled) await setFollowUpStatus(tx, userId, scheduled.id, 'canceled');
+        const [recorded] = await tx
+          .insert(interaction)
+          .values({ userId, contactId, kind: 'reply', direction: 'inbound', ...day, note, channel })
+          .returning({ id: interaction.id });
+        if (!recorded) throw new Error('An Interaction was not recorded');
+        const changed =
+          status === undefined
+            ? undefined
+            : await changeStatus(tx, userId, contactId, before, { status, stageId }, now);
+        const undoToken = await recordGesture(tx, {
+          userId,
+          kind: 'reply_recorded',
+          contactId,
+          payload: {
+            interactionId: recorded.id,
+            canceledFollowUpId: scheduled?.id,
+            statusChanged: changed,
+          } satisfies z.infer<typeof replyRecorded>,
+          now,
+        });
+        return { changes: await changesOf(tx, userId, touchedContact(contactId)), undoToken };
+      });
+      if (answer instanceof Refusal) return c.json(answer.body, answer.status);
+      return c.json(answer, 200);
     });
 
   const inverses = {
@@ -849,6 +1017,8 @@ export function createProspecting<Changes>({
     follow_up_scheduled: restoreScheduledFollowUp,
     follow_up_canceled: restoreCanceledFollowUp,
     followed_up: restoreFollowedUp,
+    interaction_noted: removeNotedInteraction,
+    reply_recorded: removeReply,
   } satisfies Inverses;
   return { routes, inverses };
 }

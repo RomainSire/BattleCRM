@@ -32,6 +32,12 @@ import {
   useFollowUpGesture,
 } from './follow-up.tsx';
 import { formatLocalDay } from './format.ts';
+import {
+  canNoteInteraction,
+  CHANNEL_LABEL,
+  InteractionPanels,
+  useInteractionGesture,
+} from './interactions.tsx';
 import { targetText } from './organization-field.tsx';
 import {
   otherStatuses,
@@ -40,6 +46,7 @@ import {
   STATUS_LABEL,
   STATUS_VERB,
   type FollowUpGesture,
+  type InteractionGesture,
   type StatusGesture,
 } from './status.ts';
 
@@ -65,9 +72,25 @@ function stageLabel(contact: SummaryContact, summary: Summary) {
   return stage.aim === null ? stage.name : `${stage.name} · ${stage.aim}`;
 }
 
-/** What an entry of the thread says: the Follow-ups done, with their note; the additions and the changes of Status, discreetly. */
-function threadEntryLabel({ kind, note, statusChange }: ThreadEntry, summary: Summary) {
-  if (kind === 'follow_up') return [m.thread_follow_up(), note].filter(Boolean).join(' · ');
+/** What an Interaction done says, before its note. */
+const DONE_LABEL: Partial<Record<ThreadEntry['kind'], () => string>> = {
+  follow_up: m.thread_follow_up,
+  call: m.thread_call,
+  meeting: m.thread_meeting,
+  message: m.thread_message,
+  other: m.thread_other,
+};
+
+/**
+ * What an entry of the thread says: the Interactions done, with their note, a reply with its Channel;
+ * the additions and the changes of Status, discreetly.
+ */
+function threadEntryLabel({ kind, note, channel, statusChange }: ThreadEntry, summary: Summary) {
+  const done =
+    kind === 'reply' && channel !== null
+      ? m.thread_reply({ channel: CHANNEL_LABEL[channel]() })
+      : DONE_LABEL[kind]?.();
+  if (done) return [done, note].filter(Boolean).join(' · ');
   if (!statusChange) return undefined;
   const { fromStatus, toStatus, stageId, reason } = statusChange;
   let label;
@@ -340,10 +363,13 @@ function nextActionText(contact: SummaryContact, summary: Summary, locale: Local
 const isStatusGesture = (key: unknown): key is StatusGesture =>
   STATUS_GESTURES.some((gesture) => gesture === key);
 
-/** The keys of the menu `⋯` for the Follow-up, apart from the Statuses. */
+/** The keys of the menu `⋯` for the Follow-up and the Interactions, apart from the Statuses. */
 const FOLLOW_UP_MENU = { 'follow-up:do': 'do', 'follow-up:schedule': 'schedule' } as const;
 const followUpOfKey = (key: unknown): FollowUpGesture | undefined =>
   Object.entries(FOLLOW_UP_MENU).find(([candidate]) => candidate === key)?.[1];
+const INTERACTION_MENU = { 'interaction:note': 'note', 'interaction:reply': 'reply' } as const;
+const interactionOfKey = (key: unknown): InteractionGesture | undefined =>
+  Object.entries(INTERACTION_MENU).find(([candidate]) => candidate === key)?.[1];
 
 /**
  * The block Next action (spec UX §5.3): what the Status of the Contact calls for, its full button, and
@@ -357,6 +383,7 @@ function NextAction({
   showsVerbs,
   onGesture,
   onFollowUp,
+  onInteraction,
 }: {
   contact: SummaryContact;
   summary: Summary;
@@ -364,6 +391,7 @@ function NextAction({
   showsVerbs: boolean;
   onGesture: (gesture: StatusGesture) => void;
   onFollowUp: (gesture: FollowUpGesture) => void;
+  onInteraction: (gesture: InteractionGesture) => void;
 }) {
   const locale = useLocale();
   const headingId = useId();
@@ -397,6 +425,26 @@ function NextAction({
             {m.verb_follow_up()}
           </Button>
         )}
+        {canNoteInteraction(contact) && (
+          <Button
+            variant="outline"
+            className="max-md:min-h-11"
+            size={level === 3 ? 'sm' : 'default'}
+            onPress={() => onInteraction('note')}
+          >
+            {m.verb_note_interaction()}
+          </Button>
+        )}
+        {showsVerbs && (
+          <Button
+            variant="outline"
+            className="max-md:hidden"
+            size={level === 3 ? 'sm' : 'default'}
+            onPress={() => onInteraction('reply')}
+          >
+            {m.verb_reply()}
+          </Button>
+        )}
         {showsVerbs &&
           others.map((status) => (
             <Button
@@ -414,8 +462,11 @@ function NextAction({
             if (isStatusGesture(key)) onGesture(key);
             const followUp = followUpOfKey(key);
             if (followUp) onFollowUp(followUp);
+            const interaction = interactionOfKey(key);
+            if (interaction) onInteraction(interaction);
           }}
         >
+          <MenuItem id="interaction:reply">{m.verb_reply()}</MenuItem>
           {contact.followUp && !isDue && (
             <MenuItem id="follow-up:do">{m.verb_follow_up()}</MenuItem>
           )}
@@ -438,12 +489,14 @@ function NextAction({
 
 /**
  * The keys of the record that has the focus (spec UX §3.3): anywhere on its page, within its panel
- * only. `S` opens “Change status…”, `P` Schedule or Edit the follow-up, `F` Follow up…
+ * only. `S` opens “Change status…”, `P` Schedule or Edit the follow-up, `F` Follow up…, `I` Note an
+ * Interaction.
  */
 function useRecordKeys(
   contact: SummaryContact | undefined,
   status: ReturnType<typeof useStatusGesture>,
   followUp: ReturnType<typeof useFollowUpGesture>,
+  interaction: ReturnType<typeof useInteractionGesture>,
   scope?: RefObject<HTMLElement | null>,
 ) {
   const onKey = (open: () => void) => (event: KeyboardEvent) => {
@@ -460,6 +513,9 @@ function useRecordKeys(
     }),
     f: onKey(() => {
       if (contact?.followUp) followUp.open('do');
+    }),
+    i: onKey(() => {
+      if (contact && canNoteInteraction(contact)) interaction.open('note');
     }),
   });
 }
@@ -491,7 +547,8 @@ export function ContactPanel({
   const panelRef = useRef<HTMLElement>(null);
   const status = useStatusGesture();
   const followUp = useFollowUpGesture();
-  useRecordKeys(contact, status, followUp, panelRef);
+  const interaction = useInteractionGesture();
+  useRecordKeys(contact, status, followUp, interaction, panelRef);
   const close = (
     <Button variant="ghost" size="icon-sm" aria-label={m.close()} onPress={onClose}>
       <X />
@@ -540,6 +597,7 @@ export function ContactPanel({
           showsVerbs={contact.status === 'archived'}
           onGesture={status.open}
           onFollowUp={followUp.open}
+          onInteraction={interaction.open}
         />
         <Tabs>
           <TabList aria-label={contact.name} className="flex gap-1 border-b pb-2">
@@ -582,6 +640,12 @@ export function ContactPanel({
         gesture={followUp.gesture}
         onClose={followUp.close}
       />
+      <InteractionPanels
+        contact={contact}
+        summary={summary}
+        gesture={interaction.gesture}
+        interaction={interaction}
+      />
     </>
   );
 }
@@ -593,7 +657,8 @@ export function ContactPage({ contactId }: { contactId: string }) {
   const threadHeadingId = useId();
   const status = useStatusGesture();
   const followUp = useFollowUpGesture();
-  useRecordKeys(contact, status, followUp);
+  const interaction = useInteractionGesture();
+  useRecordKeys(contact, status, followUp, interaction);
   const backToContacts = (
     <Link to="/contacts" className="rounded-control underline-offset-4 focus-ring hover:underline">
       {m.contacts()}
@@ -639,6 +704,7 @@ export function ContactPage({ contactId }: { contactId: string }) {
             showsVerbs
             onGesture={status.open}
             onFollowUp={followUp.open}
+            onInteraction={interaction.open}
           />
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
             {/* Stacked on mobile, the Coordinates come first (spec UX §5.3). */}
@@ -673,6 +739,12 @@ export function ContactPage({ contactId }: { contactId: string }) {
             summary={summary}
             gesture={followUp.gesture}
             onClose={followUp.close}
+          />
+          <InteractionPanels
+            contact={contact}
+            summary={summary}
+            gesture={interaction.gesture}
+            interaction={interaction}
           />
         </>
       )}

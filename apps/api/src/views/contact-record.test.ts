@@ -1,3 +1,4 @@
+import { CHANNELS } from '@battlecrm/contract';
 import { expect, test } from 'vitest';
 import { z } from 'zod';
 
@@ -23,6 +24,8 @@ const contactRecord = z.strictObject({
       occurredAt: z.iso.datetime(),
       localDate: z.iso.date(),
       note: z.string().nullable(),
+      /** The Channel of a reply. */
+      channel: z.enum(CHANNELS).nullable(),
       statusChange: z
         .strictObject({
           fromStatus: z.string().nullable(),
@@ -57,6 +60,7 @@ test('the record of a Contact carries its note and its thread: the addition open
         occurredAt: contact.lastInteractionAt,
         localDate: contact.lastInteractionOn,
         note: null,
+        channel: null,
         statusChange: {
           fromStatus: null,
           toStatus: 'prospecting',

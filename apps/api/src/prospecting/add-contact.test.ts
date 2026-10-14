@@ -58,6 +58,8 @@ test('adding a Contact puts it in the Pool and answers with its row of the summa
         linkedinUrl: null,
         lastInteractionAt: '2026-01-05T09:00:00.000Z',
         lastInteractionOn: '2026-01-05',
+        // Adding it is no exchange with it.
+        lastDoneInteractionOn: null,
         funnelEntryDays: [],
         statusReason: null,
         followUp: null,
@@ -108,6 +110,7 @@ test('the addition is an Interaction neither outbound nor inbound, dated by the 
         localDate: '2026-01-06',
         recordedAt: now,
         note: null,
+        channel: null,
       },
     ],
     // Its first Status is written down as a change from none.

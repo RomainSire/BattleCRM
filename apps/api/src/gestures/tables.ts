@@ -24,6 +24,8 @@ export const GESTURE_KINDS = [
   'follow_up_scheduled',
   'follow_up_canceled',
   'followed_up',
+  'interaction_noted',
+  'reply_recorded',
 ] as const;
 
 /** What “Undo” needs to take a gesture back (ADR 0011). A row lives 15 minutes at most, or until it is undone. */

@@ -84,8 +84,8 @@ _EN_: Pass-through rate (avoid: conversion rate)
 _Avoid_: Taux de conversion
 
 **Interaction**:
-Un événement daté concernant un Contact, sortant (ce que l'Utilisateur a fait) ou entrant (ce que le Contact a fait). Elle est rattachée au Contact, pas à un Essai : les Interactions d'un Essai sont celles du Contact pendant sa durée. Chaque utilisation d'un Positionnement, l'ajout du Contact, chaque changement d'Étape et chaque changement d'État (dont l'Entrée dans le Funnel) est enregistré comme une Interaction, ce qui conserve l'historique de son parcours. L'ajout et les changements d'Étape ou d'État ne sont ni sortants ni entrants : ils ne touchent ni la Cadence de relance, ni le Délai de réponse, ni les Jours sans contact. Une Interaction entrante ne porte aucune nature (positive, négative) : seule l'issue de l'Essai qualifie une réponse. Sa date peut précéder sa saisie.
-_EN_: Interaction (avoid: activity, note, log)
+Un événement daté concernant un Contact, sortant (ce que l'Utilisateur a fait) ou entrant (ce que le Contact a fait). Elle est rattachée au Contact, pas à un Essai : les Interactions d'un Essai sont celles du Contact pendant sa durée. Chaque utilisation d'un Positionnement, l'ajout du Contact, chaque changement d'Étape et chaque changement d'État (dont l'Entrée dans le Funnel) est enregistré comme une Interaction, ce qui conserve l'historique de son parcours. L'ajout et les changements d'Étape ou d'État ne sont ni sortants ni entrants : ils ne touchent ni la Cadence de relance, ni le Délai de réponse, ni les Jours sans contact. Une Interaction entrante, la réponse du Contact, ne porte aucune nature (positive, négative) : seule l'issue de l'Essai qualifie une réponse. Une Interaction sortante ou entrante est dite faite. Sa date peut précéder sa saisie.
+_EN_: Interaction (avoid: activity, note, log) ; sortante *outbound*, entrante *inbound* ou *reply*, faite *done*
 _Avoid_: Activité, note, log
 
 **Canal**:

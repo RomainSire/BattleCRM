@@ -242,6 +242,22 @@ const CROSS_ACCESS: Record<
       body: { occurredOn: '2026-01-05' },
     };
   },
+  'POST /api/contacts/:id/note-interaction': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice, 'Jean Dupont', { status: 'prospecting' });
+    return {
+      id: contact.id,
+      state: () => getJson(harness, alice, '/api/summary'),
+      body: { kind: 'call', occurredOn: '2026-01-05' },
+    };
+  },
+  'POST /api/contacts/:id/record-reply': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice);
+    return {
+      id: contact.id,
+      state: () => getJson(harness, alice, '/api/summary'),
+      body: { occurredOn: '2026-01-05', channel: 'email', status: 'ally' },
+    };
+  },
   'GET /api/contacts/:id/record': async (harness, alice) => {
     const { contact } = await addContact(harness, alice);
     return { id: contact.id, state: () => getJson(harness, alice, '/api/summary') };
