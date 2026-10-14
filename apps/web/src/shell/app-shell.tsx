@@ -1,8 +1,9 @@
 import { m } from '@battlecrm/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { Outlet } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
+import { AddContactContext } from '../contacts/add-contact-context.ts';
 import { QuickAdd } from '../contacts/quick-add.tsx';
 import { useApi } from '../session.ts';
 import { isModalOpen, useShortcuts } from '../shortcuts.ts';
@@ -17,6 +18,7 @@ export function AppShell() {
   // Read here, once for every screen (ADR 0012).
   useQuery(summaryQuery(api));
   const [isAdding, setAdding] = useState(false);
+  const openQuickAdd = useCallback(() => setAdding(true), []);
   useShortcuts({
     n: (event) => {
       if (isModalOpen()) return;
@@ -26,7 +28,7 @@ export function AppShell() {
     },
   });
   return (
-    <>
+    <AddContactContext value={openQuickAdd}>
       {/* A plain in-page anchor, which also moves focus. */}
       <a
         href="#main"
@@ -36,7 +38,7 @@ export function AppShell() {
       </a>
       <div className="flex min-h-dvh flex-col md:flex-row">
         <MobileHeader />
-        <Sidebar onAdd={() => setAdding(true)} />
+        <Sidebar onAdd={openQuickAdd} />
         <main id="main" tabIndex={-1} className="min-w-0 flex-1 pb-20 outline-none md:pb-0">
           <Outlet />
         </main>
@@ -44,6 +46,6 @@ export function AppShell() {
       </div>
       <QuickAdd isOpen={isAdding} onOpenChange={setAdding} />
       <UndoToasts />
-    </>
+    </AddContactContext>
   );
 }

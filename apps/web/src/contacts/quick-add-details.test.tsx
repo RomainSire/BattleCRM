@@ -200,9 +200,7 @@ test('the same LinkedIn profile blocks the addition while it is typed, and offer
 
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
   expect(router.state.location.search).toEqual({ contact: JEAN.id });
-  await expect
-    .element(screen.getByRole('list', { name: 'Contacts' }).getByRole('listitem').first())
-    .toHaveAttribute('aria-current', 'true');
+  await expect.element(screen.getByRole('region', { name: 'Jean Dupont' })).toBeVisible();
 });
 
 test('an address that is no LinkedIn profile is refused on adding', async () => {

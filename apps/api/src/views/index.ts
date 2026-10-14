@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { z } from 'zod';
 
 import type { AppEnv } from '../app.ts';
 import type { RequireUser } from '../auth/index.ts';
@@ -7,7 +8,7 @@ import { withUser, type Transaction } from '../db/index.ts';
 import { FUNNEL_ORDER, stage } from '../funnel/index.ts';
 import type { Touched } from '../gestures/index.ts';
 import { organization } from '../organizations/index.ts';
-import { contact, interaction } from '../prospecting/index.ts';
+import { contact, interaction, statusChange } from '../prospecting/index.ts';
 
 /**
  * The Contacts of the working summary (ADR 0012), the latest Interaction first: all of them, or the
@@ -70,6 +71,46 @@ async function summaryOrganizations(tx: Transaction, userId: string, ids?: strin
     .orderBy(organization.normalizedName);
 }
 
+/**
+ * What the record of a Contact reads beyond the summary, on demand (spec stack §3): its note, and its
+ * thread from the latest Interaction to the earliest, each with the change of Status it recorded.
+ * `undefined` when the User has no such Contact.
+ */
+async function contactRecord(tx: Transaction, userId: string, contactId: string) {
+  const [found] = await tx
+    .select({ note: contact.note })
+    .from(contact)
+    .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+  if (!found) return undefined;
+  const thread = await tx
+    .select({
+      id: interaction.id,
+      kind: interaction.kind,
+      direction: interaction.direction,
+      occurredAt: interaction.occurredAt,
+      localDate: interaction.localDate,
+      fromStatus: statusChange.fromStatus,
+      toStatus: statusChange.toStatus,
+      stageId: statusChange.stageId,
+      reason: statusChange.reason,
+    })
+    .from(interaction)
+    .leftJoin(
+      statusChange,
+      and(eq(statusChange.userId, userId), eq(statusChange.interactionId, interaction.id)),
+    )
+    .where(and(eq(interaction.userId, userId), eq(interaction.contactId, contactId)))
+    .orderBy(desc(interaction.occurredAt), desc(interaction.id));
+  return {
+    note: found.note,
+    thread: thread.map(({ fromStatus, toStatus, stageId, reason, occurredAt, ...recorded }) => ({
+      ...recorded,
+      occurredAt: occurredAt.toISOString(),
+      statusChange: toStatus === null ? null : { fromStatus, toStatus, stageId, reason },
+    })),
+  };
+}
+
 /** What the answer of a gesture carries: the rows of the summary it changed, and the ones it removed. */
 export async function summaryChanges(tx: Transaction, userId: string, touched: Touched) {
   return {
@@ -92,6 +133,16 @@ export function createViews({ requireUser }: { requireUser: RequireUser }) {
         organizations: await summaryOrganizations(tx, userId),
       }));
       return c.json(summary, 200);
+    })
+    // The record of a Contact, beyond what the summary holds (spec UX §5.3).
+    .get('/contacts/:id/record', requireUser, async (c) => {
+      const { userId } = c.var;
+      const id = z.uuid().safeParse(c.req.param('id'));
+      // Another User's Contact, an unknown one and an id that is none answer alike.
+      const record =
+        id.success && (await withUser(userId, (tx) => contactRecord(tx, userId, id.data)));
+      if (!record) return c.json({ error: 'not_found' as const }, 404);
+      return c.json(record, 200);
     });
   return { routes };
 }

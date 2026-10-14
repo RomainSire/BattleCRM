@@ -212,5 +212,41 @@
   "contact_job_title": "Poste",
   "contact_email": "E-mail",
   "contact_phone": "Téléphone",
-  "contact_note": "Note"
+  "contact_note": "Note",
+  "contacts_search": "Rechercher un Contact",
+  "contacts_filter": "Filtre",
+  "contacts_filter_all": "Tous",
+  "contacts_filter_pool": "Vivier",
+  "contacts_filter_prospecting": "En prospection",
+  "contacts_filter_allies": "Alliés",
+  "contacts_filter_archived": "Archivés",
+  "contacts_archived_hidden": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} archivé",
+        "countPlural=*": "{count} archivés"
+      }
+    }
+  ],
+  "contacts_show_archived": "Afficher",
+  "contacts_no_match": "Aucun Contact ne correspond",
+  "no_organization": "Sans Organisation",
+  "no_next_action": "Sans prochaine action",
+  "open_as_page": "Ouvrir en page",
+  "breadcrumb": "Fil d'Ariane",
+  "contact_thread": "Fil",
+  "contact_details": "Détails",
+  "contact_coordinates": "Coordonnées",
+  "contact_target": "Cible",
+  "target_unknown": "Inconnue",
+  "contact_linkedin": "LinkedIn",
+  "contact_status_reason": "Motif",
+  "contact_unknown": "Ce Contact n'existe pas ou plus.",
+  "contact_thread_load_error": "Le fil n'a pas pu être chargé. Réessaie dans un instant.",
+  "thread_added_pool": "Ajouté au Vivier",
+  "thread_added_prospecting": "Ajouté En prospection · {stage}",
+  "thread_added_ally": "Ajouté au Cercle",
+  "thread_status_changed": "{from} → {to}"
 }

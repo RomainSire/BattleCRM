@@ -229,7 +229,7 @@ test('added Prospecting at a chosen Stage, the Contact enters the Funnel there',
   ]);
   await expect
     .element(
-      screen.getByRole('list', { name: 'Contacts' }).getByText('En prospection · Qualif ESN'),
+      screen.getByRole('list', { name: 'Contacts' }).getByText('Sans Organisation · Qualif ESN'),
     )
     .toBeVisible();
 });
@@ -288,7 +288,9 @@ test('added as an Ally, the Contact joins the Circle; the next opening is back o
   ]);
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
   await userEvent.keyboard('n');
-  await expect.element(screen.getByRole('radio', { name: 'Vivier' })).toBeChecked();
+  await expect
+    .element(screen.getByRole('dialog').getByRole('radio', { name: 'Vivier' }))
+    .toBeChecked();
 });
 
 test('“+ Add” in the navigation opens the same quick add, which a new opening finds empty', async () => {

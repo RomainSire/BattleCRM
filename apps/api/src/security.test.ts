@@ -174,7 +174,7 @@ const getJson = async (harness: Harness, user: User, path: string): Promise<unkn
 
 /**
  * For each route that names a row by its id: a row of Alice, and what Alice has, which a request of
- * Bob must leave as it is.
+ * Bob must neither change nor read.
  */
 const CROSS_ACCESS: Record<
   string,
@@ -183,6 +183,10 @@ const CROSS_ACCESS: Record<
   'POST /api/gestures/:id/undo': async (harness, alice) => {
     const { undoToken } = await addContact(harness, alice);
     return { id: undoToken, state: () => getJson(harness, alice, '/api/summary') };
+  },
+  'GET /api/contacts/:id/record': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice);
+    return { id: contact.id, state: () => getJson(harness, alice, '/api/summary') };
   },
   'POST /api/sessions/:id/revoke': async (harness, alice) => {
     const state = () => getJson(harness, alice, '/api/sessions');
@@ -209,9 +213,13 @@ test('the id of another User answers 404 and changes nothing, on every route tha
     const bob = await makeUser(harness);
     const { id, state } = await CROSS_ACCESS[route]!(harness, alice);
     const before = await state();
-    const [, path = ''] = route.split(' ');
+    const [method, path = ''] = route.split(' ');
+    const named = path.replace(/:\w+/, id);
 
-    const response = await postJson(harness.app, path.replace(/:\w+/, id), {}, bob.cookie);
+    const response =
+      method === 'GET'
+        ? await harness.app.request(named, { headers: { Cookie: bob.cookie } })
+        : await postJson(harness.app, named, {}, bob.cookie);
 
     expect(response.status, `on ${route}`).toBe(404);
     expect(await state(), `on ${route}`).toEqual(before);

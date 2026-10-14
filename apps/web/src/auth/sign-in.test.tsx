@@ -393,11 +393,17 @@ describe('signing out', () => {
           name: 'Jean Dupont',
           status: 'pool',
           stageId: null,
+          organizationId: null,
+          jobTitle: null,
+          email: null,
+          phone: null,
+          linkedinUrl: null,
           lastInteractionAt: '2026-01-06T09:00:00.000Z',
           lastInteractionOn: '2026-01-06',
         },
       ],
       stages: [],
+      organizations: [],
     });
     const menu = screen.getByRole('navigation', { name: 'Menu principal' });
     await expect.element(menu.getByText('jane@example.com')).toBeVisible();

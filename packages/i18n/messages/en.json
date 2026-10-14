@@ -212,5 +212,41 @@
   "contact_job_title": "Job title",
   "contact_email": "E-mail",
   "contact_phone": "Phone",
-  "contact_note": "Note"
+  "contact_note": "Note",
+  "contacts_search": "Search Contacts",
+  "contacts_filter": "Filter",
+  "contacts_filter_all": "All",
+  "contacts_filter_pool": "Pool",
+  "contacts_filter_prospecting": "Prospecting",
+  "contacts_filter_allies": "Allies",
+  "contacts_filter_archived": "Archived",
+  "contacts_archived_hidden": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} archived",
+        "countPlural=*": "{count} archived"
+      }
+    }
+  ],
+  "contacts_show_archived": "Show",
+  "contacts_no_match": "No Contact matches",
+  "no_organization": "No Organization",
+  "no_next_action": "No next action",
+  "open_as_page": "Open as page",
+  "breadcrumb": "Breadcrumb",
+  "contact_thread": "Thread",
+  "contact_details": "Details",
+  "contact_coordinates": "Contact details",
+  "contact_target": "Target",
+  "target_unknown": "Unknown",
+  "contact_linkedin": "LinkedIn",
+  "contact_status_reason": "Reason",
+  "contact_unknown": "This Contact does not exist, or no longer does.",
+  "contact_thread_load_error": "The thread could not be loaded. Try again in a moment.",
+  "thread_added_pool": "Added to the Pool",
+  "thread_added_prospecting": "Added Prospecting · {stage}",
+  "thread_added_ally": "Added to the Circle",
+  "thread_status_changed": "{from} → {to}"
 }

@@ -12,3 +12,4 @@ export {
   type ContactIdentity,
 } from './duplicates.ts';
 export { targetOf, type OrganizationType, type Target } from './target.ts';
+export { contactsMatching, type SearchableContact } from './search.ts';

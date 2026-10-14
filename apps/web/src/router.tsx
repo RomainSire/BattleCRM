@@ -20,6 +20,7 @@ import { SignInScreen } from './auth/sign-in-screen.tsx';
 import { SignUpScreen } from './auth/sign-up-screen.tsx';
 import { CancellingRecovery, RecoveryCancelledScreen } from './auth/two-factor-recovery.tsx';
 import { AuthError, InvalidLinkScreen, VerifyingEmail } from './auth/verify-email-screen.tsx';
+import { ContactPage } from './contacts/contact-record.tsx';
 import { ContactsScreen } from './contacts/contacts-screen.tsx';
 import { clearDeviceData } from './device-data.ts';
 import { MoreScreen } from './screens/more-screen.tsx';
@@ -207,9 +208,19 @@ const circleRoute = createRoute({
 const contactsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/contacts',
-  // The Contact whose record is open, as “Open their record” asks for it; anything else is dropped.
+  // The Contact whose record is open in the panel (ST-70); anything else is dropped.
   validateSearch: z.object({ contact: z.uuid().optional().catch(undefined) }),
   component: ContactsScreen,
+});
+
+// The record of a Contact as a page, with an address of its own (spec UX §5.3).
+const contactRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/contacts/$contactId',
+  component: function ContactRecordPage() {
+    const { contactId } = contactRoute.useParams();
+    return <ContactPage key={contactId} contactId={contactId} />;
+  },
 });
 
 const funnelRoute = createRoute({
@@ -273,6 +284,7 @@ const routeTree = rootRoute.addChildren([
     todayRoute,
     circleRoute,
     contactsRoute,
+    contactRoute,
     funnelRoute,
     battlesRoute,
     positioningsRoute,
