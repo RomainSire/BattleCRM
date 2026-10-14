@@ -7,8 +7,7 @@ import {
   addContact,
   gestureAnswer,
   summaryChanges,
-  summaryContact,
-  summaryStage,
+  summaryOf,
 } from '../../test/factories/contact.ts';
 import { archiveStage } from '../../test/factories/stage.ts';
 import { makeUser } from '../../test/factories/user.ts';
@@ -19,17 +18,6 @@ import { contact, interaction, statusChange } from './tables.ts';
 
 type Harness = ReturnType<typeof testApp>;
 type User = Awaited<ReturnType<typeof makeUser>>;
-
-const summary = z.strictObject({
-  contacts: z.array(summaryContact),
-  stages: z.array(summaryStage),
-});
-
-async function summaryOf(harness: Harness, user: User) {
-  const response = await harness.app.request('/api/summary', { headers: { Cookie: user.cookie } });
-  expect(response.status).toBe(200);
-  return summary.parse(await response.json());
-}
 
 const rowsOf = ({ userId }: User) =>
   withUser(userId, async (tx) => ({
@@ -63,11 +51,18 @@ test('adding a Contact puts it in the Pool and answers with its row of the summa
         name: 'Jean Dupont',
         status: 'pool',
         stageId: null,
+        organizationId: null,
+        jobTitle: null,
+        email: null,
+        phone: null,
+        linkedinUrl: null,
         lastInteractionAt: '2026-01-05T09:00:00.000Z',
         lastInteractionOn: '2026-01-05',
       },
     ],
     removedContactIds: [],
+    organizations: [],
+    removedOrganizationIds: [],
   });
   expect((await summaryOf(harness, user)).contacts).toEqual(changes.contacts);
 });
@@ -89,6 +84,12 @@ test('the addition is an Interaction neither outbound nor inbound, dated by the 
         name: 'Jean Dupont',
         status: 'pool',
         stageId: null,
+        organizationId: null,
+        jobTitle: null,
+        email: null,
+        phone: null,
+        linkedinUrl: null,
+        note: null,
         createdAt: now,
       },
     ],
@@ -158,7 +159,12 @@ test('“Undo” takes the addition back: neither the Contact nor its Interactio
 
   expect(response.status).toBe(200);
   expect(z.strictObject({ changes: summaryChanges }).parse(await response.json())).toEqual({
-    changes: { contacts: [], removedContactIds: [added.id] },
+    changes: {
+      contacts: [],
+      removedContactIds: [added.id],
+      organizations: [],
+      removedOrganizationIds: [],
+    },
   });
   expect((await summaryOf(harness, user)).contacts).toEqual([kept.contact]);
   const rows = await rowsOf(user);

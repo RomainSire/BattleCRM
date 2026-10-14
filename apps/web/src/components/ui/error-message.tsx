@@ -23,9 +23,14 @@ function ErrorMessage({ className, children }: { className?: string; children?: 
   );
 }
 
-/** The error of one field, under it; its `Input` takes the Error outline by itself (`data-invalid`). */
-function FieldErrorMessage({ className }: { className?: string }) {
-  return <FieldErrorPrimitive className={cn(errorTextClass, className)} />;
+/**
+ * The error of one field, under it; its `Input` takes the Error outline by itself (`data-invalid`).
+ * Its message is the field's validation, unless one is given for a field marked `isInvalid`.
+ */
+function FieldErrorMessage({ className, children }: { className?: string; children?: string }) {
+  return (
+    <FieldErrorPrimitive className={cn(errorTextClass, className)}>{children}</FieldErrorPrimitive>
+  );
 }
 
 export { ErrorMessage, FieldErrorMessage };

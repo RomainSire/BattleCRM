@@ -6,6 +6,7 @@ import type { RequireUser } from '../auth/index.ts';
 import { withUser, type Transaction } from '../db/index.ts';
 import { FUNNEL_ORDER, stage } from '../funnel/index.ts';
 import type { Touched } from '../gestures/index.ts';
+import { organization } from '../organizations/index.ts';
 import { contact, interaction } from '../prospecting/index.ts';
 
 /**
@@ -30,6 +31,12 @@ async function summaryContacts(tx: Transaction, userId: string, ids?: string[]) 
       name: contact.name,
       status: contact.status,
       stageId: contact.stageId,
+      // What the search and the duplicate checks read without a round trip (ST-63, ST-64); not the note.
+      organizationId: contact.organizationId,
+      jobTitle: contact.jobTitle,
+      email: contact.email,
+      phone: contact.phone,
+      linkedinUrl: contact.linkedinUrl,
       lastInteractionAt: latest.occurredAt,
       lastInteractionOn: latest.localDate,
     })
@@ -53,11 +60,23 @@ const summaryStages = (tx: Transaction, userId: string) =>
     .where(eq(stage.userId, userId))
     .orderBy(...FUNNEL_ORDER);
 
+/** Every Organization of the User, or the ones a gesture touched, by name. */
+async function summaryOrganizations(tx: Transaction, userId: string, ids?: string[]) {
+  if (ids?.length === 0) return [];
+  return tx
+    .select({ id: organization.id, name: organization.name, type: organization.type })
+    .from(organization)
+    .where(and(eq(organization.userId, userId), ids && inArray(organization.id, ids)))
+    .orderBy(organization.normalizedName);
+}
+
 /** What the answer of a gesture carries: the rows of the summary it changed, and the ones it removed. */
 export async function summaryChanges(tx: Transaction, userId: string, touched: Touched) {
   return {
     contacts: await summaryContacts(tx, userId, touched.contactIds),
     removedContactIds: touched.removedContactIds,
+    organizations: await summaryOrganizations(tx, userId, touched.organizationIds),
+    removedOrganizationIds: touched.removedOrganizationIds,
   };
 }
 
@@ -70,6 +89,7 @@ export function createViews({ requireUser }: { requireUser: RequireUser }) {
       const summary = await withUser(userId, async (tx) => ({
         contacts: await summaryContacts(tx, userId),
         stages: await summaryStages(tx, userId),
+        organizations: await summaryOrganizations(tx, userId),
       }));
       return c.json(summary, 200);
     });

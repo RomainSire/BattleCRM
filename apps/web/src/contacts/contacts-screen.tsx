@@ -1,5 +1,6 @@
 import { m } from '@battlecrm/i18n';
 import { useQuery } from '@tanstack/react-query';
+import { useSearch } from '@tanstack/react-router';
 
 import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useLocale, type Locale } from '../i18n.ts';
@@ -27,6 +28,8 @@ export function ContactsScreen() {
   const locale = useLocale();
   const api = useApi();
   const { data: summary, isError } = useQuery(summaryQuery(api));
+  // The record of this Contact is asked for; until it opens in a panel (ticket 16), its row is marked.
+  const { contact: openedId } = useSearch({ from: '/app/contacts' });
   const contacts = summary?.contacts.toSorted(byLatestInteraction);
   /** Its Status, and the Stage it is at when Prospecting. */
   const statusOf = (contact: SummaryContact) => {
@@ -49,7 +52,14 @@ export function ContactsScreen() {
           className="flex max-w-2xl flex-col divide-y rounded-card border"
         >
           {contacts.map((contact) => (
-            <li key={contact.id} className="flex min-h-11 items-center gap-3 px-3 py-2">
+            <li
+              key={contact.id}
+              aria-current={contact.id === openedId ? 'true' : undefined}
+              ref={(row) => {
+                if (row && contact.id === openedId) row.scrollIntoView({ block: 'nearest' });
+              }}
+              className="flex min-h-11 items-center gap-3 px-3 py-2 aria-current:bg-surface"
+            >
               <span
                 aria-hidden="true"
                 className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface text-xs font-medium uppercase"

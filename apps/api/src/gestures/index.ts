@@ -14,7 +14,12 @@ export type GestureKind = (typeof GESTURE_KINDS)[number];
 const UNDO_WINDOW_MS = 15 * 60_000;
 
 /** The rows of the working summary a gesture, or its inverse, changed: what its answer carries. */
-export type Touched = { contactIds: string[]; removedContactIds: string[] };
+export type Touched = {
+  contactIds: string[];
+  removedContactIds: string[];
+  organizationIds: string[];
+  removedOrganizationIds: string[];
+};
 
 /**
  * The inverse of a kind of gesture, written by its module next to the gesture: it deletes what the

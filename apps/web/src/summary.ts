@@ -6,6 +6,7 @@ import type { ApiClient } from './session.ts';
 /** The working summary of the User (ADR 0012): what every screen computes from, without a round trip. */
 export type Summary = InferResponseType<ApiClient['summary']['$get'], 200>;
 export type SummaryContact = Summary['contacts'][number];
+export type SummaryOrganization = Summary['organizations'][number];
 /** The rows of the summary a gesture changed, as its answer carries them. */
 export type SummaryChanges = InferResponseType<ApiClient['contacts']['$post'], 201>['changes'];
 
@@ -36,9 +37,13 @@ export async function applySummaryChanges(
     await queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
     return;
   }
-  const replaced = new Set([
+  const replacedContacts = new Set([
     ...changes.removedContactIds,
     ...changes.contacts.map((contact) => contact.id),
+  ]);
+  const replacedOrganizations = new Set([
+    ...changes.removedOrganizationIds,
+    ...changes.organizations.map((organization) => organization.id),
   ]);
   queryClient.setQueryData<Summary>(
     SUMMARY_KEY,
@@ -47,7 +52,13 @@ export async function applySummaryChanges(
         ...summary,
         contacts: [
           ...changes.contacts,
-          ...summary.contacts.filter((contact) => !replaced.has(contact.id)),
+          ...summary.contacts.filter((contact) => !replacedContacts.has(contact.id)),
+        ],
+        organizations: [
+          ...changes.organizations,
+          ...summary.organizations.filter(
+            (organization) => !replacedOrganizations.has(organization.id),
+          ),
         ],
       },
   );

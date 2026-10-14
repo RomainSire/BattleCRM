@@ -9,6 +9,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -16,6 +17,8 @@ import {
 import { user } from '../auth/tables.ts';
 // oxlint-disable-next-line no-restricted-imports -- a foreign key to the Stage of a Contact: tables files reference each other directly, drizzle-kit loads them alone.
 import { stage } from '../funnel/tables.ts';
+// oxlint-disable-next-line no-restricted-imports -- a foreign key to the Organization of a Contact: tables files reference each other directly, drizzle-kit loads them alone.
+import { organization } from '../organizations/tables.ts';
 
 // What every business table carries (spec stack §6): an id from the database, the User it belongs to under
 // forced row level security, `(user_id, id)` unique so that a foreign key can never reach another User's row,
@@ -46,17 +49,39 @@ export const contact = pgTable(
      * reached one, archived or not: where it left the Funnel.
      */
     stageId: uuid('stage_id'),
+    /** None: its Target is unknown. */
+    organizationId: uuid('organization_id'),
+    jobTitle: text('job_title'),
+    email: text(),
+    phone: text(),
+    /** Its LinkedIn profile, as `normalizeLinkedInUrl` writes it: what identifies it (ST-30). */
+    linkedinUrl: text('linkedin_url'),
+    /** The lasting context of the Contact, apart from the notes of its Interactions. */
+    note: text(),
     createdAt: instant('created_at').notNull(),
   },
   (table) => [
     unique('contact_user_id_id_unique').on(table.userId, table.id),
+    // Several Contacts without a profile are fine: NULLs are never equal.
+    uniqueIndex('contact_linkedin_url_unique').on(table.userId, table.linkedinUrl),
     foreignKey({
       name: 'contact_stage_fk',
       columns: [table.userId, table.stageId],
       foreignColumns: [stage.userId, stage.id],
     }),
+    foreignKey({
+      name: 'contact_organization_fk',
+      columns: [table.userId, table.organizationId],
+      foreignColumns: [organization.userId, organization.id],
+    }),
+    index('contact_organization_idx').on(table.userId, table.organizationId),
     check('contact_status_check', sql`${table.status} in (${quoted(CONTACT_STATUSES)})`),
     check('contact_name_check', sql`${table.name} <> ''`),
+    check('contact_job_title_check', sql`${table.jobTitle} <> ''`),
+    check('contact_email_check', sql`${table.email} <> ''`),
+    check('contact_phone_check', sql`${table.phone} <> ''`),
+    check('contact_linkedin_url_check', sql`${table.linkedinUrl} <> ''`),
+    check('contact_note_check', sql`${table.note} <> ''`),
     check(
       'contact_prospecting_stage_check',
       sql`${table.status} <> 'prospecting' or ${table.stageId} is not null`,

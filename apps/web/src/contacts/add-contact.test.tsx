@@ -15,6 +15,11 @@ const JEAN = {
   name: 'Jean Dupont',
   status: 'pool',
   stageId: null as string | null,
+  organizationId: null as string | null,
+  jobTitle: null as string | null,
+  email: null as string | null,
+  phone: null as string | null,
+  linkedinUrl: null as string | null,
   lastInteractionAt: '2026-01-06T09:00:00.000Z',
   lastInteractionOn: '2026-01-06',
 };
@@ -23,6 +28,11 @@ const JULIE = {
   name: 'Julie Martin',
   status: 'pool',
   stageId: null,
+  organizationId: null,
+  jobTitle: null,
+  email: null,
+  phone: null,
+  linkedinUrl: null,
   lastInteractionAt: '2026-01-05T09:00:00.000Z',
   lastInteractionOn: '2026-01-05',
 };
@@ -51,13 +61,29 @@ const UNDO_ROUTE = `POST /api/gestures/${UNDO_TOKEN}/undo`;
 /** An API that knows these Contacts, adds Jean and takes the addition back. */
 const contactsApi = (contacts: (typeof JEAN)[] = [], routes: Parameters<typeof fakeApi>[0] = {}) =>
   fakeApi({
-    'GET /api/summary': () => Response.json({ contacts, stages: STAGES }),
+    'GET /api/summary': () => Response.json({ contacts, stages: STAGES, organizations: [] }),
     'POST /api/contacts': () =>
       Response.json(
-        { changes: { contacts: [JEAN], removedContactIds: [] }, undoToken: UNDO_TOKEN },
+        {
+          changes: {
+            contacts: [JEAN],
+            removedContactIds: [],
+            organizations: [],
+            removedOrganizationIds: [],
+          },
+          undoToken: UNDO_TOKEN,
+        },
         { status: 201 },
       ),
-    [UNDO_ROUTE]: () => Response.json({ changes: { contacts: [], removedContactIds: [JEAN.id] } }),
+    [UNDO_ROUTE]: () =>
+      Response.json({
+        changes: {
+          contacts: [],
+          removedContactIds: [JEAN.id],
+          organizations: [],
+          removedOrganizationIds: [],
+        },
+      }),
     ...routes,
   });
 
@@ -175,6 +201,8 @@ test('added Prospecting at a chosen Stage, the Contact enters the Funnel there',
             changes: {
               contacts: [{ ...JEAN, status: 'prospecting', stageId: SCREENING.id }],
               removedContactIds: [],
+              organizations: [],
+              removedOrganizationIds: [],
             },
             undoToken: UNDO_TOKEN,
           },
@@ -235,7 +263,12 @@ test('added as an Ally, the Contact joins the Circle; the next opening is back o
       'POST /api/contacts': () =>
         Response.json(
           {
-            changes: { contacts: [{ ...JEAN, status: 'ally' }], removedContactIds: [] },
+            changes: {
+              contacts: [{ ...JEAN, status: 'ally' }],
+              removedContactIds: [],
+              organizations: [],
+              removedOrganizationIds: [],
+            },
             undoToken: UNDO_TOKEN,
           },
           { status: 201 },

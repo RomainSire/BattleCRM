@@ -326,6 +326,14 @@
           }
         ]
       }
+    },
+    // Its tests run under Vitest and fast-check, which the rules never import.
+    {
+      "files": ["packages/domain/**/*.test.ts"],
+      "rules": {
+        "no-restricted-imports": "off",
+        "vitest/expect-expect": ["error", { "assertFunctionNames": ["expect", "fc.assert"] }]
+      }
     }
   ]
 }

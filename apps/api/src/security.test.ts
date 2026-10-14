@@ -76,7 +76,14 @@ describe('catalogue', () => {
   test('every business table is under forced row level security, by its user_id', async () => {
     const business = await businessTables();
     expect(business.map(({ name }) => name)).toEqual(
-      expect.arrayContaining(['contact', 'gesture', 'interaction', 'stage', 'status_change']),
+      expect.arrayContaining([
+        'contact',
+        'gesture',
+        'interaction',
+        'organization',
+        'stage',
+        'status_change',
+      ]),
     );
 
     for (const table of business) {
@@ -109,6 +116,7 @@ describe('catalogue', () => {
         'interaction_contact_fk',
         'gesture_contact_fk',
         'contact_stage_fk',
+        'contact_organization_fk',
         'status_change_contact_fk',
         'status_change_interaction_fk',
         'status_change_stage_fk',
@@ -142,8 +150,11 @@ test('a query that forgot its filter only sees the rows of its User, in every bu
   const alice = await makeUser(harness);
   const bob = await makeUser(harness);
   // Each User writes in every business table: a new one fails here until a gesture fills it.
-  await addContact(harness, alice);
-  await addContact(harness, bob);
+  for (const user of [alice, bob]) {
+    await addContact(harness, user, 'Jean Dupont', {
+      newOrganization: { name: 'Capgemini', type: 'consultancy' },
+    });
+  }
 
   for (const { name } of await businessTables()) {
     const rows = await withUser(

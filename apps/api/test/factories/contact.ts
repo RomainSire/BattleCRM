@@ -1,4 +1,9 @@
-import { CONTACT_STATUSES, type AddableContactStatus } from '@battlecrm/contract';
+import {
+  CONTACT_STATUSES,
+  ORGANIZATION_TYPES,
+  type AddableContactStatus,
+  type OrganizationType,
+} from '@battlecrm/contract';
 import { z } from 'zod';
 
 import type { testApp } from '../app.ts';
@@ -13,6 +18,12 @@ export const summaryContact = z.strictObject({
   status: z.enum(CONTACT_STATUSES),
   /** The Stage it is at, Prospecting; otherwise the last one it reached, if any. */
   stageId: z.uuid().nullable(),
+  organizationId: z.uuid().nullable(),
+  /** What the search and the duplicate checks read; the note stays out of the summary. */
+  jobTitle: z.string().nullable(),
+  email: z.string().nullable(),
+  phone: z.string().nullable(),
+  linkedinUrl: z.string().nullable(),
   lastInteractionAt: z.iso.datetime(),
   lastInteractionOn: z.iso.date(),
 });
@@ -25,33 +36,60 @@ export const summaryStage = z.strictObject({
   archived: z.boolean(),
 });
 
+/** An Organization as the working summary carries it. */
+export const summaryOrganization = z.strictObject({
+  id: z.uuid(),
+  name: z.string(),
+  type: z.enum(ORGANIZATION_TYPES),
+});
+
 /** The rows of the summary a gesture changed. */
 export const summaryChanges = z.strictObject({
   contacts: z.array(summaryContact),
   removedContactIds: z.array(z.uuid()),
+  organizations: z.array(summaryOrganization),
+  removedOrganizationIds: z.array(z.uuid()),
 });
 
 export const gestureAnswer = z.strictObject({ changes: summaryChanges, undoToken: z.uuid() });
 
 /**
  * A Contact added the way a User adds one, in the Pool unless said otherwise, and the token that
- * takes the gesture back.
+ * takes the gesture back; with the Organization it created, if it did.
  */
 export async function addContact(
   harness: Harness,
   user: { cookie: string },
   name = 'Jean Dupont',
-  { status, stageId }: { status?: AddableContactStatus; stageId?: string } = {},
+  fields: Partial<{
+    status: AddableContactStatus;
+    stageId: string;
+    organizationId: string;
+    newOrganization: { name: string; type: OrganizationType };
+    linkedinUrl: string;
+    jobTitle: string;
+    email: string;
+    phone: string;
+    note: string;
+  }> = {},
 ) {
-  const response = await postJson(
-    harness.app,
-    '/api/contacts',
-    { name, status, stageId },
-    user.cookie,
-  );
+  const response = await postJson(harness.app, '/api/contacts', { name, ...fields }, user.cookie);
   if (response.status !== 201) throw new Error(`addContact: the API answered ${response.status}`);
   const { changes, undoToken } = gestureAnswer.parse(await response.json());
   const [contact] = changes.contacts;
   if (!contact) throw new Error('addContact: no Contact in the answer');
-  return { contact, undoToken };
+  return { contact, organization: changes.organizations[0], undoToken };
+}
+
+/** The whole working summary, as `GET /api/summary` answers it. */
+export const summary = z.strictObject({
+  contacts: z.array(summaryContact),
+  stages: z.array(summaryStage),
+  organizations: z.array(summaryOrganization),
+});
+
+export async function summaryOf(harness: Harness, user: { cookie: string }) {
+  const response = await harness.app.request('/api/summary', { headers: { Cookie: user.cookie } });
+  if (response.status !== 200) throw new Error(`summaryOf: the API answered ${response.status}`);
+  return summary.parse(await response.json());
 }

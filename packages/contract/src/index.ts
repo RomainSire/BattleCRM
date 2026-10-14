@@ -17,3 +17,15 @@ export const CONTACT_NAME_MAX_LENGTH = 200;
 /** What the quick add offers (spec UX §6.8): a new Contact is never added Archived. */
 export const ADDABLE_CONTACT_STATUSES = ['pool', 'prospecting', 'ally'] as const;
 export type AddableContactStatus = (typeof ADDABLE_CONTACT_STATUSES)[number];
+
+/** The type of an Organization (CONTEXT.md), which sets the Target of its Contacts. */
+export const ORGANIZATION_TYPES = ['consultancy', 'end_client'] as const;
+export type OrganizationType = (typeof ORGANIZATION_TYPES)[number];
+
+/** What a quick add or an edit accepts, beyond the name (spec UX §6.8, §6.12). */
+export const ORGANIZATION_NAME_MAX_LENGTH = 200;
+export const CONTACT_JOB_TITLE_MAX_LENGTH = 200;
+export const CONTACT_EMAIL_MAX_LENGTH = 254;
+export const CONTACT_PHONE_MAX_LENGTH = 40;
+export const CONTACT_LINKEDIN_URL_MAX_LENGTH = 500;
+export const CONTACT_NOTE_MAX_LENGTH = 5000;

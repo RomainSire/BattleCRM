@@ -207,6 +207,8 @@ const circleRoute = createRoute({
 const contactsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/contacts',
+  // The Contact whose record is open, as “Open their record” asks for it; anything else is dropped.
+  validateSearch: z.object({ contact: z.uuid().optional().catch(undefined) }),
   component: ContactsScreen,
 });
 

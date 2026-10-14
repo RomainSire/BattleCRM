@@ -1,23 +1,32 @@
 import {
   ADDABLE_CONTACT_STATUSES,
+  CONTACT_EMAIL_MAX_LENGTH,
+  CONTACT_JOB_TITLE_MAX_LENGTH,
+  CONTACT_LINKEDIN_URL_MAX_LENGTH,
   CONTACT_NAME_MAX_LENGTH,
+  CONTACT_NOTE_MAX_LENGTH,
+  CONTACT_PHONE_MAX_LENGTH,
   type AddableContactStatus,
 } from '@battlecrm/contract';
+import { findDuplicates, normalizeLinkedInUrl } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useId, useState } from 'react';
-import { Form, TextField } from 'react-aria-components';
+import { useNavigate } from '@tanstack/react-router';
+import { InfoIcon } from 'lucide-react';
+import { useDeferredValue, useId, useState, type ReactNode } from 'react';
+import { Form, Text, TextField } from 'react-aria-components';
 
 import { Button } from '../components/ui/button.tsx';
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog.tsx';
 import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
-import { Input } from '../components/ui/input.tsx';
+import { Input, invalidInputClass } from '../components/ui/input.tsx';
 import { Label } from '../components/ui/label.tsx';
 import {
   SegmentedControl,
   SegmentedControlItem,
   SegmentedControlItems,
 } from '../components/ui/segmented-control.tsx';
+import { Textarea } from '../components/ui/textarea.tsx';
 import { useLocale } from '../i18n.ts';
 import { useApi } from '../session.ts';
 import {
@@ -28,12 +37,18 @@ import {
   type SummaryContact,
 } from '../summary.ts';
 import { notifyGesture } from '../undo.tsx';
+import {
+  NO_ORGANIZATION,
+  OrganizationField,
+  organizationOf,
+  type OrganizationDraft,
+} from './organization-field.tsx';
 import { prospectingStageOf, STATUS_LABEL } from './status.ts';
 
 /**
- * The quick add of a Contact (spec UX §6.8): a modal opened by `N` or “+ Add”. A name, and the
- * Status it is added in: the Pool by default, Prospecting at a Stage, or Ally. Nothing is kept from
- * one opening to the next.
+ * The quick add of a Contact (spec UX §6.8): a modal opened by `N` or “+ Add”. A name, its
+ * Organization, its LinkedIn profile, and the Status it is added in: the Pool by default, Prospecting
+ * at a Stage, or Ally; “More fields” opens the rest. Nothing is kept from one opening to the next.
  */
 export function QuickAdd({
   isOpen,
@@ -44,43 +59,105 @@ export function QuickAdd({
 }) {
   useLocale();
   return (
-    <Dialog isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Dialog
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md"
+    >
       <DialogHeader>
         <DialogTitle>{m.add_contact()}</DialogTitle>
       </DialogHeader>
-      <QuickAddForm onAdded={() => onOpenChange(false)} />
+      <QuickAddForm onDone={() => onOpenChange(false)} />
     </Dialog>
   );
 }
 
-function QuickAddForm({ onAdded }: { onAdded: () => void }) {
+/** A field of the Contact sent only when filled. */
+const filled = (text: string) => text.trim() || undefined;
+
+/** A Contact as the checks name it: “Jean Dupont · Capgemini”. */
+const contactLabel = (contact: SummaryContact, organizations: Summary['organizations']) => {
+  const organization = organizations.find(({ id }) => id === contact.organizationId);
+  return organization ? `${contact.name} · ${organization.name}` : contact.name;
+};
+
+/** What the duplicate checks found, only worth knowing (spec UX §6.8): discreet, never an error. */
+function DuplicateNote({ children }: { children: ReactNode }) {
+  if (!children) return null;
+  return (
+    <Text slot="description" className="flex items-start gap-1.5 text-sm text-neutral-text">
+      <InfoIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
+      <span>{children}</span>
+    </Text>
+  );
+}
+
+function QuickAddForm({ onDone }: { onDone: () => void }) {
   const api = useApi();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const stageFieldId = useId();
-  // The Stages of the Funnel come with the summary the shell reads, not read again for a modal;
-  // without them, the API picks the first one.
-  const stages = useQuery({ ...summaryQuery(api), refetchOnMount: false }).data?.stages ?? [];
+  // The summary the shell reads, not read again for a modal: the Stages of the Funnel, the
+  // Organizations and the Contacts the checks compare with, without a round trip (ADR 0012).
+  const summary = useQuery({ ...summaryQuery(api), refetchOnMount: false }).data;
+  const stages = summary?.stages ?? [];
+  const organizations = summary?.organizations ?? [];
+  const contacts = summary?.contacts ?? [];
   const funnel = stages.filter((stage) => !stage.archived);
   const [name, setName] = useState('');
+  const [organizationDraft, setOrganizationDraft] = useState<OrganizationDraft>(NO_ORGANIZATION);
+  const [linkedinUrl, setLinkedinUrl] = useState('');
   const [status, setStatus] = useState<AddableContactStatus>('pool');
   // None chosen yet: the first Stage not archived, as the API would take it.
   const [chosenStageId, setChosenStageId] = useState<string>();
   const stageId = chosenStageId ?? funnel[0]?.id;
+  const [showsMoreFields, setShowsMoreFields] = useState(false);
+  const [wasSent, setWasSent] = useState(false);
+  const [jobTitle, setJobTitle] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [note, setNote] = useState('');
+  const organization = organizationOf(organizationDraft, organizations);
+  const organizationId = organization.kind === 'existing' ? organization.organization.id : null;
+  const typed = { name, organizationId, linkedinUrl, email, phone };
+  // Checked as it is typed, behind the keystrokes so that typing never waits for them (ST-64).
+  const duplicates = findDuplicates(useDeferredValue(typed), contacts);
+  const [sameName] = duplicates.sameName;
+  const [sameEmail] = duplicates.sameEmail;
+  const [samePhone] = duplicates.samePhone;
   const add = useMutation({
     mutationFn: async () => {
       const response = await api.contacts.$post({
-        json: status === 'prospecting' && stageId ? { name, status, stageId } : { name, status },
+        json: {
+          name,
+          status,
+          ...(status === 'prospecting' && stageId !== undefined && { stageId }),
+          ...(organizationId !== null && { organizationId }),
+          ...(organization.kind === 'new' &&
+            organization.type && {
+              newOrganization: { name: organization.name, type: organization.type },
+            }),
+          linkedinUrl: filled(linkedinUrl),
+          jobTitle: filled(jobTitle),
+          email: filled(email),
+          phone: filled(phone),
+          note: filled(note),
+        },
       });
-      // The Stage chosen left the Funnel meanwhile, on another device: the summary is behind.
-      if (response.status === 400 && (await response.json()).error === 'unknown_stage') {
-        return 'stage_gone' as const;
+      // Refusals of data this device is behind on, changed on another one: read the summary again.
+      if (response.status === 400 || response.status === 409) {
+        const { error } = await response.json();
+        if (error === 'unknown_stage') return 'stage_gone' as const;
+        // The checks then show the Contact that has the profile.
+        if (error === 'linkedin_url_taken') return 'behind' as const;
+        if (error === 'organization_taken') return 'organization_taken' as const;
       }
       if (!response.ok) throw new Error('POST /api/contacts failed');
       return response.json();
     },
     onSuccess: async (answer) => {
-      if (answer === 'stage_gone') {
-        setChosenStageId(undefined);
+      if (typeof answer === 'string') {
+        if (answer === 'stage_gone') setChosenStageId(undefined);
         await queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
         return;
       }
@@ -88,7 +165,7 @@ function QuickAddForm({ onAdded }: { onAdded: () => void }) {
       await applySummaryChanges(queryClient, changes);
       const [added] = changes.contacts;
       if (added) notifyGesture(addedMessage(added, stages), undoToken);
-      onAdded();
+      onDone();
     },
   });
   return (
@@ -96,7 +173,11 @@ function QuickAddForm({ onAdded }: { onAdded: () => void }) {
       className="flex flex-col gap-4"
       onSubmit={(event) => {
         event.preventDefault();
-        if (!add.isPending) add.mutate();
+        setWasSent(true);
+        if (add.isPending || (organization.kind === 'new' && organization.type === null)) return;
+        // Never checked on Enter: a duplicate profile already says so, and blocks (spec UX §6.8).
+        if (findDuplicates(typed, contacts).sameLinkedIn) return;
+        add.mutate();
       }}
     >
       <TextField
@@ -113,7 +194,57 @@ function QuickAddForm({ onAdded }: { onAdded: () => void }) {
         <Label>{m.contact_name()}</Label>
         <Input className="max-md:h-11" />
         <FieldErrorMessage />
+        <DuplicateNote>
+          {sameName &&
+            (duplicates.sameNameInOrganization && organization.kind === 'existing'
+              ? m.contact_same_name_in_organization({
+                  organization: organization.organization.name,
+                })
+              : m.contact_same_name({ contact: contactLabel(sameName, organizations) }))}
+        </DuplicateNote>
       </TextField>
+      <OrganizationField
+        draft={organizationDraft}
+        onChange={setOrganizationDraft}
+        organizations={organizations}
+        isTypeMissing={wasSent}
+      />
+      <TextField
+        name="linkedinUrl"
+        value={linkedinUrl}
+        onChange={setLinkedinUrl}
+        autoComplete="off"
+        maxLength={CONTACT_LINKEDIN_URL_MAX_LENGTH}
+        validate={(url) =>
+          url.trim() !== '' && normalizeLinkedInUrl(url) === null
+            ? m.contact_linkedin_url_invalid()
+            : null
+        }
+        className="flex flex-col gap-1.5"
+      >
+        <Label>{m.contact_linkedin_url()}</Label>
+        <Input
+          inputMode="url"
+          className={duplicates.sameLinkedIn ? `${invalidInputClass} max-md:h-11` : 'max-md:h-11'}
+        />
+        <FieldErrorMessage />
+      </TextField>
+      {duplicates.sameLinkedIn && (
+        <ErrorMessage>
+          {m.contact_exists({ contact: contactLabel(duplicates.sameLinkedIn, organizations) })}{' '}
+          <Button
+            variant="link"
+            className="h-auto p-0 align-baseline"
+            onPress={() => {
+              const contactId = duplicates.sameLinkedIn?.id;
+              onDone();
+              void navigate({ to: '/contacts', search: { contact: contactId } });
+            }}
+          >
+            {m.open_contact()}
+          </Button>
+        </ErrorMessage>
+      )}
       <SegmentedControl
         value={status}
         onChange={(value) => {
@@ -147,8 +278,76 @@ function QuickAddForm({ onAdded }: { onAdded: () => void }) {
           </select>
         </div>
       )}
+      {showsMoreFields ? (
+        <>
+          <TextField
+            name="jobTitle"
+            value={jobTitle}
+            onChange={setJobTitle}
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- “More fields” was just pressed: the first of them takes the focus.
+            autoFocus
+            maxLength={CONTACT_JOB_TITLE_MAX_LENGTH}
+            className="flex flex-col gap-1.5"
+          >
+            <Label>{m.contact_job_title()}</Label>
+            <Input className="max-md:h-11" />
+          </TextField>
+          <TextField
+            name="email"
+            value={email}
+            onChange={setEmail}
+            autoComplete="off"
+            maxLength={CONTACT_EMAIL_MAX_LENGTH}
+            className="flex flex-col gap-1.5"
+          >
+            <Label>{m.contact_email()}</Label>
+            <Input inputMode="email" className="max-md:h-11" />
+            <DuplicateNote>
+              {sameEmail &&
+                m.contact_same_email({ contact: contactLabel(sameEmail, organizations) })}
+            </DuplicateNote>
+          </TextField>
+          <TextField
+            name="phone"
+            type="tel"
+            value={phone}
+            onChange={setPhone}
+            autoComplete="off"
+            maxLength={CONTACT_PHONE_MAX_LENGTH}
+            className="flex flex-col gap-1.5"
+          >
+            <Label>{m.contact_phone()}</Label>
+            <Input className="max-md:h-11" />
+            <DuplicateNote>
+              {samePhone &&
+                m.contact_same_phone({ contact: contactLabel(samePhone, organizations) })}
+            </DuplicateNote>
+          </TextField>
+          <TextField
+            name="note"
+            value={note}
+            onChange={setNote}
+            maxLength={CONTACT_NOTE_MAX_LENGTH}
+            className="flex flex-col gap-1.5"
+          >
+            <Label>{m.contact_note()}</Label>
+            <Textarea />
+          </TextField>
+        </>
+      ) : (
+        <Button
+          variant="link"
+          className="h-auto self-start p-0"
+          onPress={() => setShowsMoreFields(true)}
+        >
+          {m.more_fields()}
+        </Button>
+      )}
       <ErrorMessage>
-        {add.isError ? m.auth_error() : add.data === 'stage_gone' && m.contact_stage_gone()}
+        {add.isError
+          ? m.auth_error()
+          : (add.data === 'stage_gone' && m.contact_stage_gone()) ||
+            (add.data === 'organization_taken' && m.organization_taken())}
       </ErrorMessage>
       <DialogFooter>
         <Button type="submit" className="max-md:min-h-11" isDisabled={add.isPending}>
