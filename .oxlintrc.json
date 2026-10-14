@@ -14,7 +14,8 @@
     "unicorn/require-module-specifiers": "off",
     // The automatic JSX runtime needs no React in scope.
     "react/react-in-jsx-scope": "off",
-    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
+    // `zod-config.ts` sets Zod up before any schema is built: imported for that effect alone.
+    "import/no-unassigned-import": ["error", { "allow": ["**/*.css", "**/zod-config.ts"] }],
     "no-restricted-imports": [
       "error",
       {
