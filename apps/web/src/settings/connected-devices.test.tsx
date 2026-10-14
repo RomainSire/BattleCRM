@@ -240,10 +240,12 @@ describe('a device whose session was ended from elsewhere (ST-04)', () => {
           id: '01990000-0000-7000-8000-000000000001',
           name: 'Jean Dupont',
           status: 'pool',
+          stageId: null,
           lastInteractionAt: '2026-01-06T09:00:00.000Z',
           lastInteractionOn: '2026-01-06',
         },
       ],
+      stages: [],
     });
 
     await screen

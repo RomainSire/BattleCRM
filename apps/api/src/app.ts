@@ -17,6 +17,7 @@ import type { Clock } from './clock.ts';
 import type { Config } from './config.ts';
 import { isDatabaseReady } from './db/index.ts';
 import { createEmailSender, type EmailTransport } from './email/index.ts';
+import { initializeFunnel } from './funnel/index.ts';
 import { createGestures } from './gestures/index.ts';
 import type { InFlight } from './in-flight.ts';
 import { jsonBody } from './json-body.ts';
@@ -67,8 +68,8 @@ export function createApp({
     logger,
     hibp,
     sendEmail: createEmailSender({ transport: email, logger, alert, inFlight }),
-    // Each module writes what a new User starts with (Standard stages will join with their ticket).
-    onAccountCreated: [initializeSettings],
+    // Each module writes what a new User starts with.
+    onAccountCreated: [initializeSettings, initializeFunnel],
   });
 
   const { requireUser } = auth;

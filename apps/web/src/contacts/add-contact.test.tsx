@@ -14,6 +14,7 @@ const JEAN = {
   id: '01990000-0000-7000-8000-000000000001',
   name: 'Jean Dupont',
   status: 'pool',
+  stageId: null as string | null,
   lastInteractionAt: '2026-01-06T09:00:00.000Z',
   lastInteractionOn: '2026-01-06',
 };
@@ -21,16 +22,36 @@ const JULIE = {
   id: '01990000-0000-7000-8000-000000000002',
   name: 'Julie Martin',
   status: 'pool',
+  stageId: null,
   lastInteractionAt: '2026-01-05T09:00:00.000Z',
   lastInteractionOn: '2026-01-05',
 };
+const OUTREACH = {
+  id: '01990000-0000-7000-8000-000000000011',
+  name: 'Approche',
+  aim: 'CV à envoyer',
+  archived: false,
+};
+const ARCHIVED = {
+  id: '01990000-0000-7000-8000-000000000012',
+  name: 'Ancienne',
+  aim: null,
+  archived: true,
+};
+const SCREENING = {
+  id: '01990000-0000-7000-8000-000000000013',
+  name: 'Qualif ESN',
+  aim: null,
+  archived: false,
+};
+const STAGES = [ARCHIVED, OUTREACH, SCREENING];
 const UNDO_TOKEN = '01990000-0000-7000-8000-00000000000a';
 const UNDO_ROUTE = `POST /api/gestures/${UNDO_TOKEN}/undo`;
 
 /** An API that knows these Contacts, adds Jean and takes the addition back. */
 const contactsApi = (contacts: (typeof JEAN)[] = [], routes: Parameters<typeof fakeApi>[0] = {}) =>
   fakeApi({
-    'GET /api/summary': () => Response.json({ contacts }),
+    'GET /api/summary': () => Response.json({ contacts, stages: STAGES }),
     'POST /api/contacts': () =>
       Response.json(
         { changes: { contacts: [JEAN], removedContactIds: [] }, undoToken: UNDO_TOKEN },
@@ -55,6 +76,10 @@ async function addJean(screen: Awaited<ReturnType<typeof renderApp>>['screen']) 
   await userEvent.keyboard('{Enter}');
   await expect.element(screen.getByText('Jean Dupont est ajouté au Vivier')).toBeVisible();
 }
+
+/** Chooses a Status in the quick add: a radio of React Aria is clicked by its label. */
+const chooseStatus = (screen: { getByRole: typeof page.getByRole }, status: string) =>
+  screen.getByRole('radiogroup', { name: 'État' }).getByText(status, { exact: true }).click();
 
 /** A modal fades in: its colours are only its own once it is done. */
 async function animationsEnded() {
@@ -100,11 +125,137 @@ test('N opens the quick add, Enter adds the Contact to the Pool, and it shows in
   await expect.element(screen.getByText('Jean Dupont est ajouté au Vivier')).toBeVisible();
   await expect.element(dialog).not.toBeInTheDocument();
   expect(api.sent('POST /api/contacts')).toEqual([
-    { route: 'POST /api/contacts', body: { name: 'Jean Dupont' } },
+    { route: 'POST /api/contacts', body: { name: 'Jean Dupont', status: 'pool' } },
   ]);
   await expect.poll(() => names(screen)).toEqual(['Jean Dupont', 'Julie Martin']);
   // The row came with the answer of the gesture: the summary was read once.
   expect(api.sent('GET /api/summary')).toHaveLength(1);
+});
+
+test('the quick add offers Pool, Prospecting or Ally, the Pool by default, and a Stage for Prospecting only', async () => {
+  await desktop();
+  const { screen } = await renderApp('/contacts', contactsApi());
+
+  await userEvent.keyboard('n');
+  const dialog = screen.getByRole('dialog', { name: 'Ajouter un Contact' });
+  const status = dialog.getByRole('radiogroup', { name: 'État' });
+  await expect.element(status).toBeVisible();
+  expect(
+    status
+      .getByRole('radio')
+      .elements()
+      .map((radio) => radio.closest('label')?.textContent),
+  ).toEqual(['Vivier', 'En prospection', 'Allié']);
+  await expect.element(dialog.getByRole('radio', { name: 'Vivier' })).toBeChecked();
+  await expect.element(dialog.getByRole('combobox', { name: 'Étape' })).not.toBeInTheDocument();
+
+  await chooseStatus(dialog, 'En prospection');
+  const stage = dialog.getByRole('combobox', { name: 'Étape' });
+  // The Stages of the Funnel, archived ones left out, the first by default.
+  await expect.element(stage).toHaveValue(OUTREACH.id);
+  expect(
+    stage
+      .getByRole('option')
+      .elements()
+      .map((option) => option.textContent),
+  ).toEqual(['Approche', 'Qualif ESN']);
+
+  await chooseStatus(dialog, 'Allié');
+  await expect.element(stage).not.toBeInTheDocument();
+});
+
+test('added Prospecting at a chosen Stage, the Contact enters the Funnel there', async () => {
+  await desktop();
+  const { screen, api } = await renderApp(
+    '/contacts',
+    contactsApi([], {
+      'POST /api/contacts': () =>
+        Response.json(
+          {
+            changes: {
+              contacts: [{ ...JEAN, status: 'prospecting', stageId: SCREENING.id }],
+              removedContactIds: [],
+            },
+            undoToken: UNDO_TOKEN,
+          },
+          { status: 201 },
+        ),
+    }),
+  );
+  await expect.element(screen.getByText("Aucun Contact pour l'instant")).toBeVisible();
+
+  await userEvent.keyboard('n');
+  await screen.getByRole('textbox', { name: 'Nom' }).fill('Jean Dupont');
+  await chooseStatus(screen, 'En prospection');
+  await screen.getByRole('combobox', { name: 'Étape' }).selectOptions('Qualif ESN');
+  await screen.getByRole('dialog').getByRole('button', { name: 'Ajouter', exact: true }).click();
+
+  await expect
+    .element(screen.getByText('Jean Dupont entre dans le Funnel à Qualif ESN'))
+    .toBeVisible();
+  expect(api.sent('POST /api/contacts')).toEqual([
+    {
+      route: 'POST /api/contacts',
+      body: { name: 'Jean Dupont', status: 'prospecting', stageId: SCREENING.id },
+    },
+  ]);
+  await expect
+    .element(
+      screen.getByRole('list', { name: 'Contacts' }).getByText('En prospection · Qualif ESN'),
+    )
+    .toBeVisible();
+});
+
+test('a Stage gone from the Funnel meanwhile is refused: said so, the summary read again, the quick add open', async () => {
+  await desktop();
+  const { screen, api } = await renderApp(
+    '/contacts',
+    contactsApi([], {
+      'POST /api/contacts': () => Response.json({ error: 'unknown_stage' }, { status: 400 }),
+    }),
+  );
+  await expect.element(screen.getByText("Aucun Contact pour l'instant")).toBeVisible();
+
+  await userEvent.keyboard('n');
+  await screen.getByRole('textbox', { name: 'Nom' }).fill('Jean Dupont');
+  await chooseStatus(screen, 'En prospection');
+  await screen.getByRole('dialog').getByRole('button', { name: 'Ajouter', exact: true }).click();
+
+  await expect
+    .element(screen.getByRole('dialog').getByRole('alert'))
+    .toHaveTextContent("Cette Étape n'est plus dans le Funnel : choisis-en une autre.");
+  await expect.poll(() => api.sent('GET /api/summary').length).toBe(2);
+});
+
+test('added as an Ally, the Contact joins the Circle; the next opening is back on the Pool', async () => {
+  await desktop();
+  const { screen, api } = await renderApp(
+    '/contacts',
+    contactsApi([], {
+      'POST /api/contacts': () =>
+        Response.json(
+          {
+            changes: { contacts: [{ ...JEAN, status: 'ally' }], removedContactIds: [] },
+            undoToken: UNDO_TOKEN,
+          },
+          { status: 201 },
+        ),
+    }),
+  );
+
+  await userEvent.keyboard('n');
+  await screen.getByRole('textbox', { name: 'Nom' }).fill('Jean Dupont');
+  await chooseStatus(screen, 'Allié');
+  await screen.getByRole('textbox', { name: 'Nom' }).click();
+  await userEvent.keyboard('{Enter}');
+
+  await expect.element(screen.getByText('Jean Dupont entre au Cercle')).toBeVisible();
+  expect(api.sent('POST /api/contacts')).toEqual([
+    { route: 'POST /api/contacts', body: { name: 'Jean Dupont', status: 'ally' } },
+  ]);
+  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+  await userEvent.keyboard('n');
+  await expect.element(screen.getByRole('radio', { name: 'Vivier' })).toBeChecked();
 });
 
 test('“+ Add” in the navigation opens the same quick add, which a new opening finds empty', async () => {
@@ -359,6 +510,11 @@ test.each(['light', 'dark'] as const)(
     await expect.element(screen.getByRole('textbox', { name: 'Nom' })).toHaveFocus();
     await animationsEnded();
     await expectNoAxeViolations();
+    // The Stage shows for Prospecting, and the segment chosen takes the accent.
+    await chooseStatus(screen, 'En prospection');
+    await expect.element(screen.getByRole('combobox', { name: 'Étape' })).toBeVisible();
+    await expectNoAxeViolations();
+    await chooseStatus(screen, 'Vivier');
 
     await screen.getByRole('textbox', { name: 'Nom' }).fill('Jean Dupont');
     await userEvent.keyboard('{Enter}');

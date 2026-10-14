@@ -178,5 +178,19 @@
   "status_pool": "Pool",
   "status_prospecting": "Prospecting",
   "status_ally": "Ally",
-  "status_archived": "Archived"
+  "status_archived": "Archived",
+  "contact_status": "Status",
+  "contact_stage": "Stage",
+  "contact_entered_funnel": "{name} enters the Funnel at {stage}",
+  "contact_entered_circle": "{name} joins the Circle",
+  "standard_stage_outreach": "Outreach",
+  "standard_stage_outreach_aim": "get asked for a CV",
+  "standard_stage_agency_screening": "Agency screening",
+  "standard_stage_agency_screening_aim": "get the agency interview",
+  "standard_stage_client_screening": "Client screening",
+  "standard_stage_client_screening_aim": "get the client interview",
+  "standard_stage_closing": "Closing",
+  "standard_stage_closing_aim": "sign the contract",
+  "contact_entered_funnel_anywhere": "{name} enters the Funnel",
+  "contact_stage_gone": "This Stage is no longer in the Funnel: choose another one."
 }

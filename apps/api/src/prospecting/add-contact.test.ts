@@ -8,16 +8,22 @@ import {
   gestureAnswer,
   summaryChanges,
   summaryContact,
+  summaryStage,
 } from '../../test/factories/contact.ts';
+import { archiveStage } from '../../test/factories/stage.ts';
 import { makeUser } from '../../test/factories/user.ts';
 import { postJson } from '../../test/http.ts';
 import { withUser } from '../db/index.ts';
-import { contact, interaction } from './tables.ts';
+import { stageOrder } from '../funnel/index.ts';
+import { contact, interaction, statusChange } from './tables.ts';
 
 type Harness = ReturnType<typeof testApp>;
 type User = Awaited<ReturnType<typeof makeUser>>;
 
-const summary = z.strictObject({ contacts: z.array(summaryContact) });
+const summary = z.strictObject({
+  contacts: z.array(summaryContact),
+  stages: z.array(summaryStage),
+});
 
 async function summaryOf(harness: Harness, user: User) {
   const response = await harness.app.request('/api/summary', { headers: { Cookie: user.cookie } });
@@ -29,7 +35,10 @@ const rowsOf = ({ userId }: User) =>
   withUser(userId, async (tx) => ({
     contacts: await tx.select().from(contact).where(eq(contact.userId, userId)),
     interactions: await tx.select().from(interaction).where(eq(interaction.userId, userId)),
+    statusChanges: await tx.select().from(statusChange).where(eq(statusChange.userId, userId)),
   }));
+
+const stagesOf = ({ userId }: User) => withUser(userId, (tx) => stageOrder(tx, userId));
 
 const undo = (harness: Harness, user: User, undoToken: string) =>
   postJson(harness.app, `/api/gestures/${undoToken}/undo`, {}, user.cookie);
@@ -53,13 +62,14 @@ test('adding a Contact puts it in the Pool and answers with its row of the summa
         id: expect.any(String),
         name: 'Jean Dupont',
         status: 'pool',
+        stageId: null,
         lastInteractionAt: '2026-01-05T09:00:00.000Z',
         lastInteractionOn: '2026-01-05',
       },
     ],
     removedContactIds: [],
   });
-  expect(await summaryOf(harness, user)).toEqual({ contacts: changes.contacts });
+  expect((await summaryOf(harness, user)).contacts).toEqual(changes.contacts);
 });
 
 test('the addition is an Interaction neither outbound nor inbound, dated by the clock of the app in the local day of the User', async () => {
@@ -73,7 +83,14 @@ test('the addition is an Interaction neither outbound nor inbound, dated by the 
   const now = new Date('2026-01-05T23:30:00Z');
   expect(await rowsOf(user)).toEqual({
     contacts: [
-      { id: added.id, userId: user.userId, name: 'Jean Dupont', status: 'pool', createdAt: now },
+      {
+        id: added.id,
+        userId: user.userId,
+        name: 'Jean Dupont',
+        status: 'pool',
+        stageId: null,
+        createdAt: now,
+      },
     ],
     interactions: [
       {
@@ -85,6 +102,19 @@ test('the addition is an Interaction neither outbound nor inbound, dated by the 
         occurredAt: now,
         localDate: '2026-01-06',
         recordedAt: now,
+      },
+    ],
+    // Its first Status is written down as a change from none.
+    statusChanges: [
+      {
+        id: expect.any(String),
+        userId: user.userId,
+        contactId: added.id,
+        interactionId: expect.any(String),
+        fromStatus: null,
+        toStatus: 'pool',
+        stageId: null,
+        reason: null,
       },
     ],
   });
@@ -104,7 +134,7 @@ test.each([
   const response = await postJson(harness.app, '/api/contacts', body, user.cookie);
 
   expect(response.status).toBe(400);
-  expect(await rowsOf(user)).toEqual({ contacts: [], interactions: [] });
+  expect(await rowsOf(user)).toEqual({ contacts: [], interactions: [], statusChanges: [] });
 });
 
 test('two Contacts may carry the same name', async () => {
@@ -130,10 +160,11 @@ test('“Undo” takes the addition back: neither the Contact nor its Interactio
   expect(z.strictObject({ changes: summaryChanges }).parse(await response.json())).toEqual({
     changes: { contacts: [], removedContactIds: [added.id] },
   });
-  expect(await summaryOf(harness, user)).toEqual({ contacts: [kept.contact] });
+  expect((await summaryOf(harness, user)).contacts).toEqual([kept.contact]);
   const rows = await rowsOf(user);
   expect(rows.contacts.map((row) => row.id)).toEqual([kept.contact.id]);
   expect(rows.interactions.map((row) => row.contactId)).toEqual([kept.contact.id]);
+  expect(rows.statusChanges.map((row) => row.contactId)).toEqual([kept.contact.id]);
 });
 
 test('a gesture is undone once', async () => {
@@ -161,5 +192,110 @@ test('“Undo” is accepted for 15 minutes, then refused and the Contact stays'
   expect(refused.status).toBe(409);
   expect(await refused.json()).toEqual({ error: 'expired' });
   expect(accepted.status).toBe(200);
-  expect(await summaryOf(harness, user)).toEqual({ contacts: [late.contact] });
+  expect((await summaryOf(harness, user)).contacts).toEqual([late.contact]);
+});
+
+test('added Prospecting, a Contact enters the Funnel at the first Stage: a Funnel entry, recorded by its Interaction', async () => {
+  const harness = testApp();
+  const user = await makeUser(harness, { timeZone: 'Europe/Paris' });
+  // 23:30 UTC on January 5th is already January 6th in Paris: the entry counts on the 6th.
+  harness.clock.advance('PT14H30M');
+  const [first] = await stagesOf(user);
+
+  const { contact: added } = await addContact(harness, user, 'Jean Dupont', {
+    status: 'prospecting',
+  });
+
+  expect(added).toMatchObject({ status: 'prospecting', stageId: first!.id });
+  const rows = await rowsOf(user);
+  expect(rows.contacts).toMatchObject([{ status: 'prospecting', stageId: first!.id }]);
+  expect(rows.interactions).toMatchObject([
+    { kind: 'contact_added', direction: 'none', localDate: '2026-01-06' },
+  ]);
+  expect(rows.statusChanges).toEqual([
+    {
+      id: expect.any(String),
+      userId: user.userId,
+      contactId: added.id,
+      interactionId: rows.interactions[0]!.id,
+      fromStatus: null,
+      toStatus: 'prospecting',
+      stageId: first!.id,
+      reason: null,
+    },
+  ]);
+});
+
+test('added Prospecting at a chosen Stage, it enters there', async () => {
+  const harness = testApp();
+  const user = await makeUser(harness);
+  const [, second] = await stagesOf(user);
+
+  const { contact: added } = await addContact(harness, user, 'Jean Dupont', {
+    status: 'prospecting',
+    stageId: second!.id,
+  });
+
+  expect(added.stageId).toBe(second!.id);
+  expect((await rowsOf(user)).statusChanges).toMatchObject([{ stageId: second!.id }]);
+});
+
+test('added as an Ally, a Contact joins the Circle without a Stage', async () => {
+  const harness = testApp();
+  const user = await makeUser(harness);
+
+  const { contact: added } = await addContact(harness, user, 'Jean Dupont', { status: 'ally' });
+
+  expect(added).toMatchObject({ status: 'ally', stageId: null });
+  expect((await rowsOf(user)).statusChanges).toMatchObject([
+    { fromStatus: null, toStatus: 'ally', stageId: null },
+  ]);
+});
+
+test('the first Stage not archived is where a Contact enters by default', async () => {
+  const harness = testApp();
+  const user = await makeUser(harness);
+  const [first, second] = await stagesOf(user);
+  await archiveStage(user, first!.id, harness.clock.now());
+
+  const { contact: added } = await addContact(harness, user, 'Jean Dupont', {
+    status: 'prospecting',
+  });
+
+  expect(added.stageId).toBe(second!.id);
+});
+
+test('“Undo” takes back an addition Prospecting: it leaves no Funnel entry', async () => {
+  const harness = testApp();
+  const user = await makeUser(harness);
+  const { undoToken } = await addContact(harness, user, 'Jean Dupont', { status: 'prospecting' });
+
+  const response = await undo(harness, user, undoToken);
+
+  expect(response.status).toBe(200);
+  expect(await rowsOf(user)).toEqual({ contacts: [], interactions: [], statusChanges: [] });
+});
+
+test('a Stage is chosen for an addition Prospecting only, among the Stages of the Funnel of its User', async () => {
+  const harness = testApp();
+  const user = await makeUser(harness);
+  const other = await makeUser(harness);
+  const [first, second] = await stagesOf(user);
+  const [elsewhere] = await stagesOf(other);
+  await archiveStage(user, second!.id, harness.clock.now());
+  const add = (body: object) =>
+    postJson(harness.app, '/api/contacts', { name: 'Jean Dupont', ...body }, user.cookie);
+
+  const refusals = [
+    await add({ status: 'pool', stageId: first!.id }),
+    await add({ status: 'ally', stageId: first!.id }),
+    await add({ status: 'archived' }),
+    await add({ status: 'prospecting', stageId: elsewhere!.id }),
+    await add({ status: 'prospecting', stageId: second!.id }),
+    await add({ status: 'prospecting', stageId: '00000000-0000-7000-8000-000000000000' }),
+  ];
+
+  expect(refusals.map((response) => response.status)).toEqual([400, 400, 400, 400, 400, 400]);
+  expect(await refusals[3]!.json()).toEqual({ error: 'unknown_stage' });
+  expect(await rowsOf(user)).toEqual({ contacts: [], interactions: [], statusChanges: [] });
 });

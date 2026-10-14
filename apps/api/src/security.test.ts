@@ -76,7 +76,7 @@ describe('catalogue', () => {
   test('every business table is under forced row level security, by its user_id', async () => {
     const business = await businessTables();
     expect(business.map(({ name }) => name)).toEqual(
-      expect.arrayContaining(['contact', 'gesture', 'interaction']),
+      expect.arrayContaining(['contact', 'gesture', 'interaction', 'stage', 'status_change']),
     );
 
     for (const table of business) {
@@ -105,7 +105,14 @@ describe('catalogue', () => {
       `,
     );
     expect(foreignKeys.map(({ name }) => name)).toEqual(
-      expect.arrayContaining(['interaction_contact_fk', 'gesture_contact_fk']),
+      expect.arrayContaining([
+        'interaction_contact_fk',
+        'gesture_contact_fk',
+        'contact_stage_fk',
+        'status_change_contact_fk',
+        'status_change_interaction_fk',
+        'status_change_stage_fk',
+      ]),
     );
 
     for (const { name, columns, referenced } of foreignKeys) {

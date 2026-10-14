@@ -5,7 +5,7 @@ const defaults: Record<string, Handler> = {
   'GET /api/session': () => Response.json({ email: 'jane@example.com' }),
   'GET /api/config': () => Response.json({ signupsOpen: true }),
   'GET /api/account/two-factor': () => Response.json({ enabled: false }),
-  'GET /api/summary': () => Response.json({ contacts: [] }),
+  'GET /api/summary': () => Response.json({ contacts: [], stages: [] }),
 };
 
 /** No session on this device. */

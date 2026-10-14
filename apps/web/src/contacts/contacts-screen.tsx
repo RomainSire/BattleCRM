@@ -1,4 +1,3 @@
-import type { ContactStatus } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
 import { useQuery } from '@tanstack/react-query';
 
@@ -7,13 +6,7 @@ import { useLocale, type Locale } from '../i18n.ts';
 import { Screen } from '../screens/screen.tsx';
 import { useApi } from '../session.ts';
 import { summaryQuery, type SummaryContact } from '../summary.ts';
-
-const STATUS_LABEL: Record<ContactStatus, () => string> = {
-  pool: m.status_pool,
-  prospecting: m.status_prospecting,
-  ally: m.status_ally,
-  archived: m.status_archived,
-};
+import { prospectingStageOf, STATUS_LABEL } from './status.ts';
 
 /** A local day (`YYYY-MM-DD`) as the User reads it: already a day of its own time zone, never shifted by the device's. */
 const formatLocalDay = (day: string, locale: Locale) =>
@@ -35,6 +28,11 @@ export function ContactsScreen() {
   const api = useApi();
   const { data: summary, isError } = useQuery(summaryQuery(api));
   const contacts = summary?.contacts.toSorted(byLatestInteraction);
+  /** Its Status, and the Stage it is at when Prospecting. */
+  const statusOf = (contact: SummaryContact) => {
+    const stage = prospectingStageOf(contact, summary?.stages ?? []);
+    return stage ? `${STATUS_LABEL[contact.status]()} · ${stage}` : STATUS_LABEL[contact.status]();
+  };
   return (
     <Screen title={m.contacts()}>
       {/* Kept on the device, the summary still reads when the API does not answer (ADR 0004). */}
@@ -62,7 +60,7 @@ export function ContactsScreen() {
                 <span data-slot="contact-name" className="truncate font-medium">
                   {contact.name}
                 </span>
-                <span className="text-xs text-neutral-text">{STATUS_LABEL[contact.status]()}</span>
+                <span className="text-xs text-neutral-text">{statusOf(contact)}</span>
               </span>
               <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
                 <span className="sr-only">{m.last_interaction()} </span>

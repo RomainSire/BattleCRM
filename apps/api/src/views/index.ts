@@ -1,9 +1,10 @@
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 
 import type { AppEnv } from '../app.ts';
 import type { RequireUser } from '../auth/index.ts';
 import { withUser, type Transaction } from '../db/index.ts';
+import { FUNNEL_ORDER, stage } from '../funnel/index.ts';
 import type { Touched } from '../gestures/index.ts';
 import { contact, interaction } from '../prospecting/index.ts';
 
@@ -28,6 +29,7 @@ async function summaryContacts(tx: Transaction, userId: string, ids?: string[]) 
       id: contact.id,
       name: contact.name,
       status: contact.status,
+      stageId: contact.stageId,
       lastInteractionAt: latest.occurredAt,
       lastInteractionOn: latest.localDate,
     })
@@ -37,6 +39,19 @@ async function summaryContacts(tx: Transaction, userId: string, ids?: string[]) 
     .orderBy(desc(latest.occurredAt), desc(contact.id));
   return rows.map((row) => ({ ...row, lastInteractionAt: row.lastInteractionAt.toISOString() }));
 }
+
+/** Every Stage of the User, archived ones too: a Contact may keep one as the last it reached. In the order of the Funnel. */
+const summaryStages = (tx: Transaction, userId: string) =>
+  tx
+    .select({
+      id: stage.id,
+      name: stage.name,
+      aim: stage.aim,
+      archived: isNotNull(stage.archivedAt).mapWith(Boolean),
+    })
+    .from(stage)
+    .where(eq(stage.userId, userId))
+    .orderBy(...FUNNEL_ORDER);
 
 /** What the answer of a gesture carries: the rows of the summary it changed, and the ones it removed. */
 export async function summaryChanges(tx: Transaction, userId: string, touched: Touched) {
@@ -52,8 +67,11 @@ export function createViews({ requireUser }: { requireUser: RequireUser }) {
     // The whole working summary, in one read; it grows with each ticket (ADR 0012).
     .get('/summary', requireUser, async (c) => {
       const { userId } = c.var;
-      const contacts = await withUser(userId, (tx) => summaryContacts(tx, userId));
-      return c.json({ contacts }, 200);
+      const summary = await withUser(userId, async (tx) => ({
+        contacts: await summaryContacts(tx, userId),
+        stages: await summaryStages(tx, userId),
+      }));
+      return c.json(summary, 200);
     });
   return { routes };
 }

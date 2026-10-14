@@ -178,5 +178,19 @@
   "status_pool": "Vivier",
   "status_prospecting": "En prospection",
   "status_ally": "Allié",
-  "status_archived": "Archivé"
+  "status_archived": "Archivé",
+  "contact_status": "État",
+  "contact_stage": "Étape",
+  "contact_entered_funnel": "{name} entre dans le Funnel à {stage}",
+  "contact_entered_circle": "{name} entre au Cercle",
+  "standard_stage_outreach": "Approche",
+  "standard_stage_outreach_aim": "CV à envoyer",
+  "standard_stage_agency_screening": "Qualif ESN",
+  "standard_stage_agency_screening_aim": "entretien ESN à obtenir",
+  "standard_stage_client_screening": "Qualif Client",
+  "standard_stage_client_screening_aim": "entretien client à obtenir",
+  "standard_stage_closing": "Closing",
+  "standard_stage_closing_aim": "contrat à signer",
+  "contact_entered_funnel_anywhere": "{name} entre dans le Funnel",
+  "contact_stage_gone": "Cette Étape n'est plus dans le Funnel : choisis-en une autre."
 }

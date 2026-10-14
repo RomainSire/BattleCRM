@@ -68,6 +68,11 @@ Un palier du Funnel (par ex. « premier contact », « CV envoyé », « entreti
 _EN_: Stage; archived Stage (avoid: step, phase, status)
 _Avoid_: Stage, phase, statut
 
+**Étapes types**:
+Les quatre Étapes, avec leur But, dont part le Funnel de tout nouvel Utilisateur : Approche, Qualif ESN, Qualif Client, Closing. Écrites à la création du compte dans la langue de l'inscription, puis jamais traduites : ce sont des Étapes comme les autres.
+_EN_: Standard stages (avoid: default stages, template)
+_Avoid_: Étapes par défaut, modèle
+
 **But**:
 Ce qui fait franchir une Étape, en texte libre et facultatif (par ex. « CV à envoyer », « entretien ESN à obtenir »). Il sert de point de départ au Critère de succès d'une Battle de cette Étape, sans le lier : le modifier ne touche aucune Battle.
 _EN_: Aim (avoid: goal, objective)

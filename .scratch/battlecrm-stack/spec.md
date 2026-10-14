@@ -91,7 +91,7 @@ Modules profonds dans `apps/api/src/<module>/`, chacun **seul à écrire ses tab
 |---|---|
 | `prospecting` | Contacts, États, Interactions, Relances et Cadence, Essais et Tirage (gestes de la fiche Contact) |
 | `battles` | ouvrir, clôturer, Verdict, Champion, Historique des Champions |
-| `funnel` | Étapes (ordre, archivage), Positionnements (copie modifiée, pièces jointes) ; exporte `stageOrder(tx)` |
+| `funnel` | Étapes (ordre, archivage), Positionnements (copie modifiée, pièces jointes) ; exporte `stageOrder(tx, userId)` (le `userId` pour le filtre applicatif, ADR 0009) et `initializeFunnel`, les Étapes types à la création du compte |
 | `organizations` | unicité normalisée, fusion |
 | `gestures` | table `gesture` et `POST /gestures/:id/undo` (§5.4) ; exporte `recordGesture(tx, …)`, que chaque geste appelle, et reçoit de chaque module l'inverse de ses gestes (ajouté le 2026-10-13, ticket d'implémentation 13) |
 | `settings` | préférences et valeurs en vigueur ; exporte `localDateOf(tx, userId, instant)` (le `userId` sert au filtre applicatif, ADR 0009), `activityGoalOn(tx, date)`, `entryGoalForWeek(tx, monday)` et les écritures « à partir du lendemain / du lundi suivant » |

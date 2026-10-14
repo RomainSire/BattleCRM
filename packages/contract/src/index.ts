@@ -13,3 +13,7 @@ export type ContactStatus = (typeof CONTACT_STATUSES)[number];
 
 /** A Contact only needs a name. */
 export const CONTACT_NAME_MAX_LENGTH = 200;
+
+/** What the quick add offers (spec UX §6.8): a new Contact is never added Archived. */
+export const ADDABLE_CONTACT_STATUSES = ['pool', 'prospecting', 'ally'] as const;
+export type AddableContactStatus = (typeof ADDABLE_CONTACT_STATUSES)[number];

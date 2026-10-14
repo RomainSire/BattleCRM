@@ -392,10 +392,12 @@ describe('signing out', () => {
           id: '01990000-0000-7000-8000-000000000001',
           name: 'Jean Dupont',
           status: 'pool',
+          stageId: null,
           lastInteractionAt: '2026-01-06T09:00:00.000Z',
           lastInteractionOn: '2026-01-06',
         },
       ],
+      stages: [],
     });
     const menu = screen.getByRole('navigation', { name: 'Menu principal' });
     await expect.element(menu.getByText('jane@example.com')).toBeVisible();

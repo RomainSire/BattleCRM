@@ -92,6 +92,20 @@
       "when": 1791907177834,
       "tag": "0012_contacts_and_gestures_access",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791959129433,
+      "tag": "0013_stages_and_status_changes",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791959133352,
+      "tag": "0014_stages_and_status_changes_access",
+      "breakpoints": true
     }
   ]
 }

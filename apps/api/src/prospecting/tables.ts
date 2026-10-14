@@ -14,6 +14,8 @@ import {
 
 // oxlint-disable-next-line no-restricted-imports -- a foreign key to the User: tables files reference each other directly, drizzle-kit loads them alone.
 import { user } from '../auth/tables.ts';
+// oxlint-disable-next-line no-restricted-imports -- a foreign key to the Stage of a Contact: tables files reference each other directly, drizzle-kit loads them alone.
+import { stage } from '../funnel/tables.ts';
 
 // What every business table carries (spec stack §6): an id from the database, the User it belongs to under
 // forced row level security, `(user_id, id)` unique so that a foreign key can never reach another User's row,
@@ -39,12 +41,26 @@ export const contact = pgTable(
     /** The only field a Contact must have. */
     name: text().notNull(),
     status: text({ enum: CONTACT_STATUSES }).notNull(),
+    /**
+     * The Stage it is at, Prospecting; in any other Status, the last one it reached, if it ever
+     * reached one, archived or not: where it left the Funnel.
+     */
+    stageId: uuid('stage_id'),
     createdAt: instant('created_at').notNull(),
   },
   (table) => [
     unique('contact_user_id_id_unique').on(table.userId, table.id),
+    foreignKey({
+      name: 'contact_stage_fk',
+      columns: [table.userId, table.stageId],
+      foreignColumns: [stage.userId, stage.id],
+    }),
     check('contact_status_check', sql`${table.status} in (${quoted(CONTACT_STATUSES)})`),
     check('contact_name_check', sql`${table.name} <> ''`),
+    check(
+      'contact_prospecting_stage_check',
+      sql`${table.status} <> 'prospecting' or ${table.stageId} is not null`,
+    ),
   ],
 );
 
@@ -80,5 +96,63 @@ export const interaction = pgTable(
       sql`${table.direction} in (${quoted(INTERACTION_DIRECTIONS)})`,
     ),
     index('interaction_contact_idx').on(table.userId, table.contactId, table.occurredAt),
+  ],
+);
+
+/**
+ * The history of the Status of a Contact (ST-39), each change recorded by an Interaction of its own,
+ * dated when it is written down and never earlier: its gesture writes that Interaction from the clock
+ * of the app, never one the User dated. A change to Prospecting is a Funnel entry; the first Status
+ * of a Contact is a change from none.
+ */
+export const statusChange = pgTable(
+  'status_change',
+  {
+    id: id(),
+    userId: userId(),
+    contactId: uuid('contact_id').notNull(),
+    /** Its date and local day, from the clock of the app. */
+    interactionId: uuid('interaction_id').notNull(),
+    /** None when the Contact was added in the Status it changed to. */
+    fromStatus: text('from_status', { enum: CONTACT_STATUSES }),
+    toStatus: text('to_status', { enum: CONTACT_STATUSES }).notNull(),
+    /** The Stage of the Contact then: the one it enters, or the last one it reached. */
+    stageId: uuid('stage_id'),
+    /** Optional, in the words of the User. */
+    reason: text(),
+  },
+  (table) => [
+    unique('status_change_user_id_id_unique').on(table.userId, table.id),
+    unique('status_change_interaction_unique').on(table.userId, table.interactionId),
+    foreignKey({
+      name: 'status_change_contact_fk',
+      columns: [table.userId, table.contactId],
+      foreignColumns: [contact.userId, contact.id],
+    }),
+    foreignKey({
+      name: 'status_change_interaction_fk',
+      columns: [table.userId, table.interactionId],
+      foreignColumns: [interaction.userId, interaction.id],
+    }),
+    foreignKey({
+      name: 'status_change_stage_fk',
+      columns: [table.userId, table.stageId],
+      foreignColumns: [stage.userId, stage.id],
+    }),
+    check(
+      'status_change_from_status_check',
+      sql`${table.fromStatus} in (${quoted(CONTACT_STATUSES)})`,
+    ),
+    check('status_change_to_status_check', sql`${table.toStatus} in (${quoted(CONTACT_STATUSES)})`),
+    check(
+      'status_change_change_check',
+      sql`${table.fromStatus} is distinct from ${table.toStatus}`,
+    ),
+    check(
+      'status_change_prospecting_stage_check',
+      sql`${table.toStatus} <> 'prospecting' or ${table.stageId} is not null`,
+    ),
+    check('status_change_reason_check', sql`${table.reason} <> ''`),
+    index('status_change_contact_idx').on(table.userId, table.contactId),
   ],
 );
