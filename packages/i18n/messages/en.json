@@ -258,5 +258,52 @@
   "contact_edit_changes_trial": "The Trial in progress keeps its starting Target",
   "contact_edit_changes_no_interaction": "No Interaction is recorded",
   "contact_edit_changes_organization_created": "The Organization {organization} is created",
-  "organization_taken_on_edit": "This Organization already exists: it is chosen instead, check then save."
+  "organization_taken_on_edit": "This Organization already exists: it is chosen instead, check then save.",
+  "organization_unknown": "This Organization does not exist, or no longer does.",
+  "organization_contacts": "Contacts at {organization}",
+  "organization_no_contacts": "No Contact in this Organization.",
+  "organization_rename": "Rename",
+  "organization_name": "Organization name",
+  "organization_name_taken": "Another Organization already has this name.",
+  "organization_renamed": "Organization renamed: {organization}",
+  "organization_change_type": "Switch to {type}",
+  "organization_change_type_title": "Switch {organization} to {type}?",
+  "organization_targets_change": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Contact moves to the {target} Target.",
+        "countPlural=*": "{count} Contacts move to the {target} Target."
+      }
+    }
+  ],
+  "organization_trials_keep_target": "Trials already started keep their Target.",
+  "organization_type_changed": "{organization} is now {type}",
+  "organization_merge": "Merge with…",
+  "organization_merge_title": "Merge {organization} with…",
+  "organization_merge_kept": "Organization that stays",
+  "organization_merge_no_match": "No other Organization matches.",
+  "organization_merge_moves_none": "No Contact changes Organization.",
+  "organization_merge_moves": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Contact joins {organization}, which stays.",
+        "countPlural=*": "{count} Contacts join {organization}, which stays."
+      }
+    }
+  ],
+  "organization_merge_removed": "{organization} is deleted.",
+  "organization_merge_confirm": "Merge",
+  "organization_merged": "{removed} merged into {kept}",
+  "organization_delete": "Delete…",
+  "organization_delete_title": "Delete {organization}?",
+  "organization_delete_body": "No Contact belongs to it.",
+  "organization_delete_confirm": "Delete",
+  "organization_deleted": "Organization deleted: {organization}",
+  "organization_changed_elsewhere": "This Organization changed on another device: check, then try again.",
+  "organization_merge_choose": "Choose the Organization to merge with.",
+  "organization_name_required": "Enter a name."
 }

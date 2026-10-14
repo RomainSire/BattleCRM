@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
 
 import { testApp } from '../test/app.ts';
-import { addContact } from '../test/factories/contact.ts';
+import { addContact, editContact } from '../test/factories/contact.ts';
 import { makeUser } from '../test/factories/user.ts';
 import { postJson } from '../test/http.ts';
 import { withUser } from './db/index.ts';
@@ -169,6 +169,15 @@ test('a query that forgot its filter only sees the rows of its User, in every bu
   }
 });
 
+/** An Organization of the User, created with a Contact of its own. */
+async function organizationOf(harness: Harness, user: User, name = 'Acme') {
+  const { organization } = await addContact(harness, user, `Contact of ${name}`, {
+    newOrganization: { name, type: 'consultancy' },
+  });
+  if (!organization) throw new Error('organizationOf: no Organization was created');
+  return organization.id;
+}
+
 const getJson = async (harness: Harness, user: User, path: string): Promise<unknown> =>
   (await harness.app.request(path, { headers: { Cookie: user.cookie } })).json();
 
@@ -198,6 +207,32 @@ const CROSS_ACCESS: Record<
   'GET /api/contacts/:id/record': async (harness, alice) => {
     const { contact } = await addContact(harness, alice);
     return { id: contact.id, state: () => getJson(harness, alice, '/api/summary') };
+  },
+  'POST /api/organizations/:id/rename': async (harness, alice) => ({
+    id: await organizationOf(harness, alice),
+    state: () => getJson(harness, alice, '/api/summary'),
+    body: { name: 'Bob was here' },
+  }),
+  'POST /api/organizations/:id/change-type': async (harness, alice) => ({
+    id: await organizationOf(harness, alice),
+    state: () => getJson(harness, alice, '/api/summary'),
+    body: { type: 'end_client' },
+  }),
+  'POST /api/organizations/:id/merge': async (harness, alice) => {
+    const into = await organizationOf(harness, alice, 'Globex');
+    return {
+      id: await organizationOf(harness, alice),
+      state: () => getJson(harness, alice, '/api/summary'),
+      body: { intoId: into },
+    };
+  },
+  'POST /api/organizations/:id/delete': async (harness, alice) => {
+    const { contact, organization } = await addContact(harness, alice, 'Julie Martin', {
+      newOrganization: { name: 'Acme', type: 'consultancy' },
+    });
+    // Its Contact leaves it: nothing but the User stands in the way.
+    await editContact(harness, alice, contact.id, { name: 'Julie Martin' });
+    return { id: organization!.id, state: () => getJson(harness, alice, '/api/summary') };
   },
   'POST /api/sessions/:id/revoke': async (harness, alice) => {
     const state = () => getJson(harness, alice, '/api/sessions');

@@ -25,7 +25,13 @@ export type NavigationEntry = {
 
 const today: NavigationEntry = { to: '/today', label: m.today, icon: Sun };
 const circle: NavigationEntry = { to: '/circle', label: m.circle, icon: Star };
-const contacts: NavigationEntry = { to: '/contacts', label: m.contacts, icon: Contact };
+const contacts: NavigationEntry = {
+  to: '/contacts',
+  label: m.contacts,
+  icon: Contact,
+  // The record of a Contact and the page of an Organization have no entry of their own (spec UX §3.1).
+  alsoCurrentOn: ['/organizations/$organizationId'],
+};
 const funnel: NavigationEntry = { to: '/funnel', label: m.funnel, icon: Funnel };
 const battles: NavigationEntry = { to: '/battles', label: m.battles, icon: Swords };
 const positionings: NavigationEntry = {

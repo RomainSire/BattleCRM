@@ -11,7 +11,13 @@ import { Button } from '../components/ui/button.tsx';
 import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
-import { contactRecordKey, summaryQuery, type Summary, type SummaryContact } from '../summary.ts';
+import {
+  contactRecordKey,
+  summaryQuery,
+  type Summary,
+  type SummaryContact,
+  type SummaryOrganization,
+} from '../summary.ts';
 import { ContactName } from './contact-name.tsx';
 import { EditCoordinates } from './edit-coordinates.tsx';
 import { formatLocalDay } from './format.ts';
@@ -75,6 +81,17 @@ function threadEntryLabel({ statusChange }: ThreadEntry, summary: Summary) {
   return reason === null ? label : `${label} · ${reason}`;
 }
 
+/** The name of an Organization, which leads to its page (spec UX §5.4). */
+const OrganizationLink = ({ organization }: { organization: SummaryOrganization }) => (
+  <Link
+    to="/organizations/$organizationId"
+    params={{ organizationId: organization.id }}
+    className="rounded-control underline-offset-4 focus-ring hover:underline"
+  >
+    {organization.name}
+  </Link>
+);
+
 const Pill = ({ children }: { children: ReactNode }) => (
   <span className="rounded-control border px-1.5 py-0.5 text-xs text-neutral-text">{children}</span>
 );
@@ -107,9 +124,13 @@ function RecordHeader({
         <ContactName contact={contact} />
       </Heading>
       <p className="text-muted-foreground">
-        {organization
-          ? `${organization.name} · ${targetLabel(contact, summary)}`
-          : m.no_organization()}
+        {organization ? (
+          <>
+            <OrganizationLink organization={organization} /> · {targetLabel(contact, summary)}
+          </>
+        ) : (
+          m.no_organization()
+        )}
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
         {stage && <Pill>{stage}</Pill>}
@@ -171,12 +192,13 @@ function Coordinates({
   const [isEditing, setIsEditing] = useState(false);
   const editButton = useRef<HTMLButtonElement>(null);
   const Heading = level === 2 ? 'h2' : 'h3';
+  const organization = organizationOf(contact, summary);
   const link = 'rounded-control text-accent-text underline-offset-4 focus-ring hover:underline';
   const rows: { label: string; value: ReactNode }[] = [
     { label: m.contact_job_title(), value: contact.jobTitle },
     {
       label: m.contact_organization(),
-      value: organizationOf(contact, summary)?.name ?? m.no_organization(),
+      value: organization ? <OrganizationLink organization={organization} /> : m.no_organization(),
     },
     { label: m.contact_target(), value: targetLabel(contact, summary) },
     {

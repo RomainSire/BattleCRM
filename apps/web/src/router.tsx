@@ -23,6 +23,7 @@ import { AuthError, InvalidLinkScreen, VerifyingEmail } from './auth/verify-emai
 import { ContactPage } from './contacts/contact-record.tsx';
 import { ContactsScreen } from './contacts/contacts-screen.tsx';
 import { clearDeviceData } from './device-data.ts';
+import { OrganizationPage } from './organizations/organization-page.tsx';
 import { MoreScreen } from './screens/more-screen.tsx';
 import { Screen } from './screens/screen.tsx';
 import { configQuery, sessionQuery, type ApiClient } from './session.ts';
@@ -223,6 +224,16 @@ const contactRoute = createRoute({
   },
 });
 
+// The page of an Organization, under Contacts (spec UX §3.1, §5.4).
+const organizationRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/organizations/$organizationId',
+  component: function OrganizationRecordPage() {
+    const { organizationId } = organizationRoute.useParams();
+    return <OrganizationPage key={organizationId} organizationId={organizationId} />;
+  },
+});
+
 const funnelRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/funnel',
@@ -285,6 +296,7 @@ const routeTree = rootRoute.addChildren([
     circleRoute,
     contactsRoute,
     contactRoute,
+    organizationRoute,
     funnelRoute,
     battlesRoute,
     positioningsRoute,

@@ -258,5 +258,52 @@
   "contact_edit_changes_trial": "L'Essai en cours garde sa Cible de départ",
   "contact_edit_changes_no_interaction": "Aucune Interaction n'est enregistrée",
   "contact_edit_changes_organization_created": "L'Organisation {organization} est créée",
-  "organization_taken_on_edit": "Cette Organisation existe déjà : elle est choisie à la place, vérifie puis enregistre."
+  "organization_taken_on_edit": "Cette Organisation existe déjà : elle est choisie à la place, vérifie puis enregistre.",
+  "organization_unknown": "Cette Organisation n'existe pas ou plus.",
+  "organization_contacts": "Contacts de {organization}",
+  "organization_no_contacts": "Aucun Contact dans cette Organisation.",
+  "organization_rename": "Renommer",
+  "organization_name": "Nom de l'Organisation",
+  "organization_name_taken": "Une autre Organisation porte déjà ce nom.",
+  "organization_renamed": "Organisation renommée : {organization}",
+  "organization_change_type": "Passer en {type}",
+  "organization_change_type_title": "Passer {organization} en {type} ?",
+  "organization_targets_change": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Contact passe en Cible {target}.",
+        "countPlural=*": "{count} Contacts passent en Cible {target}."
+      }
+    }
+  ],
+  "organization_trials_keep_target": "Les Essais déjà commencés gardent leur Cible.",
+  "organization_type_changed": "{organization} passe en {type}",
+  "organization_merge": "Fusionner avec…",
+  "organization_merge_title": "Fusionner {organization} avec…",
+  "organization_merge_kept": "Organisation qui reste",
+  "organization_merge_no_match": "Aucune autre Organisation ne correspond.",
+  "organization_merge_moves_none": "Aucun Contact ne change d'Organisation.",
+  "organization_merge_moves": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Contact rejoint {organization}, qui reste.",
+        "countPlural=*": "{count} Contacts rejoignent {organization}, qui reste."
+      }
+    }
+  ],
+  "organization_merge_removed": "{organization} est supprimée.",
+  "organization_merge_confirm": "Fusionner",
+  "organization_merged": "{removed} fusionnée dans {kept}",
+  "organization_delete": "Supprimer…",
+  "organization_delete_title": "Supprimer {organization} ?",
+  "organization_delete_body": "Aucun Contact n'en fait partie.",
+  "organization_delete_confirm": "Supprimer",
+  "organization_deleted": "Organisation supprimée : {organization}",
+  "organization_changed_elsewhere": "Cette Organisation a changé sur un autre appareil : vérifie puis recommence.",
+  "organization_merge_choose": "Choisis l'Organisation avec laquelle fusionner.",
+  "organization_name_required": "Saisis un nom."
 }

@@ -21,7 +21,8 @@ import { initializeFunnel } from './funnel/index.ts';
 import { createGestures } from './gestures/index.ts';
 import type { InFlight } from './in-flight.ts';
 import { jsonBody } from './json-body.ts';
-import { createProspecting } from './prospecting/index.ts';
+import { createOrganizations } from './organizations/index.ts';
+import { createProspecting, organizationMembers } from './prospecting/index.ts';
 import type { Random } from './random.ts';
 import { initializeSettings } from './settings/index.ts';
 import { createViews, summaryChanges } from './views/index.ts';
@@ -81,6 +82,11 @@ export function createApp({
     inverses: { ...prospecting.inverses },
     changesOf: summaryChanges,
   });
+  const organizations = createOrganizations({
+    requireUser,
+    changesOf: summaryChanges,
+    members: organizationMembers,
+  });
   const views = createViews({ requireUser });
 
   app.use(async (c, next) => {
@@ -123,6 +129,7 @@ export function createApp({
     )
     .route('/', auth.routes)
     .route('/', prospecting.routes)
+    .route('/', organizations.routes)
     .route('/', gestures.routes)
     .route('/', views.routes)
     .post(

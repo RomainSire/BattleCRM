@@ -17,7 +17,7 @@ import { z } from 'zod';
 import type { AppEnv } from '../app.ts';
 import type { RequireUser } from '../auth/index.ts';
 import type { Clock } from '../clock.ts';
-import { withUser, type Transaction } from '../db/index.ts';
+import { violates, withUser, type Transaction } from '../db/index.ts';
 import { stageOrder } from '../funnel/index.ts';
 import {
   lockContact,
@@ -31,6 +31,7 @@ import {
   createOrganization,
   deleteOrganization,
   isOrganizationOf,
+  type OrganizationMembers,
 } from '../organizations/index.ts';
 import { localDateOf } from '../settings/index.ts';
 import { contact, interaction, statusChange } from './tables.ts';
@@ -182,17 +183,32 @@ const contactEdited = z.object({
   createdOrganizationId: z.uuid().optional(),
 });
 
+/** The Contacts of an Organization, as its own gestures read and move them (spec stack §5.2). */
+export const organizationMembers: OrganizationMembers = {
+  async any(tx, userId, organizationId) {
+    const [member] = await tx
+      .select({ id: contact.id })
+      .from(contact)
+      .where(and(eq(contact.userId, userId), eq(contact.organizationId, organizationId)))
+      .limit(1);
+    return member !== undefined;
+  },
+  async move(tx, userId, fromId, toId) {
+    const moved = await tx
+      .update(contact)
+      .set({ organizationId: toId })
+      .where(and(eq(contact.userId, userId), eq(contact.organizationId, fromId)))
+      .returning({ id: contact.id });
+    return moved.map(({ id }) => id);
+  },
+};
+
 /**
  * Deletes the Organization a gesture created, unless a Contact belongs to it: one joined it since.
  * Whether it went.
  */
 async function removeCreatedOrganization(tx: Transaction, userId: string, organizationId: string) {
-  const [member] = await tx
-    .select({ id: contact.id })
-    .from(contact)
-    .where(and(eq(contact.userId, userId), eq(contact.organizationId, organizationId)))
-    .limit(1);
-  if (member) return false;
+  if (await organizationMembers.any(tx, userId, organizationId)) return false;
   await deleteOrganization(tx, userId, organizationId);
   return true;
 }
@@ -262,17 +278,6 @@ async function contactWithProfile(tx: Transaction, userId: string, url: string) 
     .where(and(eq(contact.userId, userId), eq(contact.linkedinUrl, url)));
   return found?.id;
 }
-
-/** Whether the database refused a write for this unique constraint. */
-const violates = (error: unknown, constraint: string): boolean =>
-  error instanceof Error &&
-  ((typeof error.cause === 'object' &&
-    error.cause !== null &&
-    'code' in error.cause &&
-    error.cause.code === '23505' &&
-    'constraint' in error.cause &&
-    error.cause.constraint === constraint) ||
-    violates(error.cause, constraint));
 
 /**
  * The gestures of the Contact (spec stack §5.2, §5.4): one endpoint each, in one transaction, which

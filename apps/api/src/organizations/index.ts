@@ -1,8 +1,18 @@
-import type { OrganizationType } from '@battlecrm/contract';
+import {
+  ORGANIZATION_NAME_MAX_LENGTH,
+  ORGANIZATION_TYPES,
+  type OrganizationType,
+} from '@battlecrm/contract';
 import { normalizeName } from '@battlecrm/domain';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
+import { Hono } from 'hono';
+import { z } from 'zod';
 
-import type { Transaction } from '../db/index.ts';
+import type { AppEnv } from '../app.ts';
+import type { RequireUser } from '../auth/index.ts';
+import { violates, withUser, type Transaction } from '../db/index.ts';
+import type { ChangesOf, Touched } from '../gestures/index.ts';
+import { jsonBody } from '../json-body.ts';
 import { organization } from './tables.ts';
 
 // Read by `views`, which never writes it.
@@ -47,4 +57,181 @@ export async function deleteOrganization(
   await tx
     .delete(organization)
     .where(and(eq(organization.userId, userId), eq(organization.id, organizationId)));
+}
+
+/**
+ * The Contacts of an Organization, which `prospecting` writes: handed to the gestures of the
+ * Organization by the composition root, that imports both modules (spec stack §5.2).
+ */
+export type OrganizationMembers = {
+  /** Whether a Contact belongs to it. */
+  any: (tx: Transaction, userId: string, organizationId: string) => Promise<boolean>;
+  /** Moves every Contact of one to the other; the ids of the Contacts moved. */
+  move: (tx: Transaction, userId: string, fromId: string, toId: string) => Promise<string[]>;
+};
+
+/** What a gesture on an Organization changed in the summary: it touches no Contact unless said. */
+const touching = (touched: Partial<Touched>): Touched => ({
+  contactIds: [],
+  removedContactIds: [],
+  organizationIds: [],
+  removedOrganizationIds: [],
+  ...touched,
+});
+
+/** The Organization a route names: `null` for an id that is none, which answers like an unknown one. */
+const organizationIdOf = (param: string) => {
+  const id = z.uuid().safeParse(param);
+  return id.success ? id.data : null;
+};
+
+/**
+ * The ids among these that are Organizations of the User, locked until the transaction ends. Always in
+ * the order of their ids: two merges of the same pair, either way round, never wait on each other.
+ */
+async function lockedOrganizations(tx: Transaction, userId: string, organizationIds: string[]) {
+  const found = await tx
+    .select({ id: organization.id })
+    .from(organization)
+    .where(and(eq(organization.userId, userId), inArray(organization.id, organizationIds)))
+    .orderBy(organization.id)
+    .for('update');
+  return new Set(found.map(({ id }) => id));
+}
+
+const NOT_FOUND = { error: 'not_found' as const };
+
+/**
+ * The gestures of an Organization (spec UX §5.4): rename, change the type, merge, delete. Each in one
+ * transaction, confirmed beforehand by the User and never undone (spec UX §1); each answers with the
+ * rows of the summary it changed.
+ */
+export function createOrganizations<Changes>({
+  requireUser,
+  changesOf,
+  members,
+}: {
+  requireUser: RequireUser;
+  changesOf: ChangesOf<Changes>;
+  members: OrganizationMembers;
+}) {
+  const routes = new Hono<AppEnv>()
+    // Unique by its normalized name (ST-30): its own, written another way, is fine.
+    .post(
+      '/organizations/:id/rename',
+      requireUser,
+      jsonBody(z.object({ name: z.string().trim().min(1).max(ORGANIZATION_NAME_MAX_LENGTH) })),
+      async (c) => {
+        const { userId } = c.var;
+        const organizationId = organizationIdOf(c.req.param('id'));
+        if (organizationId === null) return c.json(NOT_FOUND, 404);
+        const { name } = c.req.valid('json');
+        const changes = await withUser(userId, async (tx) => {
+          const [renamed] = await tx
+            .update(organization)
+            .set({ name, normalizedName: normalizeName(name) })
+            .where(and(eq(organization.userId, userId), eq(organization.id, organizationId)))
+            .returning({ id: organization.id });
+          if (!renamed) return null;
+          return changesOf(tx, userId, touching({ organizationIds: [organizationId] }));
+        }).catch((error: unknown) => {
+          if (violates(error, 'organization_normalized_name_unique')) return 'taken' as const;
+          throw error;
+        });
+        if (changes === 'taken') return c.json({ error: 'organization_taken' as const }, 409);
+        if (changes === null) return c.json(NOT_FOUND, 404);
+        return c.json({ changes }, 200);
+      },
+    )
+    // The Target of its Contacts follows; the Trials already started keep theirs (CONTEXT.md, Organization).
+    .post(
+      '/organizations/:id/change-type',
+      requireUser,
+      jsonBody(z.object({ type: z.enum(ORGANIZATION_TYPES) })),
+      async (c) => {
+        const { userId } = c.var;
+        const organizationId = organizationIdOf(c.req.param('id'));
+        if (organizationId === null) return c.json(NOT_FOUND, 404);
+        const { type } = c.req.valid('json');
+        const changes = await withUser(userId, async (tx) => {
+          const [changed] = await tx
+            .update(organization)
+            .set({ type })
+            .where(and(eq(organization.userId, userId), eq(organization.id, organizationId)))
+            .returning({ id: organization.id });
+          if (!changed) return null;
+          return changesOf(tx, userId, touching({ organizationIds: [organizationId] }));
+        });
+        if (changes === null) return c.json(NOT_FOUND, 404);
+        return c.json({ changes }, 200);
+      },
+    )
+    // Two Organizations made twice become one (ST-31): its Contacts join the one that stays, and take its type.
+    .post(
+      '/organizations/:id/merge',
+      requireUser,
+      jsonBody(z.object({ intoId: z.uuid() })),
+      async (c) => {
+        const { userId } = c.var;
+        const organizationId = organizationIdOf(c.req.param('id'));
+        if (organizationId === null) return c.json(NOT_FOUND, 404);
+        const { intoId } = c.req.valid('json');
+        const outcome = await withUser(userId, async (tx) => {
+          // Locked first: no Contact joins the one that goes while it goes.
+          const locked = await lockedOrganizations(tx, userId, [organizationId, intoId]);
+          if (!locked.has(organizationId)) return { refused: 'not_found' as const };
+          if (intoId === organizationId || !locked.has(intoId)) {
+            return { refused: 'unknown_organization' as const };
+          }
+          const moved = await members.move(tx, userId, organizationId, intoId);
+          await deleteOrganization(tx, userId, organizationId);
+          return {
+            changes: await changesOf(
+              tx,
+              userId,
+              touching({
+                contactIds: moved,
+                organizationIds: [intoId],
+                removedOrganizationIds: [organizationId],
+              }),
+            ),
+          };
+        });
+        if (!('changes' in outcome)) {
+          return outcome.refused === 'not_found'
+            ? c.json(NOT_FOUND, 404)
+            : c.json({ error: outcome.refused }, 400);
+        }
+        return c.json({ changes: outcome.changes }, 200);
+      },
+    )
+    // Never automatic, and only once no Contact belongs to it (CONTEXT.md, Organization).
+    .post('/organizations/:id/delete', requireUser, async (c) => {
+      const { userId } = c.var;
+      const organizationId = organizationIdOf(c.req.param('id'));
+      if (organizationId === null) return c.json(NOT_FOUND, 404);
+      const outcome = await withUser(userId, async (tx) => {
+        if (!(await lockedOrganizations(tx, userId, [organizationId])).has(organizationId)) {
+          return { refused: 'not_found' as const };
+        }
+        if (await members.any(tx, userId, organizationId)) {
+          return { refused: 'has_contacts' as const };
+        }
+        await deleteOrganization(tx, userId, organizationId);
+        return {
+          changes: await changesOf(
+            tx,
+            userId,
+            touching({ removedOrganizationIds: [organizationId] }),
+          ),
+        };
+      });
+      if (!('changes' in outcome)) {
+        return outcome.refused === 'not_found'
+          ? c.json(NOT_FOUND, 404)
+          : c.json({ error: outcome.refused }, 409);
+      }
+      return c.json({ changes: outcome.changes }, 200);
+    });
+  return { routes };
 }
