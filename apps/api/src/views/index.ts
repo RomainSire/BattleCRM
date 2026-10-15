@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
@@ -6,7 +6,7 @@ import type { AppEnv } from '../app.ts';
 import type { RequireUser } from '../auth/index.ts';
 import type { Clock } from '../clock.ts';
 import { withUser, type Transaction } from '../db/index.ts';
-import { FUNNEL_ORDER, positioning, stage } from '../funnel/index.ts';
+import { FUNNEL_ORDER, positioning, positioningAttachment, stage } from '../funnel/index.ts';
 import type { Touched } from '../gestures/index.ts';
 import { organization } from '../organizations/index.ts';
 import {
@@ -195,8 +195,29 @@ async function summaryPositionings(tx: Transaction, userId: string, ids?: string
     .from(positioning)
     .where(and(eq(positioning.userId, userId), ids && inArray(positioning.id, ids)))
     .orderBy(positioning.id);
+  // Its attachments not removed, in the order they were joined; their bytes are downloaded apart.
+  const attachments = await tx
+    .select({
+      id: positioningAttachment.id,
+      positioningId: positioningAttachment.positioningId,
+      name: positioningAttachment.name,
+      contentType: positioningAttachment.contentType,
+      size: positioningAttachment.size,
+    })
+    .from(positioningAttachment)
+    .where(
+      and(
+        eq(positioningAttachment.userId, userId),
+        isNull(positioningAttachment.removedAt),
+        ids && inArray(positioningAttachment.positioningId, ids),
+      ),
+    )
+    .orderBy(positioningAttachment.id);
   return rows.map(({ followUpDays, followUpMessages, ...row }) => ({
     ...row,
+    attachments: attachments
+      .filter(({ positioningId }) => positioningId === row.id)
+      .map(({ positioningId: _joinedTo, ...attachment }) => attachment),
     followUps: followUpDays.map((days, rank) => ({
       days,
       message: followUpMessages[rank] ?? null,

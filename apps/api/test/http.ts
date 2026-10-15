@@ -35,6 +35,31 @@ export function postJson(
   );
 }
 
+/** A file sent as the SPA joins one: a multipart form, its field `file`. */
+export function postFile(
+  app: App,
+  path: string,
+  file: File,
+  cookie?: string,
+  { ip = randomIp() }: { ip?: string } = {},
+) {
+  const body = new FormData();
+  body.set('file', file);
+  return app.request(
+    path,
+    {
+      method: 'POST',
+      headers: {
+        Origin: testConfig.appOrigin,
+        'X-Forwarded-For': ip,
+        ...(cookie === undefined ? {} : { Cookie: cookie }),
+      },
+      body,
+    },
+    behindTraefik,
+  );
+}
+
 /** What @hono/node-server binds: the peer is Traefik, inside TRUSTED_PROXIES. */
 const behindTraefik = { incoming: { socket: { remoteAddress: '172.18.0.2' } } };
 

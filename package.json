@@ -8,6 +8,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "dev": "docker compose -f compose.dev.yml up --detach --wait && pnpm --parallel --filter @battlecrm/api --filter @battlecrm/web dev",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

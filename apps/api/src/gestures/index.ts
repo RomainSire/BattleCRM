@@ -15,7 +15,7 @@ const isPositioningKind = (kind: string): kind is PositioningGestureKind =>
   POSITIONING_GESTURE_KINDS.some((positioningKind) => positioningKind === kind);
 
 /** How long the server takes a gesture back (ADR 0011); the toast itself may stay longer. */
-const UNDO_WINDOW_MS = 15 * 60_000;
+export const UNDO_WINDOW_MS = 15 * 60_000;
 
 /** The rows of the working summary a gesture, or its inverse, changed: what its answer carries. */
 export type Touched = {

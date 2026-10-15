@@ -72,3 +72,8 @@ export const FOLLOW_UP_INTERVALS_MAX = 10;
 export const POSITIONING_LABEL_MAX_LENGTH = 200;
 export const POSITIONING_CONTENT_MAX_LENGTH = 10_000;
 export const FOLLOW_UP_MESSAGE_MAX_LENGTH = 5000;
+
+/** The files joined to a Positioning (ST-35): of any type, 5 MiB each, 100 MiB for all of a User's. */
+export const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
+export const ATTACHMENTS_MAX_BYTES_PER_USER = 100 * 1024 * 1024;
+export const ATTACHMENT_NAME_MAX_LENGTH = 255;

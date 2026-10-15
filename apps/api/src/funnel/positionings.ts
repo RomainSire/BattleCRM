@@ -1,4 +1,6 @@
 import {
+  ATTACHMENT_MAX_BYTES,
+  ATTACHMENT_NAME_MAX_LENGTH,
   CHANNELS,
   FOLLOW_UP_INTERVALS_MAX,
   FOLLOW_UP_MESSAGE_MAX_LENGTH,
@@ -8,6 +10,8 @@ import {
 } from '@battlecrm/contract';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
+import { validator } from 'hono/validator';
 import { z } from 'zod';
 
 import type { AppEnv } from '../app.ts';
@@ -23,6 +27,18 @@ import {
   type Touched,
 } from '../gestures/index.ts';
 import { jsonBody } from '../json-body.ts';
+import {
+  attach,
+  copyAttachments,
+  eraseAttachment,
+  eraseAttachmentsOf,
+  hasRoomForCopyOf,
+  positioningOfAttachment,
+  purgeRemovedAttachments,
+  readAttachment,
+  removeAttachments,
+  restoreAttachments,
+} from './attachments.ts';
 import { positioning, stage } from './tables.ts';
 
 /** A text the User may leave blank, trimmed: blank, it has no value. */
@@ -99,8 +115,17 @@ const positioningEdited = z.object({
 });
 const positioningRelabeled = z.object({ label: z.string() });
 const positioningUnarchived = z.object({ archivedAt: z.iso.datetime() });
-/** What a deletion took away: the Positioning, and the copies that named it as their original. */
-const positioningDeleted = z.object({ positioning: storedPositioning, copyIds: z.array(z.uuid()) });
+/**
+ * What a deletion took away: the Positioning, the copies that named it as their original, and its
+ * attachments (none in a gesture recorded before them).
+ */
+const positioningDeleted = z.object({
+  positioning: storedPositioning,
+  copyIds: z.array(z.uuid()),
+  attachmentIds: z.array(z.uuid()).default([]),
+});
+/** The attachment a gesture joined, or removed. */
+const attachmentChanged = z.object({ attachmentId: z.uuid() });
 
 /** The summary row of one Positioning changed, or removed. */
 const touchedPositioning = (positioningId: string): Touched => ({
@@ -131,6 +156,8 @@ async function copiesOf(tx: Transaction, userId: string, positioningId: string) 
 /** Takes a creation back: the Positioning leaves no trace, unless a copy was made of it since. */
 const removeCreatedPositioning: PositioningInverse = async (tx, { userId, positioningId }) => {
   if ((await copiesOf(tx, userId, positioningId)).length > 0) return 'superseded';
+  // A modified copy came with the attachments of its original.
+  await eraseAttachmentsOf(tx, userId, positioningId);
   await tx.delete(positioning).where(byId(userId, positioningId));
   return removedPositioning(positioningId);
 };
@@ -169,7 +196,7 @@ const rearchive: PositioningInverse = async (tx, { userId, positioningId, payloa
  * its own original was deleted since.
  */
 const restoreDeletedPositioning: PositioningInverse = async (tx, { userId, payload }) => {
-  const { positioning: deleted, copyIds } = positioningDeleted.parse(payload);
+  const { positioning: deleted, copyIds, attachmentIds } = positioningDeleted.parse(payload);
   if (deleted.derivedFromId !== null) {
     const [original] = await tx
       .select({ id: positioning.id })
@@ -183,6 +210,7 @@ const restoreDeletedPositioning: PositioningInverse = async (tx, { userId, paylo
     userId,
     archivedAt: archivedAt === null ? null : new Date(archivedAt),
   });
+  await restoreAttachments(tx, userId, attachmentIds);
   const relinked =
     copyIds.length === 0
       ? []
@@ -203,6 +231,48 @@ const restoreDeletedPositioning: PositioningInverse = async (tx, { userId, paylo
   };
 };
 
+/** Takes the joining of a file back: it leaves no trace. */
+const eraseJoinedAttachment: PositioningInverse = async (
+  tx,
+  { userId, positioningId, payload },
+) => {
+  const { attachmentId } = attachmentChanged.parse(payload);
+  await eraseAttachment(tx, userId, attachmentId);
+  return touchedPositioning(positioningId);
+};
+
+const restoreRemovedAttachment: PositioningInverse = async (
+  tx,
+  { userId, positioningId, payload },
+) => {
+  const { attachmentId } = attachmentChanged.parse(payload);
+  if ((await restoreAttachments(tx, userId, [attachmentId])) === 0) return 'superseded';
+  return touchedPositioning(positioningId);
+};
+
+/** The name a file is kept under: without its path or a control character, within the bound. */
+function nameOf(fileName: string) {
+  const name = (fileName.split(/[/\\]/).at(-1) ?? '').replaceAll(/\p{Cc}/gu, '').trim();
+  return Array.from(name).slice(0, ATTACHMENT_NAME_MAX_LENGTH).join('').trim();
+}
+
+/** A media type as `type/subtype`, without its parameters; any other is served as plain bytes. */
+const MEDIA_TYPE = /^[\w!#$&^.+-]{1,63}\/[\w!#$&^.+-]{1,63}$/;
+function contentTypeOf(type: string) {
+  const essence = (type.split(';')[0] ?? '').trim().toLowerCase();
+  return MEDIA_TYPE.test(essence) ? essence : 'application/octet-stream';
+}
+
+/** Saved under its own name (RFC 6266): in ASCII for an old client, in UTF-8 for any other. */
+function contentDispositionOf(name: string) {
+  const ascii = name.replaceAll(/[^\x20-\x7e]|["\\]/g, '_');
+  const utf8 = encodeURIComponent(name).replaceAll(
+    /['()*]/g,
+    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${utf8}`;
+}
+
 /** Why a gesture is refused, and the status its route answers with. */
 const REFUSAL_STATUS = {
   not_found: 404,
@@ -210,12 +280,13 @@ const REFUSAL_STATUS = {
   unknown_positioning: 400,
   archived: 409,
   not_archived: 409,
+  quota_exceeded: 409,
 } as const;
 
 type Refused = { refused: keyof typeof REFUSAL_STATUS };
 
-/** The Positioning a route names: `null` for an id that is none, which answers like an unknown one. */
-const positioningIdOf = (param: string) => {
+/** The row a route names: `null` for an id that is none, which answers like an unknown one. */
+const idOf = (param: string) => {
   const id = z.uuid().safeParse(param);
   return id.success ? id.data : null;
 };
@@ -261,6 +332,7 @@ export function createPositionings<Changes>({
     made: Parameters<typeof recordGesture>[1] & { positioningId: string },
     touched: Touched,
   ) => {
+    await purgeRemovedAttachments(tx, made.userId, made.now);
     const undoToken = await recordGesture(tx, made);
     return { changes: await changesOf(tx, made.userId, touched), undoToken };
   };
@@ -278,12 +350,15 @@ export function createPositionings<Changes>({
           .where(and(eq(stage.userId, userId), eq(stage.id, stageId), isNull(stage.archivedAt)));
         if (!found) return { refused: 'unknown_stage' as const };
         if (derivedFromId !== undefined) {
-          // A copy stays at the Stage of its original.
+          // A copy stays at the Stage of its original, and takes its attachments.
           const [original] = await tx
             .select({ id: positioning.id })
             .from(positioning)
             .where(and(byId(userId, derivedFromId), eq(positioning.stageId, stageId)));
           if (!original) return { refused: 'unknown_positioning' as const };
+          if (!(await hasRoomForCopyOf(tx, userId, derivedFromId))) {
+            return { refused: 'quota_exceeded' as const };
+          }
         }
         const [created] = await tx
           .insert(positioning)
@@ -296,6 +371,9 @@ export function createPositionings<Changes>({
           })
           .returning({ id: positioning.id });
         if (!created) throw new Error('A Positioning was not created');
+        if (derivedFromId !== undefined) {
+          await copyAttachments(tx, { userId, fromId: derivedFromId, toId: created.id, now });
+        }
         return answered(
           tx,
           { userId, kind: 'positioning_created', positioningId: created.id, payload: {}, now },
@@ -310,7 +388,7 @@ export function createPositionings<Changes>({
     // it is not frozen (spec UX §5.6).
     .post('/positionings/:id/edit', requireUser, jsonBody(editRequest), async (c) => {
       const { userId } = c.var;
-      const positioningId = positioningIdOf(c.req.param('id'));
+      const positioningId = idOf(c.req.param('id'));
       if (positioningId === null) return c.json({ error: 'not_found' as const }, 404);
       const columns = columnsOf(c.req.valid('json'));
       const now = clock.now();
@@ -342,7 +420,7 @@ export function createPositionings<Changes>({
       jsonBody(positioningFields.pick({ label: true })),
       async (c) => {
         const { userId } = c.var;
-        const positioningId = positioningIdOf(c.req.param('id'));
+        const positioningId = idOf(c.req.param('id'));
         if (positioningId === null) return c.json({ error: 'not_found' as const }, 404);
         const { label } = c.req.valid('json');
         const now = clock.now();
@@ -369,7 +447,7 @@ export function createPositionings<Changes>({
     // come with tickets 27 and 32.
     .post('/positionings/:id/archive', requireUser, async (c) => {
       const { userId } = c.var;
-      const positioningId = positioningIdOf(c.req.param('id'));
+      const positioningId = idOf(c.req.param('id'));
       if (positioningId === null) return c.json({ error: 'not_found' as const }, 404);
       const now = clock.now();
       const answer = await onPositioning(userId, positioningId, async (tx, before) => {
@@ -389,7 +467,7 @@ export function createPositionings<Changes>({
     // Available again, as a Challenger to come.
     .post('/positionings/:id/unarchive', requireUser, async (c) => {
       const { userId } = c.var;
-      const positioningId = positioningIdOf(c.req.param('id'));
+      const positioningId = idOf(c.req.param('id'));
       if (positioningId === null) return c.json({ error: 'not_found' as const }, 404);
       const now = clock.now();
       const answer = await onPositioning(userId, positioningId, async (tx, before) => {
@@ -412,7 +490,7 @@ export function createPositionings<Changes>({
     // Delete one never used (spec UX §5.6); its copies stay, without an original.
     .post('/positionings/:id/delete', requireUser, async (c) => {
       const { userId } = c.var;
-      const positioningId = positioningIdOf(c.req.param('id'));
+      const positioningId = idOf(c.req.param('id'));
       if (positioningId === null) return c.json({ error: 'not_found' as const }, 404);
       const now = clock.now();
       const answer = await onPositioning(userId, positioningId, async (tx, before) => {
@@ -424,11 +502,14 @@ export function createPositionings<Changes>({
             .where(and(eq(positioning.userId, userId), inArray(positioning.id, copyIds)));
         }
         await tx.delete(positioning).where(byId(userId, positioningId));
+        // Its attachments go with it, kept for “Undo” only.
+        const attachmentIds = await removeAttachments(tx, { userId, positioningId, now });
         const { userId: _owner, archivedAt, ...kept } = before;
         const payload = {
           positioning: { ...kept, archivedAt: archivedAt?.toISOString() ?? null },
           copyIds,
-        } satisfies z.infer<typeof positioningDeleted>;
+          attachmentIds,
+        } satisfies z.input<typeof positioningDeleted>;
         return answered(
           tx,
           { userId, kind: 'positioning_deleted', positioningId, payload, now },
@@ -438,6 +519,100 @@ export function createPositionings<Changes>({
       if ('refused' in answer)
         return c.json({ error: answer.refused }, REFUSAL_STATUS[answer.refused]);
       return c.json(answer, 200);
+    })
+    // Join a file (ST-35): of any type, within 5 MiB, and within the room of the User. Frozen with
+    // its Positioning once used in a Trial (ticket 28).
+    .post(
+      '/positionings/:id/attachments',
+      requireUser,
+      bodyLimit({
+        // The file, and the multipart frame around it.
+        maxSize: ATTACHMENT_MAX_BYTES + 64 * 1024,
+        onError: (c) => c.json({ error: 'too_large' as const }, 413),
+      }),
+      validator('form', (form, c) => {
+        const file = form['file'];
+        return file instanceof File ? { file } : c.json({ error: 'invalid' as const }, 400);
+      }),
+      async (c) => {
+        const { userId } = c.var;
+        const positioningId = idOf(c.req.param('id'));
+        if (positioningId === null) return c.json({ error: 'not_found' as const }, 404);
+        const { file } = c.req.valid('form');
+        if (file.size > ATTACHMENT_MAX_BYTES) return c.json({ error: 'too_large' as const }, 413);
+        const name = nameOf(file.name);
+        if (name === '') return c.json({ error: 'invalid' as const }, 400);
+        const joined = {
+          name,
+          contentType: contentTypeOf(file.type),
+          data: new Uint8Array(await file.arrayBuffer()),
+        };
+        const now = clock.now();
+        const answer = await onPositioning(userId, positioningId, async (tx) => {
+          const attached = await attach(tx, { userId, positioningId, file: joined, now });
+          if (attached === 'quota_exceeded') return { refused: attached };
+          const { attachmentId } = attached;
+          return answered(
+            tx,
+            {
+              userId,
+              kind: 'positioning_attachment_added',
+              positioningId,
+              payload: { attachmentId } satisfies z.infer<typeof attachmentChanged>,
+              now,
+            },
+            touchedPositioning(positioningId),
+          );
+        });
+        if ('refused' in answer)
+          return c.json({ error: answer.refused }, REFUSAL_STATUS[answer.refused]);
+        return c.json(answer, 201);
+      },
+    )
+    // Remove one: kept for “Undo” only.
+    .post('/attachments/:id/remove', requireUser, async (c) => {
+      const { userId } = c.var;
+      const attachmentId = idOf(c.req.param('id'));
+      if (attachmentId === null) return c.json({ error: 'not_found' as const }, 404);
+      const positioningId = await withUser(userId, (tx) =>
+        positioningOfAttachment(tx, userId, attachmentId),
+      );
+      if (positioningId === undefined) return c.json({ error: 'not_found' as const }, 404);
+      const now = clock.now();
+      const answer = await onPositioning(userId, positioningId, async (tx) => {
+        const removed = await removeAttachments(tx, { userId, attachmentIds: [attachmentId], now });
+        if (removed.length === 0) return { refused: 'not_found' as const };
+        return answered(
+          tx,
+          {
+            userId,
+            kind: 'positioning_attachment_removed',
+            positioningId,
+            payload: { attachmentId } satisfies z.infer<typeof attachmentChanged>,
+            now,
+          },
+          touchedPositioning(positioningId),
+        );
+      });
+      if ('refused' in answer)
+        return c.json({ error: answer.refused }, REFUSAL_STATUS[answer.refused]);
+      return c.json(answer, 200);
+    })
+    // Download one (spec stack §6): always saved, never shown, whatever its type.
+    .get('/attachments/:id', requireUser, async (c) => {
+      const { userId } = c.var;
+      const attachmentId = idOf(c.req.param('id'));
+      const found =
+        attachmentId !== null &&
+        (await withUser(userId, (tx) => readAttachment(tx, userId, attachmentId)));
+      // Another User's, one removed, an unknown id and one that is none answer alike.
+      if (!found) return c.json({ error: 'not_found' as const }, 404);
+      return c.body(new Uint8Array(found.data), 200, {
+        'Content-Type': found.contentType,
+        'Content-Disposition': contentDispositionOf(found.name),
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'private, no-store',
+      });
     });
 
   const inverses = {
@@ -447,6 +622,8 @@ export function createPositionings<Changes>({
     positioning_archived: unarchive,
     positioning_unarchived: rearchive,
     positioning_deleted: restoreDeletedPositioning,
+    positioning_attachment_added: eraseJoinedAttachment,
+    positioning_attachment_removed: restoreRemovedAttachment,
   } satisfies PositioningInverses;
   return { routes, inverses };
 }

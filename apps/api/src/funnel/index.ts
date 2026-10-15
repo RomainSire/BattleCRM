@@ -6,7 +6,7 @@ import type { Transaction } from '../db/index.ts';
 import { stage } from './tables.ts';
 
 // Read by `views`, which never writes them.
-export { positioning, stage } from './tables.ts';
+export { positioning, positioningAttachment, stage } from './tables.ts';
 export { createPositionings } from './positionings.ts';
 
 /** The order of the Funnel, for every read of its Stages. */

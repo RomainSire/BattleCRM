@@ -6,9 +6,15 @@ import { z } from 'zod';
 
 import { testApp } from '../test/app.ts';
 import { addContact, editContact, scheduleFollowUp } from '../test/factories/contact.ts';
-import { SHORT_EMAIL, positioningGesture, positioningOf } from '../test/factories/positioning.ts';
+import {
+  SHORT_EMAIL,
+  attachFile,
+  fileOf,
+  positioningGesture,
+  positioningOf,
+} from '../test/factories/positioning.ts';
 import { makeUser } from '../test/factories/user.ts';
-import { postJson } from '../test/http.ts';
+import { postFile, postJson } from '../test/http.ts';
 import { withUser } from './db/index.ts';
 
 // Generated from the database and from the app themselves (spec stack §13): a new table or a new
@@ -84,6 +90,8 @@ describe('catalogue', () => {
         'follow_up',
         'gesture',
         'interaction',
+        'attachment_blob',
+        'positioning_attachment',
         'organization',
         'stage',
         'status_change',
@@ -126,6 +134,7 @@ describe('catalogue', () => {
         'status_change_stage_fk',
         'follow_up_contact_fk',
         'follow_up_interaction_fk',
+        'positioning_attachment_blob_fk',
       ]),
     );
 
@@ -163,7 +172,8 @@ test('a query that forgot its filter only sees the rows of its User, in every bu
     });
     await scheduleFollowUp(harness, user, contact.id, { dueOn: '2026-01-08' });
     await postJson(harness.app, '/api/settings', { activityGoal: 2, entryGoal: 6 }, user.cookie);
-    await positioningOf(harness, user);
+    const { positioning } = await positioningOf(harness, user);
+    await attachFile(harness, user, positioning.id);
   }
 
   for (const { name } of await businessTables()) {
@@ -193,14 +203,14 @@ const getJson = async (harness: Harness, user: User, path: string): Promise<unkn
 
 /**
  * For each route that names a row by its id: a row of Alice, what Alice has, which a request of Bob
- * must neither change nor read, and a body the route would accept, if it takes one.
+ * must neither change nor read, and a body the route would accept, if it takes one: JSON, or a file.
  */
 const CROSS_ACCESS: Record<
   string,
   (
     harness: Harness,
     alice: User,
-  ) => Promise<{ id: string; state: () => Promise<unknown>; body?: object }>
+  ) => Promise<{ id: string; state: () => Promise<unknown>; body?: object | File }>
 > = {
   'POST /api/gestures/:id/undo': async (harness, alice) => {
     const { undoToken } = await addContact(harness, alice);
@@ -313,6 +323,21 @@ const CROSS_ACCESS: Record<
     id: (await positioningOf(harness, alice)).positioning.id,
     state: () => getJson(harness, alice, '/api/summary'),
   }),
+  'POST /api/positionings/:id/attachments': async (harness, alice) => ({
+    id: (await positioningOf(harness, alice)).positioning.id,
+    state: () => getJson(harness, alice, '/api/summary'),
+    body: fileOf('CV.pdf'),
+  }),
+  'POST /api/attachments/:id/remove': async (harness, alice) => {
+    const { positioning } = await positioningOf(harness, alice);
+    const { attachment } = await attachFile(harness, alice, positioning.id);
+    return { id: attachment.id, state: () => getJson(harness, alice, '/api/summary') };
+  },
+  'GET /api/attachments/:id': async (harness, alice) => {
+    const { positioning } = await positioningOf(harness, alice);
+    const { attachment } = await attachFile(harness, alice, positioning.id);
+    return { id: attachment.id, state: () => getJson(harness, alice, '/api/summary') };
+  },
   'POST /api/sessions/:id/revoke': async (harness, alice) => {
     const state = () => getJson(harness, alice, '/api/sessions');
     const { sessions } = z
@@ -341,10 +366,14 @@ test('the id of another User answers 404 and changes nothing, on every route tha
     const [method, path = ''] = route.split(' ');
     const named = path.replace(/:\w+/, id);
 
-    const response =
-      method === 'GET'
-        ? await harness.app.request(named, { headers: { Cookie: bob.cookie } })
-        : await postJson(harness.app, named, body, bob.cookie);
+    let response;
+    if (method === 'GET') {
+      response = await harness.app.request(named, { headers: { Cookie: bob.cookie } });
+    } else if (body instanceof File) {
+      response = await postFile(harness.app, named, body, bob.cookie);
+    } else {
+      response = await postJson(harness.app, named, body, bob.cookie);
+    }
 
     expect(response.status, `on ${route}`).toBe(404);
     expect(await state(), `on ${route}`).toEqual(before);

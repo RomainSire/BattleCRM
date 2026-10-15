@@ -565,5 +565,35 @@
   "positioning_unarchived_toast": "« {label} » désarchivé.",
   "positioning_deleted_toast": "« {label} » supprimé.",
   "positioning_behind": "Ce Positionnement a changé sur un autre appareil : vérifie puis recommence.",
-  "positioning_copy_of_label": "Copie modifiée de « {label} »"
+  "positioning_copy_of_label": "Copie modifiée de « {label} »",
+  "positioning_attachments": "Pièces jointes",
+  "positioning_no_attachments": "aucune",
+  "positioning_attachments_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} pièce jointe",
+        "countPlural=*": "{count} pièces jointes"
+      }
+    }
+  ],
+  "positioning_attach": "Joindre un fichier",
+  "positioning_attachments_hint": "Tous types, 5 Mo par fichier, 100 Mo en tout.",
+  "positioning_remove_attachment": "Retirer {name}",
+  "positioning_attachment_added_toast": "« {name} » joint.",
+  "positioning_attachment_removed_toast": "« {name} » retiré.",
+  "positioning_attachment_too_large": "« {name} » dépasse 5 Mo : il n'a pas été joint.",
+  "positioning_attachment_quota_exceeded": "Tes pièces jointes dépasseraient 100 Mo en tout : retires-en une pour faire de la place.",
+  "positioning_copy_attachments": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Sa pièce jointe est reprise dans la copie ; tu pourras la retirer depuis sa fiche.",
+        "countPlural=*": "Ses {count} pièces jointes sont reprises dans la copie ; tu pourras les retirer depuis sa fiche."
+      }
+    }
+  ],
+  "positioning_attachments_after_creation": "Tu joindras des fichiers (un CV, par exemple) depuis sa fiche, une fois créé."
 }

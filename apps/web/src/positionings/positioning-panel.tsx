@@ -35,6 +35,7 @@ import { useSessionDraft } from '../session-draft.ts';
 import { useSettings } from '../settings/use-settings.ts';
 import {
   applySummaryChanges,
+  attachmentsOf,
   SUMMARY_KEY,
   type Summary,
   type SummaryChanges,
@@ -54,17 +55,24 @@ const FIRST_NAME_TOKEN = { fr: '{prénom}', en: '{first name}' } as const;
 
 /** What a gesture of the workshop answers: its changes, or a refusal the panel shows. */
 export type PositioningAnswer =
-  { changes: SummaryChanges; undoToken: string } | 'stage_gone' | 'behind';
+  | { changes: SummaryChanges; undoToken: string }
+  | 'stage_gone'
+  | 'behind'
+  | 'too_large'
+  | 'quota_exceeded';
 
-/** A refusal of the server: a Stage gone is the panel's to show; anything else, a Positioning changed elsewhere. */
+/**
+ * A refusal of the server: a Stage gone, a file too large or no room left are the User's to read;
+ * anything else, a Positioning changed elsewhere.
+ */
 async function refusalOf(response: {
   status: number;
   json(): Promise<unknown>;
 }): Promise<Exclude<PositioningAnswer, object> | undefined> {
-  if (response.status !== 400 && response.status !== 404 && response.status !== 409)
-    return undefined;
+  if (![400, 404, 409, 413].includes(response.status)) return undefined;
   const { error } = z.object({ error: z.string() }).parse(await response.json());
   if (error === 'unknown_stage') return 'stage_gone';
+  if (error === 'too_large' || error === 'quota_exceeded') return error;
   // A body the server would not read is this app's error, never the User's.
   if (error === 'invalid') throw new Error('A gesture of the workshop was refused');
   return 'behind';
@@ -123,6 +131,23 @@ export const sendPositioning = {
     if (!response.ok) throw new Error(`POST /api/positionings/:id/${gesture} failed`);
     return response.json();
   },
+  async attach(api: ApiClient, id: string, file: File): Promise<PositioningAnswer> {
+    const response = await api.positionings[':id'].attachments.$post({
+      param: { id },
+      form: { file },
+    });
+    const refused = await refusalOf(response);
+    if (refused) return refused;
+    if (!response.ok) throw new Error('POST /api/positionings/:id/attachments failed');
+    return response.json();
+  },
+  async removeAttachment(api: ApiClient, attachmentId: string): Promise<PositioningAnswer> {
+    const response = await api.attachments[':id'].remove.$post({ param: { id: attachmentId } });
+    const refused = await refusalOf(response);
+    if (refused) return refused;
+    if (!response.ok) throw new Error('POST /api/attachments/:id/remove failed');
+    return response.json();
+  },
 };
 
 /**
@@ -146,6 +171,7 @@ export async function settlePositioning(
 /** The refusals a panel of the workshop shows. */
 const refusalText = (answer: PositioningAnswer | undefined) =>
   (answer === 'stage_gone' && m.contact_stage_gone()) ||
+  (answer === 'quota_exceeded' && m.positioning_attachment_quota_exceeded()) ||
   (answer === 'behind' && m.positioning_behind());
 
 const positioningDraft = z.object({
@@ -309,6 +335,11 @@ export function PositioningPanel({
       >
         <GesturePanelBody>
           {kind === 'copy' && <p className="text-muted-foreground">{m.positioning_copy_note()}</p>}
+          {kind === 'copy' && source && attachmentsOf(source).length > 0 && (
+            <p className="text-muted-foreground">
+              {m.positioning_copy_attachments({ count: attachmentsOf(source).length })}
+            </p>
+          )}
           {isStageLocked ? (
             <p>
               <span className="text-muted-foreground">{m.positioning_stage()} · </span>
@@ -448,6 +479,11 @@ export function PositioningPanel({
               onChange={(responseWindowDays) => setDraft({ ...draft, responseWindowDays })}
             />
           </section>
+          {kind === 'new' && (
+            <p className="text-sm text-muted-foreground">
+              {m.positioning_attachments_after_creation()}
+            </p>
+          )}
           {kind !== 'edit' && (
             <p className="text-sm text-muted-foreground">{m.positioning_freezes_note()}</p>
           )}

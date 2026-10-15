@@ -61,6 +61,7 @@ test('a new Positioning: its Stage, label, Channel, content and cadence, a messa
     responseWindowDays: 14,
     derivedFromId: null,
     archived: false,
+    attachments: [],
     used: false,
     trialCount: 0,
   });

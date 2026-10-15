@@ -20,9 +20,15 @@ export function fakeApi(routes: Record<string, Handler> = {}) {
   const fetch: typeof globalThis.fetch = async (input, init) => {
     const request = new Request(input, init);
     const route = `${request.method} ${new URL(request.url).pathname}`;
-    // A POST may carry no body at all, as signing out does.
-    const text = await request.text();
-    const body: unknown = text === '' ? undefined : JSON.parse(text);
+    let body: unknown;
+    if (request.headers.get('Content-Type')?.startsWith('multipart/form-data')) {
+      // A file joined: its form, field by field.
+      body = Object.fromEntries(await request.formData());
+    } else {
+      // A POST may carry no body at all, as signing out does.
+      const text = await request.text();
+      body = text === '' ? undefined : JSON.parse(text);
+    }
     requests.push({ route, body });
     return handlers[route]?.(body) ?? new Response(null, { status: 404 });
   };

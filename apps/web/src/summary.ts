@@ -36,6 +36,15 @@ export function positioningsOf(summary: Summary): SummaryPositioning[] {
   return positionings ?? [];
 }
 
+/** Frozen from its first Trial (CONTEXT.md, Positioning). */
+export const isFrozen = ({ trialCount }: SummaryPositioning) => trialCount > 0;
+
+/** The attachments of a Positioning; none in a summary kept from before them. */
+export function attachmentsOf(positioning: SummaryPositioning): SummaryPositioning['attachments'] {
+  const attachments: SummaryPositioning['attachments'] | undefined = positioning.attachments;
+  return attachments ?? [];
+}
+
 /**
  * Puts the rows a gesture answered with into the summary, instead of reading it all again; the
  * records of the Contacts it changed, beyond the summary, are read again when shown.

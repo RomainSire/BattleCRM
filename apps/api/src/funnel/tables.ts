@@ -2,6 +2,7 @@ import { CHANNELS } from '@battlecrm/contract';
 import { sql } from 'drizzle-orm';
 import {
   check,
+  customType,
   foreignKey,
   index,
   integer,
@@ -95,5 +96,64 @@ export const positioning = pgTable(
     ),
     check('positioning_response_window_days_check', sql`${table.responseWindowDays} > 0`),
     index('positioning_stage_idx').on(table.userId, table.stageId),
+  ],
+);
+
+/** Bytes, as Postgres keeps them and `pg` reads them back. */
+const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
+  dataType: () => 'bytea',
+  toDriver: (data) => Buffer.from(data.buffer, data.byteOffset, data.byteLength),
+});
+
+/** The bytes of a file joined to a Positioning, behind the storage of the module (spec stack §6). */
+export const attachmentBlob = pgTable(
+  'attachment_blob',
+  {
+    id: uuid()
+      .primaryKey()
+      .default(sql`uuidv7()`),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    data: bytea().notNull(),
+  },
+  (table) => [unique('attachment_blob_user_id_id_unique').on(table.userId, table.id)],
+);
+
+/**
+ * A file joined to a Positioning (ST-35): its name, its type and its size; its bytes in the storage.
+ * Removed, it stays as long as “Undo” may bring it back, then goes, bytes included.
+ */
+export const positioningAttachment = pgTable(
+  'positioning_attachment',
+  {
+    id: uuid()
+      .primaryKey()
+      .default(sql`uuidv7()`),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    /** No foreign key: deleting a Positioning is a gesture “Undo” takes back, its attachments with it. */
+    positioningId: uuid('positioning_id').notNull(),
+    /** Where the storage keeps its bytes. */
+    blobId: uuid('blob_id').notNull(),
+    name: text().notNull(),
+    contentType: text('content_type').notNull(),
+    /** In bytes: what counts against the room of the User. */
+    size: integer().notNull(),
+    addedAt: timestamp('added_at', { withTimezone: true }).notNull(),
+    /** Removed since then, by hand or with its Positioning; kept for “Undo” only. */
+    removedAt: timestamp('removed_at', { withTimezone: true }),
+  },
+  (table) => [
+    unique('positioning_attachment_user_id_id_unique').on(table.userId, table.id),
+    foreignKey({
+      name: 'positioning_attachment_blob_fk',
+      columns: [table.userId, table.blobId],
+      foreignColumns: [attachmentBlob.userId, attachmentBlob.id],
+    }),
+    check('positioning_attachment_name_check', sql`${table.name} <> ''`),
+    check('positioning_attachment_size_check', sql`${table.size} >= 0`),
+    index('positioning_attachment_positioning_idx').on(table.userId, table.positioningId),
   ],
 );

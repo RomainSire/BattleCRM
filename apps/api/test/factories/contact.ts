@@ -68,6 +68,10 @@ export const summaryPositioning = z.strictObject({
   responseWindowDays: z.number(),
   derivedFromId: z.uuid().nullable(),
   archived: z.boolean(),
+  /** Its attachments not removed, in the order they were joined; their bytes are downloaded apart. */
+  attachments: z.array(
+    z.strictObject({ id: z.uuid(), name: z.string(), contentType: z.string(), size: z.number() }),
+  ),
   /** Whether it was ever used, and in how many Trials: frozen from the first one. */
   used: z.boolean(),
   trialCount: z.number(),

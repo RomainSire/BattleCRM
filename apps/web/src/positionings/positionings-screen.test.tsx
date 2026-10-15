@@ -32,6 +32,7 @@ type Positioning = {
   responseWindowDays: number;
   derivedFromId: string | null;
   archived: boolean;
+  attachments: { id: string; name: string; contentType: string; size: number }[];
   used: boolean;
   trialCount: number;
 };
@@ -49,23 +50,39 @@ const positioning = (
   responseWindowDays: 14,
   derivedFromId: null,
   archived: false,
+  attachments: [],
   used: false,
   trialCount: 0,
   ...fields,
 });
 
-/** Frozen: used in Trials. */
+const CV_A = {
+  id: '01990000-0000-7000-8000-000000000031',
+  name: 'CV A.pdf',
+  contentType: 'application/pdf',
+  size: 245_760,
+};
+const CV_B = {
+  id: '01990000-0000-7000-8000-000000000032',
+  name: 'CV B.pdf',
+  contentType: 'application/pdf',
+  size: 2_621_440,
+};
+
+/** Frozen: used in Trials, with its CV. */
 const MAIL_LONG = positioning({
   id: '01990000-0000-7000-8000-000000000021',
   label: 'Mail long',
   trialCount: 24,
   used: true,
+  attachments: [CV_A],
 });
-/** A modified copy of the first, never used. */
+/** A modified copy of the first, never used, with its CV. */
 const MAIL_COURT = positioning({
   id: '01990000-0000-7000-8000-000000000022',
   label: 'Mail court',
   derivedFromId: MAIL_LONG.id,
+  attachments: [CV_B],
 });
 /** Used outside a Battle: editable, no longer deletable. */
 const LINKEDIN = positioning({
@@ -82,6 +99,7 @@ const OLD = positioning({
 });
 
 const NEW_ID = '01990000-0000-7000-8000-000000000029';
+const NEW_ATTACHMENT_ID = '01990000-0000-7000-8000-000000000039';
 const UNDO_TOKEN = '01990000-0000-7000-8000-00000000000a';
 const UNDO_ROUTE = `POST /api/gestures/${UNDO_TOKEN}/undo`;
 const gestureRoute = (id: string, gesture: string) => `POST /api/positionings/${id}/${gesture}`;
@@ -187,6 +205,26 @@ function workshopApi(overrides: Parameters<typeof fakeApi>[0] = {}) {
     routes[gestureRoute(id, 'archive')] = () => answer([{ ...find(id), archived: true }]);
     routes[gestureRoute(id, 'unarchive')] = () => answer([{ ...find(id), archived: false }]);
     routes[gestureRoute(id, 'delete')] = () => answer([], [id]);
+    routes[gestureRoute(id, 'attachments')] = (body) => {
+      const { file } = z.object({ file: z.instanceof(File) }).parse(body);
+      const joined = {
+        id: NEW_ATTACHMENT_ID,
+        name: file.name,
+        contentType: file.type,
+        size: file.size,
+      };
+      return answer([{ ...find(id), attachments: [...find(id).attachments, joined] }], [], 201);
+    };
+  }
+  for (const attachment of [CV_A, CV_B]) {
+    routes[`POST /api/attachments/${attachment.id}/remove`] = () => {
+      const joinedTo = positionings.find((row) =>
+        row.attachments.some(({ id }) => id === attachment.id),
+      );
+      if (!joinedTo) return Response.json({ error: 'not_found' }, { status: 404 });
+      const attachments = joinedTo.attachments.filter(({ id }) => id !== attachment.id);
+      return answer([{ ...joinedTo, attachments }]);
+    };
   }
   return fakeApi({ ...routes, ...overrides });
 }
@@ -220,6 +258,7 @@ test('the workshop: the Stages with their counts, the lineages, a copy under its
   await expect.element(rows.nth(1)).toHaveTextContent('Mail court');
   await expect.element(rows.nth(1)).toHaveTextContent('Copie modifiée de « Mail long »');
   await expect.element(rows.nth(1)).toHaveTextContent('jamais utilisé · modifiable');
+  await expect.element(rows.nth(1)).toHaveTextContent('1 pièce jointe');
   expect(getComputedStyle(rows.nth(1).element()).marginInlineStart).not.toBe('0px');
   await expect.element(rows.nth(2)).toHaveTextContent('utilisé hors Battle · modifiable');
   await expect.element(lineage()).not.toHaveTextContent('Vieux mail');
@@ -351,6 +390,7 @@ test('Duplicate… makes a modified copy, filled in with the original', async ()
   const dialog = page.getByRole('dialog', { name: 'Copie modifiée de « Mail court »' });
   await expect.element(dialog).toHaveTextContent('Reprise de « Mail court ».');
   await expect.element(dialog).toHaveTextContent("L'original reste tel quel.");
+  await expect.element(dialog).toHaveTextContent('Sa pièce jointe est reprise dans la copie');
   await dialog.getByRole('textbox', { name: 'Libellé' }).fill('Mail chiffré');
   await dialog.getByRole('button', { name: 'Créer la copie' }).click();
 
@@ -363,6 +403,59 @@ test('Duplicate… makes a modified copy, filled in with the original', async ()
   });
 });
 
+/** The file picker the “Attach a file” button opens. */
+const filePicker = () => document.querySelector<HTMLInputElement>('input[type=file]')!;
+
+test('attachments: each downloaded by its name; one joined, then removed, each with “Undo”', async () => {
+  await desktop();
+  const api = workshopApi();
+  await renderApp(`/positionings?positioning=${MAIL_COURT.id}`, api);
+  const record = page.getByRole('region', { name: 'Mail court' });
+
+  const cv = record.getByRole('link', { name: 'CV B.pdf' });
+  await expect.element(cv).toHaveAttribute('href', `${location.origin}/api/attachments/${CV_B.id}`);
+  await expect.element(cv).toHaveAttribute('download', 'CV B.pdf');
+  await expect.element(record).toHaveTextContent('CV B.pdf2,5 Mo');
+  await expect.element(record).toHaveTextContent('Tous types, 5 Mo par fichier, 100 Mo en tout.');
+
+  await userEvent.upload(filePicker(), new File(['Bonjour'], 'Lettre.txt', { type: 'text/plain' }));
+  await expect.element(page.getByText('« Lettre.txt » joint.')).toBeVisible();
+  await expect.element(record.getByRole('link', { name: 'Lettre.txt' })).toBeVisible();
+  const [sent] = api.sent(gestureRoute(MAIL_COURT.id, 'attachments'));
+  expect(sent?.body).toEqual({ file: expect.any(File) });
+  await page.getByRole('button', { name: /^Annuler$/ }).click();
+  await expect.element(page.getByText('Annulé.')).toBeVisible();
+  await expect.element(record.getByRole('link', { name: 'Lettre.txt' })).not.toBeInTheDocument();
+
+  await record.getByRole('button', { name: 'Retirer CV B.pdf' }).click();
+  await expect.element(page.getByText('« CV B.pdf » retiré.')).toBeVisible();
+  await expect.element(record).toHaveTextContent('Pièces jointesaucune');
+  await page.getByRole('button', { name: /^Annuler$/ }).click();
+  await expect.element(record.getByRole('link', { name: 'CV B.pdf' })).toBeVisible();
+});
+
+test('a file over 5 MB is refused before it is sent; no room left, the server says so', async () => {
+  await desktop();
+  const api = workshopApi({
+    [gestureRoute(MAIL_COURT.id, 'attachments')]: () =>
+      Response.json({ error: 'quota_exceeded' }, { status: 409 }),
+  });
+  await renderApp(`/positionings?positioning=${MAIL_COURT.id}`, api);
+  const record = page.getByRole('region', { name: 'Mail court' });
+  await expect.element(record.getByRole('button', { name: 'Joindre un fichier' })).toBeVisible();
+
+  await userEvent.upload(filePicker(), new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'Big.pdf'));
+  await expect
+    .element(record.getByRole('alert'))
+    .toHaveTextContent("« Big.pdf » dépasse 5 Mo : il n'a pas été joint.");
+  expect(api.sent(gestureRoute(MAIL_COURT.id, 'attachments'))).toHaveLength(0);
+
+  await userEvent.upload(filePicker(), new File(['x'], 'Small.pdf'));
+  await expect
+    .element(record.getByRole('alert'))
+    .toHaveTextContent('Tes pièces jointes dépasseraient 100 Mo en tout');
+});
+
 test('frozen: neither Edit nor Delete; Create a modified copy… and Fix the label', async () => {
   await desktop();
   const api = workshopApi();
@@ -372,6 +465,14 @@ test('frozen: neither Edit nor Delete; Create a modified copy… and Fix the lab
   await expect.element(record).toHaveTextContent('Copies : Mail court');
   await expect.element(record.getByRole('button', { name: 'Modifier' })).not.toBeInTheDocument();
   await expect.element(record.getByRole('button', { name: 'Supprimer' })).not.toBeInTheDocument();
+  // Its attachments are frozen with it, still downloaded.
+  await expect.element(record.getByRole('link', { name: 'CV A.pdf' })).toBeVisible();
+  await expect
+    .element(record.getByRole('button', { name: 'Joindre un fichier' }))
+    .not.toBeInTheDocument();
+  await expect
+    .element(record.getByRole('button', { name: 'Retirer CV A.pdf' }))
+    .not.toBeInTheDocument();
 
   await record.getByRole('button', { name: 'Corriger le libellé' }).click();
   const fix = page.getByRole('dialog', { name: 'Corriger le libellé' });

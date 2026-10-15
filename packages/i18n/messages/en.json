@@ -565,5 +565,35 @@
   "positioning_unarchived_toast": "“{label}” unarchived.",
   "positioning_deleted_toast": "“{label}” deleted.",
   "positioning_behind": "This Positioning changed on another device: check, then try again.",
-  "positioning_copy_of_label": "Modified copy of “{label}”"
+  "positioning_copy_of_label": "Modified copy of “{label}”",
+  "positioning_attachments": "Attachments",
+  "positioning_no_attachments": "none",
+  "positioning_attachments_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} attachment",
+        "countPlural=*": "{count} attachments"
+      }
+    }
+  ],
+  "positioning_attach": "Attach a file",
+  "positioning_attachments_hint": "Any type, 5 MB per file, 100 MB in all.",
+  "positioning_remove_attachment": "Remove {name}",
+  "positioning_attachment_added_toast": "“{name}” attached.",
+  "positioning_attachment_removed_toast": "“{name}” removed.",
+  "positioning_attachment_too_large": "“{name}” is over 5 MB: it was not attached.",
+  "positioning_attachment_quota_exceeded": "Your attachments would exceed 100 MB in all: remove one to make room.",
+  "positioning_copy_attachments": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Its attachment comes along in the copy; you can remove it from its record.",
+        "countPlural=*": "Its {count} attachments come along in the copy; you can remove them from its record."
+      }
+    }
+  ],
+  "positioning_attachments_after_creation": "Attach files (a CV, say) from its record once it is created."
 }

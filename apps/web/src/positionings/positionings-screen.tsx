@@ -2,7 +2,7 @@ import { m } from '@battlecrm/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Navigate, useNavigate, useSearch } from '@tanstack/react-router';
 import { cn } from 'cn';
-import { Lock, Plus } from 'lucide-react';
+import { Lock, Paperclip, Plus } from 'lucide-react';
 import { useId, useState } from 'react';
 
 import { Button } from '../components/ui/button.tsx';
@@ -11,7 +11,15 @@ import { CHANNEL_LABEL } from '../contacts/interactions.tsx';
 import { useLocale } from '../i18n.ts';
 import { Screen } from '../screens/screen.tsx';
 import { useApi } from '../session.ts';
-import { positioningsOf, summaryQuery, type Summary, type SummaryPositioning } from '../summary.ts';
+import {
+  attachmentsOf,
+  isFrozen,
+  positioningsOf,
+  summaryQuery,
+  type Summary,
+  type SummaryPositioning,
+} from '../summary.ts';
+import { PositioningAttachments } from './attachments.tsx';
 import {
   PositioningPanel,
   RelabelPanel,
@@ -19,9 +27,6 @@ import {
   settlePositioning,
   type PositioningPanelKind,
 } from './positioning-panel.tsx';
-
-/** Frozen from its first Trial (CONTEXT.md, Positioning). */
-const isFrozen = ({ trialCount }: SummaryPositioning) => trialCount > 0;
 
 /** Its cadence in short: “+3 d, +7 d, +14 d then 14 d” (spec UX §5.6). */
 function cadenceOf({ followUps, responseWindowDays: days }: SummaryPositioning) {
@@ -278,6 +283,14 @@ function LineageColumn({
                 <span className="text-xs text-neutral-text">
                   {CHANNEL_LABEL[positioning.channel]()} · {cadenceOf(positioning)}
                 </span>
+                {attachmentsOf(positioning).length > 0 && (
+                  <span className="flex items-center gap-1 text-xs text-neutral-text">
+                    <Paperclip aria-hidden className="size-3" />
+                    {m.positioning_attachments_count({
+                      count: attachmentsOf(positioning).length,
+                    })}
+                  </span>
+                )}
                 {positioning.derivedFromId !== null && (
                   <span className={cn('text-xs text-neutral-text', depth > 0 && 'sr-only')}>
                     {m.positioning_copy_of_label({
@@ -462,6 +475,7 @@ function PositioningRecord({
             <span className="text-muted-foreground">{m.positioning_no_content()}</span>
           )}
         </dd>
+        <PositioningAttachments positioning={positioning} />
         {positioning.followUps.map((followUp, rank) => (
           // The rank is the identity of a Follow-up.
           // oxlint-disable-next-line react/no-array-index-key

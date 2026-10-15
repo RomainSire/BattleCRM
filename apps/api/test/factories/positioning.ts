@@ -2,7 +2,7 @@ import type { Channel } from '@battlecrm/contract';
 import { z } from 'zod';
 
 import type { testApp } from '../app.ts';
-import { postJson } from '../http.ts';
+import { postFile, postJson } from '../http.ts';
 import { gestureAnswer } from './contact.ts';
 
 type Harness = ReturnType<typeof testApp>;
@@ -71,4 +71,28 @@ export async function positioningOf(harness: Harness, user: { cookie: string }) 
   const [stageId] = await stageIdsOf(harness, user);
   if (stageId === undefined) throw new Error('positioningOf: the User has no Stage');
   return createPositioning(harness, user, stageId);
+}
+
+/** A file of `size` bytes, its content told by its first byte. */
+export const fileOf = (name: string, size = 16, type = 'application/pdf') =>
+  new File([new Uint8Array(size).fill(name.codePointAt(0) ?? 0)], name, { type });
+
+/** A file joined to a Positioning the way a User joins one, and the token that takes it back. */
+export async function attachFile(
+  harness: Harness,
+  user: { cookie: string },
+  positioningId: string,
+  file: File = fileOf('CV.pdf'),
+) {
+  const response = await postFile(
+    harness.app,
+    `/api/positionings/${positioningId}/attachments`,
+    file,
+    user.cookie,
+  );
+  if (response.status !== 201) throw new Error(`attachFile: the API answered ${response.status}`);
+  const { changes, undoToken } = gestureAnswer.parse(await response.json());
+  const attachment = changes.positionings[0]?.attachments.at(-1);
+  if (!attachment) throw new Error('attachFile: no attachment in the answer');
+  return { attachment, positioning: changes.positionings[0]!, undoToken };
 }

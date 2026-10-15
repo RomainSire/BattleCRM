@@ -39,6 +39,8 @@ export const POSITIONING_GESTURE_KINDS = [
   'positioning_archived',
   'positioning_unarchived',
   'positioning_deleted',
+  'positioning_attachment_added',
+  'positioning_attachment_removed',
 ] as const;
 
 const KINDS = [...GESTURE_KINDS, ...POSITIONING_GESTURE_KINDS] as const;
