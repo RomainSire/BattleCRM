@@ -71,13 +71,10 @@ const lockSubject = (tx: Transaction, subjectId: string) =>
   tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${subjectId}, 0))`);
 
 /**
- * One at a time per Contact, until the transaction ends: an undo and a gesture on the same Contact
- * never cross, so the undo always sees the gesture that closes its way back. A gesture that reads the
- * Contact before it writes takes it first, before any row lock, as the undo does.
+ * One at a time per Positioning, until the transaction ends: an undo and a gesture on the same one
+ * never cross, so the undo always sees the gesture that closes its way back. A gesture that reads it
+ * before it writes takes it first, before any row lock, as the undo does.
  */
-export const lockContact = lockSubject;
-
-/** As `lockContact`, for a gesture on a Positioning. */
 export const lockPositioning = lockSubject;
 
 /** The column of `gesture` that names what a gesture touched: a later one on it closes the way back. */
@@ -141,37 +138,19 @@ export type GestureSubject<Row> = {
   load: (tx: Transaction, userId: string, id: string) => Promise<Row | undefined>;
 };
 
+/** What the writes of a gesture are given: what the User sent, and when. */
+export type Made<Input> = { tx: Transaction; userId: string; input: Input; now: Date };
+
 /** What each step of a gesture is given: the subject as it stood once locked, and what the User sent. */
-export type Performed<Row, Input> = {
-  tx: Transaction;
-  userId: string;
-  subjectId: string;
-  subject: Row;
-  input: Input;
-  now: Date;
-};
+export type Performed<Row, Input> = Made<Input> & { subjectId: string; subject: Row };
 
 /** What the writes of a gesture leave: what its inverse needs, and the summary rows they changed. */
 export type Written<Retained> = { retained: Retained; touched: Touched };
 
-/**
- * An undoable gesture (ADR 0011), as its module declares it: only what varies from one to the next.
- * The circuit does the rest: the id, the transaction, the lock, the subject or 404, the record of the
- * gesture, the rows of the summary it changed, its token, the answer.
- */
-export type Gesture<
-  Kind extends GestureKind | PositioningGestureKind,
-  Row,
-  Input,
-  Retained,
-  Code extends RefusalCode,
-> = {
+/** What every undoable gesture declares (ADR 0011): its kind, its subject, what it retains, its inverse. */
+type Undoable<Kind extends GestureKind | PositioningGestureKind, Retained> = {
   kind: Kind;
-  subject: GestureSubject<Row>;
-  /** Its preconditions: a refusal before anything is written. */
-  refuse?: (performed: Performed<Row, Input>) => Promise<Refusal<Code> | undefined>;
-  /** Its writes. Still refused when the data decides it (a unique index…): what it wrote is rolled back. */
-  write: (performed: Performed<Row, Input>) => Promise<Written<Retained> | Refusal<Code>>;
+  subject: { column: SubjectColumn };
   /** What it retains to be undone, as `gesture` keeps it. */
   retained: z.ZodType<Retained>;
   /**
@@ -185,8 +164,42 @@ export type Gesture<
   ) => Promise<Touched | 'superseded'>;
 };
 
-// oxlint-disable-next-line typescript/no-explicit-any -- any gesture, whatever its subject, input and retained.
-type AnyGesture = Gesture<GestureKind | PositioningGestureKind, any, any, any, RefusalCode>;
+/**
+ * An undoable gesture on a subject that exists (ADR 0011), as its module declares it: only what varies
+ * from one to the next. The circuit does the rest: the id, the transaction, the lock, the subject or
+ * 404, the record of the gesture, the rows of the summary it changed, its token, the answer.
+ */
+export type Gesture<
+  Kind extends GestureKind | PositioningGestureKind,
+  Row,
+  Input,
+  Retained,
+  Code extends RefusalCode,
+> = Undoable<Kind, Retained> & {
+  subject: GestureSubject<Row>;
+  /** Its preconditions: a refusal before anything is written. */
+  refuse?: (performed: Performed<Row, Input>) => Promise<Refusal<Code> | undefined>;
+  /** Its writes. Still refused when the data decides it (a unique index…): what it wrote is rolled back. */
+  write: (performed: Performed<Row, Input>) => Promise<Written<Retained> | Refusal<Code>>;
+};
+
+/**
+ * An undoable gesture that creates its subject, as adding a Contact does: no id to read, nothing to
+ * load first. Its writes name the subject they created, locked when the gesture is recorded.
+ */
+export type Creation<
+  Kind extends GestureKind | PositioningGestureKind,
+  Input,
+  Retained,
+  Code extends RefusalCode,
+> = Undoable<Kind, Retained> & {
+  write: (
+    made: Made<Input>,
+  ) => Promise<(Written<Retained> & { subjectId: string }) | Refusal<Code>>;
+};
+
+// oxlint-disable-next-line typescript/no-explicit-any -- any gesture, whatever its subject and retained.
+type AnyGesture = Undoable<GestureKind | PositioningGestureKind, any>;
 
 /** Thrown when the writes of a gesture are refused, so that its transaction rolls them back. */
 class RolledBack extends Error {}
@@ -194,7 +207,10 @@ class RolledBack extends Error {}
 /** A route that names its subject by `:id`, behind `requireUser`. */
 type SubjectRoute = Context<SignedInEnv, string, object>;
 
-/** The common circuit of a gesture: `perform` answers a route that names its subject by `:id`. */
+/**
+ * The common circuit of a gesture: `perform` answers a route that names its subject by `:id`, `create`
+ * one whose gesture creates it.
+ */
 export function createCircuit<Changes>({
   clock,
   changesOf,
@@ -202,7 +218,46 @@ export function createCircuit<Changes>({
   clock: Clock;
   changesOf: ChangesOf<Changes>;
 }) {
-  return async function perform<
+  /**
+   * Runs the writes of a gesture in a transaction of its own, then records it: the rows of the
+   * summary it changed and its token, or the refusal, before or during its writes.
+   */
+  async function run<
+    Kind extends GestureKind | PositioningGestureKind,
+    Retained,
+    Code extends RefusalCode,
+  >(
+    userId: string,
+    declared: Undoable<Kind, Retained>,
+    writes: (
+      tx: Transaction,
+      now: Date,
+    ) => Promise<(Written<Retained> & { subjectId: string }) | Refusal<Code>>,
+  ) {
+    const now = clock.now();
+    let refusedWrites: Refusal<Code> | undefined;
+    return withUser(userId, async (tx) => {
+      const written = await writes(tx, now);
+      if ('error' in written) {
+        refusedWrites = written;
+        throw new RolledBack(written.error);
+      }
+      const undoToken = await record(tx, {
+        userId,
+        kind: declared.kind,
+        column: declared.subject.column,
+        subjectId: written.subjectId,
+        payload: written.retained,
+        now,
+      });
+      return { changes: await changesOf(tx, userId, written.touched), undoToken };
+    }).catch((error: unknown) => {
+      if (error instanceof RolledBack && refusedWrites) return refusedWrites;
+      throw error;
+    });
+  }
+
+  async function perform<
     Kind extends GestureKind | PositioningGestureKind,
     Row,
     Input,
@@ -214,36 +269,38 @@ export function createCircuit<Changes>({
     // Another User's subject, an unknown one and an id that is none answer alike.
     if (!id.success) return answerRefusal(c, refusal('not_found'));
     const subjectId = id.data;
-    const now = clock.now();
-    let refusedWrites: Refusal<Code> | undefined;
-    const outcome = await withUser(userId, async (tx) => {
-      await lockSubject(tx, subjectId);
-      const subject = await declared.subject.load(tx, userId, subjectId);
-      if (subject === undefined) return refusal('not_found');
-      const performed = { tx, userId, subjectId, subject, input, now };
-      const refused = await declared.refuse?.(performed);
-      if (refused) return refused;
-      const written = await declared.write(performed);
-      if ('error' in written) {
-        refusedWrites = written;
-        throw new RolledBack(written.error);
-      }
-      const undoToken = await record(tx, {
-        userId,
-        kind: declared.kind,
-        column: declared.subject.column,
-        subjectId,
-        payload: written.retained,
-        now,
-      });
-      return { changes: await changesOf(tx, userId, written.touched), undoToken };
-    }).catch((error: unknown) => {
-      if (error instanceof RolledBack && refusedWrites) return refusedWrites;
-      throw error;
-    });
+    const outcome = await run<Kind, Retained, Code | 'not_found'>(
+      userId,
+      declared,
+      async (tx, now) => {
+        await lockSubject(tx, subjectId);
+        const subject = await declared.subject.load(tx, userId, subjectId);
+        if (subject === undefined) return refusal('not_found');
+        const performed = { tx, userId, subjectId, subject, input, now };
+        const refused = await declared.refuse?.(performed);
+        if (refused) return refused;
+        const written = await declared.write(performed);
+        return 'error' in written ? written : { ...written, subjectId };
+      },
+    );
     if ('error' in outcome) return answerRefusal<Code | 'not_found'>(c, outcome);
     return c.json(outcome, 200);
-  };
+  }
+
+  async function create<
+    Kind extends GestureKind | PositioningGestureKind,
+    Input,
+    Retained,
+    Code extends RefusalCode,
+  >(c: SubjectRoute, declared: Creation<Kind, Input, Retained, Code>, input: Input) {
+    const outcome = await run(c.var.userId, declared, (tx, now) =>
+      declared.write({ tx, userId: c.var.userId, input, now }),
+    );
+    if ('error' in outcome) return answerRefusal<Code>(c, outcome);
+    return c.json(outcome, 201);
+  }
+
+  return { perform, create };
 }
 
 /** “Undo” (ADR 0011, spec stack §5.4). */

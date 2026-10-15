@@ -17,7 +17,6 @@ import {
 } from '@battlecrm/contract';
 import {
   canNoteInteraction,
-  daysBetween,
   isInFunnel,
   isPoolOrArchived,
   normalizeLinkedInUrl,
@@ -31,16 +30,15 @@ import { z } from 'zod';
 import type { AppEnv } from '../app.ts';
 import type { RequireUser } from '../auth/index.ts';
 import type { Clock } from '../clock.ts';
-import { violates, withUser, type Transaction } from '../db/index.ts';
+import { violates, type Transaction } from '../db/index.ts';
 import { stageOrder } from '../funnel/index.ts';
 import {
   createCircuit,
-  lockContact,
-  recordGesture,
   touched,
   type ChangesOf,
-  type Inverse,
-  type Inverses,
+  type Creation,
+  type Gesture,
+  type GestureSubject,
 } from '../gestures/index.ts';
 import { jsonBody } from '../json-body.ts';
 import {
@@ -49,10 +47,22 @@ import {
   isOrganizationOf,
   type OrganizationMembers,
 } from '../organizations/index.ts';
-import { localDateOf } from '../settings/index.ts';
+import { refusal } from '../refusals.ts';
 import { contactSubject, type ContactPlace } from './contact-subject.ts';
-import { scheduledFollowUp, scheduleFollowUp } from './follow-ups.ts';
-import { contact, followUp, interaction, statusChange } from './tables.ts';
+import {
+  cancelFollowUp,
+  recordFollowUp,
+  scheduledFollowUp,
+  scheduleFollowUp,
+  setFollowUpStatus,
+} from './follow-ups.ts';
+import {
+  dayEntered,
+  recordInteraction,
+  recordInteractionNow,
+  removeInteraction,
+} from './interactions.ts';
+import { contact, statusChange } from './tables.ts';
 
 // Read by `views`, which never writes them.
 export {
@@ -182,64 +192,179 @@ const recordReplyRequest = z
     path: ['stageId'],
   });
 
-/**
- * A gesture the data refuses, possibly after it wrote: thrown so that its transaction rolls back,
- * then answered.
- */
-class Refusal extends Error {
-  readonly status: 400 | 404 | 409;
-  readonly body:
-    | {
-        error:
-          | 'not_found'
-          | 'unknown_stage'
-          | 'stage_required'
-          | 'same_status'
-          | 'unknown_organization'
-          | 'organization_taken'
-          | 'no_follow_up_in_status'
-          | 'no_follow_up'
-          | 'past_day'
-          | 'future_day'
-          | 'check_in_instead'
-          | 'no_status_choice';
-      }
-    | { error: 'linkedin_url_taken'; contactId: string };
+/** The summary row of one Contact changed. */
+const touchedContact = (contactId: string) => touched({ contactIds: [contactId] });
 
-  constructor(status: Refusal['status'], body: Refusal['body']) {
-    super(body.error);
-    this.status = status;
-    this.body = body;
-  }
+/** The Contacts of an Organization, as its own gestures read and move them (spec stack §5.2). */
+export const organizationMembers: OrganizationMembers = {
+  async any(tx, userId, organizationId) {
+    const [member] = await tx
+      .select({ id: contact.id })
+      .from(contact)
+      .where(and(eq(contact.userId, userId), eq(contact.organizationId, organizationId)))
+      .limit(1);
+    return member !== undefined;
+  },
+  async move(tx, userId, fromId, toId) {
+    const moved = await tx
+      .update(contact)
+      .set({ organizationId: toId })
+      .where(and(eq(contact.userId, userId), eq(contact.organizationId, fromId)))
+      .returning({ id: contact.id });
+    return moved.map(({ id }) => id);
+  },
+};
+
+/**
+ * Deletes the Organization a gesture created, unless a Contact belongs to it: one joined it since.
+ * The summary rows of the Organizations it removed.
+ */
+async function removeCreatedOrganization(
+  tx: Transaction,
+  userId: string,
+  organizationId: string | undefined,
+) {
+  if (organizationId === undefined) return [];
+  if (await organizationMembers.any(tx, userId, organizationId)) return [];
+  await deleteOrganization(tx, userId, organizationId);
+  return [organizationId];
 }
 
-/** What the inverse of an addition needs: the Interaction the gesture wrote, and the Organization it created. */
+/**
+ * The Organization the Contact belongs to after a gesture: one of the User's, a new one, or none; and
+ * the one the gesture created, if it did.
+ */
+async function chosenOrganization(
+  tx: Transaction,
+  userId: string,
+  {
+    organizationId,
+    newOrganization,
+  }: Pick<z.infer<typeof coordinates>, 'organizationId' | 'newOrganization'>,
+) {
+  if (organizationId !== undefined) {
+    if (!(await isOrganizationOf(tx, userId, organizationId))) {
+      return refusal('unknown_organization');
+    }
+    return { organizationId, createdOrganizationId: undefined };
+  }
+  if (newOrganization === undefined)
+    return { organizationId: null, createdOrganizationId: undefined };
+  const created = await createOrganization(tx, userId, newOrganization);
+  if (created === null) return refusal('organization_taken');
+  return { organizationId: created, createdOrganizationId: created };
+}
+
+/** The summary rows of a gesture on one Contact, with the Organization it created. */
+const touchedWithOrganization = (contactId: string, createdOrganizationId: string | undefined) =>
+  touched({
+    contactIds: [contactId],
+    organizationIds: createdOrganizationId === undefined ? [] : [createdOrganizationId],
+  });
+
+/** The Contact of the User with this LinkedIn profile, if there is one. */
+async function contactWithProfile(tx: Transaction, userId: string, url: string) {
+  const [found] = await tx
+    .select({ id: contact.id })
+    .from(contact)
+    .where(and(eq(contact.userId, userId), eq(contact.linkedinUrl, url)));
+  return found?.id;
+}
+
+/** What “Add a Contact” retains: the Interaction that recorded it, and the Organization it created. */
 const contactAdded = z.object({
   interactionId: z.uuid(),
   // Absent from the gestures recorded before Organizations.
   createdOrganizationId: z.uuid().optional(),
 });
 
-/**
- * Takes an addition back: the Contact and the Interaction that recorded it leave no trace, nor the
- * Organization it created, unless another Contact joined it since (ADR 0011).
- */
-const removeAddedContact: Inverse = async (tx, { userId, contactId, payload }) => {
-  const { interactionId, createdOrganizationId } = contactAdded.parse(payload);
-  // Added Prospecting, it leaves no Funnel entry (ST-39).
-  await tx
-    .delete(statusChange)
-    .where(and(eq(statusChange.userId, userId), eq(statusChange.interactionId, interactionId)));
-  await tx
-    .delete(interaction)
-    .where(and(eq(interaction.userId, userId), eq(interaction.id, interactionId)));
-  await tx.delete(contact).where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
-  const removedOrganizationIds =
-    createdOrganizationId !== undefined &&
-    (await removeCreatedOrganization(tx, userId, createdOrganizationId))
-      ? [createdOrganizationId]
-      : [];
-  return touched({ removedContactIds: [contactId], removedOrganizationIds });
+/** A new Contact joins the Pool, enters the Funnel or joins the Circle; only its name is asked (spec UX §6.8). */
+const addContact: Creation<
+  'contact_added',
+  z.infer<typeof addContactRequest>,
+  z.infer<typeof contactAdded>,
+  'unknown_stage' | 'unknown_organization' | 'organization_taken' | 'linkedin_url_taken'
+> = {
+  kind: 'contact_added',
+  subject: contactSubject,
+  async write({ tx, userId, input, now }) {
+    const { status, stageId, organizationId, newOrganization, ...fields } = input;
+    let enteredStageId: string | null = null;
+    if (status === 'prospecting') {
+      // The first Stage not archived unless one is chosen; the ones before it are not skipped.
+      const stages = await stageOrder(tx, userId);
+      const entered = stageId === undefined ? stages[0] : stages.find(({ id }) => id === stageId);
+      if (!entered) return refusal('unknown_stage');
+      enteredStageId = entered.id;
+    }
+    const chosen = await chosenOrganization(tx, userId, { organizationId, newOrganization });
+    if ('error' in chosen) return chosen;
+    // The unique index decides (ST-64): another addition may have taken the profile meanwhile.
+    const [added] = await tx
+      .insert(contact)
+      .values({
+        userId,
+        ...fields,
+        status,
+        stageId: enteredStageId,
+        organizationId: chosen.organizationId,
+        createdAt: now,
+      })
+      .onConflictDoNothing({ target: [contact.userId, contact.linkedinUrl] })
+      .returning({ id: contact.id });
+    if (!added) {
+      const owner =
+        fields.linkedinUrl && (await contactWithProfile(tx, userId, fields.linkedinUrl));
+      if (!owner) throw new Error('A Contact was not added');
+      return refusal('linkedin_url_taken', { contactId: owner });
+    }
+    // The addition opens the history of the Contact.
+    const interactionId = await recordInteractionNow(
+      tx,
+      { userId, contactId: added.id, kind: 'contact_added' },
+      now,
+    );
+    // Its first Status, a change from none: added Prospecting, a Funnel entry dated today.
+    await tx.insert(statusChange).values({
+      userId,
+      contactId: added.id,
+      interactionId,
+      fromStatus: null,
+      toStatus: status,
+      stageId: enteredStageId,
+    });
+    return {
+      subjectId: added.id,
+      retained: { interactionId, createdOrganizationId: chosen.createdOrganizationId },
+      touched: touchedWithOrganization(added.id, chosen.createdOrganizationId),
+    };
+  },
+  retained: contactAdded,
+  /**
+   * The Contact and the Interaction that recorded it leave no trace, nor the Organization it created,
+   * unless another Contact joined it since (ADR 0011).
+   */
+  async inverse(tx, { userId, subjectId: contactId, retained }) {
+    // Added Prospecting, it leaves no Funnel entry (ST-39).
+    await tx
+      .delete(statusChange)
+      .where(
+        and(
+          eq(statusChange.userId, userId),
+          eq(statusChange.interactionId, retained.interactionId),
+        ),
+      );
+    await removeInteraction(tx, userId, retained.interactionId);
+    await tx.delete(contact).where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+    return touched({
+      removedContactIds: [contactId],
+      removedOrganizationIds: await removeCreatedOrganization(
+        tx,
+        userId,
+        retained.createdOrganizationId,
+      ),
+    });
+  },
 };
 
 /** The columns an edit writes, read before it for the inverse. */
@@ -264,13 +389,97 @@ const editedCoordinates = z.object({
   note: z.string().nullable(),
 });
 
-/** What the inverse of an edit needs: the Coordinates before it, and the Organization it created. */
+/** The Contact an edit acts on, as it reads it once locked: its Coordinates. */
+const contactCoordinates: GestureSubject<z.infer<typeof editedCoordinates>> = {
+  column: contactSubject.column,
+  async load(tx, userId, contactId) {
+    const [found] = await tx
+      .select(coordinateColumns)
+      .from(contact)
+      .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+    return found;
+  },
+};
+
+/** What “Edit the Contact” retains: the Coordinates before it, and the Organization it created. */
 const contactEdited = z.object({
   before: editedCoordinates,
   createdOrganizationId: z.uuid().optional(),
 });
 
-/** What the inverse of a change of Status needs: the Interaction that recorded it, and what it changed. */
+/** The Coordinates, edited in place (spec UX §6.12): no Interaction, neither Stage nor Status. */
+const editContact: Gesture<
+  'contact_edited',
+  z.infer<typeof editedCoordinates>,
+  z.infer<typeof editContactRequest>,
+  z.infer<typeof contactEdited>,
+  'unknown_organization' | 'organization_taken' | 'linkedin_url_taken'
+> = {
+  kind: 'contact_edited',
+  subject: contactCoordinates,
+  async write({ tx, userId, subjectId: contactId, subject: before, input }) {
+    const { organizationId, newOrganization, ...fields } = input;
+    const chosen = await chosenOrganization(tx, userId, { organizationId, newOrganization });
+    if ('error' in chosen) return chosen;
+    // The unique index decides (ST-64), in a savepoint so that the owner can still be read.
+    const profile = fields.linkedinUrl ?? null;
+    const taken = await tx
+      .transaction((savepoint) =>
+        savepoint
+          .update(contact)
+          .set({
+            name: fields.name,
+            organizationId: chosen.organizationId,
+            jobTitle: fields.jobTitle ?? null,
+            email: fields.email ?? null,
+            phone: fields.phone ?? null,
+            linkedinUrl: profile,
+            note: fields.note ?? null,
+          })
+          .where(and(eq(contact.userId, userId), eq(contact.id, contactId))),
+      )
+      .then(
+        () => undefined,
+        async (error: unknown) => {
+          if (profile === null || !violates(error, 'contact_linkedin_url_unique')) throw error;
+          const owner = await contactWithProfile(tx, userId, profile);
+          if (!owner) throw error;
+          return refusal('linkedin_url_taken', { contactId: owner });
+        },
+      );
+    if (taken) return taken;
+    return {
+      retained: { before, createdOrganizationId: chosen.createdOrganizationId },
+      touched: touchedWithOrganization(contactId, chosen.createdOrganizationId),
+    };
+  },
+  retained: contactEdited,
+  /**
+   * The Coordinates are restored, and the Organization it created goes unless another Contact joined
+   * it (ADR 0011). Refused when a gesture on another Contact took the way back: the Organization
+   * restored is gone, or the LinkedIn profile restored is another Contact's now.
+   */
+  async inverse(tx, { userId, subjectId: contactId, retained: { before, createdOrganizationId } }) {
+    if (
+      before.organizationId !== null &&
+      !(await isOrganizationOf(tx, userId, before.organizationId))
+    ) {
+      return 'superseded';
+    }
+    const owner = before.linkedinUrl && (await contactWithProfile(tx, userId, before.linkedinUrl));
+    if (owner && owner !== contactId) return 'superseded';
+    await tx
+      .update(contact)
+      .set(before)
+      .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+    return touched({
+      contactIds: [contactId],
+      removedOrganizationIds: await removeCreatedOrganization(tx, userId, createdOrganizationId),
+    });
+  },
+};
+
+/** What a change of Status retains: the Interaction that recorded it, and what it changed. */
 const statusChanged = z.object({
   interactionId: z.uuid(),
   before: z.object({ status: z.enum(CONTACT_STATUSES), stageId: z.uuid().nullable() }),
@@ -279,16 +488,58 @@ const statusChanged = z.object({
 });
 
 /**
- * Takes a change of Status back: the Contact gets its Status and its Stage back, and the change leaves
- * no trace, no Funnel entry either (ST-39). Refused when it would put the Contact back Prospecting at
- * a Stage archived since: only a Contact of another Status may keep one.
+ * Changes the Status of a locked Contact (spec UX §6.11), dated now and never earlier (ST-39): what
+ * the inverse needs to take it back.
  */
-const restoreStatus: Inverse = async (tx, { userId, contactId, payload }) => {
-  const changed = statusChanged.parse(payload);
-  if (!(await canRestoreStatus(tx, userId, changed))) return 'superseded';
-  await takeBackStatusChange(tx, userId, contactId, changed);
-  return touchedContact(contactId);
-};
+async function writeStatusChange(
+  tx: Transaction,
+  userId: string,
+  contactId: string,
+  before: ContactPlace,
+  { status, stageId, reason }: z.infer<typeof changeStatusRequest>,
+  now: Date,
+) {
+  if (before.status === status) return refusal('same_status');
+  // Out of Prospecting, the Contact keeps the last Stage it reached: where it left the Funnel.
+  let stageAfter = before.stageId;
+  if (status === 'prospecting') {
+    // The last Stage reached unless one is chosen; never an archived one.
+    const entered = stageToEnter(await stageOrder(tx, userId), {
+      chosen: stageId,
+      last: before.stageId,
+    });
+    if (entered === undefined) {
+      return refusal(stageId === undefined ? 'stage_required' : 'unknown_stage');
+    }
+    stageAfter = entered;
+  }
+  await tx
+    .update(contact)
+    .set({ status, stageId: stageAfter })
+    .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+  const canceled = statusChangeCancelsFollowUp(status)
+    ? await scheduledFollowUp(tx, userId, contactId)
+    : undefined;
+  if (canceled) await setFollowUpStatus(tx, userId, canceled.id, 'canceled');
+  // To Prospecting, a Funnel entry dated today.
+  const interactionId = await recordInteractionNow(
+    tx,
+    { userId, contactId, kind: 'status_changed' },
+    now,
+  );
+  await tx.insert(statusChange).values({
+    userId,
+    contactId,
+    interactionId,
+    fromStatus: before.status,
+    toStatus: status,
+    stageId: stageAfter,
+    reason,
+  });
+  return { interactionId, before, canceledFollowUpId: canceled?.id } satisfies z.infer<
+    typeof statusChanged
+  >;
+}
 
 /** Whether a change of Status can be taken back: never to Prospecting at a Stage archived since. */
 const canRestoreStatus = async (
@@ -307,9 +558,7 @@ async function takeBackStatusChange(
   await tx
     .delete(statusChange)
     .where(and(eq(statusChange.userId, userId), eq(statusChange.interactionId, interactionId)));
-  await tx
-    .delete(interaction)
-    .where(and(eq(interaction.userId, userId), eq(interaction.id, interactionId)));
+  await removeInteraction(tx, userId, interactionId);
   await tx
     .update(contact)
     .set(before)
@@ -319,271 +568,158 @@ async function takeBackStatusChange(
   }
 }
 
-/** The summary row of one Contact changed. */
-const touchedContact = (contactId: string) => touched({ contactIds: [contactId] });
-
-/** Cancels a Follow-up, or schedules it again, as it was. */
-const setFollowUpStatus = (
-  tx: Transaction,
-  userId: string,
-  followUpId: string,
-  status: 'scheduled' | 'canceled',
-) =>
-  tx
-    .update(followUp)
-    .set({ status })
-    .where(and(eq(followUp.userId, userId), eq(followUp.id, followUpId)));
-
-/** What the inverse of a cancellation needs: the Follow-up canceled. */
-const followUpCanceled = z.object({ followUpId: z.uuid() });
-
-const restoreCanceledFollowUp: Inverse = async (tx, { userId, contactId, payload }) => {
-  const { followUpId } = followUpCanceled.parse(payload);
-  await setFollowUpStatus(tx, userId, followUpId, 'scheduled');
-  return touchedContact(contactId);
+/**
+ * Bring in…, Back to Pool…, Add to Circle…, Archive… (spec UX §6.11): any Status to any other, dated
+ * when it is written down, never earlier (ST-39).
+ */
+const changeContactStatus: Gesture<
+  'status_changed',
+  ContactPlace,
+  z.infer<typeof changeStatusRequest>,
+  z.infer<typeof statusChanged>,
+  'same_status' | 'stage_required' | 'unknown_stage'
+> = {
+  kind: 'status_changed',
+  subject: contactSubject,
+  async write({ tx, userId, subjectId: contactId, subject, input, now }) {
+    const changed = await writeStatusChange(tx, userId, contactId, subject, input, now);
+    if ('error' in changed) return changed;
+    return { retained: changed, touched: touchedContact(contactId) };
+  },
+  retained: statusChanged,
+  /**
+   * The Contact gets its Status and its Stage back, and the change leaves no trace, no Funnel entry
+   * either (ST-39). Refused when it would put the Contact back Prospecting at a Stage archived since:
+   * only a Contact of another Status may keep one.
+   */
+  async inverse(tx, { userId, subjectId: contactId, retained }) {
+    if (!(await canRestoreStatus(tx, userId, retained))) return 'superseded';
+    await takeBackStatusChange(tx, userId, contactId, retained);
+    return touchedContact(contactId);
+  },
 };
 
-/** What the inverse of “Follow up…” needs: the Follow-up done, and the Interaction it became. */
-const followedUp = z.object({ followUpId: z.uuid(), interactionId: z.uuid() });
-
-/** Takes “Follow up…” back: the Interaction leaves no trace, and the Follow-up is scheduled again. */
-const restoreFollowedUp: Inverse = async (tx, { userId, contactId, payload }) => {
-  const { followUpId, interactionId } = followedUp.parse(payload);
-  await tx
-    .update(followUp)
-    .set({ status: 'scheduled', interactionId: null })
-    .where(and(eq(followUp.userId, userId), eq(followUp.id, followUpId)));
-  await removeInteraction(tx, userId, interactionId);
-  return touchedContact(contactId);
-};
-
-/**
- * Changes the Status of a locked Contact (spec UX §6.11), dated now and never earlier (ST-39): what
- * the inverse needs to take it back.
- */
-async function changeStatus(
-  tx: Transaction,
-  userId: string,
-  contactId: string,
-  before: ContactPlace,
-  { status, stageId, reason }: z.infer<typeof changeStatusRequest>,
-  now: Date,
-): Promise<z.infer<typeof statusChanged>> {
-  if (before.status === status) throw new Refusal(409, { error: 'same_status' });
-  // Out of Prospecting, the Contact keeps the last Stage it reached: where it left the Funnel.
-  let stageAfter = before.stageId;
-  if (status === 'prospecting') {
-    // The last Stage reached unless one is chosen; never an archived one.
-    const entered = stageToEnter(await stageOrder(tx, userId), {
-      chosen: stageId,
-      last: before.stageId,
-    });
-    if (entered === undefined) {
-      throw new Refusal(400, {
-        error: stageId === undefined ? 'stage_required' : 'unknown_stage',
-      });
-    }
-    stageAfter = entered;
-  }
-  await tx
-    .update(contact)
-    .set({ status, stageId: stageAfter })
-    .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
-  const canceled = statusChangeCancelsFollowUp(status)
-    ? await scheduledFollowUp(tx, userId, contactId)
-    : undefined;
-  if (canceled) await setFollowUpStatus(tx, userId, canceled.id, 'canceled');
-  // An Interaction neither outbound nor inbound; to Prospecting, a Funnel entry dated today.
-  const [recorded] = await tx
-    .insert(interaction)
-    .values({
-      userId,
-      contactId,
-      kind: 'status_changed',
-      direction: 'none',
-      occurredAt: now,
-      localDate: await localDateOf(tx, userId, now),
-      recordedAt: now,
-    })
-    .returning({ id: interaction.id });
-  if (!recorded) throw new Error('An Interaction was not recorded');
-  await tx.insert(statusChange).values({
-    userId,
-    contactId,
-    interactionId: recorded.id,
-    fromStatus: before.status,
-    toStatus: status,
-    stageId: stageAfter,
-    reason,
-  });
-  return { interactionId: recorded.id, before, canceledFollowUpId: canceled?.id };
-}
-
-/**
- * When an Interaction the User dated happened (ST-36): its local day is the one entered, today or
- * earlier; its instant, which only orders the thread, as many days before now.
- */
-async function dayEntered(tx: Transaction, userId: string, occurredOn: string, now: Date) {
-  const today = await localDateOf(tx, userId, now);
-  if (occurredOn > today) throw new Refusal(400, { error: 'future_day' });
-  return {
-    occurredAt: new Date(now.getTime() - daysBetween(occurredOn, today) * 86_400_000),
-    localDate: occurredOn,
-    recordedAt: now,
-  };
-}
-
-/** Takes back a gesture that recorded one Interaction alone. */
-const removeInteraction = (tx: Transaction, userId: string, interactionId: string) =>
-  tx
-    .delete(interaction)
-    .where(and(eq(interaction.userId, userId), eq(interaction.id, interactionId)));
-
-/** What the inverse of “Note an Interaction” needs: the Interaction it recorded. */
+/** What “Note an Interaction” retains: the Interaction it recorded. */
 const interactionNoted = z.object({ interactionId: z.uuid() });
 
-const removeNotedInteraction: Inverse = async (tx, { userId, contactId, payload }) => {
-  await removeInteraction(tx, userId, interactionNoted.parse(payload).interactionId);
-  return touchedContact(contactId);
+/**
+ * Note an Interaction (spec UX §6.4): outbound, off any Positioning and off the Activity. With an
+ * Ally, a free outbound Interaction is a Check-in, which has its own gesture (§6.14).
+ */
+const noteInteraction: Gesture<
+  'interaction_noted',
+  ContactPlace,
+  z.infer<typeof noteInteractionRequest>,
+  z.infer<typeof interactionNoted>,
+  'check_in_instead' | 'future_day'
+> = {
+  kind: 'interaction_noted',
+  subject: contactSubject,
+  async refuse({ subject }) {
+    return canNoteInteraction(subject.status) ? undefined : refusal('check_in_instead');
+  },
+  async write({ tx, userId, subjectId: contactId, input: { kind, occurredOn, note = null }, now }) {
+    const day = await dayEntered(tx, userId, occurredOn, now);
+    if ('error' in day) return day;
+    const interactionId = await recordInteraction(tx, {
+      userId,
+      contactId,
+      kind,
+      direction: 'outbound',
+      ...day,
+      note,
+    });
+    return { retained: { interactionId }, touched: touchedContact(contactId) };
+  },
+  retained: interactionNoted,
+  async inverse(tx, { userId, subjectId: contactId, retained: { interactionId } }) {
+    await removeInteraction(tx, userId, interactionId);
+    return touchedContact(contactId);
+  },
 };
 
-/** What the inverse of “Replied…” needs: the reply, the Follow-up it canceled, the change of Status it made. */
+/** What “Replied…” retains: the reply, the Follow-up it canceled, the change of Status it made. */
 const replyRecorded = z.object({
   interactionId: z.uuid(),
   canceledFollowUpId: z.uuid().optional(),
   statusChanged: statusChanged.optional(),
 });
 
-/** Takes “Replied…” back: the reply leaves no trace, the Follow-up comes back, the Status too. */
-const removeReply: Inverse = async (tx, { userId, contactId, payload }) => {
-  const recorded = replyRecorded.parse(payload);
-  if (recorded.statusChanged && !(await canRestoreStatus(tx, userId, recorded.statusChanged))) {
-    return 'superseded';
-  }
-  if (recorded.statusChanged) {
-    await takeBackStatusChange(tx, userId, contactId, recorded.statusChanged);
-  }
-  await removeInteraction(tx, userId, recorded.interactionId);
-  if (recorded.canceledFollowUpId !== undefined) {
-    await setFollowUpStatus(tx, userId, recorded.canceledFollowUpId, 'scheduled');
-  }
-  return touchedContact(contactId);
-};
-
 /**
- * A gesture on one Contact, in its own transaction, the Contact locked first: what `act` answers, or
- * the refusal it threw. `act` gets the Status and the Stage of the Contact; an unknown Contact is refused.
+ * Replied… (spec UX §6.2): an inbound Interaction, with no nature (ADR 0005). Spontaneous, from the
+ * Pool or Archived, it may bring the Contact in or add it to the Circle, dated now (ST-39).
  */
-async function onContact<Answer>(
-  userId: string,
-  contactId: string,
-  act: (tx: Transaction, before: ContactPlace) => Promise<Answer>,
-): Promise<Answer | Refusal> {
-  return withUser(userId, async (tx) => {
-    await lockContact(tx, contactId);
-    const found = await contactSubject.load(tx, userId, contactId);
-    if (!found) throw new Refusal(404, { error: 'not_found' });
-    return act(tx, found);
-  }).catch((error: unknown) => {
-    if (error instanceof Refusal) return error;
-    throw error;
-  });
-}
-
-/** The Contacts of an Organization, as its own gestures read and move them (spec stack §5.2). */
-export const organizationMembers: OrganizationMembers = {
-  async any(tx, userId, organizationId) {
-    const [member] = await tx
-      .select({ id: contact.id })
-      .from(contact)
-      .where(and(eq(contact.userId, userId), eq(contact.organizationId, organizationId)))
-      .limit(1);
-    return member !== undefined;
-  },
-  async move(tx, userId, fromId, toId) {
-    const moved = await tx
-      .update(contact)
-      .set({ organizationId: toId })
-      .where(and(eq(contact.userId, userId), eq(contact.organizationId, fromId)))
-      .returning({ id: contact.id });
-    return moved.map(({ id }) => id);
-  },
-};
-
-/**
- * Deletes the Organization a gesture created, unless a Contact belongs to it: one joined it since.
- * Whether it went.
- */
-async function removeCreatedOrganization(tx: Transaction, userId: string, organizationId: string) {
-  if (await organizationMembers.any(tx, userId, organizationId)) return false;
-  await deleteOrganization(tx, userId, organizationId);
-  return true;
-}
-
-/**
- * Takes an edit back: the Coordinates are restored, and the Organization it created goes unless
- * another Contact joined it (ADR 0011). Refused when a gesture on another Contact took the way back:
- * the Organization restored is gone, or the LinkedIn profile restored is another Contact's now.
- */
-const restoreEditedContact: Inverse = async (tx, { userId, contactId, payload }) => {
-  const { before, createdOrganizationId } = contactEdited.parse(payload);
-  if (
-    before.organizationId !== null &&
-    !(await isOrganizationOf(tx, userId, before.organizationId))
-  ) {
-    return 'superseded';
-  }
-  const owner = before.linkedinUrl && (await contactWithProfile(tx, userId, before.linkedinUrl));
-  if (owner && owner !== contactId) return 'superseded';
-  await tx
-    .update(contact)
-    .set(before)
-    .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
-  const removedOrganizationIds =
-    createdOrganizationId !== undefined &&
-    (await removeCreatedOrganization(tx, userId, createdOrganizationId))
-      ? [createdOrganizationId]
-      : [];
-  return touched({ contactIds: [contactId], removedOrganizationIds });
-};
-
-/**
- * The Organization the Contact belongs to after a gesture: one of the User's, a new one, or none; and
- * the one the gesture created, if it did.
- */
-async function chosenOrganization(
-  tx: Transaction,
-  userId: string,
-  {
-    organizationId,
-    newOrganization,
-  }: Pick<z.infer<typeof coordinates>, 'organizationId' | 'newOrganization'>,
-) {
-  if (organizationId !== undefined) {
-    if (!(await isOrganizationOf(tx, userId, organizationId))) {
-      throw new Refusal(400, { error: 'unknown_organization' });
+const recordReply: Gesture<
+  'reply_recorded',
+  ContactPlace,
+  z.infer<typeof recordReplyRequest>,
+  z.infer<typeof replyRecorded>,
+  | 'no_status_choice'
+  | 'future_day'
+  | 'no_follow_up'
+  | 'same_status'
+  | 'stage_required'
+  | 'unknown_stage'
+> = {
+  kind: 'reply_recorded',
+  subject: contactSubject,
+  async refuse({ subject, input: { status } }) {
+    // Only out of the Funnel and of the Circle is there a choice of Status (spec UX §6.2).
+    if (status !== undefined && !isPoolOrArchived(subject.status)) {
+      return refusal('no_status_choice');
     }
-    return { organizationId, createdOrganizationId: undefined };
-  }
-  if (newOrganization === undefined)
-    return { organizationId: null, createdOrganizationId: undefined };
-  const created = await createOrganization(tx, userId, newOrganization);
-  if (created === null) throw new Refusal(409, { error: 'organization_taken' });
-  return { organizationId: created, createdOrganizationId: created };
-}
-
-/** The Contact of the User with this LinkedIn profile, if there is one. */
-async function contactWithProfile(tx: Transaction, userId: string, url: string) {
-  const [found] = await tx
-    .select({ id: contact.id })
-    .from(contact)
-    .where(and(eq(contact.userId, userId), eq(contact.linkedinUrl, url)));
-  return found?.id;
-}
+    return undefined;
+  },
+  async write({ tx, userId, subjectId: contactId, subject, input, now }) {
+    const {
+      occurredOn,
+      channel,
+      note = null,
+      cancelFollowUp: cancelsFollowUp = false,
+      status,
+      stageId,
+    } = input;
+    const day = await dayEntered(tx, userId, occurredOn, now);
+    if ('error' in day) return day;
+    const scheduled = cancelsFollowUp ? await scheduledFollowUp(tx, userId, contactId) : undefined;
+    if (cancelsFollowUp && !scheduled) return refusal('no_follow_up');
+    if (scheduled) await setFollowUpStatus(tx, userId, scheduled.id, 'canceled');
+    const interactionId = await recordInteraction(tx, {
+      userId,
+      contactId,
+      kind: 'reply',
+      direction: 'inbound',
+      ...day,
+      note,
+      channel,
+    });
+    const changed =
+      status === undefined
+        ? undefined
+        : await writeStatusChange(tx, userId, contactId, subject, { status, stageId }, now);
+    if (changed && 'error' in changed) return changed;
+    return {
+      retained: { interactionId, canceledFollowUpId: scheduled?.id, statusChanged: changed },
+      touched: touchedContact(contactId),
+    };
+  },
+  retained: replyRecorded,
+  /** The reply leaves no trace, the Follow-up comes back, the Status too. */
+  async inverse(tx, { userId, subjectId: contactId, retained }) {
+    const { interactionId, canceledFollowUpId, statusChanged: changed } = retained;
+    if (changed && !(await canRestoreStatus(tx, userId, changed))) return 'superseded';
+    if (changed) await takeBackStatusChange(tx, userId, contactId, changed);
+    await removeInteraction(tx, userId, interactionId);
+    if (canceledFollowUpId !== undefined) {
+      await setFollowUpStatus(tx, userId, canceledFollowUpId, 'scheduled');
+    }
+    return touchedContact(contactId);
+  },
+};
 
 /**
- * The gestures of the Contact (spec stack §5.2, §5.4): one endpoint each, in one transaction, which
- * answers with the rows of the summary it changed and the token that undoes it.
+ * The gestures of the Contact (spec stack §5.2, §5.4): one endpoint each, through the common circuit,
+ * which answers with the rows of the summary it changed and the token that undoes it.
  */
 export function createProspecting<Changes>({
   clock,
@@ -594,184 +730,17 @@ export function createProspecting<Changes>({
   requireUser: RequireUser;
   changesOf: ChangesOf<Changes>;
 }) {
-  const perform = createCircuit({ clock, changesOf });
+  const { perform, create } = createCircuit({ clock, changesOf });
   const routes = new Hono<AppEnv>()
-    // A new Contact joins the Pool, enters the Funnel or joins the Circle; only its name is asked (spec UX §6.8).
-    .post('/contacts', requireUser, jsonBody(addContactRequest), async (c) => {
-      const { userId } = c.var;
-      const { status, stageId, organizationId, newOrganization, ...fields } = c.req.valid('json');
-      const now = clock.now();
-      const answer = await withUser(userId, async (tx) => {
-        let enteredStageId: string | null = null;
-        if (status === 'prospecting') {
-          // The first Stage not archived unless one is chosen; the ones before it are not skipped.
-          const stages = await stageOrder(tx, userId);
-          const entered =
-            stageId === undefined ? stages[0] : stages.find(({ id }) => id === stageId);
-          if (!entered) throw new Refusal(400, { error: 'unknown_stage' });
-          enteredStageId = entered.id;
-        }
-        const { organizationId: joinedOrganizationId, createdOrganizationId } =
-          await chosenOrganization(tx, userId, { organizationId, newOrganization });
-        // The unique index decides (ST-64): another addition may have taken the profile meanwhile.
-        const [added] = await tx
-          .insert(contact)
-          .values({
-            userId,
-            ...fields,
-            status,
-            stageId: enteredStageId,
-            organizationId: joinedOrganizationId,
-            createdAt: now,
-          })
-          .onConflictDoNothing({ target: [contact.userId, contact.linkedinUrl] })
-          .returning({ id: contact.id });
-        if (!added) {
-          const owner =
-            fields.linkedinUrl && (await contactWithProfile(tx, userId, fields.linkedinUrl));
-          if (!owner) throw new Error('A Contact was not added');
-          throw new Refusal(409, { error: 'linkedin_url_taken', contactId: owner });
-        }
-        // The addition opens the history of the Contact: an Interaction neither outbound nor inbound.
-        const [recorded] = await tx
-          .insert(interaction)
-          .values({
-            userId,
-            contactId: added.id,
-            kind: 'contact_added',
-            direction: 'none',
-            occurredAt: now,
-            localDate: await localDateOf(tx, userId, now),
-            recordedAt: now,
-          })
-          .returning({ id: interaction.id });
-        if (!recorded) throw new Error('An Interaction was not recorded');
-        // Its first Status, a change from none: added Prospecting, a Funnel entry dated today.
-        await tx.insert(statusChange).values({
-          userId,
-          contactId: added.id,
-          interactionId: recorded.id,
-          fromStatus: null,
-          toStatus: status,
-          stageId: enteredStageId,
-        });
-        const undoToken = await recordGesture(tx, {
-          userId,
-          kind: 'contact_added',
-          contactId: added.id,
-          payload: {
-            interactionId: recorded.id,
-            createdOrganizationId,
-          } satisfies z.infer<typeof contactAdded>,
-          now,
-        });
-        const changes = await changesOf(
-          tx,
-          userId,
-          touched({
-            contactIds: [added.id],
-            organizationIds: createdOrganizationId ? [createdOrganizationId] : [],
-          }),
-        );
-        return { changes, undoToken };
-      }).catch((error: unknown) => {
-        if (error instanceof Refusal) return error;
-        throw error;
-      });
-      if (answer instanceof Refusal) return c.json(answer.body, answer.status);
-      return c.json(answer, 201);
-    })
-    // The Coordinates, edited in place (spec UX §6.12): no Interaction, neither Stage nor Status.
-    .post('/contacts/:id/edit', requireUser, jsonBody(editContactRequest), async (c) => {
-      const { userId } = c.var;
-      const id = z.uuid().safeParse(c.req.param('id'));
-      // Another User's Contact, an unknown one and an id that is none answer alike.
-      if (!id.success) return c.json({ error: 'not_found' as const }, 404);
-      const contactId = id.data;
-      const { organizationId, newOrganization, ...fields } = c.req.valid('json');
-      const now = clock.now();
-      const answer = await withUser(userId, async (tx) => {
-        await lockContact(tx, contactId);
-        const [before] = await tx
-          .select(coordinateColumns)
-          .from(contact)
-          .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
-        if (!before) throw new Refusal(404, { error: 'not_found' });
-        const chosen = await chosenOrganization(tx, userId, { organizationId, newOrganization });
-        // The unique index decides (ST-64), in a savepoint so that the owner can still be read.
-        const profile = fields.linkedinUrl ?? null;
-        await tx
-          .transaction((savepoint) =>
-            savepoint
-              .update(contact)
-              .set({
-                name: fields.name,
-                organizationId: chosen.organizationId,
-                jobTitle: fields.jobTitle ?? null,
-                email: fields.email ?? null,
-                phone: fields.phone ?? null,
-                linkedinUrl: profile,
-                note: fields.note ?? null,
-              })
-              .where(and(eq(contact.userId, userId), eq(contact.id, contactId))),
-          )
-          .catch(async (error: unknown) => {
-            if (profile === null || !violates(error, 'contact_linkedin_url_unique')) {
-              throw error;
-            }
-            const owner = await contactWithProfile(tx, userId, profile);
-            if (!owner) throw error;
-            throw new Refusal(409, { error: 'linkedin_url_taken', contactId: owner });
-          });
-        const undoToken = await recordGesture(tx, {
-          userId,
-          kind: 'contact_edited',
-          contactId,
-          payload: {
-            before,
-            createdOrganizationId: chosen.createdOrganizationId,
-          } satisfies z.infer<typeof contactEdited>,
-          now,
-        });
-        const changes = await changesOf(
-          tx,
-          userId,
-          touched({
-            contactIds: [contactId],
-            organizationIds: chosen.createdOrganizationId ? [chosen.createdOrganizationId] : [],
-          }),
-        );
-        return { changes, undoToken };
-      }).catch((error: unknown) => {
-        if (error instanceof Refusal) return error;
-        throw error;
-      });
-      if (answer instanceof Refusal) return c.json(answer.body, answer.status);
-      return c.json(answer, 200);
-    })
-    // Bring in…, Back to Pool…, Add to Circle…, Archive… (spec UX §6.11): any Status to any other,
-    // dated when it is written down, never earlier (ST-39).
-    .post('/contacts/:id/change-status', requireUser, jsonBody(changeStatusRequest), async (c) => {
-      const { userId } = c.var;
-      const id = z.uuid().safeParse(c.req.param('id'));
-      // Another User's Contact, an unknown one and an id that is none answer alike.
-      if (!id.success) return c.json({ error: 'not_found' as const }, 404);
-      const contactId = id.data;
-      const wanted = c.req.valid('json');
-      const now = clock.now();
-      const answer = await onContact(userId, contactId, async (tx, before) => {
-        const undoToken = await recordGesture(tx, {
-          userId,
-          kind: 'status_changed',
-          contactId,
-          payload: await changeStatus(tx, userId, contactId, before, wanted, now),
-          now,
-        });
-        return { changes: await changesOf(tx, userId, touchedContact(contactId)), undoToken };
-      });
-      if (answer instanceof Refusal) return c.json(answer.body, answer.status);
-      return c.json(answer, 200);
-    })
+    .post('/contacts', requireUser, jsonBody(addContactRequest), (c) =>
+      create(c, addContact, c.req.valid('json')),
+    )
+    .post('/contacts/:id/edit', requireUser, jsonBody(editContactRequest), (c) =>
+      perform(c, editContact, c.req.valid('json')),
+    )
+    .post('/contacts/:id/change-status', requireUser, jsonBody(changeStatusRequest), (c) =>
+      perform(c, changeContactStatus, c.req.valid('json')),
+    )
     // Schedule a follow-up, or Edit the follow-up (spec UX §6.5): off the Cadence when there was none.
     .post(
       '/contacts/:id/schedule-follow-up',
@@ -782,161 +751,29 @@ export function createProspecting<Changes>({
         return perform(c, scheduleFollowUp, { dueOn, note });
       },
     )
-    // Cancel the scheduled Follow-up (spec UX §5.3): it stays, canceled.
-    .post('/contacts/:id/cancel-follow-up', requireUser, async (c) => {
-      const { userId } = c.var;
-      const id = z.uuid().safeParse(c.req.param('id'));
-      if (!id.success) return c.json({ error: 'not_found' as const }, 404);
-      const contactId = id.data;
-      const now = clock.now();
-      const answer = await onContact(userId, contactId, async (tx) => {
-        const scheduled = await scheduledFollowUp(tx, userId, contactId);
-        if (!scheduled) throw new Refusal(409, { error: 'no_follow_up' });
-        await setFollowUpStatus(tx, userId, scheduled.id, 'canceled');
-        const undoToken = await recordGesture(tx, {
-          userId,
-          kind: 'follow_up_canceled',
-          contactId,
-          payload: { followUpId: scheduled.id } satisfies z.infer<typeof followUpCanceled>,
-          now,
-        });
-        return { changes: await changesOf(tx, userId, touchedContact(contactId)), undoToken };
-      });
-      if (answer instanceof Refusal) return c.json(answer.body, answer.status);
-      return c.json(answer, 200);
-    })
-    // Follow up… (spec UX §6.3): the scheduled Follow-up becomes an outbound Interaction, dated the
-    // local day entered (ST-36), a Prospecting action.
-    .post('/contacts/:id/follow-up', requireUser, jsonBody(followUpRequest), async (c) => {
-      const { userId } = c.var;
-      const id = z.uuid().safeParse(c.req.param('id'));
-      if (!id.success) return c.json({ error: 'not_found' as const }, 404);
-      const contactId = id.data;
-      const { occurredOn, note = null } = c.req.valid('json');
-      const now = clock.now();
-      const answer = await onContact(userId, contactId, async (tx) => {
-        const day = await dayEntered(tx, userId, occurredOn, now);
-        const scheduled = await scheduledFollowUp(tx, userId, contactId);
-        if (!scheduled) throw new Refusal(409, { error: 'no_follow_up' });
-        const [recorded] = await tx
-          .insert(interaction)
-          .values({ userId, contactId, kind: 'follow_up', direction: 'outbound', ...day, note })
-          .returning({ id: interaction.id });
-        if (!recorded) throw new Error('An Interaction was not recorded');
-        await tx
-          .update(followUp)
-          .set({ status: 'done', interactionId: recorded.id })
-          .where(and(eq(followUp.userId, userId), eq(followUp.id, scheduled.id)));
-        const undoToken = await recordGesture(tx, {
-          userId,
-          kind: 'followed_up',
-          contactId,
-          payload: {
-            followUpId: scheduled.id,
-            interactionId: recorded.id,
-          } satisfies z.infer<typeof followedUp>,
-          now,
-        });
-        return { changes: await changesOf(tx, userId, touchedContact(contactId)), undoToken };
-      });
-      if (answer instanceof Refusal) return c.json(answer.body, answer.status);
-      return c.json(answer, 200);
-    })
-    // Note an Interaction (spec UX §6.4): outbound, off any Positioning and off the Activity. With an
-    // Ally, a free outbound Interaction is a Check-in, which has its own gesture (§6.14).
-    .post(
-      '/contacts/:id/note-interaction',
-      requireUser,
-      jsonBody(noteInteractionRequest),
-      async (c) => {
-        const { userId } = c.var;
-        const id = z.uuid().safeParse(c.req.param('id'));
-        if (!id.success) return c.json({ error: 'not_found' as const }, 404);
-        const contactId = id.data;
-        const { kind, occurredOn, note = null } = c.req.valid('json');
-        const now = clock.now();
-        const answer = await onContact(userId, contactId, async (tx, { status }) => {
-          if (!canNoteInteraction(status)) throw new Refusal(409, { error: 'check_in_instead' });
-          const day = await dayEntered(tx, userId, occurredOn, now);
-          const [recorded] = await tx
-            .insert(interaction)
-            .values({ userId, contactId, kind, direction: 'outbound', ...day, note })
-            .returning({ id: interaction.id });
-          if (!recorded) throw new Error('An Interaction was not recorded');
-          const undoToken = await recordGesture(tx, {
-            userId,
-            kind: 'interaction_noted',
-            contactId,
-            payload: { interactionId: recorded.id } satisfies z.infer<typeof interactionNoted>,
-            now,
-          });
-          return { changes: await changesOf(tx, userId, touchedContact(contactId)), undoToken };
-        });
-        if (answer instanceof Refusal) return c.json(answer.body, answer.status);
-        return c.json(answer, 200);
-      },
+    .post('/contacts/:id/cancel-follow-up', requireUser, (c) =>
+      perform(c, cancelFollowUp, undefined),
     )
-    // Replied… (spec UX §6.2): an inbound Interaction, with no nature (ADR 0005). Spontaneous, from the
-    // Pool or Archived, it may bring the Contact in or add it to the Circle, dated now (ST-39).
-    .post('/contacts/:id/record-reply', requireUser, jsonBody(recordReplyRequest), async (c) => {
-      const { userId } = c.var;
-      const id = z.uuid().safeParse(c.req.param('id'));
-      if (!id.success) return c.json({ error: 'not_found' as const }, 404);
-      const contactId = id.data;
-      const {
-        occurredOn,
-        channel,
-        note = null,
-        cancelFollowUp = false,
-        status,
-        stageId,
-      } = c.req.valid('json');
-      const now = clock.now();
-      const answer = await onContact(userId, contactId, async (tx, before) => {
-        // Only out of the Funnel and of the Circle is there a choice of Status (spec UX §6.2).
-        if (status !== undefined && !isPoolOrArchived(before.status)) {
-          throw new Refusal(409, { error: 'no_status_choice' });
-        }
-        const day = await dayEntered(tx, userId, occurredOn, now);
-        const scheduled = cancelFollowUp
-          ? await scheduledFollowUp(tx, userId, contactId)
-          : undefined;
-        if (cancelFollowUp && !scheduled) throw new Refusal(409, { error: 'no_follow_up' });
-        if (scheduled) await setFollowUpStatus(tx, userId, scheduled.id, 'canceled');
-        const [recorded] = await tx
-          .insert(interaction)
-          .values({ userId, contactId, kind: 'reply', direction: 'inbound', ...day, note, channel })
-          .returning({ id: interaction.id });
-        if (!recorded) throw new Error('An Interaction was not recorded');
-        const changed =
-          status === undefined
-            ? undefined
-            : await changeStatus(tx, userId, contactId, before, { status, stageId }, now);
-        const undoToken = await recordGesture(tx, {
-          userId,
-          kind: 'reply_recorded',
-          contactId,
-          payload: {
-            interactionId: recorded.id,
-            canceledFollowUpId: scheduled?.id,
-            statusChanged: changed,
-          } satisfies z.infer<typeof replyRecorded>,
-          now,
-        });
-        return { changes: await changesOf(tx, userId, touchedContact(contactId)), undoToken };
-      });
-      if (answer instanceof Refusal) return c.json(answer.body, answer.status);
-      return c.json(answer, 200);
-    });
+    .post('/contacts/:id/follow-up', requireUser, jsonBody(followUpRequest), (c) => {
+      const { occurredOn, note = null } = c.req.valid('json');
+      return perform(c, recordFollowUp, { occurredOn, note });
+    })
+    .post('/contacts/:id/note-interaction', requireUser, jsonBody(noteInteractionRequest), (c) =>
+      perform(c, noteInteraction, c.req.valid('json')),
+    )
+    .post('/contacts/:id/record-reply', requireUser, jsonBody(recordReplyRequest), (c) =>
+      perform(c, recordReply, c.req.valid('json')),
+    );
 
-  const inverses = {
-    contact_added: removeAddedContact,
-    contact_edited: restoreEditedContact,
-    status_changed: restoreStatus,
-    follow_up_canceled: restoreCanceledFollowUp,
-    followed_up: restoreFollowedUp,
-    interaction_noted: removeNotedInteraction,
-    reply_recorded: removeReply,
-  } satisfies Omit<Inverses, typeof scheduleFollowUp.kind>;
-  return { routes, inverses, gestures: [scheduleFollowUp] };
+  const gestures = [
+    addContact,
+    editContact,
+    changeContactStatus,
+    scheduleFollowUp,
+    cancelFollowUp,
+    recordFollowUp,
+    noteInteraction,
+    recordReply,
+  ] as const;
+  return { routes, gestures };
 }

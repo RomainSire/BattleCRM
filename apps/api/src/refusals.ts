@@ -7,7 +7,17 @@ import type { Context, TypedResponse } from 'hono';
 export const REFUSAL_STATUS = {
   not_found: 404,
   past_day: 400,
+  future_day: 400,
+  unknown_stage: 400,
+  stage_required: 400,
+  unknown_organization: 400,
+  same_status: 409,
+  organization_taken: 409,
+  linkedin_url_taken: 409,
   no_follow_up_in_status: 409,
+  no_follow_up: 409,
+  check_in_instead: 409,
+  no_status_choice: 409,
   expired: 409,
   superseded: 409,
 } as const;
@@ -15,15 +25,33 @@ export const REFUSAL_STATUS = {
 /** Every code a request may be refused with. */
 export type RefusalCode = keyof typeof REFUSAL_STATUS;
 
-/** A request refused, as its answer carries it: the code, typed up to the SPA's client. */
-export type Refusal<Code extends RefusalCode = RefusalCode> = { error: Code };
+/** What a refusal carries beside its code, for the codes that carry more. */
+type RefusalDetails = {
+  /** The Contact that has the profile. */
+  linkedin_url_taken: { contactId: string };
+};
 
-/** A refusal with this code, answered by `answerRefusal`. */
-export const refusal = <Code extends RefusalCode>(error: Code): Refusal<Code> => ({ error });
+type DetailsOf<Code extends RefusalCode> = Code extends keyof RefusalDetails
+  ? RefusalDetails[Code]
+  : object;
+
+/** A request refused, as its answer carries it: the code and its details, typed up to the SPA's client. */
+export type Refusal<Code extends RefusalCode = RefusalCode> = Code extends RefusalCode
+  ? { error: Code } & DetailsOf<Code>
+  : never;
+
+/** A refusal with this code, and its details when the code carries some, answered by `answerRefusal`. */
+export const refusal = <Code extends RefusalCode>(
+  error: Code,
+  ...details: Code extends keyof RefusalDetails ? [RefusalDetails[Code]] : []
+): Refusal<Code> =>
+  // The details are the ones of the code, which TypeScript does not follow through the spread.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  ({ error, ...details[0] }) as Refusal<Code>;
 
 /** The answer of a refusal, one per code: the client narrows the codes by the status. */
 type Answered<Code extends RefusalCode> = Code extends RefusalCode
-  ? Response & TypedResponse<{ error: Code }, (typeof REFUSAL_STATUS)[Code], 'json'>
+  ? Response & TypedResponse<Refusal<Code>, (typeof REFUSAL_STATUS)[Code], 'json'>
   : never;
 
 /** Answers a refusal with the status of its code. */

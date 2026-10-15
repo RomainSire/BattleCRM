@@ -81,7 +81,7 @@ export function createApp({
     clock,
     requireUser,
     gestures: prospecting.gestures,
-    inverses: { ...prospecting.inverses },
+    inverses: {},
     positioningInverses: positionings.inverses,
     changesOf: summaryChanges,
   });
