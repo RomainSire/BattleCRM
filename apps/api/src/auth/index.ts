@@ -14,6 +14,7 @@ import type { SendEmail } from '../email/index.ts';
 import type { Job } from '../jobs/index.ts';
 import { jsonBody } from '../json-body.ts';
 import type { Random } from '../random.ts';
+import { idOf } from '../route-id.ts';
 import { isTimeZone } from '../settings/index.ts';
 import {
   createBetterAuth,
@@ -526,10 +527,10 @@ export function createAuth({
       return c.body(null, 204);
     })
     .post('/sessions/:id/revoke', requireUser, async (c) => {
-      const id = z.uuid().safeParse(c.req.param('id'));
-      if (!id.success) return c.json({ error: 'invalid' as const }, 400);
+      const revokedId = idOf(c.req.param('id'));
+      if (revokedId === null) return c.json({ error: 'invalid' as const }, 400);
       // Another User's session, the current one and an unknown id answer alike.
-      return (await revokeSession(c.var.userId, c.var.sessionId, id.data))
+      return (await revokeSession(c.var.userId, c.var.sessionId, revokedId))
         ? c.body(null, 204)
         : c.json({ error: 'not_found' as const }, 404);
     });

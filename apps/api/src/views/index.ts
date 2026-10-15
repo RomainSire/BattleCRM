@@ -1,6 +1,5 @@
 import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { z } from 'zod';
 
 import type { AppEnv } from '../app.ts';
 import type { RequireUser } from '../auth/index.ts';
@@ -16,6 +15,7 @@ import {
   PROSPECTING_ACTION_KINDS,
   statusChange,
 } from '../prospecting/index.ts';
+import { idOf } from '../route-id.ts';
 import { settingsOf, timeZoneAt } from '../settings/index.ts';
 
 /**
@@ -315,10 +315,11 @@ export function createViews({ clock, requireUser }: { clock: Clock; requireUser:
     // The record of a Contact, beyond what the summary holds (spec UX §5.3).
     .get('/contacts/:id/record', requireUser, async (c) => {
       const { userId } = c.var;
-      const id = z.uuid().safeParse(c.req.param('id'));
+      const contactId = idOf(c.req.param('id'));
       // Another User's Contact, an unknown one and an id that is none answer alike.
       const record =
-        id.success && (await withUser(userId, (tx) => contactRecord(tx, userId, id.data)));
+        contactId !== null &&
+        (await withUser(userId, (tx) => contactRecord(tx, userId, contactId)));
       if (!record) return c.json({ error: 'not_found' as const }, 404);
       return c.json(record, 200);
     });

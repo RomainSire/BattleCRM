@@ -80,9 +80,9 @@ export function createApp({
   const gestures = createGestures({
     clock,
     requireUser,
-    gestures: prospecting.gestures,
+    gestures: [...prospecting.gestures, ...positionings.gestures],
     inverses: {},
-    positioningInverses: positionings.inverses,
+    positioningInverses: {},
     changesOf: summaryChanges,
   });
   const organizations = createOrganizations({

@@ -19,15 +19,16 @@ import type { RequireUser } from '../auth/index.ts';
 import type { Clock } from '../clock.ts';
 import { withUser, type Transaction } from '../db/index.ts';
 import {
-  lockPositioning,
-  recordGesture,
+  createCircuit,
   touched,
   type ChangesOf,
-  type PositioningInverse,
-  type PositioningInverses,
-  type Touched,
+  type Creation,
+  type Gesture,
+  type GestureSubject,
 } from '../gestures/index.ts';
 import { jsonBody } from '../json-body.ts';
+import { answerRefusal, refusal } from '../refusals.ts';
+import { idOf } from '../route-id.ts';
 import {
   attach,
   copyAttachments,
@@ -39,6 +40,7 @@ import {
   readAttachment,
   removeAttachments,
   restoreAttachments,
+  type JoinedFile,
 } from './attachments.ts';
 import { positioning, stage } from './tables.ts';
 
@@ -128,6 +130,9 @@ const positioningDeleted = z.object({
 /** The attachment a gesture joined, or removed. */
 const attachmentChanged = z.object({ attachmentId: z.uuid() });
 
+/** What a creation, or an archiving, retains: nothing, the Positioning is enough. */
+const nothingRetained = z.object({});
+
 /** The summary row of one Positioning changed, or removed. */
 const touchedPositioning = (positioningId: string) => touched({ positioningIds: [positioningId] });
 const removedPositioning = (positioningId: string, copyIds: string[] = []) =>
@@ -145,98 +150,305 @@ async function copiesOf(tx: Transaction, userId: string, positioningId: string) 
   return copies.map(({ id }) => id);
 }
 
-/** Takes a creation back: the Positioning leaves no trace, unless a copy was made of it since. */
-const removeCreatedPositioning: PositioningInverse = async (tx, { userId, positioningId }) => {
-  if ((await copiesOf(tx, userId, positioningId)).length > 0) return 'superseded';
-  // A modified copy came with the attachments of its original.
-  await eraseAttachmentsOf(tx, userId, positioningId);
-  await tx.delete(positioning).where(byId(userId, positioningId));
-  return removedPositioning(positioningId);
+type PositioningRow = typeof positioning.$inferSelect;
+
+/**
+ * The Positioning a gesture of the workshop acts on, as it reads it once locked. Each gesture purges,
+ * on the way, the attachments removed longer ago than “Undo” may reach.
+ */
+const positioningSubject: GestureSubject<PositioningRow> = {
+  column: 'positioningId',
+  forgetExpired: purgeRemovedAttachments,
+  async load(tx, userId, positioningId) {
+    const [found] = await tx.select().from(positioning).where(byId(userId, positioningId));
+    return found;
+  },
 };
 
-const restoreEditedPositioning: PositioningInverse = async (
-  tx,
-  { userId, positioningId, payload },
-) => {
-  const { before } = positioningEdited.parse(payload);
-  await tx.update(positioning).set(before).where(byId(userId, positioningId));
-  return touchedPositioning(positioningId);
+/** The Positioning of an attachment the route names, not removed. */
+const attachmentSubject: GestureSubject<PositioningRow> = {
+  ...positioningSubject,
+  of: positioningOfAttachment,
 };
 
-const restoreLabel: PositioningInverse = async (tx, { userId, positioningId, payload }) => {
-  const { label } = positioningRelabeled.parse(payload);
-  await tx.update(positioning).set({ label }).where(byId(userId, positioningId));
-  return touchedPositioning(positioningId);
-};
-
-const unarchive: PositioningInverse = async (tx, { userId, positioningId }) => {
-  await tx.update(positioning).set({ archivedAt: null }).where(byId(userId, positioningId));
-  return touchedPositioning(positioningId);
-};
-
-const rearchive: PositioningInverse = async (tx, { userId, positioningId, payload }) => {
-  const { archivedAt } = positioningUnarchived.parse(payload);
-  await tx
-    .update(positioning)
-    .set({ archivedAt: new Date(archivedAt) })
-    .where(byId(userId, positioningId));
-  return touchedPositioning(positioningId);
+/** A new Positioning at a Stage of the Funnel, or a modified copy of one (spec UX §6.10). */
+const createPositioning: Creation<
+  'positioning_created',
+  z.infer<typeof createRequest>,
+  z.infer<typeof nothingRetained>,
+  'unknown_stage' | 'unknown_positioning' | 'quota_exceeded'
+> = {
+  kind: 'positioning_created',
+  subject: positioningSubject,
+  async write({ tx, userId, input: { stageId, derivedFromId, ...fields }, now }) {
+    const [found] = await tx
+      .select({ id: stage.id })
+      .from(stage)
+      .where(and(eq(stage.userId, userId), eq(stage.id, stageId), isNull(stage.archivedAt)));
+    if (!found) return refusal('unknown_stage');
+    if (derivedFromId !== undefined) {
+      // A copy stays at the Stage of its original, and takes its attachments.
+      const [original] = await tx
+        .select({ id: positioning.id })
+        .from(positioning)
+        .where(and(byId(userId, derivedFromId), eq(positioning.stageId, stageId)));
+      if (!original) return refusal('unknown_positioning');
+      if (!(await hasRoomForCopyOf(tx, userId, derivedFromId))) return refusal('quota_exceeded');
+    }
+    const [created] = await tx
+      .insert(positioning)
+      .values({
+        userId,
+        stageId,
+        derivedFromId: derivedFromId ?? null,
+        channel: fields.channel,
+        ...columnsOf(fields),
+      })
+      .returning({ id: positioning.id });
+    if (!created) throw new Error('A Positioning was not created');
+    if (derivedFromId !== undefined) {
+      await copyAttachments(tx, { userId, fromId: derivedFromId, toId: created.id, now });
+    }
+    return { subjectId: created.id, retained: {}, touched: touchedPositioning(created.id) };
+  },
+  retained: nothingRetained,
+  /** The Positioning leaves no trace, unless a copy was made of it since. */
+  async inverse(tx, { userId, subjectId: positioningId }) {
+    if ((await copiesOf(tx, userId, positioningId)).length > 0) return 'superseded';
+    // A modified copy came with the attachments of its original.
+    await eraseAttachmentsOf(tx, userId, positioningId);
+    await tx.delete(positioning).where(byId(userId, positioningId));
+    return removedPositioning(positioningId);
+  },
 };
 
 /**
- * Takes a deletion back: the Positioning comes back as it was, and its copies name it again; unless
- * its own original was deleted since.
+ * Everything but its Stage and its Channel (another Channel is another Positioning), as long as it is
+ * not frozen (spec UX §5.6).
  */
-const restoreDeletedPositioning: PositioningInverse = async (tx, { userId, payload }) => {
-  const { positioning: deleted, copyIds, attachmentIds } = positioningDeleted.parse(payload);
-  if (deleted.derivedFromId !== null) {
-    const [original] = await tx
-      .select({ id: positioning.id })
-      .from(positioning)
-      .where(byId(userId, deleted.derivedFromId));
-    if (!original) return 'superseded';
-  }
-  const { archivedAt } = deleted;
-  await tx.insert(positioning).values({
-    ...deleted,
-    userId,
-    archivedAt: archivedAt === null ? null : new Date(archivedAt),
-  });
-  await restoreAttachments(tx, userId, attachmentIds);
-  const relinked =
-    copyIds.length === 0
-      ? []
-      : await tx
-          .update(positioning)
-          .set({ derivedFromId: deleted.id })
-          .where(
-            and(
-              eq(positioning.userId, userId),
-              inArray(positioning.id, copyIds),
-              isNull(positioning.derivedFromId),
-            ),
-          )
-          .returning({ id: positioning.id });
-  return touched({ positioningIds: [deleted.id, ...relinked.map(({ id }) => id)] });
+const editPositioning: Gesture<
+  'positioning_edited',
+  PositioningRow,
+  z.infer<typeof editRequest>,
+  z.infer<typeof positioningEdited>,
+  never
+> = {
+  kind: 'positioning_edited',
+  subject: positioningSubject,
+  async write({ tx, userId, subjectId: positioningId, subject: before, input }) {
+    await tx.update(positioning).set(columnsOf(input)).where(byId(userId, positioningId));
+    return {
+      retained: {
+        before: {
+          label: before.label,
+          content: before.content,
+          followUpDays: before.followUpDays,
+          followUpMessages: before.followUpMessages,
+          responseWindowDays: before.responseWindowDays,
+        },
+      },
+      touched: touchedPositioning(positioningId),
+    };
+  },
+  retained: positioningEdited,
+  async inverse(tx, { userId, subjectId: positioningId, retained: { before } }) {
+    await tx.update(positioning).set(before).where(byId(userId, positioningId));
+    return touchedPositioning(positioningId);
+  },
 };
 
-/** Takes the joining of a file back: it leaves no trace. */
-const eraseJoinedAttachment: PositioningInverse = async (
-  tx,
-  { userId, positioningId, payload },
-) => {
-  const { attachmentId } = attachmentChanged.parse(payload);
-  await eraseAttachment(tx, userId, attachmentId);
-  return touchedPositioning(positioningId);
+/** Fix the label (spec UX §5.6): a typo, even once frozen; the new one applies everywhere. */
+const relabelPositioning: Gesture<
+  'positioning_relabeled',
+  PositioningRow,
+  { label: string },
+  z.infer<typeof positioningRelabeled>,
+  never
+> = {
+  kind: 'positioning_relabeled',
+  subject: positioningSubject,
+  async write({ tx, userId, subjectId: positioningId, subject: before, input: { label } }) {
+    await tx.update(positioning).set({ label }).where(byId(userId, positioningId));
+    return { retained: { label: before.label }, touched: touchedPositioning(positioningId) };
+  },
+  retained: positioningRelabeled,
+  async inverse(tx, { userId, subjectId: positioningId, retained: { label } }) {
+    await tx.update(positioning).set({ label }).where(byId(userId, positioningId));
+    return touchedPositioning(positioningId);
+  },
 };
 
-const restoreRemovedAttachment: PositioningInverse = async (
-  tx,
-  { userId, positioningId, payload },
-) => {
-  const { attachmentId } = attachmentChanged.parse(payload);
-  if ((await restoreAttachments(tx, userId, [attachmentId])) === 0) return 'superseded';
-  return touchedPositioning(positioningId);
+/**
+ * Archive it by hand (spec UX §5.6). Neither the Champion nor one in an open Battle: Battles come
+ * with tickets 27 and 32.
+ */
+const archivePositioning: Gesture<
+  'positioning_archived',
+  PositioningRow,
+  undefined,
+  z.infer<typeof nothingRetained>,
+  'archived'
+> = {
+  kind: 'positioning_archived',
+  subject: positioningSubject,
+  async refuse({ subject }) {
+    return subject.archivedAt === null ? undefined : refusal('archived');
+  },
+  async write({ tx, userId, subjectId: positioningId, now }) {
+    await tx.update(positioning).set({ archivedAt: now }).where(byId(userId, positioningId));
+    return { retained: {}, touched: touchedPositioning(positioningId) };
+  },
+  retained: nothingRetained,
+  async inverse(tx, { userId, subjectId: positioningId }) {
+    await tx.update(positioning).set({ archivedAt: null }).where(byId(userId, positioningId));
+    return touchedPositioning(positioningId);
+  },
+};
+
+/** Available again, as a Challenger to come. */
+const unarchivePositioning: Gesture<
+  'positioning_unarchived',
+  PositioningRow,
+  undefined,
+  z.infer<typeof positioningUnarchived>,
+  'not_archived'
+> = {
+  kind: 'positioning_unarchived',
+  subject: positioningSubject,
+  async write({ tx, userId, subjectId: positioningId, subject: { archivedAt } }) {
+    // Refused here rather than in `refuse`: the date it retains is then known.
+    if (archivedAt === null) return refusal('not_archived');
+    await tx.update(positioning).set({ archivedAt: null }).where(byId(userId, positioningId));
+    return {
+      retained: { archivedAt: archivedAt.toISOString() },
+      touched: touchedPositioning(positioningId),
+    };
+  },
+  retained: positioningUnarchived,
+  async inverse(tx, { userId, subjectId: positioningId, retained: { archivedAt } }) {
+    await tx
+      .update(positioning)
+      .set({ archivedAt: new Date(archivedAt) })
+      .where(byId(userId, positioningId));
+    return touchedPositioning(positioningId);
+  },
+};
+
+/** Delete one never used (spec UX §5.6); its copies stay, without an original. */
+const deletePositioning: Gesture<
+  'positioning_deleted',
+  PositioningRow,
+  undefined,
+  z.infer<typeof positioningDeleted>,
+  never
+> = {
+  kind: 'positioning_deleted',
+  subject: positioningSubject,
+  async write({ tx, userId, subjectId: positioningId, subject: before, now }) {
+    const copyIds = await copiesOf(tx, userId, positioningId);
+    if (copyIds.length > 0) {
+      await tx
+        .update(positioning)
+        .set({ derivedFromId: null })
+        .where(and(eq(positioning.userId, userId), inArray(positioning.id, copyIds)));
+    }
+    await tx.delete(positioning).where(byId(userId, positioningId));
+    // Its attachments go with it, kept for “Undo” only.
+    const attachmentIds = await removeAttachments(tx, { userId, positioningId, now });
+    const { userId: _owner, archivedAt, ...kept } = before;
+    return {
+      retained: {
+        positioning: { ...kept, archivedAt: archivedAt?.toISOString() ?? null },
+        copyIds,
+        attachmentIds,
+      },
+      touched: removedPositioning(positioningId, copyIds),
+    };
+  },
+  retained: positioningDeleted,
+  /**
+   * The Positioning comes back as it was, and its copies name it again; unless its own original was
+   * deleted since.
+   */
+  async inverse(tx, { userId, retained: { positioning: deleted, copyIds, attachmentIds } }) {
+    if (deleted.derivedFromId !== null) {
+      const [original] = await tx
+        .select({ id: positioning.id })
+        .from(positioning)
+        .where(byId(userId, deleted.derivedFromId));
+      if (!original) return 'superseded';
+    }
+    const { archivedAt } = deleted;
+    await tx.insert(positioning).values({
+      ...deleted,
+      userId,
+      archivedAt: archivedAt === null ? null : new Date(archivedAt),
+    });
+    await restoreAttachments(tx, userId, attachmentIds);
+    const relinked =
+      copyIds.length === 0
+        ? []
+        : await tx
+            .update(positioning)
+            .set({ derivedFromId: deleted.id })
+            .where(
+              and(
+                eq(positioning.userId, userId),
+                inArray(positioning.id, copyIds),
+                isNull(positioning.derivedFromId),
+              ),
+            )
+            .returning({ id: positioning.id });
+    return touched({ positioningIds: [deleted.id, ...relinked.map(({ id }) => id)] });
+  },
+};
+
+/**
+ * Join a file (ST-35): of any type, within 5 MiB, and within the room of the User. Frozen with its
+ * Positioning once used in a Trial (ticket 28).
+ */
+const joinAttachment: Gesture<
+  'positioning_attachment_added',
+  PositioningRow,
+  JoinedFile,
+  z.infer<typeof attachmentChanged>,
+  'quota_exceeded'
+> = {
+  kind: 'positioning_attachment_added',
+  subject: positioningSubject,
+  async write({ tx, userId, subjectId: positioningId, input: file, now }) {
+    const attached = await attach(tx, { userId, positioningId, file, now });
+    if (attached === 'quota_exceeded') return refusal(attached);
+    return { retained: attached, touched: touchedPositioning(positioningId) };
+  },
+  retained: attachmentChanged,
+  /** The file leaves no trace. */
+  async inverse(tx, { userId, subjectId: positioningId, retained: { attachmentId } }) {
+    await eraseAttachment(tx, userId, attachmentId);
+    return touchedPositioning(positioningId);
+  },
+};
+
+/** Remove one, named by its own id: kept for “Undo” only. */
+const removeAttachment: Gesture<
+  'positioning_attachment_removed',
+  PositioningRow,
+  undefined,
+  z.infer<typeof attachmentChanged>,
+  'not_found'
+> = {
+  kind: 'positioning_attachment_removed',
+  subject: attachmentSubject,
+  async write({ tx, userId, subjectId: positioningId, namedId: attachmentId, now }) {
+    const removed = await removeAttachments(tx, { userId, attachmentIds: [attachmentId], now });
+    if (removed.length === 0) return refusal('not_found');
+    return { retained: { attachmentId }, touched: touchedPositioning(positioningId) };
+  },
+  retained: attachmentChanged,
+  async inverse(tx, { userId, subjectId: positioningId, retained: { attachmentId } }) {
+    if ((await restoreAttachments(tx, userId, [attachmentId])) === 0) return 'superseded';
+    return touchedPositioning(positioningId);
+  },
 };
 
 /** The name a file is kept under: without its path or a control character, within the bound. */
@@ -262,45 +474,11 @@ function contentDispositionOf(name: string) {
   return `attachment; filename="${ascii}"; filename*=UTF-8''${utf8}`;
 }
 
-/** Why a gesture is refused, and the status its route answers with. */
-const REFUSAL_STATUS = {
-  not_found: 404,
-  unknown_stage: 400,
-  unknown_positioning: 400,
-  archived: 409,
-  not_archived: 409,
-  quota_exceeded: 409,
-} as const;
-
-type Refused = { refused: keyof typeof REFUSAL_STATUS };
-
-/** The row a route names: `null` for an id that is none, which answers like an unknown one. */
-const idOf = (param: string) => {
-  const id = z.uuid().safeParse(param);
-  return id.success ? id.data : null;
-};
-
-/**
- * A gesture on one Positioning, in its own transaction, the Positioning locked first: `act` gets it as
- * it stands, and answers, or refuses. An unknown Positioning is refused.
- */
-function onPositioning<Answer>(
-  userId: string,
-  positioningId: string,
-  act: (tx: Transaction, before: typeof positioning.$inferSelect) => Promise<Answer | Refused>,
-): Promise<Answer | Refused> {
-  return withUser(userId, async (tx) => {
-    await lockPositioning(tx, positioningId);
-    const [found] = await tx.select().from(positioning).where(byId(userId, positioningId));
-    if (!found) return { refused: 'not_found' as const };
-    return act(tx, found);
-  });
-}
-
 /**
  * The gestures of the Positioning workshop (spec UX §5.6, §6.10): create one or a modified copy, edit
- * it, fix its label, archive, unarchive and delete it. Each in one transaction, answered with the rows
- * of the summary it changed and the token that takes it back (ADR 0011).
+ * it, fix its label, archive, unarchive and delete it, join and remove its attachments. One endpoint
+ * each, through the common circuit, which answers with the rows of the summary it changed and the
+ * token that takes it back (ADR 0011).
  *
  * Frozen once used in a Trial, and no longer deletable once used at all: both facts arrive with the
  * use of a Positioning (tickets 25, 28), which adds their refusals here, read in the transaction of
@@ -315,278 +493,55 @@ export function createPositionings<Changes>({
   requireUser: RequireUser;
   changesOf: ChangesOf<Changes>;
 }) {
-  /** Records the gesture, then answers with what it changed and its token. */
-  const answered = async (
-    tx: Transaction,
-    made: Parameters<typeof recordGesture>[1] & { positioningId: string },
-    changed: Touched,
-  ) => {
-    await purgeRemovedAttachments(tx, made.userId, made.now);
-    const undoToken = await recordGesture(tx, made);
-    return { changes: await changesOf(tx, made.userId, changed), undoToken };
-  };
-
+  const { perform, create } = createCircuit({ clock, changesOf });
   const routes = new Hono<AppEnv>()
-    // A new Positioning at a Stage of the Funnel, or a modified copy of one (spec UX §6.10).
-    .post('/positionings', requireUser, jsonBody(createRequest), async (c) => {
-      const { userId } = c.var;
-      const { stageId, derivedFromId, ...fields } = c.req.valid('json');
-      const now = clock.now();
-      const answer = await withUser(userId, async (tx) => {
-        const [found] = await tx
-          .select({ id: stage.id })
-          .from(stage)
-          .where(and(eq(stage.userId, userId), eq(stage.id, stageId), isNull(stage.archivedAt)));
-        if (!found) return { refused: 'unknown_stage' as const };
-        if (derivedFromId !== undefined) {
-          // A copy stays at the Stage of its original, and takes its attachments.
-          const [original] = await tx
-            .select({ id: positioning.id })
-            .from(positioning)
-            .where(and(byId(userId, derivedFromId), eq(positioning.stageId, stageId)));
-          if (!original) return { refused: 'unknown_positioning' as const };
-          if (!(await hasRoomForCopyOf(tx, userId, derivedFromId))) {
-            return { refused: 'quota_exceeded' as const };
-          }
-        }
-        const [created] = await tx
-          .insert(positioning)
-          .values({
-            userId,
-            stageId,
-            derivedFromId: derivedFromId ?? null,
-            channel: fields.channel,
-            ...columnsOf(fields),
-          })
-          .returning({ id: positioning.id });
-        if (!created) throw new Error('A Positioning was not created');
-        if (derivedFromId !== undefined) {
-          await copyAttachments(tx, { userId, fromId: derivedFromId, toId: created.id, now });
-        }
-        return answered(
-          tx,
-          { userId, kind: 'positioning_created', positioningId: created.id, payload: {}, now },
-          touchedPositioning(created.id),
-        );
-      });
-      if ('refused' in answer)
-        return c.json({ error: answer.refused }, REFUSAL_STATUS[answer.refused]);
-      return c.json(answer, 201);
-    })
-    // Everything but its Stage and its Channel (another Channel is another Positioning), as long as
-    // it is not frozen (spec UX §5.6).
-    .post('/positionings/:id/edit', requireUser, jsonBody(editRequest), async (c) => {
-      const { userId } = c.var;
-      const positioningId = idOf(c.req.param('id'));
-      if (positioningId === null) return c.json({ error: 'not_found' as const }, 404);
-      const columns = columnsOf(c.req.valid('json'));
-      const now = clock.now();
-      const answer = await onPositioning(userId, positioningId, async (tx, before) => {
-        await tx.update(positioning).set(columns).where(byId(userId, positioningId));
-        const payload = {
-          before: {
-            label: before.label,
-            content: before.content,
-            followUpDays: before.followUpDays,
-            followUpMessages: before.followUpMessages,
-            responseWindowDays: before.responseWindowDays,
-          },
-        } satisfies z.infer<typeof positioningEdited>;
-        return answered(
-          tx,
-          { userId, kind: 'positioning_edited', positioningId, payload, now },
-          touchedPositioning(positioningId),
-        );
-      });
-      if ('refused' in answer)
-        return c.json({ error: answer.refused }, REFUSAL_STATUS[answer.refused]);
-      return c.json(answer, 200);
-    })
-    // Fix the label (spec UX §5.6): a typo, even once frozen; the new one applies everywhere.
+    .post('/positionings', requireUser, jsonBody(createRequest), (c) =>
+      create(c, createPositioning, c.req.valid('json')),
+    )
+    .post('/positionings/:id/edit', requireUser, jsonBody(editRequest), (c) =>
+      perform(c, editPositioning, c.req.valid('json')),
+    )
     .post(
       '/positionings/:id/relabel',
       requireUser,
       jsonBody(positioningFields.pick({ label: true })),
-      async (c) => {
-        const { userId } = c.var;
-        const positioningId = idOf(c.req.param('id'));
-        if (positioningId === null) return c.json({ error: 'not_found' as const }, 404);
-        const { label } = c.req.valid('json');
-        const now = clock.now();
-        const answer = await onPositioning(userId, positioningId, async (tx, before) => {
-          await tx.update(positioning).set({ label }).where(byId(userId, positioningId));
-          return answered(
-            tx,
-            {
-              userId,
-              kind: 'positioning_relabeled',
-              positioningId,
-              payload: { label: before.label } satisfies z.infer<typeof positioningRelabeled>,
-              now,
-            },
-            touchedPositioning(positioningId),
-          );
-        });
-        if ('refused' in answer)
-          return c.json({ error: answer.refused }, REFUSAL_STATUS[answer.refused]);
-        return c.json(answer, 200);
-      },
+      (c) => perform(c, relabelPositioning, c.req.valid('json')),
     )
-    // Archive it by hand (spec UX §5.6). Neither the Champion nor one in an open Battle: Battles
-    // come with tickets 27 and 32.
-    .post('/positionings/:id/archive', requireUser, async (c) => {
-      const { userId } = c.var;
-      const positioningId = idOf(c.req.param('id'));
-      if (positioningId === null) return c.json({ error: 'not_found' as const }, 404);
-      const now = clock.now();
-      const answer = await onPositioning(userId, positioningId, async (tx, before) => {
-        if (before.archivedAt !== null) return { refused: 'archived' as const };
-        await tx.update(positioning).set({ archivedAt: now }).where(byId(userId, positioningId));
-        return answered(
-          tx,
-          { userId, kind: 'positioning_archived', positioningId, payload: {}, now },
-          touchedPositioning(positioningId),
-        );
-      });
-      if ('refused' in answer) {
-        return c.json({ error: answer.refused }, REFUSAL_STATUS[answer.refused]);
-      }
-      return c.json(answer, 200);
-    })
-    // Available again, as a Challenger to come.
-    .post('/positionings/:id/unarchive', requireUser, async (c) => {
-      const { userId } = c.var;
-      const positioningId = idOf(c.req.param('id'));
-      if (positioningId === null) return c.json({ error: 'not_found' as const }, 404);
-      const now = clock.now();
-      const answer = await onPositioning(userId, positioningId, async (tx, before) => {
-        if (before.archivedAt === null) return { refused: 'not_archived' as const };
-        await tx.update(positioning).set({ archivedAt: null }).where(byId(userId, positioningId));
-        const payload = {
-          archivedAt: before.archivedAt.toISOString(),
-        } satisfies z.infer<typeof positioningUnarchived>;
-        return answered(
-          tx,
-          { userId, kind: 'positioning_unarchived', positioningId, payload, now },
-          touchedPositioning(positioningId),
-        );
-      });
-      if ('refused' in answer) {
-        return c.json({ error: answer.refused }, REFUSAL_STATUS[answer.refused]);
-      }
-      return c.json(answer, 200);
-    })
-    // Delete one never used (spec UX §5.6); its copies stay, without an original.
-    .post('/positionings/:id/delete', requireUser, async (c) => {
-      const { userId } = c.var;
-      const positioningId = idOf(c.req.param('id'));
-      if (positioningId === null) return c.json({ error: 'not_found' as const }, 404);
-      const now = clock.now();
-      const answer = await onPositioning(userId, positioningId, async (tx, before) => {
-        const copyIds = await copiesOf(tx, userId, positioningId);
-        if (copyIds.length > 0) {
-          await tx
-            .update(positioning)
-            .set({ derivedFromId: null })
-            .where(and(eq(positioning.userId, userId), inArray(positioning.id, copyIds)));
-        }
-        await tx.delete(positioning).where(byId(userId, positioningId));
-        // Its attachments go with it, kept for “Undo” only.
-        const attachmentIds = await removeAttachments(tx, { userId, positioningId, now });
-        const { userId: _owner, archivedAt, ...kept } = before;
-        const payload = {
-          positioning: { ...kept, archivedAt: archivedAt?.toISOString() ?? null },
-          copyIds,
-          attachmentIds,
-        } satisfies z.input<typeof positioningDeleted>;
-        return answered(
-          tx,
-          { userId, kind: 'positioning_deleted', positioningId, payload, now },
-          removedPositioning(positioningId, copyIds),
-        );
-      });
-      if ('refused' in answer)
-        return c.json({ error: answer.refused }, REFUSAL_STATUS[answer.refused]);
-      return c.json(answer, 200);
-    })
-    // Join a file (ST-35): of any type, within 5 MiB, and within the room of the User. Frozen with
-    // its Positioning once used in a Trial (ticket 28).
+    .post('/positionings/:id/archive', requireUser, (c) =>
+      perform(c, archivePositioning, undefined),
+    )
+    .post('/positionings/:id/unarchive', requireUser, (c) =>
+      perform(c, unarchivePositioning, undefined),
+    )
+    .post('/positionings/:id/delete', requireUser, (c) => perform(c, deletePositioning, undefined))
     .post(
       '/positionings/:id/attachments',
       requireUser,
       bodyLimit({
         // The file, and the multipart frame around it.
         maxSize: ATTACHMENT_MAX_BYTES + 64 * 1024,
-        onError: (c) => c.json({ error: 'too_large' as const }, 413),
+        onError: (c) => answerRefusal(c, refusal('too_large')),
       }),
       validator('form', (form, c) => {
         const file = form['file'];
-        return file instanceof File ? { file } : c.json({ error: 'invalid' as const }, 400);
+        return file instanceof File ? { file } : answerRefusal(c, refusal('invalid'));
       }),
       async (c) => {
-        const { userId } = c.var;
-        const positioningId = idOf(c.req.param('id'));
-        if (positioningId === null) return c.json({ error: 'not_found' as const }, 404);
+        // An unknown Positioning is told before the file: its bytes are never read for nothing.
+        if (idOf(c.req.param('id')) === null) return answerRefusal(c, refusal('not_found'));
         const { file } = c.req.valid('form');
-        if (file.size > ATTACHMENT_MAX_BYTES) return c.json({ error: 'too_large' as const }, 413);
+        if (file.size > ATTACHMENT_MAX_BYTES) return answerRefusal(c, refusal('too_large'));
         const name = nameOf(file.name);
-        if (name === '') return c.json({ error: 'invalid' as const }, 400);
+        if (name === '') return answerRefusal(c, refusal('invalid'));
         const joined = {
           name,
           contentType: contentTypeOf(file.type),
           data: new Uint8Array(await file.arrayBuffer()),
         };
-        const now = clock.now();
-        const answer = await onPositioning(userId, positioningId, async (tx) => {
-          const attached = await attach(tx, { userId, positioningId, file: joined, now });
-          if (attached === 'quota_exceeded') return { refused: attached };
-          const { attachmentId } = attached;
-          return answered(
-            tx,
-            {
-              userId,
-              kind: 'positioning_attachment_added',
-              positioningId,
-              payload: { attachmentId } satisfies z.infer<typeof attachmentChanged>,
-              now,
-            },
-            touchedPositioning(positioningId),
-          );
-        });
-        if ('refused' in answer)
-          return c.json({ error: answer.refused }, REFUSAL_STATUS[answer.refused]);
-        return c.json(answer, 201);
+        return perform(c, joinAttachment, joined, 201);
       },
     )
-    // Remove one: kept for “Undo” only.
-    .post('/attachments/:id/remove', requireUser, async (c) => {
-      const { userId } = c.var;
-      const attachmentId = idOf(c.req.param('id'));
-      if (attachmentId === null) return c.json({ error: 'not_found' as const }, 404);
-      const positioningId = await withUser(userId, (tx) =>
-        positioningOfAttachment(tx, userId, attachmentId),
-      );
-      if (positioningId === undefined) return c.json({ error: 'not_found' as const }, 404);
-      const now = clock.now();
-      const answer = await onPositioning(userId, positioningId, async (tx) => {
-        const removed = await removeAttachments(tx, { userId, attachmentIds: [attachmentId], now });
-        if (removed.length === 0) return { refused: 'not_found' as const };
-        return answered(
-          tx,
-          {
-            userId,
-            kind: 'positioning_attachment_removed',
-            positioningId,
-            payload: { attachmentId } satisfies z.infer<typeof attachmentChanged>,
-            now,
-          },
-          touchedPositioning(positioningId),
-        );
-      });
-      if ('refused' in answer)
-        return c.json({ error: answer.refused }, REFUSAL_STATUS[answer.refused]);
-      return c.json(answer, 200);
-    })
+    .post('/attachments/:id/remove', requireUser, (c) => perform(c, removeAttachment, undefined))
     // Download one (spec stack §6): always saved, never shown, whatever its type.
     .get('/attachments/:id', requireUser, async (c) => {
       const { userId } = c.var;
@@ -595,7 +550,7 @@ export function createPositionings<Changes>({
         attachmentId !== null &&
         (await withUser(userId, (tx) => readAttachment(tx, userId, attachmentId)));
       // Another User's, one removed, an unknown id and one that is none answer alike.
-      if (!found) return c.json({ error: 'not_found' as const }, 404);
+      if (!found) return answerRefusal(c, refusal('not_found'));
       return c.body(new Uint8Array(found.data), 200, {
         'Content-Type': found.contentType,
         'Content-Disposition': contentDispositionOf(found.name),
@@ -604,15 +559,15 @@ export function createPositionings<Changes>({
       });
     });
 
-  const inverses = {
-    positioning_created: removeCreatedPositioning,
-    positioning_edited: restoreEditedPositioning,
-    positioning_relabeled: restoreLabel,
-    positioning_archived: unarchive,
-    positioning_unarchived: rearchive,
-    positioning_deleted: restoreDeletedPositioning,
-    positioning_attachment_added: eraseJoinedAttachment,
-    positioning_attachment_removed: restoreRemovedAttachment,
-  } satisfies PositioningInverses;
-  return { routes, inverses };
+  const gestures = [
+    createPositioning,
+    editPositioning,
+    relabelPositioning,
+    archivePositioning,
+    unarchivePositioning,
+    deletePositioning,
+    joinAttachment,
+    removeAttachment,
+  ] as const;
+  return { routes, gestures };
 }

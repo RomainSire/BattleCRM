@@ -13,6 +13,8 @@ import type { RequireUser } from '../auth/index.ts';
 import { violates, withUser, type Transaction } from '../db/index.ts';
 import { touched, type ChangesOf } from '../gestures/index.ts';
 import { jsonBody } from '../json-body.ts';
+import { answerRefusal, refusal } from '../refusals.ts';
+import { idOf } from '../route-id.ts';
 import { organization } from './tables.ts';
 
 // Read by `views`, which never writes it.
@@ -70,12 +72,6 @@ export type OrganizationMembers = {
   move: (tx: Transaction, userId: string, fromId: string, toId: string) => Promise<string[]>;
 };
 
-/** The Organization a route names: `null` for an id that is none, which answers like an unknown one. */
-const organizationIdOf = (param: string) => {
-  const id = z.uuid().safeParse(param);
-  return id.success ? id.data : null;
-};
-
 /**
  * The ids among these that are Organizations of the User, locked until the transaction ends. Always in
  * the order of their ids: two merges of the same pair, either way round, never wait on each other.
@@ -89,8 +85,6 @@ async function lockedOrganizations(tx: Transaction, userId: string, organization
     .for('update');
   return new Set(found.map(({ id }) => id));
 }
-
-const NOT_FOUND = { error: 'not_found' as const };
 
 /**
  * The gestures of an Organization (spec UX §5.4): rename, change the type, merge, delete. Each in one
@@ -114,24 +108,27 @@ export function createOrganizations<Changes>({
       jsonBody(z.object({ name: z.string().trim().min(1).max(ORGANIZATION_NAME_MAX_LENGTH) })),
       async (c) => {
         const { userId } = c.var;
-        const organizationId = organizationIdOf(c.req.param('id'));
-        if (organizationId === null) return c.json(NOT_FOUND, 404);
+        const organizationId = idOf(c.req.param('id'));
+        if (organizationId === null) return answerRefusal(c, refusal('not_found'));
         const { name } = c.req.valid('json');
-        const changes = await withUser(userId, async (tx) => {
+        const outcome = await withUser(userId, async (tx) => {
           const [renamed] = await tx
             .update(organization)
             .set({ name, normalizedName: normalizeName(name) })
             .where(and(eq(organization.userId, userId), eq(organization.id, organizationId)))
             .returning({ id: organization.id });
-          if (!renamed) return null;
-          return changesOf(tx, userId, touched({ organizationIds: [organizationId] }));
+          if (!renamed) return refusal('not_found');
+          return {
+            changes: await changesOf(tx, userId, touched({ organizationIds: [organizationId] })),
+          };
         }).catch((error: unknown) => {
-          if (violates(error, 'organization_normalized_name_unique')) return 'taken' as const;
+          if (violates(error, 'organization_normalized_name_unique')) {
+            return refusal('organization_taken');
+          }
           throw error;
         });
-        if (changes === 'taken') return c.json({ error: 'organization_taken' as const }, 409);
-        if (changes === null) return c.json(NOT_FOUND, 404);
-        return c.json({ changes }, 200);
+        if ('error' in outcome) return answerRefusal(c, outcome);
+        return c.json(outcome, 200);
       },
     )
     // The Target of its Contacts follows; the Trials already started keep theirs (CONTEXT.md, Organization).
@@ -141,20 +138,22 @@ export function createOrganizations<Changes>({
       jsonBody(z.object({ type: z.enum(ORGANIZATION_TYPES) })),
       async (c) => {
         const { userId } = c.var;
-        const organizationId = organizationIdOf(c.req.param('id'));
-        if (organizationId === null) return c.json(NOT_FOUND, 404);
+        const organizationId = idOf(c.req.param('id'));
+        if (organizationId === null) return answerRefusal(c, refusal('not_found'));
         const { type } = c.req.valid('json');
-        const changes = await withUser(userId, async (tx) => {
+        const outcome = await withUser(userId, async (tx) => {
           const [changed] = await tx
             .update(organization)
             .set({ type })
             .where(and(eq(organization.userId, userId), eq(organization.id, organizationId)))
             .returning({ id: organization.id });
-          if (!changed) return null;
-          return changesOf(tx, userId, touched({ organizationIds: [organizationId] }));
+          if (!changed) return refusal('not_found');
+          return {
+            changes: await changesOf(tx, userId, touched({ organizationIds: [organizationId] })),
+          };
         });
-        if (changes === null) return c.json(NOT_FOUND, 404);
-        return c.json({ changes }, 200);
+        if ('error' in outcome) return answerRefusal(c, outcome);
+        return c.json(outcome, 200);
       },
     )
     // Two Organizations made twice become one (ST-31): its Contacts join the one that stays, and take its type.
@@ -164,15 +163,15 @@ export function createOrganizations<Changes>({
       jsonBody(z.object({ intoId: z.uuid() })),
       async (c) => {
         const { userId } = c.var;
-        const organizationId = organizationIdOf(c.req.param('id'));
-        if (organizationId === null) return c.json(NOT_FOUND, 404);
+        const organizationId = idOf(c.req.param('id'));
+        if (organizationId === null) return answerRefusal(c, refusal('not_found'));
         const { intoId } = c.req.valid('json');
         const outcome = await withUser(userId, async (tx) => {
           // Locked first: no Contact joins the one that goes while it goes.
           const locked = await lockedOrganizations(tx, userId, [organizationId, intoId]);
-          if (!locked.has(organizationId)) return { refused: 'not_found' as const };
+          if (!locked.has(organizationId)) return refusal('not_found');
           if (intoId === organizationId || !locked.has(intoId)) {
-            return { refused: 'unknown_organization' as const };
+            return refusal('unknown_organization');
           }
           const moved = await members.move(tx, userId, organizationId, intoId);
           await deleteOrganization(tx, userId, organizationId);
@@ -188,26 +187,20 @@ export function createOrganizations<Changes>({
             ),
           };
         });
-        if (!('changes' in outcome)) {
-          return outcome.refused === 'not_found'
-            ? c.json(NOT_FOUND, 404)
-            : c.json({ error: outcome.refused }, 400);
-        }
-        return c.json({ changes: outcome.changes }, 200);
+        if ('error' in outcome) return answerRefusal(c, outcome);
+        return c.json(outcome, 200);
       },
     )
     // Never automatic, and only once no Contact belongs to it (CONTEXT.md, Organization).
     .post('/organizations/:id/delete', requireUser, async (c) => {
       const { userId } = c.var;
-      const organizationId = organizationIdOf(c.req.param('id'));
-      if (organizationId === null) return c.json(NOT_FOUND, 404);
+      const organizationId = idOf(c.req.param('id'));
+      if (organizationId === null) return answerRefusal(c, refusal('not_found'));
       const outcome = await withUser(userId, async (tx) => {
         if (!(await lockedOrganizations(tx, userId, [organizationId])).has(organizationId)) {
-          return { refused: 'not_found' as const };
+          return refusal('not_found');
         }
-        if (await members.any(tx, userId, organizationId)) {
-          return { refused: 'has_contacts' as const };
-        }
+        if (await members.any(tx, userId, organizationId)) return refusal('has_contacts');
         await deleteOrganization(tx, userId, organizationId);
         return {
           changes: await changesOf(
@@ -217,12 +210,8 @@ export function createOrganizations<Changes>({
           ),
         };
       });
-      if (!('changes' in outcome)) {
-        return outcome.refused === 'not_found'
-          ? c.json(NOT_FOUND, 404)
-          : c.json({ error: outcome.refused }, 409);
-      }
-      return c.json({ changes: outcome.changes }, 200);
+      if ('error' in outcome) return answerRefusal(c, outcome);
+      return c.json(outcome, 200);
     });
   return { routes };
 }
