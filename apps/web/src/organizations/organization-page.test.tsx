@@ -54,6 +54,8 @@ const changes = (organizations: object[], more: object = {}) => ({
   removedContactIds: [],
   organizations,
   removedOrganizationIds: [],
+  positionings: [],
+  removedPositioningIds: [],
   ...more,
 });
 

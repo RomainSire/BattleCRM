@@ -85,6 +85,8 @@ const changes = (contacts: object[]) => ({
   removedContactIds: [],
   organizations: [],
   removedOrganizationIds: [],
+  positionings: [],
+  removedPositioningIds: [],
 });
 
 /** Julie's thread: the last time she was followed up, with what was sent. */

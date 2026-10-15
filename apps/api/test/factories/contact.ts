@@ -1,4 +1,5 @@
 import {
+  CHANNELS,
   CONTACT_STATUSES,
   ORGANIZATION_TYPES,
   type AddableContactStatus,
@@ -56,12 +57,30 @@ export const summaryOrganization = z.strictObject({
   type: z.enum(ORGANIZATION_TYPES),
 });
 
+/** A Positioning as the working summary carries it, the earliest first. */
+export const summaryPositioning = z.strictObject({
+  id: z.uuid(),
+  stageId: z.uuid(),
+  label: z.string(),
+  channel: z.enum(CHANNELS),
+  content: z.string().nullable(),
+  followUps: z.array(z.strictObject({ days: z.number(), message: z.string().nullable() })),
+  responseWindowDays: z.number(),
+  derivedFromId: z.uuid().nullable(),
+  archived: z.boolean(),
+  /** Whether it was ever used, and in how many Trials: frozen from the first one. */
+  used: z.boolean(),
+  trialCount: z.number(),
+});
+
 /** The rows of the summary a gesture changed. */
 export const summaryChanges = z.strictObject({
   contacts: z.array(summaryContact),
   removedContactIds: z.array(z.uuid()),
   organizations: z.array(summaryOrganization),
   removedOrganizationIds: z.array(z.uuid()),
+  positionings: z.array(summaryPositioning),
+  removedPositioningIds: z.array(z.uuid()),
 });
 
 export const gestureAnswer = z.strictObject({ changes: summaryChanges, undoToken: z.uuid() });
@@ -223,6 +242,7 @@ export const summary = z.strictObject({
   contacts: z.array(summaryContact),
   stages: z.array(summaryStage),
   organizations: z.array(summaryOrganization),
+  positionings: z.array(summaryPositioning),
 });
 
 export async function summaryOf(harness: Harness, user: { cookie: string }) {

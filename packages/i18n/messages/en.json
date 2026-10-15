@@ -460,5 +460,110 @@
   "thread_call": "Call",
   "thread_meeting": "Meeting",
   "thread_message": "Message off any Positioning",
-  "thread_other": "Interaction"
+  "thread_other": "Interaction",
+  "positionings_intro": "What you send at each Stage, and how you follow up. Modified copies show under their original.",
+  "positionings_stages": "Stages",
+  "positionings_stage_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Positioning not archived",
+        "countPlural=*": "{count} Positionings not archived"
+      }
+    }
+  ],
+  "positionings_stage_archived": "archived",
+  "positionings_of_stage": "Positionings of {stage}",
+  "positionings_new": "New",
+  "positionings_empty": "No Positioning for this Stage yet.",
+  "positionings_empty_hint": "A Positioning is what you send at this Stage, and how you follow up.",
+  "positionings_show_archived": "Show archived ({count})",
+  "positionings_hide_archived": "Hide archived",
+  "positionings_no_stage": "Your Funnel has no Stage: a Positioning belongs to a Stage.",
+  "positionings_choose": "Pick a Positioning to see it.",
+  "positioning_archived_tag": "archived",
+  "positioning_archived_by_hand": "archived by hand",
+  "positioning_frozen_row": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Trial · frozen",
+        "countPlural=*": "{count} Trials · frozen"
+      }
+    }
+  ],
+  "positioning_never_used": "never used · editable",
+  "positioning_used_off_battle": "used outside a Battle · editable",
+  "positioning_days": "+{days} d",
+  "positioning_cadence": "{followUps} then {days} d",
+  "positioning_cadence_none": "no follow-up, then {days} d",
+  "positioning_copy_of": "Modified copy of",
+  "positioning_copies": "Copies:",
+  "positioning_frozen_title": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Frozen: used in {count} Trial",
+        "countPlural=*": "Frozen: used in {count} Trials"
+      }
+    }
+  ],
+  "positioning_frozen_reason": "So that Battles compare what was really sent, its content, its cadence and its follow-up messages no longer change. To do otherwise, create a modified copy: a new Positioning, which can take this one on.",
+  "positioning_editable": "Not used yet: everything stays editable. It is frozen from its first Trial.",
+  "positioning_used_editable": "Used outside a Battle: it stays editable, but can no longer be deleted. Archive it instead.",
+  "positioning_edit": "Edit",
+  "positioning_duplicate": "Duplicate…",
+  "positioning_delete": "Delete",
+  "positioning_create_copy": "Create a modified copy…",
+  "positioning_relabel": "Fix the label",
+  "positioning_archive": "Archive",
+  "positioning_unarchive": "Unarchive",
+  "positioning_content": "Content",
+  "positioning_no_content": "none",
+  "positioning_follow_up_rank": "Follow-up {rank} · +{days} d",
+  "positioning_no_message": "no message",
+  "positioning_response_window": "Response window",
+  "positioning_response_window_value": "{days} d after the last follow-up",
+  "positioning_usage": "Use",
+  "positioning_new_title": "New Positioning",
+  "positioning_edit_title": "Edit “{label}”",
+  "positioning_copy_title": "Modified copy of “{label}”",
+  "positioning_stage": "Stage",
+  "positioning_label": "Label",
+  "positioning_label_placeholder": "e.g. Short email, CV B",
+  "positioning_label_required": "Give it a label.",
+  "positioning_channel": "Channel",
+  "positioning_channel_hint": "Another channel is another Positioning.",
+  "positioning_what_you_send": "What you send",
+  "positioning_insert_first_name": "Insert {token}",
+  "positioning_first_name_hint": "replaced with the first name of the Contact when copied",
+  "positioning_follow_ups": "Follow-ups if no reply",
+  "positioning_prefilled_default": "Filled in with your Default follow-up cadence (Settings).",
+  "positioning_prefilled_from": "Taken from “{label}”.",
+  "positioning_follow_up_days": "Follow-up {rank}, after (days)",
+  "positioning_follow_up_message": "Message of follow-up {rank} (optional)",
+  "positioning_remove_follow_up": "Remove follow-up {rank}",
+  "positioning_add_follow_up": "Add a follow-up",
+  "positioning_response_window_days": "Response window (days)",
+  "positioning_response_window_hint": "With no reply after the last follow-up, the Trial is flagged “window elapsed”.",
+  "positioning_counted_from": "Each interval counts from your last outbound Interaction.",
+  "positioning_copy_note": "The original stays as it is. This copy is a new Positioning: never used, editable until its first Trial.",
+  "positioning_freezes_note": "Everything stays editable until its first Trial; then it is frozen (only a typo in the label can still be fixed).",
+  "positioning_create": "Create",
+  "positioning_save": "Save",
+  "positioning_create_copy_validate": "Create the copy",
+  "positioning_created_toast": "“{label}” created.",
+  "positioning_copy_created_toast": "“{label}” created, under its original.",
+  "positioning_saved_toast": "“{label}” saved.",
+  "positioning_relabel_hint": "For a typo only: the new label shows everywhere, Trials and history included. To change what you send, create a modified copy instead.",
+  "positioning_relabel_validate": "Fix",
+  "positioning_relabeled_toast": "Label fixed: “{label}”.",
+  "positioning_archived_toast": "“{label}” archived. It can come back as a Challenger.",
+  "positioning_unarchived_toast": "“{label}” unarchived.",
+  "positioning_deleted_toast": "“{label}” deleted.",
+  "positioning_behind": "This Positioning changed on another device: check, then try again.",
+  "positioning_copy_of_label": "Modified copy of “{label}”"
 }

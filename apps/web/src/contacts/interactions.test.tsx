@@ -78,6 +78,8 @@ const changes = (contacts: object[]) => ({
   removedContactIds: [],
   organizations: [],
   removedOrganizationIds: [],
+  positionings: [],
+  removedPositioningIds: [],
 });
 
 /** An API that notes Interactions and records replies as the server would, and takes them back. */

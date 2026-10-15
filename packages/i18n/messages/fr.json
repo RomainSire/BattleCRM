@@ -460,5 +460,110 @@
   "thread_call": "Appel",
   "thread_meeting": "Rencontre",
   "thread_message": "Message hors Positionnement",
-  "thread_other": "Interaction"
+  "thread_other": "Interaction",
+  "positionings_intro": "Ce que tu envoies à chaque Étape, et comment tu relances. Les copies modifiées s'affichent sous leur original.",
+  "positionings_stages": "Étapes",
+  "positionings_stage_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Positionnement non archivé",
+        "countPlural=*": "{count} Positionnements non archivés"
+      }
+    }
+  ],
+  "positionings_stage_archived": "archivée",
+  "positionings_of_stage": "Positionnements de {stage}",
+  "positionings_new": "Nouveau",
+  "positionings_empty": "Aucun Positionnement pour cette Étape.",
+  "positionings_empty_hint": "Un Positionnement, c'est ce que tu envoies à cette Étape et comment tu relances.",
+  "positionings_show_archived": "Afficher les archivés ({count})",
+  "positionings_hide_archived": "Masquer les archivés",
+  "positionings_no_stage": "Ton Funnel n'a aucune Étape : un Positionnement se rattache à une Étape.",
+  "positionings_choose": "Choisis un Positionnement pour voir sa fiche.",
+  "positioning_archived_tag": "archivé",
+  "positioning_archived_by_hand": "archivé à la main",
+  "positioning_frozen_row": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Essai · figé",
+        "countPlural=*": "{count} Essais · figé"
+      }
+    }
+  ],
+  "positioning_never_used": "jamais utilisé · modifiable",
+  "positioning_used_off_battle": "utilisé hors Battle · modifiable",
+  "positioning_days": "+{days} j",
+  "positioning_cadence": "{followUps} puis {days} j",
+  "positioning_cadence_none": "sans Relance, puis {days} j",
+  "positioning_copy_of": "Copie modifiée de",
+  "positioning_copies": "Copies :",
+  "positioning_frozen_title": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Figé : utilisé dans {count} Essai",
+        "countPlural=*": "Figé : utilisé dans {count} Essais"
+      }
+    }
+  ],
+  "positioning_frozen_reason": "Pour que les Battles comparent ce qui a vraiment été envoyé, son contenu, sa Cadence et ses messages de relance ne changent plus. Pour faire autrement, crée une copie modifiée : un nouveau Positionnement, qui pourra affronter celui-ci.",
+  "positioning_editable": "Pas encore utilisé : tout reste modifiable. Il sera figé dès son premier Essai.",
+  "positioning_used_editable": "Utilisé hors Battle : il reste modifiable, mais ne peut plus être supprimé. Archive-le plutôt.",
+  "positioning_edit": "Modifier",
+  "positioning_duplicate": "Dupliquer…",
+  "positioning_delete": "Supprimer",
+  "positioning_create_copy": "Créer une copie modifiée…",
+  "positioning_relabel": "Corriger le libellé",
+  "positioning_archive": "Archiver",
+  "positioning_unarchive": "Désarchiver",
+  "positioning_content": "Contenu",
+  "positioning_no_content": "aucun",
+  "positioning_follow_up_rank": "Relance {rank} · +{days} j",
+  "positioning_no_message": "sans message",
+  "positioning_response_window": "Délai de réponse",
+  "positioning_response_window_value": "{days} j après la dernière Relance",
+  "positioning_usage": "Utilisation",
+  "positioning_new_title": "Nouveau Positionnement",
+  "positioning_edit_title": "Modifier « {label} »",
+  "positioning_copy_title": "Copie modifiée de « {label} »",
+  "positioning_stage": "Étape",
+  "positioning_label": "Libellé",
+  "positioning_label_placeholder": "ex. Mail court, CV B",
+  "positioning_label_required": "Donne-lui un libellé.",
+  "positioning_channel": "Canal",
+  "positioning_channel_hint": "Un autre canal, c'est un autre Positionnement.",
+  "positioning_what_you_send": "Ce que tu envoies",
+  "positioning_insert_first_name": "Insérer {token}",
+  "positioning_first_name_hint": "remplacé par le prénom du Contact au moment de copier",
+  "positioning_follow_ups": "Relances si pas de réponse",
+  "positioning_prefilled_default": "Prérempli avec ta Cadence par défaut (Réglages).",
+  "positioning_prefilled_from": "Reprise de « {label} ».",
+  "positioning_follow_up_days": "Relance {rank}, après (jours)",
+  "positioning_follow_up_message": "Message de la Relance {rank} (facultatif)",
+  "positioning_remove_follow_up": "Retirer la Relance {rank}",
+  "positioning_add_follow_up": "Ajouter une Relance",
+  "positioning_response_window_days": "Délai de réponse (jours)",
+  "positioning_response_window_hint": "Sans réponse après la dernière Relance, l'Essai est signalé « délai dépassé ».",
+  "positioning_counted_from": "Chaque délai se compte depuis ta dernière Interaction sortante.",
+  "positioning_copy_note": "L'original reste tel quel. Cette copie est un nouveau Positionnement : jamais utilisé, modifiable jusqu'à son premier Essai.",
+  "positioning_freezes_note": "Tout reste modifiable jusqu'à son premier Essai ; ensuite, il sera figé (seule une faute de frappe dans le libellé restera corrigible).",
+  "positioning_create": "Créer",
+  "positioning_save": "Enregistrer",
+  "positioning_create_copy_validate": "Créer la copie",
+  "positioning_created_toast": "« {label} » créé.",
+  "positioning_copy_created_toast": "« {label} » créé, sous son original.",
+  "positioning_saved_toast": "« {label} » enregistré.",
+  "positioning_relabel_hint": "Pour une faute de frappe seulement : le nouveau libellé s'affiche partout, Essais et Historique compris. Pour changer ce que tu envoies, crée plutôt une copie modifiée.",
+  "positioning_relabel_validate": "Corriger",
+  "positioning_relabeled_toast": "Libellé corrigé : « {label} ».",
+  "positioning_archived_toast": "« {label} » archivé. Il pourra revenir comme Challenger.",
+  "positioning_unarchived_toast": "« {label} » désarchivé.",
+  "positioning_deleted_toast": "« {label} » supprimé.",
+  "positioning_behind": "Ce Positionnement a changé sur un autre appareil : vérifie puis recommence.",
+  "positioning_copy_of_label": "Copie modifiée de « {label} »"
 }

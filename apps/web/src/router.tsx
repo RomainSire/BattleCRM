@@ -25,6 +25,8 @@ import { ContactsScreen } from './contacts/contacts-screen.tsx';
 import { FOLLOW_UP_GESTURES, INTERACTION_GESTURES, STATUS_GESTURES } from './contacts/status.ts';
 import { clearDeviceData } from './device-data.ts';
 import { OrganizationPage } from './organizations/organization-page.tsx';
+import { POSITIONING_PANELS } from './positionings/positioning-panel.tsx';
+import { PositioningsScreen } from './positionings/positionings-screen.tsx';
 import { MoreScreen } from './screens/more-screen.tsx';
 import { Screen } from './screens/screen.tsx';
 import { configQuery, sessionQuery, type ApiClient } from './session.ts';
@@ -263,7 +265,13 @@ const battlesRoute = createRoute({
 const positioningsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/positionings',
-  component: () => <Screen title={m.positionings()} />,
+  // The Stage and the Positioning chosen, and the panel open (ST-70); anything else is dropped.
+  validateSearch: z.object({
+    stage: z.uuid().optional().catch(undefined),
+    positioning: z.uuid().optional().catch(undefined),
+    panel: z.enum(POSITIONING_PANELS).optional().catch(undefined),
+  }),
+  component: PositioningsScreen,
 });
 
 const insightsRoute = createRoute({

@@ -16,7 +16,10 @@ import { user } from '../auth/tables.ts';
 // oxlint-disable-next-line no-restricted-imports -- a foreign key to the Contact a gesture touched.
 import { contact } from '../prospecting/tables.ts';
 
-/** Every gesture “Undo” can take back; a new gesture adds its kind here, next to its inverse (ADR 0011). */
+/**
+ * Every gesture on a Contact “Undo” can take back; a new gesture adds its kind here, next to its
+ * inverse (ADR 0011).
+ */
 export const GESTURE_KINDS = [
   'contact_added',
   'contact_edited',
@@ -28,6 +31,18 @@ export const GESTURE_KINDS = [
   'reply_recorded',
 ] as const;
 
+/** The gestures of the Positioning workshop (spec UX §5.6): each touches one Positioning, no Contact. */
+export const POSITIONING_GESTURE_KINDS = [
+  'positioning_created',
+  'positioning_edited',
+  'positioning_relabeled',
+  'positioning_archived',
+  'positioning_unarchived',
+  'positioning_deleted',
+] as const;
+
+const KINDS = [...GESTURE_KINDS, ...POSITIONING_GESTURE_KINDS] as const;
+
 /** What “Undo” needs to take a gesture back (ADR 0011). A row lives 15 minutes at most, or until it is undone. */
 export const gesture = pgTable(
   'gesture',
@@ -38,9 +53,13 @@ export const gesture = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    kind: text({ enum: GESTURE_KINDS }).notNull(),
-    /** The Contact it touched: a later gesture on the same one closes the way back. */
-    contactId: uuid('contact_id').notNull(),
+    kind: text({ enum: KINDS }).notNull(),
+    /**
+     * What it touched, a Contact or a Positioning: a later gesture on the same one closes the way back.
+     * No foreign key to the Positioning: deleting one is a gesture “Undo” takes back.
+     */
+    contactId: uuid('contact_id'),
+    positioningId: uuid('positioning_id'),
     /** What the inverse of this kind needs, written and read by its module alone. */
     payload: jsonb().notNull(),
     performedAt: timestamp('performed_at', { withTimezone: true }).notNull(),
@@ -54,8 +73,13 @@ export const gesture = pgTable(
     }).onDelete('cascade'),
     check(
       'gesture_kind_check',
-      sql`${table.kind} in (${sql.raw(GESTURE_KINDS.map((kind) => `'${kind}'`).join(', '))})`,
+      sql`${table.kind} in (${sql.raw(KINDS.map((kind) => `'${kind}'`).join(', '))})`,
+    ),
+    check(
+      'gesture_subject_check',
+      sql`(${table.contactId} is null) = (${table.kind} in (${sql.raw(POSITIONING_GESTURE_KINDS.map((kind) => `'${kind}'`).join(', '))})) and (${table.positioningId} is null) <> (${table.contactId} is null)`,
     ),
     index('gesture_contact_idx').on(table.userId, table.contactId),
+    index('gesture_positioning_idx').on(table.userId, table.positioningId),
   ],
 );

@@ -17,7 +17,7 @@ import type { Clock } from './clock.ts';
 import type { Config } from './config.ts';
 import { isDatabaseReady } from './db/index.ts';
 import { createEmailSender, type EmailTransport } from './email/index.ts';
-import { initializeFunnel } from './funnel/index.ts';
+import { createPositionings, initializeFunnel } from './funnel/index.ts';
 import { createGestures } from './gestures/index.ts';
 import type { InFlight } from './in-flight.ts';
 import { jsonBody } from './json-body.ts';
@@ -75,11 +75,13 @@ export function createApp({
 
   const { requireUser } = auth;
   const prospecting = createProspecting({ clock, requireUser, changesOf: summaryChanges });
+  const positionings = createPositionings({ clock, requireUser, changesOf: summaryChanges });
   // Each module brings the inverse of its own gestures (ADR 0011).
   const gestures = createGestures({
     clock,
     requireUser,
     inverses: { ...prospecting.inverses },
+    positioningInverses: positionings.inverses,
     changesOf: summaryChanges,
   });
   const organizations = createOrganizations({
@@ -130,6 +132,7 @@ export function createApp({
     )
     .route('/', auth.routes)
     .route('/', prospecting.routes)
+    .route('/', positionings.routes)
     .route('/', organizations.routes)
     .route('/', gestures.routes)
     .route('/', settings.routes)

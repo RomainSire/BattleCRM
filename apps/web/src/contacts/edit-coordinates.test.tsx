@@ -90,6 +90,8 @@ const changes = (contacts: object[], organizations: object[] = []) => ({
   removedContactIds: [],
   organizations,
   removedOrganizationIds: [],
+  positionings: [],
+  removedPositioningIds: [],
 });
 
 /**

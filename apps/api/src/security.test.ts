@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { testApp } from '../test/app.ts';
 import { addContact, editContact, scheduleFollowUp } from '../test/factories/contact.ts';
+import { SHORT_EMAIL, positioningGesture, positioningOf } from '../test/factories/positioning.ts';
 import { makeUser } from '../test/factories/user.ts';
 import { postJson } from '../test/http.ts';
 import { withUser } from './db/index.ts';
@@ -162,6 +163,7 @@ test('a query that forgot its filter only sees the rows of its User, in every bu
     });
     await scheduleFollowUp(harness, user, contact.id, { dueOn: '2026-01-08' });
     await postJson(harness.app, '/api/settings', { activityGoal: 2, entryGoal: 6 }, user.cookie);
+    await positioningOf(harness, user);
   }
 
   for (const { name } of await businessTables()) {
@@ -288,6 +290,29 @@ const CROSS_ACCESS: Record<
     await editContact(harness, alice, contact.id, { name: 'Julie Martin' });
     return { id: organization!.id, state: () => getJson(harness, alice, '/api/summary') };
   },
+  'POST /api/positionings/:id/edit': async (harness, alice) => ({
+    id: (await positioningOf(harness, alice)).positioning.id,
+    state: () => getJson(harness, alice, '/api/summary'),
+    body: { ...SHORT_EMAIL, label: 'Bob was here' },
+  }),
+  'POST /api/positionings/:id/relabel': async (harness, alice) => ({
+    id: (await positioningOf(harness, alice)).positioning.id,
+    state: () => getJson(harness, alice, '/api/summary'),
+    body: { label: 'Bob was here' },
+  }),
+  'POST /api/positionings/:id/archive': async (harness, alice) => ({
+    id: (await positioningOf(harness, alice)).positioning.id,
+    state: () => getJson(harness, alice, '/api/summary'),
+  }),
+  'POST /api/positionings/:id/unarchive': async (harness, alice) => {
+    const { positioning } = await positioningOf(harness, alice);
+    await positioningGesture(harness, alice, `/api/positionings/${positioning.id}/archive`);
+    return { id: positioning.id, state: () => getJson(harness, alice, '/api/summary') };
+  },
+  'POST /api/positionings/:id/delete': async (harness, alice) => ({
+    id: (await positioningOf(harness, alice)).positioning.id,
+    state: () => getJson(harness, alice, '/api/summary'),
+  }),
   'POST /api/sessions/:id/revoke': async (harness, alice) => {
     const state = () => getJson(harness, alice, '/api/sessions');
     const { sessions } = z

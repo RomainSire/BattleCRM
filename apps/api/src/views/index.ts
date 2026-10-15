@@ -6,7 +6,7 @@ import type { AppEnv } from '../app.ts';
 import type { RequireUser } from '../auth/index.ts';
 import type { Clock } from '../clock.ts';
 import { withUser, type Transaction } from '../db/index.ts';
-import { FUNNEL_ORDER, stage } from '../funnel/index.ts';
+import { FUNNEL_ORDER, positioning, stage } from '../funnel/index.ts';
 import type { Touched } from '../gestures/index.ts';
 import { organization } from '../organizations/index.ts';
 import {
@@ -173,6 +173,41 @@ const summaryStages = (tx: Transaction, userId: string) =>
     .where(eq(stage.userId, userId))
     .orderBy(...FUNNEL_ORDER);
 
+/**
+ * Every Positioning of the User, archived ones too, or the ones a gesture touched; the earliest first
+ * (uuidv7), so a copy comes after its original.
+ */
+async function summaryPositionings(tx: Transaction, userId: string, ids?: string[]) {
+  if (ids?.length === 0) return [];
+  const rows = await tx
+    .select({
+      id: positioning.id,
+      stageId: positioning.stageId,
+      label: positioning.label,
+      channel: positioning.channel,
+      content: positioning.content,
+      followUpDays: positioning.followUpDays,
+      followUpMessages: positioning.followUpMessages,
+      responseWindowDays: positioning.responseWindowDays,
+      derivedFromId: positioning.derivedFromId,
+      archived: isNotNull(positioning.archivedAt).mapWith(Boolean),
+    })
+    .from(positioning)
+    .where(and(eq(positioning.userId, userId), ids && inArray(positioning.id, ids)))
+    .orderBy(positioning.id);
+  return rows.map(({ followUpDays, followUpMessages, ...row }) => ({
+    ...row,
+    followUps: followUpDays.map((days, rank) => ({
+      days,
+      message: followUpMessages[rank] ?? null,
+    })),
+    // Its uses and its Trials are counted once a Positioning can be used (tickets 25, 28): until
+    // then, none is used, so every one may be edited and deleted.
+    used: false,
+    trialCount: 0,
+  }));
+}
+
 /** Every Organization of the User, or the ones a gesture touched, by name. */
 async function summaryOrganizations(tx: Transaction, userId: string, ids?: string[]) {
   if (ids?.length === 0) return [];
@@ -233,6 +268,8 @@ export async function summaryChanges(tx: Transaction, userId: string, touched: T
     removedContactIds: touched.removedContactIds,
     organizations: await summaryOrganizations(tx, userId, touched.organizationIds),
     removedOrganizationIds: touched.removedOrganizationIds,
+    positionings: await summaryPositionings(tx, userId, touched.positioningIds ?? []),
+    removedPositioningIds: touched.removedPositioningIds ?? [],
   };
 }
 
@@ -250,6 +287,7 @@ export function createViews({ clock, requireUser }: { clock: Clock; requireUser:
         contacts: await summaryContacts(tx, userId),
         stages: await summaryStages(tx, userId),
         organizations: await summaryOrganizations(tx, userId),
+        positionings: await summaryPositionings(tx, userId),
       }));
       return c.json(summary, 200);
     })

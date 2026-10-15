@@ -5,8 +5,9 @@ import { and, asc, eq, isNull } from 'drizzle-orm';
 import type { Transaction } from '../db/index.ts';
 import { stage } from './tables.ts';
 
-// Read by `views`, which never writes it.
-export { stage } from './tables.ts';
+// Read by `views`, which never writes them.
+export { positioning, stage } from './tables.ts';
+export { createPositionings } from './positionings.ts';
 
 /** The order of the Funnel, for every read of its Stages. */
 export const FUNNEL_ORDER = [asc(stage.position), asc(stage.id)];

@@ -117,6 +117,8 @@ const changes = (contacts: object[]) => ({
   removedContactIds: [],
   organizations: [],
   removedOrganizationIds: [],
+  positionings: [],
+  removedPositioningIds: [],
 });
 
 const threadOf = (reason: string | null) => ({

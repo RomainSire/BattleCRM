@@ -67,3 +67,8 @@ export const DEFAULT_RESPONSE_WINDOW_DAYS = 14;
 export const GOAL_MAX = 999;
 export const SETTING_DAYS_MAX = 365;
 export const FOLLOW_UP_INTERVALS_MAX = 10;
+
+/** What a Positioning holds (CONTEXT.md, Positioning): a label, what is sent, and a message per rank of its cadence. */
+export const POSITIONING_LABEL_MAX_LENGTH = 200;
+export const POSITIONING_CONTENT_MAX_LENGTH = 10_000;
+export const FOLLOW_UP_MESSAGE_MAX_LENGTH = 5000;

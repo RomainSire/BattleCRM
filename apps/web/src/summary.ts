@@ -7,6 +7,7 @@ import type { ApiClient } from './session.ts';
 export type Summary = InferResponseType<ApiClient['summary']['$get'], 200>;
 export type SummaryContact = Summary['contacts'][number];
 export type SummaryOrganization = Summary['organizations'][number];
+export type SummaryPositioning = Summary['positionings'][number];
 /** The rows of the summary a gesture changed, as its answer carries them. */
 export type SummaryChanges = InferResponseType<ApiClient['contacts']['$post'], 201>['changes'];
 
@@ -28,6 +29,12 @@ export const summaryQuery = (api: ApiClient) =>
     gcTime: Infinity,
     retry: false,
   });
+
+/** The Positionings of the User, the earliest first; none in a summary kept from before them. */
+export function positioningsOf(summary: Summary): SummaryPositioning[] {
+  const positionings: SummaryPositioning[] | undefined = summary.positionings;
+  return positionings ?? [];
+}
 
 /**
  * Puts the rows a gesture answered with into the summary, instead of reading it all again; the
@@ -54,6 +61,10 @@ export async function applySummaryChanges(
     ...changes.removedOrganizationIds,
     ...changes.organizations.map((organization) => organization.id),
   ]);
+  const replacedPositionings = new Set([
+    ...changes.removedPositioningIds,
+    ...changes.positionings.map((positioning) => positioning.id),
+  ]);
   queryClient.setQueryData<Summary>(
     SUMMARY_KEY,
     (summary) =>
@@ -69,6 +80,13 @@ export async function applySummaryChanges(
             (organization) => !replacedOrganizations.has(organization.id),
           ),
         ],
+        // The earliest first, as the summary reads them (uuidv7): a copy after its original.
+        positionings: [
+          ...changes.positionings,
+          ...positioningsOf(summary).filter(
+            (positioning) => !replacedPositionings.has(positioning.id),
+          ),
+        ].toSorted((a, b) => a.id.localeCompare(b.id)),
       },
   );
 }
