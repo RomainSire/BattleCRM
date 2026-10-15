@@ -7,7 +7,7 @@ import {
   SETTING_DAYS_MAX,
 } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
 import { Form, NumberField, TextField } from 'react-aria-components';
@@ -29,19 +29,17 @@ import {
 } from '../components/ui/segmented-control.tsx';
 import { Textarea } from '../components/ui/textarea.tsx';
 import { CHANNEL_LABEL } from '../channel.ts';
+import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { useSettings } from '../settings/use-settings.ts';
 import {
-  applySummaryChanges,
   attachmentsOf,
-  SUMMARY_KEY,
   type Summary,
   type SummaryChanges,
   type SummaryPositioning,
 } from '../summary.ts';
-import { notifyGesture } from '../undo.tsx';
 
 /** The panels of the workshop, carried by the address (ST-70). */
 export const POSITIONING_PANELS = ['new', 'edit', 'copy', 'relabel'] as const;
@@ -53,31 +51,6 @@ export type PositioningPanelKind = (typeof POSITIONING_PANELS)[number];
  */
 const FIRST_NAME_TOKEN = { fr: '{prénom}', en: '{first name}' } as const;
 
-/** What a gesture of the workshop answers: its changes, or a refusal the panel shows. */
-export type PositioningAnswer =
-  | { changes: SummaryChanges; undoToken: string }
-  | 'stage_gone'
-  | 'behind'
-  | 'too_large'
-  | 'quota_exceeded';
-
-/**
- * A refusal of the server: a Stage gone, a file too large or no room left are the User's to read;
- * anything else, a Positioning changed elsewhere.
- */
-async function refusalOf(response: {
-  status: number;
-  json(): Promise<unknown>;
-}): Promise<Exclude<PositioningAnswer, object> | undefined> {
-  if (![400, 404, 409, 413].includes(response.status)) return undefined;
-  const { error } = z.object({ error: z.string() }).parse(await response.json());
-  if (error === 'unknown_stage') return 'stage_gone';
-  if (error === 'too_large' || error === 'quota_exceeded') return error;
-  // A body the server would not read is this app's error, never the User's.
-  if (error === 'invalid') throw new Error('A gesture of the workshop was refused');
-  return 'behind';
-}
-
 /** What the workshop writes in a Positioning (spec UX §6.10). */
 type Fields = {
   label: string;
@@ -87,92 +60,21 @@ type Fields = {
   responseWindowDays: number;
 };
 
-/** The gestures of the workshop, each answered with its changes or its refusal. */
-export const sendPositioning = {
-  async create(
-    api: ApiClient,
-    json: Fields & { stageId: string; derivedFromId?: string },
-  ): Promise<PositioningAnswer> {
-    const response = await api.positionings.$post({ json });
-    const refused = await refusalOf(response);
-    if (refused) return refused;
-    if (!response.ok) throw new Error('POST /api/positionings failed');
-    return response.json();
-  },
-  async edit(
-    api: ApiClient,
-    id: string,
-    json: Omit<Fields, 'channel'>,
-  ): Promise<PositioningAnswer> {
-    const response = await api.positionings[':id'].edit.$post({ param: { id }, json });
-    const refused = await refusalOf(response);
-    if (refused) return refused;
-    if (!response.ok) throw new Error('POST /api/positionings/:id/edit failed');
-    return response.json();
-  },
-  async relabel(api: ApiClient, id: string, label: string): Promise<PositioningAnswer> {
-    const response = await api.positionings[':id'].relabel.$post({
-      param: { id },
-      json: { label },
-    });
-    const refused = await refusalOf(response);
-    if (refused) return refused;
-    if (!response.ok) throw new Error('POST /api/positionings/:id/relabel failed');
-    return response.json();
-  },
-  async act(
-    api: ApiClient,
-    id: string,
-    gesture: 'archive' | 'unarchive' | 'delete',
-  ): Promise<PositioningAnswer> {
-    const response = await api.positionings[':id'][gesture].$post({ param: { id } });
-    const refused = await refusalOf(response);
-    if (refused) return refused;
-    if (!response.ok) throw new Error(`POST /api/positionings/:id/${gesture} failed`);
-    return response.json();
-  },
-  async attach(api: ApiClient, id: string, file: File): Promise<PositioningAnswer> {
-    const response = await api.positionings[':id'].attachments.$post({
-      param: { id },
-      form: { file },
-    });
-    const refused = await refusalOf(response);
-    if (refused) return refused;
-    if (!response.ok) throw new Error('POST /api/positionings/:id/attachments failed');
-    return response.json();
-  },
-  async removeAttachment(api: ApiClient, attachmentId: string): Promise<PositioningAnswer> {
-    const response = await api.attachments[':id'].remove.$post({ param: { id: attachmentId } });
-    const refused = await refusalOf(response);
-    if (refused) return refused;
-    if (!response.ok) throw new Error('POST /api/attachments/:id/remove failed');
-    return response.json();
-  },
-};
+/** What a panel of the workshop may be refused with: fixing a label, as editing. */
+type PanelRefusal =
+  | RefusalOf<ApiClient['positionings']['$post']>
+  | RefusalOf<ApiClient['positionings'][':id']['edit']['$post']>;
 
 /**
- * Puts what a gesture of the workshop changed into the summary, then says it with “Undo”. On a
- * refusal, the summary is read again; `false` then.
+ * What a refusal tells the User: a Stage gone or no room left are theirs to read; anything else, a
+ * Positioning changed elsewhere.
  */
-export async function settlePositioning(
-  queryClient: ReturnType<typeof useQueryClient>,
-  answer: PositioningAnswer,
-  message: string,
-): Promise<boolean> {
-  if (typeof answer === 'string') {
-    await queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
-    return false;
-  }
-  await applySummaryChanges(queryClient, answer.changes);
-  notifyGesture(message, answer.undoToken);
-  return true;
+function refusalText(refused: PanelRefusal | undefined) {
+  if (refused === undefined) return undefined;
+  if (refused.error === 'unknown_stage') return m.contact_stage_gone();
+  if (refused.error === 'quota_exceeded') return m.positioning_attachment_quota_exceeded();
+  return m.positioning_behind();
 }
-
-/** The refusals a panel of the workshop shows. */
-const refusalText = (answer: PositioningAnswer | undefined) =>
-  (answer === 'stage_gone' && m.contact_stage_gone()) ||
-  (answer === 'quota_exceeded' && m.positioning_attachment_quota_exceeded()) ||
-  (answer === 'behind' && m.positioning_behind());
 
 const positioningDraft = z.object({
   stageId: z.string(),
@@ -243,7 +145,7 @@ export function PositioningPanel({
 }) {
   const locale = useLocale();
   const api = useApi();
-  const queryClient = useQueryClient();
+  const sendGesture = useSendGesture();
   const { defaultCadence } = useSettings();
   const cadenceId = useId();
   const contentRef = useRef<HTMLTextAreaElement>(null);
@@ -269,28 +171,41 @@ export function PositioningPanel({
     else onClose();
   };
   const save = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const fields = fieldsOf(draft);
+      // The Positioning saved: the one created, or the one edited.
+      let saved = source?.id;
+      const message = ({ positionings: [changed] }: SummaryChanges) => {
+        saved = changed?.id ?? saved;
+        return {
+          new: m.positioning_created_toast,
+          edit: m.positioning_saved_toast,
+          copy: m.positioning_copy_created_toast,
+        }[kind]({ label: fields.label });
+      };
+      let refused: PanelRefusal | undefined;
       if (kind === 'edit' && source) {
         const { channel: _fixed, ...edited } = fields;
-        return sendPositioning.edit(api, source.id, edited);
+        refused = await sendGesture(
+          api.positionings[':id'].edit.$post({ param: { id: source.id }, json: edited }),
+          message,
+        );
+      } else {
+        refused = await sendGesture(
+          api.positionings.$post({
+            json: {
+              ...fields,
+              stageId: draft.stageId,
+              ...(kind === 'copy' && source && { derivedFromId: source.id }),
+            },
+          }),
+          message,
+        );
       }
-      return sendPositioning.create(api, {
-        ...fields,
-        stageId: draft.stageId,
-        ...(kind === 'copy' && source && { derivedFromId: source.id }),
-      });
+      return { refused, saved };
     },
-    onSuccess: async (answer) => {
-      const label = draft.label.trim();
-      const message = {
-        new: m.positioning_created_toast,
-        edit: m.positioning_saved_toast,
-        copy: m.positioning_copy_created_toast,
-      }[kind]({ label });
-      if (!(await settlePositioning(queryClient, answer, message))) return;
-      if (typeof answer === 'string') return;
-      const saved = answer.changes.positionings[0]?.id ?? source?.id;
+    onSuccess: ({ refused, saved }) => {
+      if (refused) return;
       clearDraft();
       if (saved === undefined) return;
       if (back && kind !== 'edit') back.onCreated(saved);
@@ -487,7 +402,9 @@ export function PositioningPanel({
           {kind !== 'edit' && (
             <p className="text-sm text-muted-foreground">{m.positioning_freezes_note()}</p>
           )}
-          <ErrorMessage>{save.isError ? m.auth_error() : refusalText(save.data)}</ErrorMessage>
+          <ErrorMessage>
+            {save.isError ? m.auth_error() : refusalText(save.data?.refused)}
+          </ErrorMessage>
         </GesturePanelBody>
         <GesturePanelFooter>
           <Button variant="outline" className="max-md:min-h-11" onPress={close}>
@@ -576,14 +493,20 @@ export function RelabelPanel({
   onClose: () => void;
 }) {
   const api = useApi();
-  const queryClient = useQueryClient();
+  const sendGesture = useSendGesture();
   const [label, setLabel] = useState(positioning.label);
   const [wasSent, setWasSent] = useState(false);
   const relabel = useMutation({
-    mutationFn: () => sendPositioning.relabel(api, positioning.id, label.trim()),
-    onSuccess: async (answer) => {
-      const message = m.positioning_relabeled_toast({ label: label.trim() });
-      if (await settlePositioning(queryClient, answer, message)) onClose();
+    mutationFn: () =>
+      sendGesture(
+        api.positionings[':id'].relabel.$post({
+          param: { id: positioning.id },
+          json: { label: label.trim() },
+        }),
+        () => m.positioning_relabeled_toast({ label: label.trim() }),
+      ),
+    onSuccess: (refused) => {
+      if (!refused) onClose();
     },
   });
   return (

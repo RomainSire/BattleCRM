@@ -1,5 +1,5 @@
 import { m } from '@battlecrm/i18n';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, Navigate, useNavigate, useSearch } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { Lock, Paperclip, Plus } from 'lucide-react';
@@ -8,9 +8,10 @@ import { useId, useState } from 'react';
 import { Button } from '../components/ui/button.tsx';
 import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { CHANNEL_LABEL } from '../channel.ts';
+import { useSendGesture } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';
 import { Screen } from '../screens/screen.tsx';
-import { useApi } from '../session.ts';
+import { useApi, type ApiClient } from '../session.ts';
 import {
   attachmentsOf,
   isFrozen,
@@ -20,13 +21,7 @@ import {
   type SummaryPositioning,
 } from '../summary.ts';
 import { PositioningAttachments } from './attachments.tsx';
-import {
-  PositioningPanel,
-  RelabelPanel,
-  sendPositioning,
-  settlePositioning,
-  type PositioningPanelKind,
-} from './positioning-panel.tsx';
+import { PositioningPanel, RelabelPanel, type PositioningPanelKind } from './positioning-panel.tsx';
 
 /** Its cadence in short: “+3 d, +7 d, +14 d then 14 d” (spec UX §5.6). */
 function cadenceOf({ followUps, responseWindowDays: days }: SummaryPositioning) {
@@ -328,6 +323,18 @@ function LineageColumn({
   );
 }
 
+/** Archiving, bringing back or deleting a Positioning, from its record. */
+type ActGesture = 'archive' | 'unarchive' | 'delete';
+/** The answer of any of the three: named, as TypeScript infers none from a union of routes. */
+type ActAnswer = Awaited<ReturnType<ApiClient['positionings'][':id'][ActGesture]['$post']>>;
+
+/** What each says. */
+const ACTED_TOAST = {
+  archive: m.positioning_archived_toast,
+  unarchive: m.positioning_unarchived_toast,
+  delete: m.positioning_deleted_toast,
+};
+
 /** The record of a Positioning, in place (spec UX §5.6): what it says, how it follows up, what may still change. */
 function PositioningRecord({
   positioning,
@@ -341,7 +348,7 @@ function PositioningRecord({
   onDeleted: () => void;
 }) {
   const api = useApi();
-  const queryClient = useQueryClient();
+  const sendGesture = useSendGesture();
   const headingId = useId();
   const { label } = positioning;
   const positionings = positioningsOf(summary);
@@ -350,17 +357,13 @@ function PositioningRecord({
   const stageName = summary.stages.find(({ id }) => id === positioning.stageId)?.name;
   const frozen = isFrozen(positioning);
   const act = useMutation({
-    mutationFn: (gesture: 'archive' | 'unarchive' | 'delete') =>
-      sendPositioning.act(api, positioning.id, gesture),
-    onSuccess: async (answer, gesture) => {
-      const message = {
-        archive: m.positioning_archived_toast,
-        unarchive: m.positioning_unarchived_toast,
-        delete: m.positioning_deleted_toast,
-      }[gesture]({ label });
-      if ((await settlePositioning(queryClient, answer, message)) && gesture === 'delete') {
-        onDeleted();
-      }
+    mutationFn: (gesture: ActGesture) =>
+      sendGesture<ActAnswer>(
+        api.positionings[':id'][gesture].$post({ param: { id: positioning.id } }),
+        () => ACTED_TOAST[gesture]({ label }),
+      ),
+    onSuccess: (refused, gesture) => {
+      if (!refused && gesture === 'delete') onDeleted();
     },
   });
 
@@ -466,7 +469,7 @@ function PositioningRecord({
         </Button>
       </div>
       <ErrorMessage>
-        {act.isError ? m.auth_error() : act.data === 'behind' && m.positioning_behind()}
+        {act.isError ? m.auth_error() : act.data !== undefined && m.positioning_behind()}
       </ErrorMessage>
       <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
         <dt className="text-muted-foreground">{m.positioning_content()}</dt>

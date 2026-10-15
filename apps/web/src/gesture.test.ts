@@ -7,6 +7,7 @@ import { sendGesture } from './gesture.ts';
 import { SUMMARY_KEY, type Summary } from './summary.ts';
 
 const CONTACT_ID = '01990000-0000-7000-8000-000000000001';
+const ORGANIZATION_ID = '01990000-0000-7000-8000-000000000002';
 
 const NO_CHANGES = {
   contacts: [],
@@ -53,6 +54,26 @@ test('a gesture done puts its rows into the summary and says so, with “Undo”
   expect(refused).toBeUndefined();
   expect(contactsOf(queryClient)).toEqual(['After']);
   expect(shownToasts()).toEqual([{ message: 'Done for After', undoToken: 'token' }]);
+});
+
+test('a gesture never undone says so without “Undo”', async () => {
+  const queryClient = new QueryClient();
+  const api = createApiClient(() =>
+    Promise.resolve(
+      Response.json({
+        changes: { ...NO_CHANGES, organizations: [{ id: ORGANIZATION_ID, name: 'Renamed' }] },
+      }),
+    ),
+  );
+  const rename = api.organizations[':id'].rename.$post({
+    param: { id: ORGANIZATION_ID },
+    json: { name: 'Renamed' },
+  });
+
+  const refused = await sendGesture(queryClient, rename, () => 'Renamed');
+
+  expect(refused).toBeUndefined();
+  expect(shownToasts()).toStrictEqual([{ message: 'Renamed' }]);
 });
 
 test('a refused gesture answers its code, and the summary is read again', async () => {

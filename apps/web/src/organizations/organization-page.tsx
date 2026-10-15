@@ -1,7 +1,7 @@
 import { ORGANIZATION_NAME_MAX_LENGTH, type OrganizationType } from '@battlecrm/contract';
 import { normalizeName, organizationsMatching } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { useId, useRef, useState, type ReactNode } from 'react';
@@ -31,18 +31,15 @@ import {
   SegmentedControlItem,
   SegmentedControlItems,
 } from '../components/ui/segmented-control.tsx';
-import { notify } from '../components/ui/toast.tsx';
 import { ContactName } from '../contacts/contact-name.tsx';
 import { ORGANIZATION_TYPE_LABEL } from '../contacts/organization-field.tsx';
 import { prospectingStageOf, STATUS_LABEL } from '../contacts/status.ts';
+import { useSendGesture } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';
 import { useApi } from '../session.ts';
 import {
-  applySummaryChanges,
-  SUMMARY_KEY,
   summaryQuery,
   type Summary,
-  type SummaryChanges,
   type SummaryContact,
   type SummaryOrganization,
 } from '../summary.ts';
@@ -53,44 +50,14 @@ const otherType = (type: OrganizationType): OrganizationType =>
   type === 'consultancy' ? 'end_client' : 'consultancy';
 
 /**
- * What a gesture on an Organization ends with: the rows it changed, or `behind` when the data changed
- * on another device (the Organization or the other one gone, a name taken), the summary then read again.
+ * Why a gesture on an Organization (spec UX §5.4) failed, in its dialog or under its form: any refusal
+ * means the data changed on another device (the Organization or the other one gone, a name taken).
+ * Never undone (spec UX §1), such a gesture answers no token: its notification has no “Undo”.
  */
-type GestureAnswer = SummaryChanges | 'behind';
-
-/** A refusal of the data, changed on another device; anything else is a failure. */
-function refusalOf({ status }: { status: number }, gesture: string) {
-  if (status === 400 || status === 404 || status === 409) return 'behind' as const;
-  throw new Error(`POST /api/organizations/:id/${gesture} failed`);
-}
-
-/**
- * A gesture on an Organization (spec UX §5.4): confirmed beforehand when it calls for it, never undone
- * (spec UX §1). Its changes go into the summary, then `onApplied` says what was done.
- */
-function useOrganizationGesture<Variables>(
-  send: (variables: Variables) => Promise<GestureAnswer>,
-  onApplied: (changes: SummaryChanges, variables: Variables) => void,
-) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: send,
-    onSuccess: async (answer, variables) => {
-      if (answer === 'behind') {
-        await queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
-        return;
-      }
-      await applySummaryChanges(queryClient, answer);
-      onApplied(answer, variables);
-    },
-  });
-}
-
-/** Why a gesture failed, in its dialog or under its form. */
-const gestureError = (gesture: { isError: boolean; data: GestureAnswer | undefined }) =>
+const gestureError = (gesture: { isError: boolean; data: object | undefined }) =>
   gesture.isError
     ? m.auth_error()
-    : gesture.data === 'behind' && m.organization_changed_elsewhere();
+    : gesture.data !== undefined && m.organization_changed_elsewhere();
 
 /** A Contact of the Organization: its Stage, its Status and its next action (spec UX §5.4). */
 function MemberRow({ contact, summary }: { contact: SummaryContact; summary: Summary }) {
@@ -131,21 +98,22 @@ function RenameOrganization({
   onDone: () => void;
 }) {
   const api = useApi();
+  const sendGesture = useSendGesture();
   const [name, setName] = useState(organization.name);
-  const rename = useOrganizationGesture(
-    async (renamed: string) => {
-      const response = await api.organizations[':id'].rename.$post({
-        param: { id: organization.id },
-        json: { name: renamed },
-      });
-      if (response.status === 200) return (await response.json()).changes;
-      return refusalOf(response, 'rename');
+  const rename = useMutation({
+    mutationFn: (typed: string) =>
+      sendGesture(
+        api.organizations[':id'].rename.$post({
+          param: { id: organization.id },
+          json: { name: typed },
+        }),
+        ({ organizations: [renamed] }) =>
+          renamed && m.organization_renamed({ organization: renamed.name }),
+      ),
+    onSuccess: (refused) => {
+      if (!refused) onDone();
     },
-    ({ organizations: [renamed] }) => {
-      if (renamed) notify({ message: m.organization_renamed({ organization: renamed.name }) });
-      onDone();
-    },
-  );
+  });
   const isTaken = (candidate: string) =>
     organizations.some(
       ({ id, name: other }) =>
@@ -255,25 +223,23 @@ function ChangeType({
   memberCount: number;
 }) {
   const api = useApi();
+  const sendGesture = useSendGesture();
   const [isOpen, setIsOpen] = useState(false);
   const type = otherType(organization.type);
   const typeLabel = ORGANIZATION_TYPE_LABEL[type]();
-  const change = useOrganizationGesture(
-    async () => {
-      const response = await api.organizations[':id']['change-type'].$post({
-        param: { id: organization.id },
-        json: { type },
-      });
-      if (response.status === 200) return (await response.json()).changes;
-      return refusalOf(response, 'change-type');
+  const change = useMutation({
+    mutationFn: () =>
+      sendGesture(
+        api.organizations[':id']['change-type'].$post({
+          param: { id: organization.id },
+          json: { type },
+        }),
+        () => m.organization_type_changed({ organization: organization.name, type: typeLabel }),
+      ),
+    onSuccess: (refused) => {
+      if (!refused) setIsOpen(false);
     },
-    () => {
-      setIsOpen(false);
-      notify({
-        message: m.organization_type_changed({ organization: organization.name, type: typeLabel }),
-      });
-    },
-  );
+  });
   const label = m.organization_change_type({ type: typeLabel });
   if (memberCount === 0) {
     return (
@@ -328,6 +294,7 @@ function MergeOrganization({
   summary: Summary;
 }) {
   const api = useApi();
+  const sendGesture = useSendGesture();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [text, setText] = useState('');
@@ -338,18 +305,18 @@ function MergeOrganization({
   const other = others.find(({ id }) => id === otherId);
   const kept = other && (keptId === organization.id ? organization : other);
   const removed = other && (kept === other ? organization : other);
-  const merge = useOrganizationGesture(
-    async ({ from, into }: { from: SummaryOrganization; into: SummaryOrganization }) => {
-      const response = await api.organizations[':id'].merge.$post({
-        param: { id: from.id },
-        json: { intoId: into.id },
-      });
-      if (response.status === 200) return (await response.json()).changes;
-      return refusalOf(response, 'merge');
-    },
-    (_, { from, into }) => {
+  const merge = useMutation({
+    mutationFn: ({ from, into }: { from: SummaryOrganization; into: SummaryOrganization }) =>
+      sendGesture(
+        api.organizations[':id'].merge.$post({
+          param: { id: from.id },
+          json: { intoId: into.id },
+        }),
+        () => m.organization_merged({ removed: from.name, kept: into.name }),
+      ),
+    onSuccess: (refused, { from, into }) => {
+      if (refused) return;
       setIsOpen(false);
-      notify({ message: m.organization_merged({ removed: from.name, kept: into.name }) });
       // The page that went leads to the one that stays.
       if (from.id === organization.id) {
         void navigate({
@@ -359,7 +326,7 @@ function MergeOrganization({
         });
       }
     },
-  );
+  });
   const moving = removed
     ? summary.contacts.filter(({ organizationId }) => organizationId === removed.id).length
     : 0;
@@ -460,22 +427,20 @@ function MergeOrganization({
 /** Deleting, only once no Contact belongs to it: never automatic (CONTEXT.md, Organization). */
 function DeleteOrganization({ organization }: { organization: SummaryOrganization }) {
   const api = useApi();
+  const sendGesture = useSendGesture();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const remove = useOrganizationGesture(
-    async () => {
-      const response = await api.organizations[':id'].delete.$post({
-        param: { id: organization.id },
-      });
-      if (response.status === 200) return (await response.json()).changes;
-      return refusalOf(response, 'delete');
-    },
-    () => {
+  const remove = useMutation({
+    mutationFn: () =>
+      sendGesture(api.organizations[':id'].delete.$post({ param: { id: organization.id } }), () =>
+        m.organization_deleted({ organization: organization.name }),
+      ),
+    onSuccess: (refused) => {
+      if (refused) return;
       setIsOpen(false);
-      notify({ message: m.organization_deleted({ organization: organization.name }) });
       void navigate({ to: '/contacts', replace: true });
     },
-  );
+  });
   return (
     <>
       <Button variant="outline" size="sm" onPress={() => setIsOpen(true)}>

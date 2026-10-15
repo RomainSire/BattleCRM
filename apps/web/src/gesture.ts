@@ -1,10 +1,14 @@
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 
+import { notify } from './components/ui/toast.tsx';
 import { applySummaryChanges, SUMMARY_KEY, type SummaryChanges } from './summary.ts';
 import { notifyGesture } from './undo.tsx';
 
-/** What an undoable gesture answers once done (ADR 0011): the rows of the summary it changed, its token. */
-type Done = { changes: SummaryChanges; undoToken: string };
+/**
+ * What a gesture answers once done: the rows of the summary it changed, and its token when it can be
+ * undone (ADR 0011). Without a token, it never is (spec UX §1).
+ */
+type Done = { changes: SummaryChanges; undoToken?: string };
 
 /** The answer of a gesture's route, as the typed client gives it: done, or refused with a code. */
 type GestureAnswer = { ok: boolean; status: number; json(): Promise<Done | { error: string }> };
@@ -24,7 +28,7 @@ export type RefusalOf<Send extends (...args: never) => Promise<GestureAnswer>> =
 
 /**
  * Sends a gesture (ADR 0011, 0012). Done, its rows go into the summary and `message`, when it says
- * something, is shown with “Undo”. Refused, the summary is read again (this device may be behind)
+ * something, is shown, with “Undo” when the gesture has a token. Refused, the summary is read again (this device may be behind)
  * and the refusal is returned, for the screen to react to. Anything else throws.
  */
 export async function sendGesture<Answer extends GestureAnswer>(
@@ -46,7 +50,9 @@ export async function sendGesture<Answer extends GestureAnswer>(
   }
   await applySummaryChanges(queryClient, answer.changes);
   const said = message(answer.changes);
-  if (said !== undefined) notifyGesture(said, answer.undoToken);
+  if (said === undefined) return undefined;
+  if (answer.undoToken === undefined) notify({ message: said });
+  else notifyGesture(said, answer.undoToken);
   return undefined;
 }
 
