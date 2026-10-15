@@ -21,6 +21,7 @@ import { withUser, type Transaction } from '../db/index.ts';
 import {
   lockPositioning,
   recordGesture,
+  touched,
   type ChangesOf,
   type PositioningInverse,
   type PositioningInverses,
@@ -128,18 +129,9 @@ const positioningDeleted = z.object({
 const attachmentChanged = z.object({ attachmentId: z.uuid() });
 
 /** The summary row of one Positioning changed, or removed. */
-const touchedPositioning = (positioningId: string): Touched => ({
-  contactIds: [],
-  removedContactIds: [],
-  organizationIds: [],
-  removedOrganizationIds: [],
-  positioningIds: [positioningId],
-});
-const removedPositioning = (positioningId: string, copyIds: string[] = []): Touched => ({
-  ...touchedPositioning(positioningId),
-  positioningIds: copyIds,
-  removedPositioningIds: [positioningId],
-});
+const touchedPositioning = (positioningId: string) => touched({ positioningIds: [positioningId] });
+const removedPositioning = (positioningId: string, copyIds: string[] = []) =>
+  touched({ positioningIds: copyIds, removedPositioningIds: [positioningId] });
 
 const byId = (userId: string, positioningId: string) =>
   and(eq(positioning.userId, userId), eq(positioning.id, positioningId));
@@ -225,10 +217,7 @@ const restoreDeletedPositioning: PositioningInverse = async (tx, { userId, paylo
             ),
           )
           .returning({ id: positioning.id });
-  return {
-    ...touchedPositioning(deleted.id),
-    positioningIds: [deleted.id, ...relinked.map(({ id }) => id)],
-  };
+  return touched({ positioningIds: [deleted.id, ...relinked.map(({ id }) => id)] });
 };
 
 /** Takes the joining of a file back: it leaves no trace. */
@@ -330,11 +319,11 @@ export function createPositionings<Changes>({
   const answered = async (
     tx: Transaction,
     made: Parameters<typeof recordGesture>[1] & { positioningId: string },
-    touched: Touched,
+    changed: Touched,
   ) => {
     await purgeRemovedAttachments(tx, made.userId, made.now);
     const undoToken = await recordGesture(tx, made);
-    return { changes: await changesOf(tx, made.userId, touched), undoToken };
+    return { changes: await changesOf(tx, made.userId, changed), undoToken };
   };
 
   const routes = new Hono<AppEnv>()

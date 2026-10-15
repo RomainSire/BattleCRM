@@ -109,7 +109,7 @@ const nativeTotpUri = z.object({ totpURI: z.string() });
 const nativeBackupCodes = z.object({ backupCodes: z.array(z.string()) });
 
 /** What `requireUser` leaves behind it: the User of the request and the session that proved it. */
-type SignedInEnv = AppEnv & { Variables: { userId: string; sessionId: string } };
+export type SignedInEnv = AppEnv & { Variables: { userId: string; sessionId: string } };
 
 /**
  * The only module that knows Better Auth and the auth tables (ADR 0010). To the others it only

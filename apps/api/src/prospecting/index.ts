@@ -18,7 +18,6 @@ import {
 import {
   canNoteInteraction,
   daysBetween,
-  hasFollowUps,
   isInFunnel,
   isPoolOrArchived,
   normalizeLinkedInUrl,
@@ -35,8 +34,10 @@ import type { Clock } from '../clock.ts';
 import { violates, withUser, type Transaction } from '../db/index.ts';
 import { stageOrder } from '../funnel/index.ts';
 import {
+  createCircuit,
   lockContact,
   recordGesture,
+  touched,
   type ChangesOf,
   type Inverse,
   type Inverses,
@@ -49,6 +50,8 @@ import {
   type OrganizationMembers,
 } from '../organizations/index.ts';
 import { localDateOf } from '../settings/index.ts';
+import { contactSubject, type ContactPlace } from './contact-subject.ts';
+import { scheduledFollowUp, scheduleFollowUp } from './follow-ups.ts';
 import { contact, followUp, interaction, statusChange } from './tables.ts';
 
 // Read by `views`, which never writes them.
@@ -236,12 +239,7 @@ const removeAddedContact: Inverse = async (tx, { userId, contactId, payload }) =
     (await removeCreatedOrganization(tx, userId, createdOrganizationId))
       ? [createdOrganizationId]
       : [];
-  return {
-    contactIds: [],
-    removedContactIds: [contactId],
-    organizationIds: [],
-    removedOrganizationIds,
-  };
+  return touched({ removedContactIds: [contactId], removedOrganizationIds });
 };
 
 /** The columns an edit writes, read before it for the inverse. */
@@ -322,27 +320,7 @@ async function takeBackStatusChange(
 }
 
 /** The summary row of one Contact changed. */
-const touchedContact = (contactId: string) => ({
-  contactIds: [contactId],
-  removedContactIds: [],
-  organizationIds: [],
-  removedOrganizationIds: [],
-});
-
-/** The scheduled Follow-up of a Contact, if it has one. */
-async function scheduledFollowUp(tx: Transaction, userId: string, contactId: string) {
-  const [scheduled] = await tx
-    .select({ id: followUp.id, dueOn: followUp.dueOn, note: followUp.note })
-    .from(followUp)
-    .where(
-      and(
-        eq(followUp.userId, userId),
-        eq(followUp.contactId, contactId),
-        eq(followUp.status, 'scheduled'),
-      ),
-    );
-  return scheduled;
-}
+const touchedContact = (contactId: string) => touched({ contactIds: [contactId] });
 
 /** Cancels a Follow-up, or schedules it again, as it was. */
 const setFollowUpStatus = (
@@ -355,21 +333,6 @@ const setFollowUpStatus = (
     .update(followUp)
     .set({ status })
     .where(and(eq(followUp.userId, userId), eq(followUp.id, followUpId)));
-
-/** What the inverse of “Schedule a follow-up” needs: the Follow-up, and what it was before, if it was. */
-const followUpScheduled = z.object({
-  followUpId: z.uuid(),
-  before: z.object({ dueOn: z.iso.date(), note: z.string().nullable() }).nullable(),
-});
-
-/** Takes a scheduling back: a new Follow-up leaves no trace, a modified one gets its day and note back. */
-const restoreScheduledFollowUp: Inverse = async (tx, { userId, contactId, payload }) => {
-  const { followUpId, before } = followUpScheduled.parse(payload);
-  const where = and(eq(followUp.userId, userId), eq(followUp.id, followUpId));
-  if (before === null) await tx.delete(followUp).where(where);
-  else await tx.update(followUp).set(before).where(where);
-  return touchedContact(contactId);
-};
 
 /** What the inverse of a cancellation needs: the Follow-up canceled. */
 const followUpCanceled = z.object({ followUpId: z.uuid() });
@@ -393,9 +356,6 @@ const restoreFollowedUp: Inverse = async (tx, { userId, contactId, payload }) =>
   await removeInteraction(tx, userId, interactionId);
   return touchedContact(contactId);
 };
-
-/** Where a Contact is: its Status, and its Stage (or the last one it reached). */
-type ContactPlace = { status: (typeof CONTACT_STATUSES)[number]; stageId: string | null };
 
 /**
  * Changes the Status of a locked Contact (spec UX §6.11), dated now and never earlier (ST-39): what
@@ -521,10 +481,7 @@ async function onContact<Answer>(
 ): Promise<Answer | Refusal> {
   return withUser(userId, async (tx) => {
     await lockContact(tx, contactId);
-    const [found] = await tx
-      .select({ status: contact.status, stageId: contact.stageId })
-      .from(contact)
-      .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+    const found = await contactSubject.load(tx, userId, contactId);
     if (!found) throw new Refusal(404, { error: 'not_found' });
     return act(tx, found);
   }).catch((error: unknown) => {
@@ -587,12 +544,7 @@ const restoreEditedContact: Inverse = async (tx, { userId, contactId, payload })
     (await removeCreatedOrganization(tx, userId, createdOrganizationId))
       ? [createdOrganizationId]
       : [];
-  return {
-    contactIds: [contactId],
-    removedContactIds: [],
-    organizationIds: [],
-    removedOrganizationIds,
-  };
+  return touched({ contactIds: [contactId], removedOrganizationIds });
 };
 
 /**
@@ -642,6 +594,7 @@ export function createProspecting<Changes>({
   requireUser: RequireUser;
   changesOf: ChangesOf<Changes>;
 }) {
+  const perform = createCircuit({ clock, changesOf });
   const routes = new Hono<AppEnv>()
     // A new Contact joins the Pool, enters the Funnel or joins the Circle; only its name is asked (spec UX §6.8).
     .post('/contacts', requireUser, jsonBody(addContactRequest), async (c) => {
@@ -712,12 +665,14 @@ export function createProspecting<Changes>({
           } satisfies z.infer<typeof contactAdded>,
           now,
         });
-        const changes = await changesOf(tx, userId, {
-          contactIds: [added.id],
-          removedContactIds: [],
-          organizationIds: createdOrganizationId ? [createdOrganizationId] : [],
-          removedOrganizationIds: [],
-        });
+        const changes = await changesOf(
+          tx,
+          userId,
+          touched({
+            contactIds: [added.id],
+            organizationIds: createdOrganizationId ? [createdOrganizationId] : [],
+          }),
+        );
         return { changes, undoToken };
       }).catch((error: unknown) => {
         if (error instanceof Refusal) return error;
@@ -778,12 +733,14 @@ export function createProspecting<Changes>({
           } satisfies z.infer<typeof contactEdited>,
           now,
         });
-        const changes = await changesOf(tx, userId, {
-          contactIds: [contactId],
-          removedContactIds: [],
-          organizationIds: chosen.createdOrganizationId ? [chosen.createdOrganizationId] : [],
-          removedOrganizationIds: [],
-        });
+        const changes = await changesOf(
+          tx,
+          userId,
+          touched({
+            contactIds: [contactId],
+            organizationIds: chosen.createdOrganizationId ? [chosen.createdOrganizationId] : [],
+          }),
+        );
         return { changes, undoToken };
       }).catch((error: unknown) => {
         if (error instanceof Refusal) return error;
@@ -820,47 +777,9 @@ export function createProspecting<Changes>({
       '/contacts/:id/schedule-follow-up',
       requireUser,
       jsonBody(scheduleFollowUpRequest),
-      async (c) => {
-        const { userId } = c.var;
-        const id = z.uuid().safeParse(c.req.param('id'));
-        if (!id.success) return c.json({ error: 'not_found' as const }, 404);
-        const contactId = id.data;
+      (c) => {
         const { dueOn, note = null } = c.req.valid('json');
-        const now = clock.now();
-        const answer = await onContact(userId, contactId, async (tx, { status }) => {
-          if (!hasFollowUps(status)) throw new Refusal(409, { error: 'no_follow_up_in_status' });
-          if (dueOn < (await localDateOf(tx, userId, now))) {
-            throw new Refusal(400, { error: 'past_day' });
-          }
-          const before = await scheduledFollowUp(tx, userId, contactId);
-          let followUpId = before?.id;
-          if (followUpId === undefined) {
-            const [scheduled] = await tx
-              .insert(followUp)
-              .values({ userId, contactId, status: 'scheduled', dueOn, note, scheduledAt: now })
-              .returning({ id: followUp.id });
-            if (!scheduled) throw new Error('A Follow-up was not scheduled');
-            followUpId = scheduled.id;
-          } else {
-            await tx
-              .update(followUp)
-              .set({ dueOn, note })
-              .where(and(eq(followUp.userId, userId), eq(followUp.id, followUpId)));
-          }
-          const undoToken = await recordGesture(tx, {
-            userId,
-            kind: 'follow_up_scheduled',
-            contactId,
-            payload: {
-              followUpId,
-              before: before ? { dueOn: before.dueOn, note: before.note } : null,
-            } satisfies z.infer<typeof followUpScheduled>,
-            now,
-          });
-          return { changes: await changesOf(tx, userId, touchedContact(contactId)), undoToken };
-        });
-        if (answer instanceof Refusal) return c.json(answer.body, answer.status);
-        return c.json(answer, 200);
+        return perform(c, scheduleFollowUp, { dueOn, note });
       },
     )
     // Cancel the scheduled Follow-up (spec UX §5.3): it stays, canceled.
@@ -1014,11 +933,10 @@ export function createProspecting<Changes>({
     contact_added: removeAddedContact,
     contact_edited: restoreEditedContact,
     status_changed: restoreStatus,
-    follow_up_scheduled: restoreScheduledFollowUp,
     follow_up_canceled: restoreCanceledFollowUp,
     followed_up: restoreFollowedUp,
     interaction_noted: removeNotedInteraction,
     reply_recorded: removeReply,
-  } satisfies Inverses;
-  return { routes, inverses };
+  } satisfies Omit<Inverses, typeof scheduleFollowUp.kind>;
+  return { routes, inverses, gestures: [scheduleFollowUp] };
 }

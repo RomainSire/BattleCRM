@@ -289,8 +289,8 @@ export async function summaryChanges(tx: Transaction, userId: string, touched: T
     removedContactIds: touched.removedContactIds,
     organizations: await summaryOrganizations(tx, userId, touched.organizationIds),
     removedOrganizationIds: touched.removedOrganizationIds,
-    positionings: await summaryPositionings(tx, userId, touched.positioningIds ?? []),
-    removedPositioningIds: touched.removedPositioningIds ?? [],
+    positionings: await summaryPositionings(tx, userId, touched.positioningIds),
+    removedPositioningIds: touched.removedPositioningIds,
   };
 }
 

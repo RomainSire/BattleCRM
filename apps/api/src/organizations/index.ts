@@ -11,7 +11,7 @@ import { z } from 'zod';
 import type { AppEnv } from '../app.ts';
 import type { RequireUser } from '../auth/index.ts';
 import { violates, withUser, type Transaction } from '../db/index.ts';
-import type { ChangesOf, Touched } from '../gestures/index.ts';
+import { touched, type ChangesOf } from '../gestures/index.ts';
 import { jsonBody } from '../json-body.ts';
 import { organization } from './tables.ts';
 
@@ -70,15 +70,6 @@ export type OrganizationMembers = {
   move: (tx: Transaction, userId: string, fromId: string, toId: string) => Promise<string[]>;
 };
 
-/** What a gesture on an Organization changed in the summary: it touches no Contact unless said. */
-const touching = (touched: Partial<Touched>): Touched => ({
-  contactIds: [],
-  removedContactIds: [],
-  organizationIds: [],
-  removedOrganizationIds: [],
-  ...touched,
-});
-
 /** The Organization a route names: `null` for an id that is none, which answers like an unknown one. */
 const organizationIdOf = (param: string) => {
   const id = z.uuid().safeParse(param);
@@ -133,7 +124,7 @@ export function createOrganizations<Changes>({
             .where(and(eq(organization.userId, userId), eq(organization.id, organizationId)))
             .returning({ id: organization.id });
           if (!renamed) return null;
-          return changesOf(tx, userId, touching({ organizationIds: [organizationId] }));
+          return changesOf(tx, userId, touched({ organizationIds: [organizationId] }));
         }).catch((error: unknown) => {
           if (violates(error, 'organization_normalized_name_unique')) return 'taken' as const;
           throw error;
@@ -160,7 +151,7 @@ export function createOrganizations<Changes>({
             .where(and(eq(organization.userId, userId), eq(organization.id, organizationId)))
             .returning({ id: organization.id });
           if (!changed) return null;
-          return changesOf(tx, userId, touching({ organizationIds: [organizationId] }));
+          return changesOf(tx, userId, touched({ organizationIds: [organizationId] }));
         });
         if (changes === null) return c.json(NOT_FOUND, 404);
         return c.json({ changes }, 200);
@@ -189,7 +180,7 @@ export function createOrganizations<Changes>({
             changes: await changesOf(
               tx,
               userId,
-              touching({
+              touched({
                 contactIds: moved,
                 organizationIds: [intoId],
                 removedOrganizationIds: [organizationId],
@@ -222,7 +213,7 @@ export function createOrganizations<Changes>({
           changes: await changesOf(
             tx,
             userId,
-            touching({ removedOrganizationIds: [organizationId] }),
+            touched({ removedOrganizationIds: [organizationId] }),
           ),
         };
       });

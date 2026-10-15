@@ -1,11 +1,12 @@
 import { and, eq, gt, lt, or, sql } from 'drizzle-orm';
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 
 import type { AppEnv } from '../app.ts';
-import type { RequireUser } from '../auth/index.ts';
+import type { RequireUser, SignedInEnv } from '../auth/index.ts';
 import type { Clock } from '../clock.ts';
 import { withUser, type Transaction } from '../db/index.ts';
+import { answerRefusal, refusal, type Refusal, type RefusalCode } from '../refusals.ts';
 import { gesture, POSITIONING_GESTURE_KINDS, type GESTURE_KINDS } from './tables.ts';
 
 export type GestureKind = (typeof GESTURE_KINDS)[number];
@@ -23,10 +24,20 @@ export type Touched = {
   removedContactIds: string[];
   organizationIds: string[];
   removedOrganizationIds: string[];
-  /** Left out by the gestures on a Contact, which touch no Positioning. */
-  positioningIds?: string[];
-  removedPositioningIds?: string[];
+  positioningIds: string[];
+  removedPositioningIds: string[];
 };
+
+/** The rows a gesture touched, every kind it names nothing of left empty. */
+export const touched = (rows: Partial<Touched>): Touched => ({
+  contactIds: [],
+  removedContactIds: [],
+  organizationIds: [],
+  removedOrganizationIds: [],
+  positioningIds: [],
+  removedPositioningIds: [],
+  ...rows,
+});
 
 /**
  * The inverse of a kind of gesture, written by its module next to the gesture: it deletes what the
@@ -69,7 +80,10 @@ export const lockContact = lockSubject;
 /** As `lockContact`, for a gesture on a Positioning. */
 export const lockPositioning = lockSubject;
 
-/** What a gesture touched: a Contact, or a Positioning of the workshop. */
+/** The column of `gesture` that names what a gesture touched: a later one on it closes the way back. */
+type SubjectColumn = 'contactId' | 'positioningId';
+
+/** What a gesture touched, as the old circuit names it: a Contact, or a Positioning of the workshop. */
 type Subject =
   | { kind: GestureKind; contactId: string }
   | { kind: PositioningGestureKind; positioningId: string };
@@ -78,16 +92,29 @@ type Subject =
  * Remembers a gesture in its own transaction, and returns the token that undoes it.
  * Gestures too old to be undone are forgotten on the way: no job could, under row level security.
  */
-export async function recordGesture(
+export function recordGesture(
   tx: Transaction,
   made: { userId: string; payload: unknown; now: Date } & Subject,
 ): Promise<string> {
-  const { userId, kind, payload, now } = made;
-  const subject =
-    'contactId' in made
-      ? { contactId: made.contactId, positioningId: null }
-      : { contactId: null, positioningId: made.positioningId };
-  await lockSubject(tx, subject.contactId ?? subject.positioningId);
+  return 'contactId' in made
+    ? record(tx, { ...made, column: 'contactId', subjectId: made.contactId })
+    : record(tx, { ...made, column: 'positioningId', subjectId: made.positioningId });
+}
+
+/** Records a gesture on the subject its column names, whatever the circuit that made it. */
+async function record(
+  tx: Transaction,
+  made: {
+    userId: string;
+    kind: GestureKind | PositioningGestureKind;
+    column: SubjectColumn;
+    subjectId: string;
+    payload: unknown;
+    now: Date;
+  },
+): Promise<string> {
+  const { userId, kind, column, subjectId, payload, now } = made;
+  await lockSubject(tx, subjectId);
   await tx
     .delete(gesture)
     .where(
@@ -98,44 +125,168 @@ export async function recordGesture(
     );
   const [recorded] = await tx
     .insert(gesture)
-    .values({ userId, kind, ...subject, payload, performedAt: now })
+    .values({ userId, kind, [column]: subjectId, payload, performedAt: now })
     .returning({ id: gesture.id });
   if (!recorded) throw new Error('A gesture was not recorded');
   return recorded.id;
 }
 
-const REFUSAL_STATUS = { not_found: 404, expired: 409, superseded: 409 } as const;
+/**
+ * What gestures act on, one at a time (ADR 0011): a Contact, a Positioning… A new one, the Battle,
+ * comes with its column in `gesture` and its own loader, never a branch of the circuit.
+ */
+export type GestureSubject<Row> = {
+  column: SubjectColumn;
+  /** Reads it, already locked; `undefined` when the User has none by this id. */
+  load: (tx: Transaction, userId: string, id: string) => Promise<Row | undefined>;
+};
+
+/** What each step of a gesture is given: the subject as it stood once locked, and what the User sent. */
+export type Performed<Row, Input> = {
+  tx: Transaction;
+  userId: string;
+  subjectId: string;
+  subject: Row;
+  input: Input;
+  now: Date;
+};
+
+/** What the writes of a gesture leave: what its inverse needs, and the summary rows they changed. */
+export type Written<Retained> = { retained: Retained; touched: Touched };
+
+/**
+ * An undoable gesture (ADR 0011), as its module declares it: only what varies from one to the next.
+ * The circuit does the rest: the id, the transaction, the lock, the subject or 404, the record of the
+ * gesture, the rows of the summary it changed, its token, the answer.
+ */
+export type Gesture<
+  Kind extends GestureKind | PositioningGestureKind,
+  Row,
+  Input,
+  Retained,
+  Code extends RefusalCode,
+> = {
+  kind: Kind;
+  subject: GestureSubject<Row>;
+  /** Its preconditions: a refusal before anything is written. */
+  refuse?: (performed: Performed<Row, Input>) => Promise<Refusal<Code> | undefined>;
+  /** Its writes. Still refused when the data decides it (a unique index…): what it wrote is rolled back. */
+  write: (performed: Performed<Row, Input>) => Promise<Written<Retained> | Refusal<Code>>;
+  /** What it retains to be undone, as `gesture` keeps it. */
+  retained: z.ZodType<Retained>;
+  /**
+   * Its inverse, in the transaction of the undo, the subject locked: it deletes what the gesture
+   * created and restores what it changed. `superseded` when a later gesture, on another subject, left
+   * nothing to restore to; it then writes nothing.
+   */
+  inverse: (
+    tx: Transaction,
+    undone: { userId: string; subjectId: string; retained: Retained },
+  ) => Promise<Touched | 'superseded'>;
+};
+
+// oxlint-disable-next-line typescript/no-explicit-any -- any gesture, whatever its subject, input and retained.
+type AnyGesture = Gesture<GestureKind | PositioningGestureKind, any, any, any, RefusalCode>;
+
+/** Thrown when the writes of a gesture are refused, so that its transaction rolls them back. */
+class RolledBack extends Error {}
+
+/** A route that names its subject by `:id`, behind `requireUser`. */
+type SubjectRoute = Context<SignedInEnv, string, object>;
+
+/** The common circuit of a gesture: `perform` answers a route that names its subject by `:id`. */
+export function createCircuit<Changes>({
+  clock,
+  changesOf,
+}: {
+  clock: Clock;
+  changesOf: ChangesOf<Changes>;
+}) {
+  return async function perform<
+    Kind extends GestureKind | PositioningGestureKind,
+    Row,
+    Input,
+    Retained,
+    Code extends RefusalCode,
+  >(c: SubjectRoute, declared: Gesture<Kind, Row, Input, Retained, Code>, input: Input) {
+    const { userId } = c.var;
+    const id = z.uuid().safeParse(c.req.param('id'));
+    // Another User's subject, an unknown one and an id that is none answer alike.
+    if (!id.success) return answerRefusal(c, refusal('not_found'));
+    const subjectId = id.data;
+    const now = clock.now();
+    let refusedWrites: Refusal<Code> | undefined;
+    const outcome = await withUser(userId, async (tx) => {
+      await lockSubject(tx, subjectId);
+      const subject = await declared.subject.load(tx, userId, subjectId);
+      if (subject === undefined) return refusal('not_found');
+      const performed = { tx, userId, subjectId, subject, input, now };
+      const refused = await declared.refuse?.(performed);
+      if (refused) return refused;
+      const written = await declared.write(performed);
+      if ('error' in written) {
+        refusedWrites = written;
+        throw new RolledBack(written.error);
+      }
+      const undoToken = await record(tx, {
+        userId,
+        kind: declared.kind,
+        column: declared.subject.column,
+        subjectId,
+        payload: written.retained,
+        now,
+      });
+      return { changes: await changesOf(tx, userId, written.touched), undoToken };
+    }).catch((error: unknown) => {
+      if (error instanceof RolledBack && refusedWrites) return refusedWrites;
+      throw error;
+    });
+    if ('error' in outcome) return answerRefusal<Code | 'not_found'>(c, outcome);
+    return c.json(outcome, 200);
+  };
+}
 
 /** “Undo” (ADR 0011, spec stack §5.4). */
-export function createGestures<Changes>({
+export function createGestures<Changes, Declared extends AnyGesture>({
   clock,
   requireUser,
+  gestures,
   inverses,
   positioningInverses,
   changesOf,
 }: {
   clock: Clock;
   requireUser: RequireUser;
-  inverses: Inverses;
+  /** The gestures of the common circuit, each with its inverse. */
+  gestures: readonly Declared[];
+  /** The inverses of the gestures on a Contact still outside the circuit. */
+  inverses: Omit<Inverses, Declared['kind']>;
   positioningInverses: PositioningInverses;
   changesOf: ChangesOf<Changes>;
 }) {
+  const inCircuitByKind = new Map<string, AnyGesture>(
+    gestures.map((declared) => [declared.kind, declared]),
+  );
   const routes = new Hono<AppEnv>().post('/gestures/:id/undo', requireUser, async (c) => {
     const { userId } = c.var;
     const id = z.uuid().safeParse(c.req.param('id'));
     // Another User's gesture, one already undone and an unknown id answer alike.
-    if (!id.success) return c.json({ error: 'not_found' as const }, 404);
+    if (!id.success) return answerRefusal(c, refusal('not_found'));
     const outcome = await withUser(userId, async (tx) => {
       const [made] = await tx
         .select()
         .from(gesture)
         .where(and(eq(gesture.userId, userId), eq(gesture.id, id.data)))
         .for('update');
-      if (!made) return { refused: 'not_found' as const };
+      if (!made) return refusal('not_found');
       if (clock.now().getTime() - made.performedAt.getTime() > UNDO_WINDOW_MS) {
-        return { refused: 'expired' as const };
+        return refusal('expired');
       }
-      const subjectId = made.contactId ?? made.positioningId;
+      const { kind, payload } = made;
+      const inCircuit = inCircuitByKind.get(kind);
+      const column =
+        inCircuit?.subject.column ?? (isPositioningKind(kind) ? 'positioningId' : 'contactId');
+      const subjectId = made[column];
       if (subjectId === null) throw new Error('A gesture touched nothing');
       await lockSubject(tx, subjectId);
       // Later by the clock of the app, like the 15 minutes; made at the same instant, by its id (uuidv7).
@@ -145,9 +296,7 @@ export function createGestures<Changes>({
         .where(
           and(
             eq(gesture.userId, userId),
-            made.contactId === null
-              ? eq(gesture.positioningId, subjectId)
-              : eq(gesture.contactId, subjectId),
+            eq(gesture[column], subjectId),
             or(
               gt(gesture.performedAt, made.performedAt),
               and(eq(gesture.performedAt, made.performedAt), gt(gesture.id, made.id)),
@@ -155,19 +304,44 @@ export function createGestures<Changes>({
           ),
         )
         .limit(1);
-      if (later) return { refused: 'superseded' as const };
-      const { kind, payload } = made;
-      const touched = isPositioningKind(kind)
-        ? await positioningInverses[kind](tx, { userId, positioningId: subjectId, payload })
-        : await inverses[kind](tx, { userId, contactId: subjectId, payload });
-      if (touched === 'superseded') return { refused: touched };
+      if (later) return refusal('superseded');
+      const restored = inCircuit
+        ? await inCircuit.inverse(tx, {
+            userId,
+            subjectId,
+            retained: inCircuit.retained.parse(payload),
+          })
+        : await oldInverse(tx, { userId, subjectId, kind, payload });
+      if (restored === 'superseded') return refusal(restored);
       await tx.delete(gesture).where(and(eq(gesture.userId, userId), eq(gesture.id, made.id)));
-      return { changes: await changesOf(tx, userId, touched) };
+      return { changes: await changesOf(tx, userId, restored) };
     });
-    if ('refused' in outcome) {
-      return c.json({ error: outcome.refused }, REFUSAL_STATUS[outcome.refused]);
-    }
+    if ('error' in outcome) return answerRefusal(c, outcome);
     return c.json(outcome, 200);
   });
+
+  /** The inverse of a gesture still outside the circuit. */
+  function oldInverse(
+    tx: Transaction,
+    {
+      userId,
+      subjectId,
+      kind,
+      payload,
+    }: {
+      userId: string;
+      subjectId: string;
+      kind: GestureKind | PositioningGestureKind;
+      payload: unknown;
+    },
+  ) {
+    if (isPositioningKind(kind)) {
+      return positioningInverses[kind](tx, { userId, positioningId: subjectId, payload });
+    }
+    const inverse = (inverses as Partial<Inverses>)[kind];
+    if (!inverse) throw new Error(`No inverse for the gesture ${kind}`);
+    return inverse(tx, { userId, contactId: subjectId, payload });
+  }
+
   return { routes };
 }
