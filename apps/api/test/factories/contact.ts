@@ -1,7 +1,6 @@
 import {
-  CHANNELS,
-  CONTACT_STATUSES,
-  ORGANIZATION_TYPES,
+  summary,
+  summaryChanges,
   type AddableContactStatus,
   type Channel,
   type ContactStatus,
@@ -15,78 +14,7 @@ import { postJson } from '../http.ts';
 
 type Harness = ReturnType<typeof testApp>;
 
-/** A Contact as the working summary carries it. */
-export const summaryContact = z.strictObject({
-  id: z.uuid(),
-  name: z.string(),
-  status: z.enum(CONTACT_STATUSES),
-  /** The Stage it is at, Prospecting; otherwise the last one it reached, if any. */
-  stageId: z.uuid().nullable(),
-  organizationId: z.uuid().nullable(),
-  /** What the search and the duplicate checks read; the note stays out of the summary. */
-  jobTitle: z.string().nullable(),
-  email: z.string().nullable(),
-  phone: z.string().nullable(),
-  linkedinUrl: z.string().nullable(),
-  lastInteractionAt: z.iso.datetime(),
-  lastInteractionOn: z.iso.date(),
-  /** The local day of its latest Interaction done, outbound or inbound, if it has one. */
-  lastDoneInteractionOn: z.iso.date().nullable(),
-  /** The local days of its Funnel entries, the earliest first. */
-  funnelEntryDays: z.array(z.iso.date()),
-  /** The reason of the change that put it in its Status, if the User gave one. */
-  statusReason: z.string().nullable(),
-  /** Its scheduled Follow-up, if it has one. */
-  followUp: z.strictObject({ dueOn: z.iso.date(), note: z.string().nullable() }).nullable(),
-  /** The local days of its Prospecting actions, the earliest first: what the Activity is counted from. */
-  prospectingActionDays: z.array(z.iso.date()),
-});
-
-/** A Stage as the working summary carries it, in the order of the Funnel. */
-export const summaryStage = z.strictObject({
-  id: z.uuid(),
-  name: z.string(),
-  aim: z.string().nullable(),
-  archived: z.boolean(),
-});
-
-/** An Organization as the working summary carries it. */
-export const summaryOrganization = z.strictObject({
-  id: z.uuid(),
-  name: z.string(),
-  type: z.enum(ORGANIZATION_TYPES),
-});
-
-/** A Positioning as the working summary carries it, the earliest first. */
-export const summaryPositioning = z.strictObject({
-  id: z.uuid(),
-  stageId: z.uuid(),
-  label: z.string(),
-  channel: z.enum(CHANNELS),
-  content: z.string().nullable(),
-  followUps: z.array(z.strictObject({ days: z.number(), message: z.string().nullable() })),
-  responseWindowDays: z.number(),
-  derivedFromId: z.uuid().nullable(),
-  archived: z.boolean(),
-  /** Its attachments not removed, in the order they were joined; their bytes are downloaded apart. */
-  attachments: z.array(
-    z.strictObject({ id: z.uuid(), name: z.string(), contentType: z.string(), size: z.number() }),
-  ),
-  /** Whether it was ever used, and in how many Trials: frozen from the first one. */
-  used: z.boolean(),
-  trialCount: z.number(),
-});
-
-/** The rows of the summary a gesture changed. */
-export const summaryChanges = z.strictObject({
-  contacts: z.array(summaryContact),
-  removedContactIds: z.array(z.uuid()),
-  organizations: z.array(summaryOrganization),
-  removedOrganizationIds: z.array(z.uuid()),
-  positionings: z.array(summaryPositioning),
-  removedPositioningIds: z.array(z.uuid()),
-});
-
+/** What an undoable gesture answers: the rows of the summary it changed, and its token. */
 export const gestureAnswer = z.strictObject({ changes: summaryChanges, undoToken: z.uuid() });
 
 /**
@@ -221,34 +149,7 @@ export const recordReply = (
   },
 ) => contactGesture(harness, user, `/api/contacts/${contactId}/record-reply`, body);
 
-/** A value in effect now, and as the User chose it last. */
-const dated = <Value extends z.ZodType>(value: Value) =>
-  z.strictObject({ inEffect: value, chosen: value });
-
-/** Settings, as the summary carries them (spec UX §5.8). */
-const summarySettings = z.strictObject({
-  locale: z.enum(['fr', 'en']),
-  timeZone: dated(z.string()),
-  activityGoal: dated(z.int().nullable()),
-  entryGoal: dated(z.int().nullable()),
-  celebrateGoal: z.boolean(),
-  singleKeyShortcuts: z.boolean(),
-  checkInRhythmDays: z.int(),
-  circleSizeGoal: z.int().nullable(),
-  defaultCadence: z.strictObject({ intervals: z.array(z.int()), responseWindowDays: z.int() }),
-});
-
-/** The whole working summary, as `GET /api/summary` answers it. */
-export const summary = z.strictObject({
-  /** The time zone of the User in effect now: what its today is read in. */
-  timeZone: z.string(),
-  settings: summarySettings,
-  contacts: z.array(summaryContact),
-  stages: z.array(summaryStage),
-  organizations: z.array(summaryOrganization),
-  positionings: z.array(summaryPositioning),
-});
-
+/** The whole working summary of a User, checked against the contract. */
 export async function summaryOf(harness: Harness, user: { cookie: string }) {
   const response = await harness.app.request('/api/summary', { headers: { Cookie: user.cookie } });
   if (response.status !== 200) throw new Error(`summaryOf: the API answered ${response.status}`);

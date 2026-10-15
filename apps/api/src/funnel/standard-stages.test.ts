@@ -1,8 +1,7 @@
 import { expect, test } from 'vitest';
-import { z } from 'zod';
 
 import { testApp } from '../../test/app.ts';
-import { summaryStage } from '../../test/factories/contact.ts';
+import { summaryOf } from '../../test/factories/contact.ts';
 import { makeUser } from '../../test/factories/user.ts';
 import { withUser } from '../db/index.ts';
 import { stageOrder } from './index.ts';
@@ -10,10 +9,7 @@ import { stageOrder } from './index.ts';
 type Harness = ReturnType<typeof testApp>;
 type User = Awaited<ReturnType<typeof makeUser>>;
 
-const stagesOf = async (harness: Harness, user: User) => {
-  const response = await harness.app.request('/api/summary', { headers: { Cookie: user.cookie } });
-  return z.object({ stages: z.array(summaryStage) }).parse(await response.json()).stages;
-};
+const stagesOf = async (harness: Harness, user: User) => (await summaryOf(harness, user)).stages;
 
 test('a new account has the four Standard stages, with their Aim, in the language of its sign-up attempt', async () => {
   const harness = testApp();

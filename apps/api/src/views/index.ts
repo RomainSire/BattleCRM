@@ -1,3 +1,11 @@
+import type {
+  Summary,
+  SummaryChanges,
+  SummaryContact,
+  SummaryOrganization,
+  SummaryPositioning,
+  SummaryStage,
+} from '@battlecrm/contract';
 import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 
@@ -22,7 +30,11 @@ import { settingsOf, timeZoneAt } from '../settings/index.ts';
  * The Contacts of the working summary (ADR 0012), the latest Interaction first: all of them, or the
  * ones a gesture touched.
  */
-async function summaryContacts(tx: Transaction, userId: string, ids?: string[]) {
+async function summaryContacts(
+  tx: Transaction,
+  userId: string,
+  ids?: string[],
+): Promise<SummaryContact[]> {
   if (ids?.length === 0) return [];
   const latest = tx
     .selectDistinctOn([interaction.contactId], {
@@ -161,7 +173,7 @@ async function summaryContacts(tx: Transaction, userId: string, ids?: string[]) 
 }
 
 /** Every Stage of the User, archived ones too: a Contact may keep one as the last it reached. In the order of the Funnel. */
-const summaryStages = (tx: Transaction, userId: string) =>
+const summaryStages = (tx: Transaction, userId: string): Promise<SummaryStage[]> =>
   tx
     .select({
       id: stage.id,
@@ -177,7 +189,11 @@ const summaryStages = (tx: Transaction, userId: string) =>
  * Every Positioning of the User, archived ones too, or the ones a gesture touched; the earliest first
  * (uuidv7), so a copy comes after its original.
  */
-async function summaryPositionings(tx: Transaction, userId: string, ids?: string[]) {
+async function summaryPositionings(
+  tx: Transaction,
+  userId: string,
+  ids?: string[],
+): Promise<SummaryPositioning[]> {
   if (ids?.length === 0) return [];
   const rows = await tx
     .select({
@@ -230,7 +246,11 @@ async function summaryPositionings(tx: Transaction, userId: string, ids?: string
 }
 
 /** Every Organization of the User, or the ones a gesture touched, by name. */
-async function summaryOrganizations(tx: Transaction, userId: string, ids?: string[]) {
+async function summaryOrganizations(
+  tx: Transaction,
+  userId: string,
+  ids?: string[],
+): Promise<SummaryOrganization[]> {
   if (ids?.length === 0) return [];
   return tx
     .select({ id: organization.id, name: organization.name, type: organization.type })
@@ -283,7 +303,11 @@ async function contactRecord(tx: Transaction, userId: string, contactId: string)
 }
 
 /** What the answer of a gesture carries: the rows of the summary it changed, and the ones it removed. */
-export async function summaryChanges(tx: Transaction, userId: string, touched: Touched) {
+export async function summaryChanges(
+  tx: Transaction,
+  userId: string,
+  touched: Touched,
+): Promise<SummaryChanges> {
   return {
     contacts: await summaryContacts(tx, userId, touched.contactIds),
     removedContactIds: touched.removedContactIds,
@@ -297,11 +321,11 @@ export async function summaryChanges(tx: Transaction, userId: string, touched: T
 /** The reads, one per view (spec stack §5.2): this module reads the tables of the others and writes none of them. */
 export function createViews({ clock, requireUser }: { clock: Clock; requireUser: RequireUser }) {
   const routes = new Hono<AppEnv>()
-    // The whole working summary, in one read; it grows with each ticket (ADR 0012).
+    // The whole working summary, in one read, as the contract describes it (ADR 0012).
     .get('/summary', requireUser, async (c) => {
       const { userId } = c.var;
       const now = clock.now();
-      const summary = await withUser(userId, async (tx) => ({
+      const summary = await withUser(userId, async (tx): Promise<Summary> => ({
         // What “today” is read in, on the device too.
         timeZone: await timeZoneAt(tx, userId, now),
         settings: await settingsOf(tx, userId, now),

@@ -1,4 +1,8 @@
-import { DEFAULT_ACTIVITY_GOAL, DEFAULT_ENTRY_GOAL } from '@battlecrm/contract';
+import {
+  DEFAULT_ACTIVITY_GOAL,
+  DEFAULT_ENTRY_GOAL,
+  type SummarySettings,
+} from '@battlecrm/contract';
 import { mondayOf } from '@battlecrm/domain';
 import type { Locale } from '@battlecrm/i18n/runtime';
 import { and, asc, desc, eq, lte } from 'drizzle-orm';
@@ -98,7 +102,11 @@ const LAST_DAY = '9999-12-31';
  * Settings as the summary carries them (spec UX §5.8): each dated value both in effect now and as
  * the User chose it last, which takes effect tomorrow or next Monday.
  */
-export async function settingsOf(tx: Transaction, userId: string, now: Date) {
+export async function settingsOf(
+  tx: Transaction,
+  userId: string,
+  now: Date,
+): Promise<SummarySettings> {
   const [settings] = await tx.select().from(userSettings).where(eq(userSettings.userId, userId));
   if (!settings) throw new Error('A User has no settings');
   const today = await localDateOf(tx, userId, now);

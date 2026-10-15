@@ -1,5 +1,8 @@
 // Hand-written Zod schemas and the API types (spec stack §2).
 
+import { locales } from '@battlecrm/i18n/runtime';
+import { z } from 'zod';
+
 /** A password is judged on its length, nothing else (spec stack §7). */
 export const PASSWORD_MIN_LENGTH = 15;
 export const PASSWORD_MAX_LENGTH = 128;
@@ -77,3 +80,113 @@ export const FOLLOW_UP_MESSAGE_MAX_LENGTH = 5000;
 export const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
 export const ATTACHMENTS_MAX_BYTES_PER_USER = 100 * 1024 * 1024;
 export const ATTACHMENT_NAME_MAX_LENGTH = 255;
+
+// The working summary (ADR 0012), described once: the API builds it to this shape, the SPA reads it,
+// the tests check the answers against it. Strict, so a field the API adds unannounced fails the tests.
+
+/** A Contact as the working summary carries it, the latest Interaction first. */
+export const summaryContact = z.strictObject({
+  id: z.uuid(),
+  name: z.string(),
+  status: z.enum(CONTACT_STATUSES),
+  /** The Stage it is at, Prospecting; otherwise the last one it reached, if any. */
+  stageId: z.uuid().nullable(),
+  organizationId: z.uuid().nullable(),
+  /** What the search and the duplicate checks read; the note stays out of the summary. */
+  jobTitle: z.string().nullable(),
+  email: z.string().nullable(),
+  phone: z.string().nullable(),
+  linkedinUrl: z.string().nullable(),
+  lastInteractionAt: z.iso.datetime(),
+  lastInteractionOn: z.iso.date(),
+  /** The local day of its latest Interaction done, outbound or inbound, if it has one. */
+  lastDoneInteractionOn: z.iso.date().nullable(),
+  /** The local days of its Funnel entries, the earliest first. */
+  funnelEntryDays: z.array(z.iso.date()),
+  /** The reason of the change that put it in its Status, if the User gave one. */
+  statusReason: z.string().nullable(),
+  /** Its scheduled Follow-up, if it has one. */
+  followUp: z.strictObject({ dueOn: z.iso.date(), note: z.string().nullable() }).nullable(),
+  /** The local days of its Prospecting actions, the earliest first: what the Activity is counted from. */
+  prospectingActionDays: z.array(z.iso.date()),
+});
+export type SummaryContact = z.infer<typeof summaryContact>;
+
+/** A Stage as the working summary carries it, archived ones too, in the order of the Funnel. */
+export const summaryStage = z.strictObject({
+  id: z.uuid(),
+  name: z.string(),
+  aim: z.string().nullable(),
+  archived: z.boolean(),
+});
+export type SummaryStage = z.infer<typeof summaryStage>;
+
+/** An Organization as the working summary carries it, by name. */
+export const summaryOrganization = z.strictObject({
+  id: z.uuid(),
+  name: z.string(),
+  type: z.enum(ORGANIZATION_TYPES),
+});
+export type SummaryOrganization = z.infer<typeof summaryOrganization>;
+
+/** A Positioning as the working summary carries it, archived ones too, the earliest first. */
+export const summaryPositioning = z.strictObject({
+  id: z.uuid(),
+  stageId: z.uuid(),
+  label: z.string(),
+  channel: z.enum(CHANNELS),
+  content: z.string().nullable(),
+  followUps: z.array(z.strictObject({ days: z.int(), message: z.string().nullable() })),
+  responseWindowDays: z.int(),
+  derivedFromId: z.uuid().nullable(),
+  archived: z.boolean(),
+  /** Its attachments not removed, in the order they were joined; their bytes are downloaded apart. */
+  attachments: z.array(
+    z.strictObject({ id: z.uuid(), name: z.string(), contentType: z.string(), size: z.int() }),
+  ),
+  /** Whether it was ever used, and in how many Trials: frozen from the first one. */
+  used: z.boolean(),
+  trialCount: z.int(),
+});
+export type SummaryPositioning = z.infer<typeof summaryPositioning>;
+
+/** A value in effect now, and as the User chose it last. */
+const dated = <Value extends z.ZodType>(value: Value) =>
+  z.strictObject({ inEffect: value, chosen: value });
+
+/** Settings, as the summary carries them (spec UX §5.8). */
+export const summarySettings = z.strictObject({
+  locale: z.enum(locales),
+  timeZone: dated(z.string()),
+  activityGoal: dated(z.int().nullable()),
+  entryGoal: dated(z.int().nullable()),
+  celebrateGoal: z.boolean(),
+  singleKeyShortcuts: z.boolean(),
+  checkInRhythmDays: z.int(),
+  circleSizeGoal: z.int().nullable(),
+  defaultCadence: z.strictObject({ intervals: z.array(z.int()), responseWindowDays: z.int() }),
+});
+export type SummarySettings = z.infer<typeof summarySettings>;
+
+/** The whole working summary, as `GET /api/summary` answers it. */
+export const summary = z.strictObject({
+  /** The time zone of the User in effect now: what its today is read in, on the device too. */
+  timeZone: z.string(),
+  settings: summarySettings,
+  contacts: z.array(summaryContact),
+  stages: z.array(summaryStage),
+  organizations: z.array(summaryOrganization),
+  positionings: z.array(summaryPositioning),
+});
+export type Summary = z.infer<typeof summary>;
+
+/** The rows of the summary a gesture, or its undo, changed, and the ones it removed: what its answer carries. */
+export const summaryChanges = z.strictObject({
+  contacts: z.array(summaryContact),
+  removedContactIds: z.array(z.uuid()),
+  organizations: z.array(summaryOrganization),
+  removedOrganizationIds: z.array(z.uuid()),
+  positionings: z.array(summaryPositioning),
+  removedPositioningIds: z.array(z.uuid()),
+});
+export type SummaryChanges = z.infer<typeof summaryChanges>;

@@ -1,8 +1,8 @@
+import { summaryChanges } from '@battlecrm/contract';
 import { z } from 'zod';
 
 import type { testApp } from '../app.ts';
 import { postJson } from '../http.ts';
-import { summaryChanges } from './contact.ts';
 
 type Harness = ReturnType<typeof testApp>;
 

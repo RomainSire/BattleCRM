@@ -1,10 +1,9 @@
 import { ATTACHMENT_MAX_BYTES } from '@battlecrm/contract';
 import { sql } from 'drizzle-orm';
 import { expect, test } from 'vitest';
-import { z } from 'zod';
 
 import { testApp } from '../../test/app.ts';
-import { summaryPositioning } from '../../test/factories/contact.ts';
+import { summaryOf } from '../../test/factories/contact.ts';
 import { undo } from '../../test/factories/gesture.ts';
 import {
   attachFile,
@@ -29,11 +28,8 @@ async function workshop() {
   return { harness, user, outreach, positioning };
 }
 
-const positioningsOf = async (harness: Harness, user: User) => {
-  const response = await harness.app.request('/api/summary', { headers: { Cookie: user.cookie } });
-  return z.object({ positionings: z.array(summaryPositioning) }).parse(await response.json())
-    .positionings;
-};
+const positioningsOf = async (harness: Harness, user: User) =>
+  (await summaryOf(harness, user)).positionings;
 
 const attachmentsOf = async (harness: Harness, user: User, positioningId: string) =>
   (await positioningsOf(harness, user)).find(({ id }) => id === positioningId)?.attachments;

@@ -1,8 +1,7 @@
 import { expect, test } from 'vitest';
-import { z } from 'zod';
 
 import { testApp } from '../../test/app.ts';
-import { summaryPositioning } from '../../test/factories/contact.ts';
+import { summaryOf } from '../../test/factories/contact.ts';
 import { undo, undone } from '../../test/factories/gesture.ts';
 import {
   createPositioning,
@@ -17,11 +16,8 @@ import { postJson } from '../../test/http.ts';
 type Harness = ReturnType<typeof testApp>;
 type User = Awaited<ReturnType<typeof makeUser>>;
 
-const positioningsOf = async (harness: Harness, user: User) => {
-  const response = await harness.app.request('/api/summary', { headers: { Cookie: user.cookie } });
-  return z.object({ positionings: z.array(summaryPositioning) }).parse(await response.json())
-    .positionings;
-};
+const positioningsOf = async (harness: Harness, user: User) =>
+  (await summaryOf(harness, user)).positionings;
 
 /** A User, the first Stage of its Funnel and the second. */
 async function workshop() {

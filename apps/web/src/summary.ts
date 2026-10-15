@@ -1,16 +1,18 @@
+import type { Summary, SummaryChanges, SummaryPositioning } from '@battlecrm/contract';
 import { localDay } from '@battlecrm/domain';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
-import type { InferResponseType } from 'hono/client';
 
 import type { ApiClient } from './session.ts';
 
-/** The working summary of the User (ADR 0012): what every screen computes from, without a round trip. */
-export type Summary = InferResponseType<ApiClient['summary']['$get'], 200>;
-export type SummaryContact = Summary['contacts'][number];
-export type SummaryOrganization = Summary['organizations'][number];
-export type SummaryPositioning = Summary['positionings'][number];
-/** The rows of the summary a gesture changed, as its answer carries them. */
-export type SummaryChanges = InferResponseType<ApiClient['contacts']['$post'], 201>['changes'];
+// The working summary of the User (ADR 0012), what every screen computes from without a round trip,
+// and the rows of it a gesture changed: as the contract describes them.
+export type {
+  Summary,
+  SummaryChanges,
+  SummaryContact,
+  SummaryOrganization,
+  SummaryPositioning,
+} from '@battlecrm/contract';
 
 export const SUMMARY_KEY = ['summary'];
 

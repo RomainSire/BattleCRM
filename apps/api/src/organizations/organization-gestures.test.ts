@@ -1,14 +1,10 @@
+import { summaryChanges } from '@battlecrm/contract';
 import { eq } from 'drizzle-orm';
 import { expect, test } from 'vitest';
 import { z } from 'zod';
 
 import { testApp } from '../../test/app.ts';
-import {
-  addContact,
-  editContact,
-  summaryChanges,
-  summaryOf,
-} from '../../test/factories/contact.ts';
+import { addContact, editContact, summaryOf } from '../../test/factories/contact.ts';
 import { undo } from '../../test/factories/gesture.ts';
 import { makeUser } from '../../test/factories/user.ts';
 import { postJson } from '../../test/http.ts';
