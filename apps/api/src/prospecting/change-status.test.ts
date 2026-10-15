@@ -1,15 +1,14 @@
 import { eq } from 'drizzle-orm';
 import { expect, test } from 'vitest';
-import { z } from 'zod';
 
 import { testApp } from '../../test/app.ts';
 import {
   addContact,
   changeStatus,
   gestureAnswer,
-  summaryChanges,
   summaryOf,
 } from '../../test/factories/contact.ts';
+import { undo, undone } from '../../test/factories/gesture.ts';
 import { archiveStage } from '../../test/factories/stage.ts';
 import { makeUser } from '../../test/factories/user.ts';
 import { postJson } from '../../test/http.ts';
@@ -28,11 +27,6 @@ const rowsOf = ({ userId }: User) =>
 
 const change = (harness: Harness, user: User, contactId: string, body: object) =>
   postJson(harness.app, `/api/contacts/${contactId}/change-status`, body, user.cookie);
-
-const undo = (harness: Harness, user: User, undoToken: string) =>
-  postJson(harness.app, `/api/gestures/${undoToken}/undo`, {}, user.cookie);
-
-const undone = z.object({ changes: summaryChanges });
 
 const stagesOf = async (harness: Harness, user: User) => {
   const [outreach, agency, client, closing] = (await summaryOf(harness, user)).stages;

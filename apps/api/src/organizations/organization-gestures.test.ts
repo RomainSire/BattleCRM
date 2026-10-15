@@ -9,6 +9,7 @@ import {
   summaryChanges,
   summaryOf,
 } from '../../test/factories/contact.ts';
+import { undo } from '../../test/factories/gesture.ts';
 import { makeUser } from '../../test/factories/user.ts';
 import { postJson } from '../../test/http.ts';
 import { withUser } from '../db/index.ts';
@@ -237,7 +238,7 @@ test('undoing the edit that moved a Contact to a merged Organization is refused'
   });
   await gesture(harness, user, `${globex.id}/merge`, { intoId: acme.id });
 
-  const refused = await postJson(harness.app, `/api/gestures/${undoToken}/undo`, {}, user.cookie);
+  const refused = await undo(harness, user, undoToken);
 
   expect(refused.status).toBe(409);
   expect(await refused.json()).toEqual({ error: 'superseded' });

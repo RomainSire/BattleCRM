@@ -10,9 +10,9 @@ import {
   followUp as followUpGesture,
   gestureAnswer,
   scheduleFollowUp,
-  summaryChanges,
   summaryOf,
 } from '../../test/factories/contact.ts';
+import { undo, undone } from '../../test/factories/gesture.ts';
 import { makeUser } from '../../test/factories/user.ts';
 import { postJson } from '../../test/http.ts';
 import { withUser } from '../db/index.ts';
@@ -37,11 +37,6 @@ const rowsOf = ({ userId }: User) =>
 
 const post = (harness: Harness, user: User, path: string, body: object) =>
   postJson(harness.app, path, body, user.cookie);
-
-const undo = (harness: Harness, user: User, undoToken: string) =>
-  post(harness, user, `/api/gestures/${undoToken}/undo`, {});
-
-const undone = z.object({ changes: summaryChanges });
 
 /** A Contact Prospecting at the first Stage. */
 const prospecting = async (harness: Harness, user: User, name = 'Jean Dupont') =>

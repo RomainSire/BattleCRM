@@ -13,37 +13,13 @@ import {
 
 // oxlint-disable-next-line no-restricted-imports -- a foreign key to the User: tables files reference each other directly, drizzle-kit loads them alone.
 import { user } from '../auth/tables.ts';
-// oxlint-disable-next-line no-restricted-imports -- a foreign key to the Contact a gesture touched.
-import { contact } from '../prospecting/tables.ts';
+// oxlint-disable-next-line no-restricted-imports -- the kinds of the workshop, which name no Contact.
+import { POSITIONING_GESTURE_KINDS } from '../funnel/tables.ts';
+// oxlint-disable-next-line no-restricted-imports -- a foreign key to the Contact a gesture touched, and its kinds.
+import { CONTACT_GESTURE_KINDS, contact } from '../prospecting/tables.ts';
 
-/**
- * Every gesture on a Contact “Undo” can take back; a new gesture adds its kind here, next to its
- * inverse (ADR 0011).
- */
-export const GESTURE_KINDS = [
-  'contact_added',
-  'contact_edited',
-  'status_changed',
-  'follow_up_scheduled',
-  'follow_up_canceled',
-  'followed_up',
-  'interaction_noted',
-  'reply_recorded',
-] as const;
-
-/** The gestures of the Positioning workshop (spec UX §5.6): each touches one Positioning, no Contact. */
-export const POSITIONING_GESTURE_KINDS = [
-  'positioning_created',
-  'positioning_edited',
-  'positioning_relabeled',
-  'positioning_archived',
-  'positioning_unarchived',
-  'positioning_deleted',
-  'positioning_attachment_added',
-  'positioning_attachment_removed',
-] as const;
-
-const KINDS = [...GESTURE_KINDS, ...POSITIONING_GESTURE_KINDS] as const;
+/** Every kind of gesture, each listed by the module of its subject (ADR 0011). */
+const KINDS = [...CONTACT_GESTURE_KINDS, ...POSITIONING_GESTURE_KINDS] as const;
 
 /** What “Undo” needs to take a gesture back (ADR 0011). A row lives 15 minutes at most, or until it is undone. */
 export const gesture = pgTable(

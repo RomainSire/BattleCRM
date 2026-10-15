@@ -1,15 +1,9 @@
 import { eq } from 'drizzle-orm';
 import { expect, test } from 'vitest';
-import { z } from 'zod';
 
 import { testApp } from '../../test/app.ts';
-import {
-  addContact,
-  editContact,
-  gestureAnswer,
-  summaryChanges,
-  summaryOf,
-} from '../../test/factories/contact.ts';
+import { addContact, editContact, gestureAnswer, summaryOf } from '../../test/factories/contact.ts';
+import { undo, undone } from '../../test/factories/gesture.ts';
 import { makeUser } from '../../test/factories/user.ts';
 import { postJson } from '../../test/http.ts';
 import { withUser } from '../db/index.ts';
@@ -28,11 +22,6 @@ const rowsOf = ({ userId }: User) =>
 
 const edit = (harness: Harness, user: User, contactId: string, body: object) =>
   postJson(harness.app, `/api/contacts/${contactId}/edit`, body, user.cookie);
-
-const undo = (harness: Harness, user: User, undoToken: string) =>
-  postJson(harness.app, `/api/gestures/${undoToken}/undo`, {}, user.cookie);
-
-const undone = z.object({ changes: summaryChanges });
 
 /** A Contact with every Coordinate filled, at Capgemini. */
 const fullContact = (harness: Harness, user: User) =>

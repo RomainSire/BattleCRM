@@ -9,6 +9,7 @@ import {
   summaryChanges,
   summaryOf,
 } from '../../test/factories/contact.ts';
+import { undo } from '../../test/factories/gesture.ts';
 import { archiveStage } from '../../test/factories/stage.ts';
 import { makeUser } from '../../test/factories/user.ts';
 import { postJson } from '../../test/http.ts';
@@ -16,7 +17,6 @@ import { withUser } from '../db/index.ts';
 import { stageOrder } from '../funnel/index.ts';
 import { contact, interaction, statusChange } from './tables.ts';
 
-type Harness = ReturnType<typeof testApp>;
 type User = Awaited<ReturnType<typeof makeUser>>;
 
 const rowsOf = ({ userId }: User) =>
@@ -27,9 +27,6 @@ const rowsOf = ({ userId }: User) =>
   }));
 
 const stagesOf = ({ userId }: User) => withUser(userId, (tx) => stageOrder(tx, userId));
-
-const undo = (harness: Harness, user: User, undoToken: string) =>
-  postJson(harness.app, `/api/gestures/${undoToken}/undo`, {}, user.cookie);
 
 test('adding a Contact puts it in the Pool and answers with its row of the summary', async () => {
   const harness = testApp();

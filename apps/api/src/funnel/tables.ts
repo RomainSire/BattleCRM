@@ -157,3 +157,18 @@ export const positioningAttachment = pgTable(
     index('positioning_attachment_positioning_idx').on(table.userId, table.positioningId),
   ],
 );
+
+/**
+ * The gestures of the Positioning workshop (spec UX §5.6) “Undo” can take back (ADR 0011): each
+ * touches one Positioning, no Contact.
+ */
+export const POSITIONING_GESTURE_KINDS = [
+  'positioning_created',
+  'positioning_edited',
+  'positioning_relabeled',
+  'positioning_archived',
+  'positioning_unarchived',
+  'positioning_deleted',
+  'positioning_attachment_added',
+  'positioning_attachment_removed',
+] as const;

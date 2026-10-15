@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { testApp } from '../../test/app.ts';
 import { summaryPositioning } from '../../test/factories/contact.ts';
+import { undo } from '../../test/factories/gesture.ts';
 import {
   attachFile,
   createPositioning,
@@ -39,9 +40,6 @@ const attachmentsOf = async (harness: Harness, user: User, positioningId: string
 
 const download = (harness: Harness, user: User, attachmentId: string) =>
   harness.app.request(`/api/attachments/${attachmentId}`, { headers: { Cookie: user.cookie } });
-
-const undo = async (harness: Harness, user: User, undoToken: string) =>
-  (await postJson(harness.app, `/api/gestures/${undoToken}/undo`, {}, user.cookie)).status;
 
 /** The bytes the storage keeps for the User, removed attachments included. */
 const storedBlobs = (user: User) =>
@@ -80,7 +78,7 @@ test('a file joined: in the summary, downloaded as an attachment, never sniffed;
     new Uint8Array(1000).fill('C'.codePointAt(0)!),
   );
 
-  expect(await undo(harness, user, undoToken)).toBe(200);
+  expect((await undo(harness, user, undoToken)).status).toBe(200);
   expect(await attachmentsOf(harness, user, positioning.id)).toEqual([]);
   expect((await download(harness, user, attachment.id)).status).toBe(404);
   expect(await storedBlobs(user)).toBe(0);
@@ -174,7 +172,7 @@ test('Remove: gone from the summary and the download; “Undo” brings it back,
 
   expect(changes.positionings).toEqual([{ ...positioning, attachments: [] }]);
   expect((await download(harness, user, attachment.id)).status).toBe(404);
-  expect(await undo(harness, user, undoToken)).toBe(200);
+  expect((await undo(harness, user, undoToken)).status).toBe(200);
   expect(await attachmentsOf(harness, user, positioning.id)).toEqual([attachment]);
   expect((await download(harness, user, attachment.id)).status).toBe(200);
 
@@ -199,7 +197,7 @@ test('“Undo” of a removal is refused once a later gesture touched the same P
   harness.clock.advance('PT1M');
   await attachFile(harness, user, positioning.id, fileOf('Lettre.pdf'));
 
-  expect(await undo(harness, user, undoToken)).toBe(409);
+  expect((await undo(harness, user, undoToken)).status).toBe(409);
   expect((await download(harness, user, attachment.id)).status).toBe(404);
 });
 
@@ -215,7 +213,7 @@ test('Delete a Positioning never used: its attachments go with it; “Undo” br
   );
   expect((await download(harness, user, attachment.id)).status).toBe(404);
 
-  expect(await undo(harness, user, undoToken)).toBe(200);
+  expect((await undo(harness, user, undoToken)).status).toBe(200);
   expect(await attachmentsOf(harness, user, positioning.id)).toEqual([attachment]);
   expect((await download(harness, user, attachment.id)).status).toBe(200);
 });
@@ -246,7 +244,7 @@ test('a modified copy takes the attachments of its original, as files of its own
     outreach,
     { derivedFromId: positioning.id },
   );
-  expect(await undo(harness, user, otherToken)).toBe(200);
+  expect((await undo(harness, user, otherToken)).status).toBe(200);
   expect((await download(harness, user, other.attachments[0]!.id)).status).toBe(404);
   expect(await storedBlobs(user)).toBe(2);
 });

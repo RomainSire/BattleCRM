@@ -3,16 +3,12 @@ import { expect, test } from 'vitest';
 
 import { testApp } from '../../test/app.ts';
 import { addContact, editContact } from '../../test/factories/contact.ts';
+import { undo } from '../../test/factories/gesture.ts';
 import { makeUser } from '../../test/factories/user.ts';
-import { postJson } from '../../test/http.ts';
 import { withUser } from '../db/index.ts';
 import { gesture } from './tables.ts';
 
-type Harness = ReturnType<typeof testApp>;
 type User = Awaited<ReturnType<typeof makeUser>>;
-
-const undo = (harness: Harness, user: User, id: string) =>
-  postJson(harness.app, `/api/gestures/${id}/undo`, {}, user.cookie);
 
 const gesturesOf = ({ userId }: User) =>
   withUser(userId, (tx) => tx.select().from(gesture).where(eq(gesture.userId, userId)));

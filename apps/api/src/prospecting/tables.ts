@@ -248,3 +248,18 @@ export const statusChange = pgTable(
     index('status_change_contact_idx').on(table.userId, table.contactId),
   ],
 );
+
+/**
+ * Every gesture on a Contact “Undo” can take back (ADR 0011); `gesture` records them under its
+ * column `contact_id`.
+ */
+export const CONTACT_GESTURE_KINDS = [
+  'contact_added',
+  'contact_edited',
+  'status_changed',
+  'follow_up_scheduled',
+  'follow_up_canceled',
+  'followed_up',
+  'interaction_noted',
+  'reply_recorded',
+] as const;

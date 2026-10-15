@@ -2,7 +2,8 @@ import { expect, test } from 'vitest';
 import { z } from 'zod';
 
 import { testApp } from '../../test/app.ts';
-import { summaryChanges, summaryPositioning } from '../../test/factories/contact.ts';
+import { summaryPositioning } from '../../test/factories/contact.ts';
+import { undo, undone } from '../../test/factories/gesture.ts';
 import {
   createPositioning,
   SHORT_EMAIL,
@@ -21,13 +22,6 @@ const positioningsOf = async (harness: Harness, user: User) => {
   return z.object({ positionings: z.array(summaryPositioning) }).parse(await response.json())
     .positionings;
 };
-
-const undo = async (harness: Harness, user: User, undoToken: string) => {
-  const response = await postJson(harness.app, `/api/gestures/${undoToken}/undo`, {}, user.cookie);
-  return { status: response.status, body: await response.json() };
-};
-
-const undone = z.object({ changes: summaryChanges });
 
 /** A User, the first Stage of its Funnel and the second. */
 async function workshop() {
@@ -69,7 +63,7 @@ test('a new Positioning: its Stage, label, Channel, content and cadence, a messa
 
   const taken = await undo(harness, user, undoToken);
   expect(taken.status).toBe(200);
-  expect(undone.parse(taken.body).changes.removedPositioningIds).toEqual([positioning.id]);
+  expect(undone.parse(await taken.json()).changes.removedPositioningIds).toEqual([positioning.id]);
   expect(await positioningsOf(harness, user)).toEqual([]);
 });
 
@@ -112,7 +106,8 @@ test('“Undo” of a creation is refused once a copy was made of it', async () 
 
   const refused = await undo(harness, user, undoToken);
 
-  expect(refused).toEqual({ status: 409, body: { error: 'superseded' } });
+  expect(refused.status).toBe(409);
+  expect(await refused.json()).toEqual({ error: 'superseded' });
   expect(await positioningsOf(harness, user)).toHaveLength(2);
 });
 
@@ -193,10 +188,9 @@ test('“Undo” is refused once a later gesture touched the same Positioning', 
     label: 'Mail court v2',
   });
 
-  expect(await undo(harness, user, undoToken)).toEqual({
-    status: 409,
-    body: { error: 'superseded' },
-  });
+  const refused = await undo(harness, user, undoToken);
+  expect(refused.status).toBe(409);
+  expect(await refused.json()).toEqual({ error: 'superseded' });
 });
 
 test('Fix the label changes the label alone; “Undo” brings the old one back', async () => {
@@ -263,7 +257,7 @@ test('Delete one never used: its copies lose their original; “Undo” brings b
 
   const taken = await undo(harness, user, undoToken);
   expect(taken.status).toBe(200);
-  expect(undone.parse(taken.body).changes.positionings).toEqual([original, copy]);
+  expect(undone.parse(await taken.json()).changes.positionings).toEqual([original, copy]);
   expect(await positioningsOf(harness, user)).toEqual([original, copy]);
 });
 
@@ -280,10 +274,9 @@ test('“Undo” of a deletion is refused once its own original was deleted too'
   );
   await positioningGesture(harness, user, `/api/positionings/${original.id}/delete`);
 
-  expect(await undo(harness, user, undoToken)).toEqual({
-    status: 409,
-    body: { error: 'superseded' },
-  });
+  const refused = await undo(harness, user, undoToken);
+  expect(refused.status).toBe(409);
+  expect(await refused.json()).toEqual({ error: 'superseded' });
 });
 
 test.each(['edit', 'relabel', 'archive', 'unarchive', 'delete'])(

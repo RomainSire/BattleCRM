@@ -9,6 +9,7 @@ import {
   summaryChanges,
   summaryOf,
 } from '../../test/factories/contact.ts';
+import { undo } from '../../test/factories/gesture.ts';
 import { makeUser } from '../../test/factories/user.ts';
 import { postJson } from '../../test/http.ts';
 import { withUser } from '../db/index.ts';
@@ -26,9 +27,6 @@ const rowsOf = ({ userId }: User) =>
 
 const add = (harness: Harness, user: User, body: object) =>
   postJson(harness.app, '/api/contacts', { name: 'Jean Dupont', ...body }, user.cookie);
-
-const undo = (harness: Harness, user: User, undoToken: string) =>
-  postJson(harness.app, `/api/gestures/${undoToken}/undo`, {}, user.cookie);
 
 test('an Organization created with its type in the quick add comes with the answer, and in the summary', async () => {
   const harness = testApp();

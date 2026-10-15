@@ -81,8 +81,6 @@ export function createApp({
     clock,
     requireUser,
     gestures: [...prospecting.gestures, ...positionings.gestures],
-    inverses: {},
-    positioningInverses: {},
     changesOf: summaryChanges,
   });
   const organizations = createOrganizations({

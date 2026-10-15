@@ -10,9 +10,9 @@ import {
   noteInteraction,
   recordReply,
   scheduleFollowUp,
-  summaryChanges,
   summaryOf,
 } from '../../test/factories/contact.ts';
+import { undo, undone } from '../../test/factories/gesture.ts';
 import { makeUser } from '../../test/factories/user.ts';
 import { postJson } from '../../test/http.ts';
 import { withUser } from '../db/index.ts';
@@ -43,11 +43,6 @@ const rowsOf = ({ userId }: User) =>
 
 const post = (harness: Harness, user: User, path: string, body: object) =>
   postJson(harness.app, path, body, user.cookie);
-
-const undo = (harness: Harness, user: User, undoToken: string) =>
-  post(harness, user, `/api/gestures/${undoToken}/undo`, {});
-
-const undone = z.object({ changes: summaryChanges });
 
 const threadOf = async (harness: Harness, user: User, contactId: string) => {
   const response = await harness.app.request(`/api/contacts/${contactId}/record`, {
