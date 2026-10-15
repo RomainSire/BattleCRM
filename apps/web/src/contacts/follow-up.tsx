@@ -1,7 +1,7 @@
 import { FOLLOW_UP_NOTE_MAX_LENGTH } from '@battlecrm/contract';
 import { activityOn, addDays, followUpSignal, hasFollowUps } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useId, useRef } from 'react';
 import { Form, TextField } from 'react-aria-components';
@@ -23,19 +23,12 @@ import {
   SegmentedControlItems,
 } from '../components/ui/segmented-control.tsx';
 import { notify } from '../components/ui/toast.tsx';
+import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale, type Locale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { settingsOf } from '../settings/use-settings.ts';
-import {
-  applySummaryChanges,
-  SUMMARY_KEY,
-  todayOf,
-  type Summary,
-  type SummaryChanges,
-  type SummaryContact,
-} from '../summary.ts';
-import { notifyGesture } from '../undo.tsx';
+import { todayOf, type Summary, type SummaryContact } from '../summary.ts';
 import { contactRecordQuery } from './contact-record-query.ts';
 import { formatLocalDay } from './format.ts';
 import type { FollowUpGesture } from './status.ts';
@@ -60,82 +53,16 @@ export function useFollowUpGesture() {
   };
 }
 
-/** What a gesture on a Follow-up answers: its changes, a day the server refuses, or a Contact this device is behind on. */
-type Answer = { changes: SummaryChanges; undoToken: string } | 'bad_day' | 'behind';
+/** A refusal of a gesture on a Follow-up. */
+type FollowUpRefusal =
+  | RefusalOf<ApiClient['contacts'][':id']['schedule-follow-up']['$post']>
+  | RefusalOf<ApiClient['contacts'][':id']['follow-up']['$post']>;
 
-/** A refusal of the server: a day it refuses is the panel's to show; anything else, a Contact changed elsewhere. */
-async function refusalOf(response: {
-  status: number;
-  json(): Promise<unknown>;
-}): Promise<'bad_day' | 'behind' | undefined> {
-  if (response.status !== 400 && response.status !== 404 && response.status !== 409)
-    return undefined;
-  const { error } = z.object({ error: z.string() }).parse(await response.json());
-  if (error === 'past_day' || error === 'future_day') return 'bad_day';
-  // A body the server would not read is this app's error, never the User's.
-  if (error === 'invalid') throw new Error('A Follow-up gesture was refused as invalid');
-  return 'behind';
-}
-
-/** The three gestures of a Follow-up, as the SPA sends them. */
-const send = {
-  async schedule(
-    api: ApiClient,
-    contactId: string,
-    json: { dueOn: string; note?: string },
-  ): Promise<Answer> {
-    const response = await api.contacts[':id']['schedule-follow-up'].$post({
-      param: { id: contactId },
-      json,
-    });
-    const refused = await refusalOf(response);
-    if (refused) return refused;
-    if (!response.ok) throw new Error('POST /api/contacts/:id/schedule-follow-up failed');
-    return response.json();
-  },
-  async cancel(api: ApiClient, contactId: string): Promise<Answer> {
-    const response = await api.contacts[':id']['cancel-follow-up'].$post({
-      param: { id: contactId },
-    });
-    const refused = await refusalOf(response);
-    if (refused) return refused;
-    if (!response.ok) throw new Error('POST /api/contacts/:id/cancel-follow-up failed');
-    return response.json();
-  },
-  async followUp(
-    api: ApiClient,
-    contactId: string,
-    json: { occurredOn: string; note?: string },
-  ): Promise<Answer> {
-    const response = await api.contacts[':id']['follow-up'].$post({
-      param: { id: contactId },
-      json,
-    });
-    const refused = await refusalOf(response);
-    if (refused) return refused;
-    if (!response.ok) throw new Error('POST /api/contacts/:id/follow-up failed');
-    return response.json();
-  },
-};
-
-/**
- * Applies the answer of a gesture and says what was done, with “Undo”; `false` when the server
- * refused the day, or the Contact changed elsewhere: the summary is then read again.
- */
-export async function settle(
-  queryClient: ReturnType<typeof useQueryClient>,
-  answer: Answer,
-  message: (changed: SummaryContact) => string,
-): Promise<boolean> {
-  if (typeof answer === 'string') {
-    await queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
-    return false;
-  }
-  await applySummaryChanges(queryClient, answer.changes);
-  const [changed] = answer.changes.contacts;
-  if (changed) notifyGesture(message(changed), answer.undoToken);
-  return true;
-}
+/** A day the server refuses is the panel's to show; anything else, a Contact changed elsewhere. */
+const refusalText = (refused: FollowUpRefusal | undefined) =>
+  (refused?.error === 'past_day' && m.follow_up_day_not_past()) ||
+  (refused?.error === 'future_day' && m.follow_up_day_not_future()) ||
+  (refused !== undefined && m.follow_up_behind());
 
 export const trimmed = (note: string) => {
   const text = note.trim();
@@ -172,30 +99,35 @@ export function FollowUpHead({
 }) {
   const locale = useLocale();
   const api = useApi();
-  const queryClient = useQueryClient();
+  const sendGesture = useSendGesture();
   const headingId = useId();
   const today = todayOf(summary);
   const { name } = contact;
   const postpone = useMutation({
-    mutationFn: (days: number) =>
-      send.schedule(api, contact.id, {
-        dueOn: addDays(today, days),
-        ...trimmed(contact.followUp?.note ?? ''),
-      }),
-    onSuccess: async (answer, days) => {
-      const date = formatLocalDay(addDays(today, days), locale);
-      if (!(await settle(queryClient, answer, () => m.follow_up_scheduled_toast({ name, date })))) {
-        notify({ message: m.follow_up_behind(), isError: true });
-      }
+    mutationFn: (days: number) => {
+      const dueOn = addDays(today, days);
+      const date = formatLocalDay(dueOn, locale);
+      return sendGesture(
+        api.contacts[':id']['schedule-follow-up'].$post({
+          param: { id: contact.id },
+          json: { dueOn, ...trimmed(contact.followUp?.note ?? '') },
+        }),
+        ({ contacts: [changed] }) => changed && m.follow_up_scheduled_toast({ name, date }),
+      );
+    },
+    onSuccess: (refused) => {
+      if (refused) notify({ message: m.follow_up_behind(), isError: true });
     },
     onError: () => notify({ message: m.auth_error(), isError: true }),
   });
   const cancel = useMutation({
-    mutationFn: () => send.cancel(api, contact.id),
-    onSuccess: async (answer) => {
-      if (!(await settle(queryClient, answer, () => m.follow_up_canceled_toast({ name })))) {
-        notify({ message: m.follow_up_behind(), isError: true });
-      }
+    mutationFn: () =>
+      sendGesture(
+        api.contacts[':id']['cancel-follow-up'].$post({ param: { id: contact.id } }),
+        ({ contacts: [changed] }) => changed && m.follow_up_canceled_toast({ name }),
+      ),
+    onSuccess: (refused) => {
+      if (refused) notify({ message: m.follow_up_behind(), isError: true });
     },
     onError: () => notify({ message: m.auth_error(), isError: true }),
   });
@@ -313,7 +245,7 @@ function ScheduleFollowUpPanel({
 }) {
   const locale = useLocale();
   const api = useApi();
-  const queryClient = useQueryClient();
+  const sendGesture = useSendGesture();
   const today = todayOf(summary);
   const { followUp, name } = contact;
   const [draft, setDraft, clearDraft] = useSessionDraft(
@@ -330,12 +262,18 @@ function ScheduleFollowUpPanel({
     onClose();
   };
   const schedule = useMutation({
-    mutationFn: () => send.schedule(api, contact.id, { dueOn, ...trimmed(draft.note) }),
-    onSuccess: async (answer) => {
+    mutationFn: () => {
       const date = formatLocalDay(dueOn, locale);
-      if (await settle(queryClient, answer, () => m.follow_up_scheduled_toast({ name, date }))) {
-        close();
-      }
+      return sendGesture(
+        api.contacts[':id']['schedule-follow-up'].$post({
+          param: { id: contact.id },
+          json: { dueOn, ...trimmed(draft.note) },
+        }),
+        ({ contacts: [changed] }) => changed && m.follow_up_scheduled_toast({ name, date }),
+      );
+    },
+    onSuccess: (refused) => {
+      if (!refused) close();
     },
   });
   return (
@@ -387,10 +325,7 @@ function ScheduleFollowUpPanel({
                 />
               )}
               <ErrorMessage>
-                {schedule.isError
-                  ? m.auth_error()
-                  : (schedule.data === 'bad_day' && m.follow_up_day_not_past()) ||
-                    (schedule.data === 'behind' && m.follow_up_behind())}
+                {schedule.isError ? m.auth_error() : refusalText(schedule.data)}
               </ErrorMessage>
             </GesturePanelBody>
             <GesturePanelFooter>
@@ -483,7 +418,7 @@ function FollowUpPanel({
 }) {
   const locale = useLocale();
   const api = useApi();
-  const queryClient = useQueryClient();
+  const sendGesture = useSendGesture();
   const sendHeadingId = useId();
   const confirmHeadingId = useId();
   const today = todayOf(summary);
@@ -512,9 +447,16 @@ function FollowUpPanel({
       : m.followed_up_toast({ name, count, goal: activityGoal });
   };
   const done = useMutation({
-    mutationFn: () => send.followUp(api, contact.id, { occurredOn, ...trimmed(draft.note) }),
-    onSuccess: async (answer) => {
-      if (await settle(queryClient, answer, doneMessage)) close();
+    mutationFn: () =>
+      sendGesture(
+        api.contacts[':id']['follow-up'].$post({
+          param: { id: contact.id },
+          json: { occurredOn, ...trimmed(draft.note) },
+        }),
+        ({ contacts: [changed] }) => changed && doneMessage(),
+      ),
+    onSuccess: (refused) => {
+      if (!refused) close();
     },
   });
   // Another device did it, or canceled it, meanwhile: nothing left to do.
@@ -580,12 +522,7 @@ function FollowUpPanel({
                   <Recap lines={[activityRecap(occurredOn, today, count, activityGoal, locale)]} />
                 )}
               </section>
-              <ErrorMessage>
-                {done.isError
-                  ? m.auth_error()
-                  : (done.data === 'bad_day' && m.follow_up_day_not_future()) ||
-                    (done.data === 'behind' && m.follow_up_behind())}
-              </ErrorMessage>
+              <ErrorMessage>{done.isError ? m.auth_error() : refusalText(done.data)}</ErrorMessage>
             </GesturePanelBody>
             <GesturePanelFooter>
               <Button

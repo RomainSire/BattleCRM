@@ -8,7 +8,7 @@ import {
 } from '@battlecrm/contract';
 import { findDuplicates, normalizeLinkedInUrl, type Target } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useDeferredValue, useId, useState } from 'react';
 import { Form, TextField } from 'react-aria-components';
 
@@ -17,9 +17,9 @@ import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.
 import { Input, invalidInputClass } from '../components/ui/input.tsx';
 import { Label } from '../components/ui/label.tsx';
 import { Textarea } from '../components/ui/textarea.tsx';
+import { useSendGesture } from '../gesture.ts';
 import { useApi } from '../session.ts';
-import { applySummaryChanges, SUMMARY_KEY, type Summary, type SummaryContact } from '../summary.ts';
-import { notifyGesture } from '../undo.tsx';
+import { type Summary, type SummaryContact } from '../summary.ts';
 import { contactLabel, DuplicateNote, LinkedInTaken } from './duplicate-notes.tsx';
 import {
   OrganizationField,
@@ -49,7 +49,7 @@ export function EditCoordinates({
   onDone: () => void;
 }) {
   const api = useApi();
-  const queryClient = useQueryClient();
+  const sendGesture = useSendGesture();
   const changesId = useId();
   const { organizations, contacts } = summary;
   const current = organizations.find(({ id }) => id === contact.organizationId);
@@ -83,43 +83,28 @@ export function EditCoordinates({
     (filled(linkedinUrl) ?? null) === contact.linkedinUrl &&
     (filled(noteText) ?? null) === note;
   const edit = useMutation({
-    mutationFn: async () => {
-      const response = await api.contacts[':id'].edit.$post({
-        param: { id: contact.id },
-        json: {
-          name,
-          ...(organizationId !== null && { organizationId }),
-          ...(organization.kind === 'new' &&
-            organization.type && {
-              newOrganization: { name: organization.name, type: organization.type },
-            }),
-          linkedinUrl: filled(linkedinUrl),
-          jobTitle: filled(jobTitle),
-          email: filled(email),
-          phone: filled(phone),
-          note: filled(noteText),
-        },
-      });
-      // Refusals of data this device is behind on, changed on another one: read the summary again.
-      if (response.status === 400 || response.status === 404 || response.status === 409) {
-        const { error } = await response.json();
-        if (error === 'organization_taken') return 'organization_taken' as const;
-        // The checks then show the Contact that has the profile, or the Organization or the Contact gone.
-        if (error !== 'invalid') return 'behind' as const;
-      }
-      if (!response.ok) throw new Error('POST /api/contacts/:id/edit failed');
-      return response.json();
-    },
-    onSuccess: async (answer) => {
-      if (typeof answer === 'string') {
-        await queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
-        return;
-      }
-      const { changes, undoToken } = answer;
-      await applySummaryChanges(queryClient, changes);
-      const [edited] = changes.contacts;
-      if (edited) notifyGesture(m.contact_edited({ name: edited.name }), undoToken);
-      onDone();
+    mutationFn: () =>
+      sendGesture(
+        api.contacts[':id'].edit.$post({
+          param: { id: contact.id },
+          json: {
+            name,
+            ...(organizationId !== null && { organizationId }),
+            ...(organization.kind === 'new' &&
+              organization.type && {
+                newOrganization: { name: organization.name, type: organization.type },
+              }),
+            linkedinUrl: filled(linkedinUrl),
+            jobTitle: filled(jobTitle),
+            email: filled(email),
+            phone: filled(phone),
+            note: filled(noteText),
+          },
+        }),
+        ({ contacts: [edited] }) => edited && m.contact_edited({ name: edited.name }),
+      ),
+    onSuccess: (refused) => {
+      if (!refused) onDone();
     },
   });
 
@@ -285,7 +270,9 @@ export function EditCoordinates({
         <ErrorMessage>
           {edit.isError
             ? m.auth_error()
-            : edit.data === 'organization_taken' && m.organization_taken_on_edit()}
+            : // Any other refusal, of data changed on another device: the checks then show the
+              // Contact that has the profile, or the Organization or the Contact gone.
+              edit.data?.error === 'organization_taken' && m.organization_taken_on_edit()}
         </ErrorMessage>
         <div className="flex gap-2">
           <Button type="submit" size="sm" className="max-md:min-h-11" isDisabled={edit.isPending}>

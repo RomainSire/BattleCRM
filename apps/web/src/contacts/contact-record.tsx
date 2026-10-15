@@ -12,6 +12,7 @@ import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { X } from 'lucide-react';
 import { useId, useRef, useState, type ReactNode, type Ref, type RefObject } from 'react';
+import { flushSync } from 'react-dom';
 import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 
 import { CHANNEL_LABEL } from '../channel.ts';
@@ -303,9 +304,9 @@ function Coordinates({
           note={record.note}
           summary={summary}
           onDone={() => {
-            setIsEditing(false);
-            // Once the button is back.
-            requestAnimationFrame(() => editButton.current?.focus());
+            // The button back at once, whenever the edit ends: then it takes the focus.
+            flushSync(() => setIsEditing(false));
+            editButton.current?.focus();
           }}
         />
       ) : (

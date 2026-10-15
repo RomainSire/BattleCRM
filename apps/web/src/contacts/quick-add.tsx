@@ -10,7 +10,7 @@ import {
 } from '@battlecrm/contract';
 import { findDuplicates, funnelOf, normalizeLinkedInUrl } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useDeferredValue, useId, useState } from 'react';
 import { Form, TextField } from 'react-aria-components';
 
@@ -25,16 +25,10 @@ import {
   SegmentedControlItems,
 } from '../components/ui/segmented-control.tsx';
 import { Textarea } from '../components/ui/textarea.tsx';
+import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';
-import { useApi } from '../session.ts';
-import {
-  applySummaryChanges,
-  SUMMARY_KEY,
-  summaryQuery,
-  type Summary,
-  type SummaryContact,
-} from '../summary.ts';
-import { notifyGesture } from '../undo.tsx';
+import { useApi, type ApiClient } from '../session.ts';
+import { summaryQuery, type Summary, type SummaryContact } from '../summary.ts';
 import { contactLabel, DuplicateNote, LinkedInTaken } from './duplicate-notes.tsx';
 import {
   NO_ORGANIZATION,
@@ -76,7 +70,7 @@ const filled = (text: string) => text.trim() || undefined;
 
 function QuickAddForm({ onDone }: { onDone: () => void }) {
   const api = useApi();
-  const queryClient = useQueryClient();
+  const sendGesture = useSendGesture();
   const stageFieldId = useId();
   // The summary the shell reads, not read again for a modal: the Stages of the Funnel, the
   // Organizations and the Contacts the checks compare with, without a round trip (ADR 0012).
@@ -107,46 +101,30 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
   const [sameEmail] = duplicates.sameEmail;
   const [samePhone] = duplicates.samePhone;
   const add = useMutation({
-    mutationFn: async () => {
-      const response = await api.contacts.$post({
-        json: {
-          name,
-          status,
-          ...(status === 'prospecting' && stageId !== undefined && { stageId }),
-          ...(organizationId !== null && { organizationId }),
-          ...(organization.kind === 'new' &&
-            organization.type && {
-              newOrganization: { name: organization.name, type: organization.type },
-            }),
-          linkedinUrl: filled(linkedinUrl),
-          jobTitle: filled(jobTitle),
-          email: filled(email),
-          phone: filled(phone),
-          note: filled(note),
-        },
-      });
-      // Refusals of data this device is behind on, changed on another one: read the summary again.
-      if (response.status === 400 || response.status === 409) {
-        const { error } = await response.json();
-        if (error === 'unknown_stage') return 'stage_gone' as const;
-        // The checks then show the Contact that has the profile.
-        if (error === 'linkedin_url_taken') return 'behind' as const;
-        if (error === 'organization_taken') return 'organization_taken' as const;
-      }
-      if (!response.ok) throw new Error('POST /api/contacts failed');
-      return response.json();
-    },
-    onSuccess: async (answer) => {
-      if (typeof answer === 'string') {
-        if (answer === 'stage_gone') setChosenStageId(undefined);
-        await queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
-        return;
-      }
-      const { changes, undoToken } = answer;
-      await applySummaryChanges(queryClient, changes);
-      const [added] = changes.contacts;
-      if (added) notifyGesture(addedMessage(added, stages), undoToken);
-      onDone();
+    mutationFn: () =>
+      sendGesture(
+        api.contacts.$post({
+          json: {
+            name,
+            status,
+            ...(status === 'prospecting' && stageId !== undefined && { stageId }),
+            ...(organizationId !== null && { organizationId }),
+            ...(organization.kind === 'new' &&
+              organization.type && {
+                newOrganization: { name: organization.name, type: organization.type },
+              }),
+            linkedinUrl: filled(linkedinUrl),
+            jobTitle: filled(jobTitle),
+            email: filled(email),
+            phone: filled(phone),
+            note: filled(note),
+          },
+        }),
+        ({ contacts: [added] }) => added && addedMessage(added, stages),
+      ),
+    onSuccess: (refused) => {
+      if (!refused) onDone();
+      else if (refused.error === 'unknown_stage') setChosenStageId(undefined);
     },
   });
   return (
@@ -313,12 +291,7 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
           {m.more_fields()}
         </Button>
       )}
-      <ErrorMessage>
-        {add.isError
-          ? m.auth_error()
-          : (add.data === 'stage_gone' && m.contact_stage_gone()) ||
-            (add.data === 'organization_taken' && m.organization_taken())}
-      </ErrorMessage>
+      <ErrorMessage>{add.isError ? m.auth_error() : refusalText(add.data)}</ErrorMessage>
       <DialogFooter>
         <Button type="submit" className="max-md:min-h-11" isDisabled={add.isPending}>
           {m.add()}
@@ -326,6 +299,24 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
       </DialogFooter>
     </Form>
   );
+}
+
+/**
+ * Refusals of data this device is behind on, changed on another one, as the quick add shows them;
+ * nothing for a profile taken, which the checks then show with the Contact that has it.
+ */
+function refusalText(refused: RefusalOf<ApiClient['contacts']['$post']> | undefined) {
+  switch (refused?.error) {
+    case undefined:
+    case 'linkedin_url_taken':
+      return false;
+    case 'unknown_stage':
+      return m.contact_stage_gone();
+    case 'organization_taken':
+      return m.organization_taken();
+    default:
+      return m.auth_error();
+  }
 }
 
 /** What the notification says, by the Status the Contact was added in (spec UX §10). */

@@ -2,7 +2,6 @@ import {
   CHANNELS,
   INTERACTION_NOTE_MAX_LENGTH,
   NOTED_INTERACTION_KINDS,
-  type Channel,
   type NotedInteractionKind,
 } from '@battlecrm/contract';
 import {
@@ -13,7 +12,7 @@ import {
   stageToEnter,
 } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useId, useState } from 'react';
 import { Form } from 'react-aria-components';
@@ -34,16 +33,11 @@ import {
   SegmentedControlItem,
   SegmentedControlItems,
 } from '../components/ui/segmented-control.tsx';
+import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
-import {
-  SUMMARY_KEY,
-  todayOf,
-  type Summary,
-  type SummaryChanges,
-  type SummaryContact,
-} from '../summary.ts';
+import { todayOf, type Summary, type SummaryContact } from '../summary.ts';
 import { StageField, statusChangedMessage, statusRecap } from './change-status.tsx';
 import {
   doneDayDraft,
@@ -52,7 +46,6 @@ import {
   EnterSubmits,
   NoteField,
   Recap,
-  settle,
   trimmed,
 } from './follow-up.tsx';
 import { formatLocalDay } from './format.ts';
@@ -91,67 +84,21 @@ const KIND_LABEL: Record<NotedInteractionKind, () => string> = {
   other: m.interaction_kind_other,
 };
 
-/** What a gesture answers: its changes, or a refusal the panel shows. */
-type Answer = { changes: SummaryChanges; undoToken: string } | 'bad_day' | 'stage_gone' | 'behind';
+/** A refusal of a gesture recording an Interaction. */
+type InteractionRefusal =
+  | RefusalOf<ApiClient['contacts'][':id']['note-interaction']['$post']>
+  | RefusalOf<ApiClient['contacts'][':id']['record-reply']['$post']>;
 
-/** A refusal of the server: a day or a Stage it refuses is the panel's to show; anything else, a Contact changed elsewhere. */
-async function refusalOf(response: {
-  status: number;
-  json(): Promise<unknown>;
-}): Promise<Exclude<Answer, object> | undefined> {
-  if (response.status !== 400 && response.status !== 404 && response.status !== 409)
-    return undefined;
-  const { error } = z.object({ error: z.string() }).parse(await response.json());
-  if (error === 'future_day') return 'bad_day';
-  if (error === 'stage_required' || error === 'unknown_stage') return 'stage_gone';
-  // A body the server would not read is this app's error, never the User's.
-  if (error === 'invalid') throw new Error('A gesture recording an Interaction was refused');
-  return 'behind';
-}
+/** A Stage the server refuses has to be chosen again. */
+const isStageGone = (refused: InteractionRefusal) =>
+  refused.error === 'stage_required' || refused.error === 'unknown_stage';
 
-const send = {
-  async note(
-    api: ApiClient,
-    contactId: string,
-    json: { kind: NotedInteractionKind; occurredOn: string; note?: string },
-  ): Promise<Answer> {
-    const response = await api.contacts[':id']['note-interaction'].$post({
-      param: { id: contactId },
-      json,
-    });
-    const refused = await refusalOf(response);
-    if (refused) return refused;
-    if (!response.ok) throw new Error('POST /api/contacts/:id/note-interaction failed');
-    return response.json();
-  },
-  async reply(
-    api: ApiClient,
-    contactId: string,
-    json: {
-      occurredOn: string;
-      channel: Channel;
-      note?: string;
-      cancelFollowUp?: boolean;
-      status?: 'prospecting' | 'ally';
-      stageId?: string;
-    },
-  ): Promise<Answer> {
-    const response = await api.contacts[':id']['record-reply'].$post({
-      param: { id: contactId },
-      json,
-    });
-    const refused = await refusalOf(response);
-    if (refused) return refused;
-    if (!response.ok) throw new Error('POST /api/contacts/:id/record-reply failed');
-    return response.json();
-  },
-};
-
-/** The panel's own refusals, then a Contact changed elsewhere. */
-function refusalText(answer: Answer | undefined) {
-  if (answer === 'bad_day') return m.follow_up_day_not_future();
-  if (answer === 'stage_gone') return m.contact_stage_gone();
-  return answer === 'behind' && m.follow_up_behind();
+/** The panel's own refusals, a day or a Stage, then a Contact changed elsewhere. */
+function refusalText(refused: InteractionRefusal | undefined) {
+  if (refused === undefined) return false;
+  if (refused.error === 'future_day') return m.follow_up_day_not_future();
+  if (isStageGone(refused)) return m.contact_stage_gone();
+  return m.follow_up_behind();
 }
 
 const noteDraft = z.object({
@@ -176,7 +123,7 @@ function NoteInteractionPanel({
   onReply: () => void;
 }) {
   const api = useApi();
-  const queryClient = useQueryClient();
+  const sendGesture = useSendGesture();
   const today = todayOf(summary);
   const { name } = contact;
   const [draft, setDraft, clearDraft] = useSessionDraft(
@@ -191,13 +138,15 @@ function NoteInteractionPanel({
   };
   const note = useMutation({
     mutationFn: () =>
-      send.note(api, contact.id, { kind: draft.kind, occurredOn, ...trimmed(draft.note) }),
-    onSuccess: async (answer) => {
-      if (typeof answer === 'string') {
-        await queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
-        return;
-      }
-      if (await settle(queryClient, answer, () => m.note_interaction_toast({ name }))) close();
+      sendGesture(
+        api.contacts[':id']['note-interaction'].$post({
+          param: { id: contact.id },
+          json: { kind: draft.kind, occurredOn, ...trimmed(draft.note) },
+        }),
+        ({ contacts: [changed] }) => changed && m.note_interaction_toast({ name }),
+      ),
+    onSuccess: (refused) => {
+      if (!refused) close();
     },
   });
   return (
@@ -304,7 +253,7 @@ function ReplyPanel({
 }) {
   const locale = useLocale();
   const api = useApi();
-  const queryClient = useQueryClient();
+  const sendGesture = useSendGesture();
   const theirReplyId = useId();
   const thenId = useId();
   const today = todayOf(summary);
@@ -339,24 +288,27 @@ function ReplyPanel({
   };
   const reply = useMutation({
     mutationFn: () =>
-      send.reply(api, contact.id, {
-        occurredOn,
-        channel: draft.channel,
-        ...trimmed(draft.note),
-        ...(cancelsFollowUp && { cancelFollowUp: true }),
-        ...(status && { status }),
-        ...(status === 'prospecting' && stageId !== undefined && { stageId }),
-      }),
-    onSuccess: async (answer) => {
-      if (typeof answer === 'string') {
-        if (answer === 'stage_gone') setDraft({ ...draft, stageId: undefined });
-        await queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
+      sendGesture(
+        api.contacts[':id']['record-reply'].$post({
+          param: { id: contact.id },
+          json: {
+            occurredOn,
+            channel: draft.channel,
+            ...trimmed(draft.note),
+            ...(cancelsFollowUp && { cancelFollowUp: true }),
+            ...(status && { status }),
+            ...(status === 'prospecting' && stageId !== undefined && { stageId }),
+          },
+        }),
+        ({ contacts: [changed] }) =>
+          changed &&
+          (status ? statusChangedMessage(changed, status, summary) : m.reply_toast({ name })),
+      ),
+    onSuccess: (refused) => {
+      if (refused) {
+        if (isStageGone(refused)) setDraft({ ...draft, stageId: undefined });
         return;
       }
-      const isSettled = await settle(queryClient, answer, (changed) =>
-        status ? statusChangedMessage(changed, status, summary) : m.reply_toast({ name }),
-      );
-      if (!isSettled) return;
       clearDraft();
       if (mayScheduleFollowUp && draft.scheduleFollowUp) onScheduleFollowUp();
       else onClose();

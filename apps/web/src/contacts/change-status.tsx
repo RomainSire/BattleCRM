@@ -11,7 +11,7 @@ import {
   statusChangeCancelsFollowUp,
 } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useId, useRef, useState } from 'react';
@@ -32,18 +32,12 @@ import {
   SegmentedControlItem,
   SegmentedControlItems,
 } from '../components/ui/segmented-control.tsx';
+import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale, type Locale } from '../i18n.ts';
-import { useApi } from '../session.ts';
+import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { settingsOf } from '../settings/use-settings.ts';
-import {
-  applySummaryChanges,
-  SUMMARY_KEY,
-  todayOf,
-  type Summary,
-  type SummaryContact,
-} from '../summary.ts';
-import { notifyGesture } from '../undo.tsx';
+import { todayOf, type Summary, type SummaryContact } from '../summary.ts';
 import { formatLocalDay } from './format.ts';
 import { otherStatuses, STATUS_ACTION, type StatusGesture } from './status.ts';
 
@@ -75,6 +69,12 @@ const TITLE: Record<StatusGesture, (inputs: { name: string }) => string> = {
   archived: m.change_status_title_archived,
 };
 
+/** A Stage the server refuses has to be chosen again. */
+const isStageGone = ({
+  error,
+}: RefusalOf<ApiClient['contacts'][':id']['change-status']['$post']>) =>
+  error === 'stage_required' || error === 'unknown_stage';
+
 /** What the panel keeps while it is open: the target when it was to be chosen, the Stage, the reason. */
 const draftSchema = z.object({
   target: z.enum(CONTACT_STATUSES).optional(),
@@ -101,7 +101,7 @@ export function ChangeStatusPanel({
 }) {
   const locale = useLocale();
   const api = useApi();
-  const queryClient = useQueryClient();
+  const sendGesture = useSendGesture();
   const formRef = useRef<HTMLFormElement>(null);
   // A target the Contact already has, from an address kept from before, is to be chosen again.
   const opened: StatusGesture = gesture === contact.status ? 'choose' : gesture;
@@ -124,36 +124,23 @@ export function ChangeStatusPanel({
   };
 
   const change = useMutation({
-    mutationFn: async (to: ContactStatus) => {
+    mutationFn: (to: ContactStatus) => {
       const reason = draft.reason.trim();
-      const response = await api.contacts[':id']['change-status'].$post({
-        param: { id: contact.id },
-        json: {
-          status: to,
-          ...(to === 'prospecting' && stageId !== undefined && { stageId }),
-          ...(reason !== '' && { reason }),
-        },
-      });
-      // Refusals of data this device is behind on, changed on another one: read the summary again.
-      if (response.status === 400 || response.status === 404 || response.status === 409) {
-        const { error } = await response.json();
-        if (error === 'stage_required' || error === 'unknown_stage') return 'stage_gone' as const;
-        if (error !== 'invalid') return 'behind' as const;
-      }
-      if (!response.ok) throw new Error('POST /api/contacts/:id/change-status failed');
-      return response.json();
+      return sendGesture(
+        api.contacts[':id']['change-status'].$post({
+          param: { id: contact.id },
+          json: {
+            status: to,
+            ...(to === 'prospecting' && stageId !== undefined && { stageId }),
+            ...(reason !== '' && { reason }),
+          },
+        }),
+        ({ contacts: [changed] }) => changed && statusChangedMessage(changed, to, summary),
+      );
     },
-    onSuccess: async (answer, to) => {
-      if (typeof answer === 'string') {
-        if (answer === 'stage_gone') setDraft({ ...draft, stageId: undefined });
-        await queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
-        return;
-      }
-      const { changes, undoToken } = answer;
-      await applySummaryChanges(queryClient, changes);
-      const [changed] = changes.contacts;
-      if (changed) notifyGesture(statusChangedMessage(changed, to, summary), undoToken);
-      close();
+    onSuccess: (refused) => {
+      if (!refused) close();
+      else if (isStageGone(refused)) setDraft({ ...draft, stageId: undefined });
     },
   });
 
@@ -246,8 +233,9 @@ export function ChangeStatusPanel({
             <ErrorMessage>
               {change.isError
                 ? m.auth_error()
-                : (change.data === 'stage_gone' && m.contact_stage_gone()) ||
-                  (change.data === 'behind' && m.change_status_behind())}
+                : change.data &&
+                  // Data this device is behind on, changed on another one.
+                  (isStageGone(change.data) ? m.contact_stage_gone() : m.change_status_behind())}
             </ErrorMessage>
           </GesturePanelBody>
           <GesturePanelFooter>
