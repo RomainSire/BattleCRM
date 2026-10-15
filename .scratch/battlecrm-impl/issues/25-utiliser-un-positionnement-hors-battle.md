@@ -2,7 +2,7 @@
 
 **What to build:** le geste central sans Battle : depuis la fiche (`U`), l'Utilisateur ouvre « Envoyer à <Contact> », choisit le Positionnement de l'Étape, copie le texte avec le prénom remplacé et télécharge les pièces jointes, confirme la date d'envoi ; l'utilisation est enregistrée comme Action de prospection, sans Essai, et la Relance 1 est planifiée. Le Tirage et l'Essai arrivent au ticket 28. Sources : spec UX §6.1 ; CONTEXT (Positionnement, Essai, Action de prospection) ; prototype `prototype/02-utiliser-positionnement` (A2) ; ST-36, ST-60.
 
-**Blocked by:** 21, 23, 19
+**Blocked by:** 21, 23, 19 ; architecture 05, 07, 09 (`.scratch/battlecrm-architecture/issues/`)
 
 **Status:** ready-for-agent
 
