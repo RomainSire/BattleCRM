@@ -5,6 +5,13 @@ import {
   type Channel,
   type NotedInteractionKind,
 } from '@battlecrm/contract';
+import {
+  canNoteInteraction,
+  funnelOf,
+  hasFollowUps,
+  isPoolOrArchived,
+  stageToEnter,
+} from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
@@ -12,6 +19,7 @@ import { useId, useState } from 'react';
 import { Form } from 'react-aria-components';
 import { z } from 'zod';
 
+import { CHANNEL_LABEL } from '../channel.ts';
 import { Button } from '../components/ui/button.tsx';
 import { Checkbox } from '../components/ui/checkbox.tsx';
 import { ErrorMessage } from '../components/ui/error-message.tsx';
@@ -29,14 +37,14 @@ import {
 import { useLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
-import { SUMMARY_KEY, type Summary, type SummaryChanges, type SummaryContact } from '../summary.ts';
 import {
-  enteredStageOf,
-  StageField,
-  stageInFunnel,
-  statusChangedMessage,
-  statusRecap,
-} from './change-status.tsx';
+  SUMMARY_KEY,
+  todayOf,
+  type Summary,
+  type SummaryChanges,
+  type SummaryContact,
+} from '../summary.ts';
+import { StageField, statusChangedMessage, statusRecap } from './change-status.tsx';
 import {
   doneDayDraft,
   doneDayOf,
@@ -45,7 +53,6 @@ import {
   NoteField,
   Recap,
   settle,
-  todayOf,
   trimmed,
 } from './follow-up.tsx';
 import { formatLocalDay } from './format.ts';
@@ -77,22 +84,11 @@ export function useInteractionGesture() {
   };
 }
 
-/** With an Ally, a free outbound Interaction is a Check-in (spec UX §6.4), which comes with the Circle (ticket 36). */
-export const canNoteInteraction = ({ status }: SummaryContact) => status !== 'ally';
-
 const KIND_LABEL: Record<NotedInteractionKind, () => string> = {
   call: m.interaction_kind_call,
   meeting: m.interaction_kind_meeting,
   message: m.interaction_kind_message,
   other: m.interaction_kind_other,
-};
-
-/** A Channel as the User reads it. */
-export const CHANNEL_LABEL: Record<Channel, () => string> = {
-  email: m.channel_email,
-  linkedin: m.channel_linkedin,
-  phone: m.channel_phone,
-  mail: m.channel_mail,
 };
 
 /** What a gesture answers: its changes, or a refusal the panel shows. */
@@ -313,7 +309,7 @@ function ReplyPanel({
   const thenId = useId();
   const today = todayOf(summary);
   const { name, followUp } = contact;
-  const isOut = contact.status === 'pool' || contact.status === 'archived';
+  const isOut = isPoolOrArchived(contact.status);
   const [draft, setDraft, clearDraft] = useSessionDraft(
     `reply:${contact.id}`,
     {
@@ -322,7 +318,7 @@ function ReplyPanel({
       channel: 'email' as const,
       note: '',
       status: 'stay' as const,
-      stageId: enteredStageOf(contact, summary),
+      stageId: stageToEnter(funnelOf(summary.stages), { last: contact.stageId }),
       cancelFollowUp: true,
       scheduleFollowUp: false,
     },
@@ -331,12 +327,12 @@ function ReplyPanel({
   const [wasSent, setWasSent] = useState(false);
   const { day: occurredOn, isValid: isDayValid } = doneDayOf(draft, today);
   const status = isOut && draft.status !== 'stay' ? draft.status : undefined;
-  const stageId = stageInFunnel(summary, draft.stageId);
+  const stageId = stageToEnter(funnelOf(summary.stages), { chosen: draft.stageId });
   const isStageMissing = status === 'prospecting' && stageId === undefined;
   // Its scheduled Follow-up may be canceled; one may be scheduled once in a Status that has some.
   const cancelsFollowUp = followUp !== null && draft.cancelFollowUp;
   const statusAfter = status ?? contact.status;
-  const mayScheduleFollowUp = statusAfter === 'prospecting' || statusAfter === 'ally';
+  const mayScheduleFollowUp = hasFollowUps(statusAfter);
   const close = () => {
     clearDraft();
     onClose();
@@ -531,8 +527,8 @@ export function InteractionPanels({
       />
     );
   }
-  // None for an Ally, from an address kept from before.
-  if (gesture !== 'note' || !canNoteInteraction(contact)) return null;
+  // None for an Ally, from an address kept from before: a Check-in comes with the Circle (ticket 36).
+  if (gesture !== 'note' || !canNoteInteraction(contact.status)) return null;
   return (
     <NoteInteractionPanel
       key={contact.id}

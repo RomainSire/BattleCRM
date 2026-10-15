@@ -1,3 +1,4 @@
+import { localDay } from '@battlecrm/domain';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
 
@@ -29,6 +30,9 @@ export const summaryQuery = (api: ApiClient) =>
     gcTime: Infinity,
     retry: false,
   });
+
+/** Today for the User, in its time zone: what a Follow-up is due on, the Activity and the Funnel entries counted on. */
+export const todayOf = (summary: Summary) => localDay(new Date(), summary.timeZone);
 
 /** The Positionings of the User, the earliest first; none in a summary kept from before them. */
 export function positioningsOf(summary: Summary): SummaryPositioning[] {

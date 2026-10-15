@@ -15,7 +15,16 @@ import {
   ORGANIZATION_TYPES,
   STATUS_REASON_MAX_LENGTH,
 } from '@battlecrm/contract';
-import { normalizeLinkedInUrl } from '@battlecrm/domain';
+import {
+  canNoteInteraction,
+  daysBetween,
+  hasFollowUps,
+  isInFunnel,
+  isPoolOrArchived,
+  normalizeLinkedInUrl,
+  stageToEnter,
+  statusChangeCancelsFollowUp,
+} from '@battlecrm/domain';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -170,10 +179,6 @@ const recordReplyRequest = z
     path: ['stageId'],
   });
 
-/** Only a Contact Prospecting and an Ally have a Follow-up (CONTEXT.md, Follow-up). */
-const hasFollowUps = (status: (typeof CONTACT_STATUSES)[number]) =>
-  status === 'prospecting' || status === 'ally';
-
 /**
  * A gesture the data refuses, possibly after it wrote: thrown so that its transaction rolls back,
  * then answered.
@@ -292,9 +297,7 @@ const canRestoreStatus = async (
   tx: Transaction,
   userId: string,
   { before }: z.infer<typeof statusChanged>,
-) =>
-  before.status !== 'prospecting' ||
-  (await stageOrder(tx, userId)).some(({ id }) => id === before.stageId);
+) => before.status !== 'prospecting' || isInFunnel(await stageOrder(tx, userId), before.stageId);
 
 /** Takes a change of Status back, with the Follow-up it canceled. */
 async function takeBackStatusChange(
@@ -391,10 +394,6 @@ const restoreFollowedUp: Inverse = async (tx, { userId, contactId, payload }) =>
   return touchedContact(contactId);
 };
 
-/** Whole days from a local day to a later one. */
-const daysBetween = (from: string, to: string) =>
-  Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
-
 /** Where a Contact is: its Status, and its Stage (or the last one it reached). */
 type ContactPlace = { status: (typeof CONTACT_STATUSES)[number]; stageId: string | null };
 
@@ -415,23 +414,24 @@ async function changeStatus(
   let stageAfter = before.stageId;
   if (status === 'prospecting') {
     // The last Stage reached unless one is chosen; never an archived one.
-    const wanted = stageId ?? before.stageId;
-    const entered = (await stageOrder(tx, userId)).find((stage) => stage.id === wanted);
-    if (!entered) {
+    const entered = stageToEnter(await stageOrder(tx, userId), {
+      chosen: stageId,
+      last: before.stageId,
+    });
+    if (entered === undefined) {
       throw new Refusal(400, {
         error: stageId === undefined ? 'stage_required' : 'unknown_stage',
       });
     }
-    stageAfter = entered.id;
+    stageAfter = entered;
   }
   await tx
     .update(contact)
     .set({ status, stageId: stageAfter })
     .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
-  // Leaving Prospecting cancels the scheduled Follow-up, as going to the Pool or Archived
-  // does; an Ally entering the Funnel keeps its own (CONTEXT.md, Follow-up).
-  const canceled =
-    status === 'prospecting' ? undefined : await scheduledFollowUp(tx, userId, contactId);
+  const canceled = statusChangeCancelsFollowUp(status)
+    ? await scheduledFollowUp(tx, userId, contactId)
+    : undefined;
   if (canceled) await setFollowUpStatus(tx, userId, canceled.id, 'canceled');
   // An Interaction neither outbound nor inbound; to Prospecting, a Funnel entry dated today.
   const [recorded] = await tx
@@ -937,7 +937,7 @@ export function createProspecting<Changes>({
         const { kind, occurredOn, note = null } = c.req.valid('json');
         const now = clock.now();
         const answer = await onContact(userId, contactId, async (tx, { status }) => {
-          if (status === 'ally') throw new Refusal(409, { error: 'check_in_instead' });
+          if (!canNoteInteraction(status)) throw new Refusal(409, { error: 'check_in_instead' });
           const day = await dayEntered(tx, userId, occurredOn, now);
           const [recorded] = await tx
             .insert(interaction)
@@ -975,7 +975,7 @@ export function createProspecting<Changes>({
       const now = clock.now();
       const answer = await onContact(userId, contactId, async (tx, before) => {
         // Only out of the Funnel and of the Circle is there a choice of Status (spec UX §6.2).
-        if (status !== undefined && before.status !== 'pool' && before.status !== 'archived') {
+        if (status !== undefined && !isPoolOrArchived(before.status)) {
           throw new Refusal(409, { error: 'no_status_choice' });
         }
         const day = await dayEntered(tx, userId, occurredOn, now);

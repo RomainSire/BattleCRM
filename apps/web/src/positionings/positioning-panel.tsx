@@ -28,7 +28,7 @@ import {
   SegmentedControlItems,
 } from '../components/ui/segmented-control.tsx';
 import { Textarea } from '../components/ui/textarea.tsx';
-import { CHANNEL_LABEL } from '../contacts/interactions.tsx';
+import { CHANNEL_LABEL } from '../channel.ts';
 import { useLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';

@@ -7,7 +7,7 @@ import { useId, useState } from 'react';
 
 import { Button } from '../components/ui/button.tsx';
 import { ErrorMessage } from '../components/ui/error-message.tsx';
-import { CHANNEL_LABEL } from '../contacts/interactions.tsx';
+import { CHANNEL_LABEL } from '../channel.ts';
 import { useLocale } from '../i18n.ts';
 import { Screen } from '../screens/screen.tsx';
 import { useApi } from '../session.ts';

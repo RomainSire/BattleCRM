@@ -1,5 +1,5 @@
 import { FOLLOW_UP_NOTE_MAX_LENGTH } from '@battlecrm/contract';
-import { activityOn, addDays, followUpSignal, localDay } from '@battlecrm/domain';
+import { activityOn, addDays, followUpSignal, hasFollowUps } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
@@ -30,6 +30,7 @@ import { settingsOf } from '../settings/use-settings.ts';
 import {
   applySummaryChanges,
   SUMMARY_KEY,
+  todayOf,
   type Summary,
   type SummaryChanges,
   type SummaryContact,
@@ -38,17 +39,6 @@ import { notifyGesture } from '../undo.tsx';
 import { contactRecordQuery } from './contact-record-query.ts';
 import { formatLocalDay } from './format.ts';
 import type { FollowUpGesture } from './status.ts';
-
-/** Today for the User, in its time zone: what a Follow-up is due on, the Activity and the Funnel entries counted on. */
-export const todayOf = (summary: Summary) => localDay(new Date(), summary.timeZone);
-
-/** Only a Contact Prospecting and an Ally have a Follow-up (CONTEXT.md, Follow-up). */
-export const hasFollowUps = ({ status }: SummaryContact) =>
-  status === 'prospecting' || status === 'ally';
-
-/** Whether its scheduled Follow-up is due: today, or overdue. */
-export const isFollowUpDue = (contact: SummaryContact, today: string) =>
-  contact.followUp !== null && followUpSignal(contact.followUp.dueOn, today) !== 'upcoming';
 
 /**
  * The Follow-up gesture open on the record, carried by the address (ST-70): `open` shows its panel,
@@ -209,7 +199,7 @@ export function FollowUpHead({
     },
     onError: () => notify({ message: m.auth_error(), isError: true }),
   });
-  if (!hasFollowUps(contact)) return null;
+  if (!hasFollowUps(contact.status)) return null;
   const { followUp } = contact;
   if (followUp === null) {
     return (
@@ -640,7 +630,7 @@ export function FollowUpPanels({
   onClose: () => void;
 }) {
   // None for a Contact that cannot have one, from an address kept from before.
-  if (gesture === undefined || !hasFollowUps(contact)) return null;
+  if (gesture === undefined || !hasFollowUps(contact.status)) return null;
   return gesture === 'do' ? (
     <FollowUpPanel key={contact.id} contact={contact} summary={summary} onClose={onClose} />
   ) : (

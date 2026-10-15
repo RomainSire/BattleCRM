@@ -8,7 +8,7 @@ import {
   CONTACT_PHONE_MAX_LENGTH,
   type AddableContactStatus,
 } from '@battlecrm/contract';
-import { findDuplicates, normalizeLinkedInUrl } from '@battlecrm/domain';
+import { findDuplicates, funnelOf, normalizeLinkedInUrl } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDeferredValue, useId, useState } from 'react';
@@ -84,7 +84,7 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
   const stages = summary?.stages ?? [];
   const organizations = summary?.organizations ?? [];
   const contacts = summary?.contacts ?? [];
-  const funnel = stages.filter((stage) => !stage.archived);
+  const funnel = funnelOf(stages);
   const [name, setName] = useState('');
   const [organizationDraft, setOrganizationDraft] = useState<OrganizationDraft>(NO_ORGANIZATION);
   const [linkedinUrl, setLinkedinUrl] = useState('');

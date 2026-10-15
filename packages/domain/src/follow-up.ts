@@ -8,6 +8,10 @@ export function followUpSignal(dueOn: string, today: string): FollowUpSignal {
   return dueOn === today ? 'today' : 'upcoming';
 }
 
+/** Whether a scheduled Follow-up is due on a local day: on its day, or overdue. */
+export const isFollowUpDue = (dueOn: string, today: string): boolean =>
+  followUpSignal(dueOn, today) !== 'upcoming';
+
 /** The Activity of a local day: the Prospecting actions dated that day, on every Contact (CONTEXT.md). */
 export const activityOn = (
   contacts: readonly { prospectingActionDays: readonly string[] }[],

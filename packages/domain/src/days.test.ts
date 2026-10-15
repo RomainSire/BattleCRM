@@ -1,6 +1,13 @@
 import { expect, test } from 'vitest';
 
-import { addDays, funnelEntriesInWeek, localDay, mondayOf, nextMondayAfter } from './days.ts';
+import {
+  addDays,
+  daysBetween,
+  funnelEntriesInWeek,
+  localDay,
+  mondayOf,
+  nextMondayAfter,
+} from './days.ts';
 
 test('the local day of an instant is read in a time zone', () => {
   const instant = new Date('2026-01-05T23:30:00Z');
@@ -13,6 +20,13 @@ test('days add up across months, years and changes of hour', () => {
   expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
   expect(addDays('2026-03-29', 28)).toBe('2026-04-26');
   expect(addDays('2026-01-05', -1)).toBe('2026-01-04');
+});
+
+test('whole days from a local day to another, across months and changes of hour', () => {
+  expect(daysBetween('2026-01-05', '2026-01-05')).toBe(0);
+  expect(daysBetween('2026-01-31', '2026-02-01')).toBe(1);
+  expect(daysBetween('2026-03-01', '2026-04-26')).toBe(56);
+  expect(daysBetween('2026-01-05', '2026-01-04')).toBe(-1);
 });
 
 test('a week runs from Monday to Sunday', () => {

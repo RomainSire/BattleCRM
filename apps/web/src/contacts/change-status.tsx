@@ -3,7 +3,13 @@ import {
   STATUS_REASON_MAX_LENGTH,
   type ContactStatus,
 } from '@battlecrm/contract';
-import { addDays, funnelEntriesInWeek } from '@battlecrm/domain';
+import {
+  addDays,
+  funnelEntriesInWeek,
+  funnelOf,
+  stageToEnter,
+  statusChangeCancelsFollowUp,
+} from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
@@ -30,9 +36,14 @@ import { useLocale, type Locale } from '../i18n.ts';
 import { useApi } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { settingsOf } from '../settings/use-settings.ts';
-import { applySummaryChanges, SUMMARY_KEY, type Summary, type SummaryContact } from '../summary.ts';
+import {
+  applySummaryChanges,
+  SUMMARY_KEY,
+  todayOf,
+  type Summary,
+  type SummaryContact,
+} from '../summary.ts';
 import { notifyGesture } from '../undo.tsx';
-import { todayOf } from './follow-up.tsx';
 import { formatLocalDay } from './format.ts';
 import { otherStatuses, STATUS_ACTION, type StatusGesture } from './status.ts';
 
@@ -97,12 +108,14 @@ export function ChangeStatusPanel({
   const lastStage = summary.stages.find(({ id }) => id === contact.stageId);
   const [draft, setDraft, clearDraft] = useSessionDraft<Draft>(
     `change-status:${contact.id}:${opened}`,
-    { stageId: enteredStageOf(contact, summary), reason: '' },
+    // By default, the last Stage it reached, while the Funnel has it.
+    { stageId: stageToEnter(funnelOf(summary.stages), { last: contact.stageId }), reason: '' },
     draftSchema,
   );
   const target = opened === 'choose' ? draft.target : opened;
   const [wasSent, setWasSent] = useState(false);
-  const stageId = stageInFunnel(summary, draft.stageId);
+  // Archived meanwhile, the Stage chosen is to be chosen again.
+  const stageId = stageToEnter(funnelOf(summary.stages), { chosen: draft.stageId });
   const isStageMissing = target === 'prospecting' && stageId === undefined;
 
   const close = () => {
@@ -149,8 +162,7 @@ export function ChangeStatusPanel({
   if (target === 'ally' && contact.status === 'prospecting' && lastStage) {
     recap.push(m.change_status_keeps_stage({ stage: lastStage.name }));
   }
-  // Leaving Prospecting, or going to the Pool or Archived, cancels it (CONTEXT.md, Follow-up).
-  if (target !== undefined && target !== 'prospecting' && contact.followUp) {
+  if (target !== undefined && statusChangeCancelsFollowUp(target) && contact.followUp) {
     recap.push(
       m.change_status_cancels_follow_up({ date: formatLocalDay(contact.followUp.dueOn, locale) }),
     );
@@ -253,16 +265,6 @@ export function ChangeStatusPanel({
   );
 }
 
-/** The Stage a Contact enters by default: the last one it reached, unless it is archived or there is none. */
-export function enteredStageOf(contact: SummaryContact, summary: Summary) {
-  const last = summary.stages.find(({ id }) => id === contact.stageId);
-  return last && !last.archived ? last.id : undefined;
-}
-
-/** The Stage chosen, while the Funnel still has it: archived meanwhile, it is to be chosen again. */
-export const stageInFunnel = (summary: Summary, stageId: string | undefined) =>
-  summary.stages.some(({ id, archived }) => id === stageId && !archived) ? stageId : undefined;
-
 /** The Stage a Contact enters the Funnel at, among the ones not archived; required when none is chosen. */
 export function StageField({
   summary,
@@ -296,13 +298,11 @@ export function StageField({
         )}
       >
         {stageId === undefined && <option value="">{m.change_status_choose_stage()}</option>}
-        {summary.stages
-          .filter((stage) => !stage.archived)
-          .map((stage) => (
-            <option key={stage.id} value={stage.id}>
-              {stage.name}
-            </option>
-          ))}
+        {funnelOf(summary.stages).map((stage) => (
+          <option key={stage.id} value={stage.id}>
+            {stage.name}
+          </option>
+        ))}
       </select>
       {isMissing && (
         <div id={errorId}>

@@ -13,5 +13,19 @@ export {
 } from './duplicates.ts';
 export { targetOf, type OrganizationType, type Target } from './target.ts';
 export { contactsMatching, type SearchableContact } from './search.ts';
-export { addDays, funnelEntriesInWeek, localDay, mondayOf, nextMondayAfter } from './days.ts';
-export { activityOn, followUpSignal, type FollowUpSignal } from './follow-up.ts';
+export {
+  addDays,
+  daysBetween,
+  funnelEntriesInWeek,
+  localDay,
+  mondayOf,
+  nextMondayAfter,
+} from './days.ts';
+export { activityOn, followUpSignal, isFollowUpDue, type FollowUpSignal } from './follow-up.ts';
+export {
+  canNoteInteraction,
+  hasFollowUps,
+  isPoolOrArchived,
+  statusChangeCancelsFollowUp,
+} from './status.ts';
+export { funnelOf, isInFunnel, stageToEnter } from './funnel.ts';

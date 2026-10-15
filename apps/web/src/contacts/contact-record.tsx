@@ -1,5 +1,12 @@
 import { m } from '@battlecrm/i18n';
-import { followUpSignal, targetOf } from '@battlecrm/domain';
+import {
+  canNoteInteraction,
+  followUpSignal,
+  hasFollowUps,
+  isFollowUpDue,
+  isPoolOrArchived,
+  targetOf,
+} from '@battlecrm/domain';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
@@ -7,6 +14,7 @@ import { X } from 'lucide-react';
 import { useId, useRef, useState, type ReactNode, type Ref, type RefObject } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 
+import { CHANNEL_LABEL } from '../channel.ts';
 import { Button } from '../components/ui/button.tsx';
 import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { MenuItem, MoreActions } from '../components/ui/menu.tsx';
@@ -15,6 +23,7 @@ import { useApi } from '../session.ts';
 import { isModalOpen, useShortcuts } from '../shortcuts.ts';
 import {
   summaryQuery,
+  todayOf,
   type Summary,
   type SummaryContact,
   type SummaryOrganization,
@@ -23,21 +32,9 @@ import { ChangeStatusPanel, useStatusGesture } from './change-status.tsx';
 import { ContactName } from './contact-name.tsx';
 import { contactRecordQuery, type ThreadEntry } from './contact-record-query.ts';
 import { EditCoordinates } from './edit-coordinates.tsx';
-import {
-  FollowUpHead,
-  FollowUpPanels,
-  hasFollowUps,
-  isFollowUpDue,
-  todayOf,
-  useFollowUpGesture,
-} from './follow-up.tsx';
+import { FollowUpHead, FollowUpPanels, useFollowUpGesture } from './follow-up.tsx';
 import { formatLocalDay } from './format.ts';
-import {
-  canNoteInteraction,
-  CHANNEL_LABEL,
-  InteractionPanels,
-  useInteractionGesture,
-} from './interactions.tsx';
+import { InteractionPanels, useInteractionGesture } from './interactions.tsx';
 import { targetText } from './organization-field.tsx';
 import {
   otherStatuses,
@@ -396,12 +393,13 @@ function NextAction({
   const locale = useLocale();
   const headingId = useId();
   const Heading = level === 2 ? 'h2' : 'h3';
-  const isOut = contact.status === 'pool' || contact.status === 'archived';
+  const isOut = isPoolOrArchived(contact.status);
   // Out of the Funnel, the way back is the action of the moment.
   const primary = isOut ? 'prospecting' : undefined;
   const others = otherStatuses(contact.status).filter((status) => status !== primary);
   // A Follow-up due, today or overdue, is the action of the moment (spec UX §5.3).
-  const isDue = isFollowUpDue(contact, todayOf(summary));
+  const isDue =
+    contact.followUp !== null && isFollowUpDue(contact.followUp.dueOn, todayOf(summary));
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2 rounded-card border p-3">
       <Heading id={headingId} className="text-xs font-semibold text-muted-foreground uppercase">
@@ -425,7 +423,7 @@ function NextAction({
             {m.verb_follow_up()}
           </Button>
         )}
-        {canNoteInteraction(contact) && (
+        {canNoteInteraction(contact.status) && (
           <Button
             variant="outline"
             className="max-md:min-h-11"
@@ -470,7 +468,7 @@ function NextAction({
           {contact.followUp && !isDue && (
             <MenuItem id="follow-up:do">{m.verb_follow_up()}</MenuItem>
           )}
-          {hasFollowUps(contact) && (
+          {hasFollowUps(contact.status) && (
             <MenuItem id="follow-up:schedule">
               {contact.followUp ? m.verb_edit_follow_up() : m.verb_schedule_follow_up()}
             </MenuItem>
@@ -509,13 +507,13 @@ function useRecordKeys(
   useShortcuts({
     s: onKey(() => status.open('choose')),
     p: onKey(() => {
-      if (contact && hasFollowUps(contact)) followUp.open('schedule');
+      if (contact && hasFollowUps(contact.status)) followUp.open('schedule');
     }),
     f: onKey(() => {
       if (contact?.followUp) followUp.open('do');
     }),
     i: onKey(() => {
-      if (contact && canNoteInteraction(contact)) interaction.open('note');
+      if (contact && canNoteInteraction(contact.status)) interaction.open('note');
     }),
   });
 }

@@ -16,6 +16,10 @@ export function addDays(day: string, count: number): string {
   return noon.toISOString().slice(0, 10);
 }
 
+/** Whole days from a local day to another one, negative when it is earlier. */
+export const daysBetween = (from: string, to: string): number =>
+  Math.round((noonOf(to).getTime() - noonOf(from).getTime()) / 86_400_000);
+
 /** The Monday of the week of a local day: a week runs from Monday to Sunday (CONTEXT.md, Entry goal). */
 export function mondayOf(day: string): string {
   // Sunday is 0: six days after the Monday.
