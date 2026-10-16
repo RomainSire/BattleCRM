@@ -16,10 +16,33 @@ export const personalized = (content: string, contactName: string): string =>
   );
 
 /**
- * The local day of the first Follow-up of a Cadence, its first interval after the use (CONTEXT.md,
- * Follow-up cadence); none when the Cadence has no interval, only its Response window.
+ * The local day of the Follow-up of a rank of the Cadence, from 1: its interval after the last
+ * outbound Interaction done (CONTEXT.md, Follow-up cadence); none past the last rank, when only the
+ * Response window is left.
  */
-export const firstFollowUpOn = (usedOn: string, followUpDays: readonly number[]) => {
-  const [days] = followUpDays;
-  return days === undefined ? undefined : addDays(usedOn, days);
+export const cadenceFollowUpOn = (
+  rank: number,
+  lastOutboundOn: string,
+  followUpDays: readonly number[],
+) => {
+  const days = followUpDays[rank - 1];
+  return days === undefined ? undefined : addDays(lastOutboundOn, days);
 };
+
+/** The local day of the first Follow-up of a Cadence, its first interval after the use. */
+export const firstFollowUpOn = (usedOn: string, followUpDays: readonly number[]) =>
+  cadenceFollowUpOn(1, usedOn, followUpDays);
+
+/**
+ * The day of a scheduled Follow-up once an outbound Interaction is done (spec UX §6.4): of the
+ * Cadence, its interval counts from the last one, which pushes it back, never forward (a day the User
+ * moved later stays); off the Cadence, it stays.
+ */
+export function shiftedFollowUpOn(
+  { dueOn, rank }: { dueOn: string; rank: number | null },
+  lastOutboundOn: string,
+  followUpDays: readonly number[],
+) {
+  const shifted = rank === null ? undefined : cadenceFollowUpOn(rank, lastOutboundOn, followUpDays);
+  return shifted !== undefined && shifted > dueOn ? shifted : dueOn;
+}

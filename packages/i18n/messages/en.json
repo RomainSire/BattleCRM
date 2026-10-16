@@ -633,5 +633,14 @@
   "follow_up_rank": "Follow-up {rank}",
   "schedule_follow_up_recap_rank": "Follow-up {rank} on {date}",
   "quick_add_send_hint": "Ctrl Enter: add Prospecting and send a Positioning.",
-  "positioning_used_refused": "This Positioning has been used already: archive it instead."
+  "positioning_used_refused": "This Positioning has been used already: archive it instead.",
+  "follow_up_sent": "“{label}” sent on {date}",
+  "follow_up_rank_message": "Message of Follow-up {rank}",
+  "follow_up_no_message": "No message for Follow-up {rank}: write your own.",
+  "follow_up_next_recap": "Then Follow-up {rank} on {date}",
+  "follow_up_next_recap_overdue": "Then Follow-up {rank} on {date} · already overdue",
+  "follow_up_then_window": "Then the Response window ({days} d)",
+  "note_interaction_pushes_follow_up": "Follow-up {rank} moves to {date}",
+  "reply_stops_cadence": "The Cadence stops: the Follow-up on {date} stays scheduled, off cadence",
+  "reply_cancel_follow_up_rank": "Cancel Follow-up {rank} on {date}"
 }

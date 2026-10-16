@@ -1,5 +1,12 @@
 import { FOLLOW_UP_NOTE_MAX_LENGTH } from '@battlecrm/contract';
-import { activityOn, addDays, followUpSignal, hasFollowUps } from '@battlecrm/domain';
+import {
+  activityOn,
+  addDays,
+  cadenceFollowUpOn,
+  followUpSignal,
+  hasFollowUps,
+  personalized,
+} from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
@@ -7,6 +14,7 @@ import { useId, useRef } from 'react';
 import { Form, TextField } from 'react-aria-components';
 import { z } from 'zod';
 
+import { CHANNEL_LABEL } from '../channel.ts';
 import { Button } from '../components/ui/button.tsx';
 import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
 import {
@@ -27,8 +35,11 @@ import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale, type Locale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
+import { CopyButton } from '../settings/copy-button.tsx';
 import { settingsOf } from '../settings/use-settings.ts';
-import { todayOf, type Summary, type SummaryContact } from '../summary.ts';
+import { attachmentsOf, todayOf, type Summary, type SummaryContact } from '../summary.ts';
+import { AttachmentLinks } from './attachment-links.tsx';
+import { lastOutboundOn, lastUseOf } from './cadence.ts';
 import { contactRecordQuery } from './contact-record-query.ts';
 import { formatLocalDay } from './format.ts';
 import type { FollowUpGesture } from './status.ts';
@@ -416,9 +427,10 @@ export function DoneDayField({
 }
 
 /**
- * Follow up… (spec UX §6.3): what to send (off the Cadence, the note of the Follow-up and the last
- * outbound Interaction), then the day it was done and its note, and the summary: +1 to the Activity.
- * `Enter` validates, then “Undo”. No “Done” in one click.
+ * Follow up… (spec UX §6.3): what to send (of the Cadence, what was sent and when, its Channel, the
+ * message of the rank and the attachments; off it, the note of the Follow-up and the last outbound
+ * Interaction), then the day it was done and its note, and the summary: +1 to the Activity, then the
+ * next Follow-up or the Response window. `Enter` validates, then “Undo”. No “Done” in one click.
  */
 function FollowUpPanel({
   contact,
@@ -438,6 +450,10 @@ function FollowUpPanel({
   const { followUp, name } = contact;
   const { data: record } = useQuery(contactRecordQuery(api, contact.id));
   const lastOutbound = record?.thread.find(({ direction }) => direction === 'outbound');
+  // Of the Cadence, it reads the last Positioning used (CONTEXT.md, Follow-up cadence). Fallback: a
+  // summary kept on the device by a version from before ranks carries none.
+  const rank = followUp?.rank ?? null;
+  const lastUse = rank !== null && record ? lastUseOf(record.thread, summary) : undefined;
   const [draft, setDraft, clearDraft] = useSessionDraft(
     `follow-up:${contact.id}`,
     { choice: 'today' as const, otherDay: '', note: followUp?.note ?? '' },
@@ -494,24 +510,30 @@ function FollowUpPanel({
                 >
                   {m.follow_up_send_it()}
                 </h3>
-                <p>
-                  {followUp.note === null
-                    ? m.follow_up_no_note()
-                    : m.follow_up_why({ note: followUp.note })}
-                </p>
-                {record && (
-                  <p className="text-muted-foreground">
-                    {lastOutbound
-                      ? [
-                          m.follow_up_last_outbound({
-                            date: formatLocalDay(lastOutbound.localDate, locale),
-                          }),
-                          lastOutbound.note,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')
-                      : m.follow_up_no_outbound()}
-                  </p>
+                {lastUse && rank !== null ? (
+                  <CadenceToSend sent={lastUse} rank={rank} name={name} note={followUp.note} />
+                ) : (
+                  <>
+                    <p>
+                      {followUp.note === null
+                        ? m.follow_up_no_note()
+                        : m.follow_up_why({ note: followUp.note })}
+                    </p>
+                    {record && (
+                      <p className="text-muted-foreground">
+                        {lastOutbound
+                          ? [
+                              m.follow_up_last_outbound({
+                                date: formatLocalDay(lastOutbound.localDate, locale),
+                              }),
+                              lastOutbound.note,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')
+                          : m.follow_up_no_outbound()}
+                      </p>
+                    )}
+                  </>
                 )}
               </section>
               <section aria-labelledby={confirmHeadingId} className="flex flex-col gap-4">
@@ -532,7 +554,22 @@ function FollowUpPanel({
                   takesFocus
                 />
                 {isDayValid && (
-                  <Recap lines={[activityRecap(occurredOn, today, count, activityGoal, locale)]} />
+                  <Recap
+                    lines={[
+                      activityRecap(occurredOn, today, count, activityGoal, locale),
+                      ...(lastUse && rank !== null && record
+                        ? [
+                            nextFollowUpRecap(
+                              lastUse.positioning,
+                              rank + 1,
+                              lastOutboundOn(record.thread, occurredOn),
+                              today,
+                              locale,
+                            ),
+                          ]
+                        : []),
+                    ]}
+                  />
                 )}
               </section>
               <ErrorMessage>{done.isError ? m.auth_error() : refusalText(done.data)}</ErrorMessage>
@@ -551,6 +588,71 @@ function FollowUpPanel({
       </EnterSubmits>
     </GesturePanel>
   );
+}
+
+/** What “Follow up…” sends for a rank of the Cadence (spec UX §6.3), read from the last Positioning used. */
+function CadenceToSend({
+  sent: { positioning, sentOn },
+  rank,
+  name,
+  note,
+}: {
+  sent: NonNullable<ReturnType<typeof lastUseOf>>;
+  rank: number;
+  name: string;
+  note: string | null;
+}) {
+  const locale = useLocale();
+  const message = positioning.followUps[rank - 1]?.message;
+  const text = message ? personalized(message, name) : undefined;
+  return (
+    <>
+      <p>
+        {m.follow_up_sent({ label: positioning.label, date: formatLocalDay(sentOn, locale) })}
+        <span className="text-muted-foreground">
+          {' · '}
+          {m.send_by_channel({ channel: CHANNEL_LABEL[positioning.channel]() })}
+        </span>
+      </p>
+      {text === undefined ? (
+        <p className="text-muted-foreground">{m.follow_up_no_message({ rank })}</p>
+      ) : (
+        <>
+          <pre
+            aria-label={m.follow_up_rank_message({ rank })}
+            className="max-h-40 overflow-auto rounded-control border bg-surface p-2 font-sans whitespace-pre-wrap"
+          >
+            {text}
+          </pre>
+          <div className="flex flex-wrap items-center gap-2">
+            <CopyButton text={text} label={m.send_copy()} />
+          </div>
+        </>
+      )}
+      <AttachmentLinks attachments={attachmentsOf(positioning)} />
+      {note !== null && <p>{m.follow_up_why({ note })}</p>}
+    </>
+  );
+}
+
+/**
+ * What comes after a Follow-up of the Cadence (spec UX §6.3): the next rank, its interval after the
+ * last outbound Interaction done, or, past the last rank, the Response window.
+ */
+function nextFollowUpRecap(
+  positioning: { followUps: { days: number }[]; responseWindowDays: number },
+  rank: number,
+  lastOutbound: string,
+  today: string,
+  locale: Locale,
+) {
+  const days = positioning.followUps.map((cadenceRank) => cadenceRank.days);
+  const dueOn = cadenceFollowUpOn(rank, lastOutbound, days);
+  if (dueOn === undefined) return m.follow_up_then_window({ days: positioning.responseWindowDays });
+  const date = formatLocalDay(dueOn, locale);
+  return dueOn < today
+    ? m.follow_up_next_recap_overdue({ rank, date })
+    : m.follow_up_next_recap({ rank, date });
 }
 
 /** What a Prospecting action adds to the Activity: today's count against its goal, or the day it was done. */

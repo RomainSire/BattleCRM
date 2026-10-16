@@ -53,10 +53,14 @@ import { localDateOf } from '../settings/index.ts';
 import { contactSubject, type ContactPlace } from './contact-subject.ts';
 import {
   cancelFollowUp,
+  followUpPushed,
+  pushFollowUpBack,
   recordFollowUp,
   scheduledFollowUp,
   scheduleFollowUp,
+  setFollowUpRank,
   setFollowUpStatus,
+  restoreFollowUpDay,
 } from './follow-ups.ts';
 import {
   dayEntered,
@@ -625,12 +629,17 @@ const changeContactStatus: Gesture<
   },
 };
 
-/** What “Note an Interaction” retains: the Interaction it recorded. */
-const interactionNoted = z.object({ interactionId: z.uuid() });
+/** What “Note an Interaction” retains: the Interaction it recorded, the Follow-up it pushed back. */
+const interactionNoted = z.object({
+  interactionId: z.uuid(),
+  // Absent from the gestures recorded before the Cadence.
+  pushed: followUpPushed.optional(),
+});
 
 /**
- * Note an Interaction (spec UX §6.4): outbound, off any Positioning and off the Activity. With an
- * Ally, a free outbound Interaction is a Check-in, which has its own gesture (§6.14).
+ * Note an Interaction (spec UX §6.4): outbound, off any Positioning and off the Activity; it pushes
+ * the Follow-up of the Cadence back. With an Ally, a free outbound Interaction is a Check-in, which
+ * has its own gesture (§6.14).
  */
 const noteInteraction: Gesture<
   'interaction_noted',
@@ -655,25 +664,33 @@ const noteInteraction: Gesture<
       ...day,
       note,
     });
-    return { retained: { interactionId }, touched: touchedContact(contactId) };
+    const pushed = await pushFollowUpBack(tx, userId, contactId);
+    return { retained: { interactionId, pushed }, touched: touchedContact(contactId) };
   },
   retained: interactionNoted,
-  async inverse(tx, { userId, subjectId: contactId, retained: { interactionId } }) {
+  async inverse(tx, { userId, subjectId: contactId, retained: { interactionId, pushed } }) {
+    if (pushed) await restoreFollowUpDay(tx, userId, pushed);
     await removeInteraction(tx, userId, interactionId);
     return touchedContact(contactId);
   },
 };
 
-/** What “Replied…” retains: the reply, the Follow-up it canceled, the change of Status it made. */
+/**
+ * What “Replied…” retains: the reply, the Follow-up it canceled or took off the Cadence (with its
+ * rank), the change of Status it made.
+ */
 const replyRecorded = z.object({
   interactionId: z.uuid(),
   canceledFollowUpId: z.uuid().optional(),
+  // Absent from the gestures recorded before the Cadence.
+  unranked: z.object({ followUpId: z.uuid(), rank: z.int() }).optional(),
   statusChanged: statusChanged.optional(),
 });
 
 /**
- * Replied… (spec UX §6.2): an inbound Interaction, with no nature (ADR 0005). Spontaneous, from the
- * Pool or Archived, it may bring the Contact in or add it to the Circle, dated now (ST-39).
+ * Replied… (spec UX §6.2): an inbound Interaction, with no nature (ADR 0005). It stops the Cadence: a
+ * Follow-up kept is off it from now on. Spontaneous, from the Pool or Archived, it may bring the
+ * Contact in or add it to the Circle, dated now (ST-39).
  */
 const recordReply: Gesture<
   'reply_recorded',
@@ -707,9 +724,15 @@ const recordReply: Gesture<
     } = input;
     const day = await dayEntered(tx, userId, occurredOn, now);
     if ('error' in day) return day;
-    const scheduled = cancelsFollowUp ? await scheduledFollowUp(tx, userId, contactId) : undefined;
+    const scheduled = await scheduledFollowUp(tx, userId, contactId);
     if (cancelsFollowUp && !scheduled) return refusal('no_follow_up');
-    if (scheduled) await setFollowUpStatus(tx, userId, scheduled.id, 'canceled');
+    const canceled = cancelsFollowUp ? scheduled : undefined;
+    if (canceled) await setFollowUpStatus(tx, userId, canceled.id, 'canceled');
+    const unranked =
+      !cancelsFollowUp && scheduled?.rank != null
+        ? { followUpId: scheduled.id, rank: scheduled.rank }
+        : undefined;
+    if (unranked) await setFollowUpRank(tx, userId, unranked.followUpId, null);
     const interactionId = await recordInteraction(tx, {
       userId,
       contactId,
@@ -725,20 +748,26 @@ const recordReply: Gesture<
         : await writeStatusChange(tx, userId, contactId, subject, { status, stageId }, now);
     if (changed && 'error' in changed) return changed;
     return {
-      retained: { interactionId, canceledFollowUpId: scheduled?.id, statusChanged: changed },
+      retained: {
+        interactionId,
+        canceledFollowUpId: canceled?.id,
+        unranked,
+        statusChanged: changed,
+      },
       touched: touchedContact(contactId),
     };
   },
   retained: replyRecorded,
-  /** The reply leaves no trace, the Follow-up comes back, the Status too. */
+  /** The reply leaves no trace, the Follow-up comes back with its rank, the Status too. */
   async inverse(tx, { userId, subjectId: contactId, retained }) {
-    const { interactionId, canceledFollowUpId, statusChanged: changed } = retained;
+    const { interactionId, canceledFollowUpId, unranked, statusChanged: changed } = retained;
     if (changed && !(await canRestoreStatus(tx, userId, changed))) return 'superseded';
     if (changed) await takeBackStatusChange(tx, userId, contactId, changed);
     await removeInteraction(tx, userId, interactionId);
     if (canceledFollowUpId !== undefined) {
       await setFollowUpStatus(tx, userId, canceledFollowUpId, 'scheduled');
     }
+    if (unranked) await setFollowUpRank(tx, userId, unranked.followUpId, unranked.rank);
     return touchedContact(contactId);
   },
 };

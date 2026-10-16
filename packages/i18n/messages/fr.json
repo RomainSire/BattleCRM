@@ -633,5 +633,14 @@
   "follow_up_rank": "Relance {rank}",
   "schedule_follow_up_recap_rank": "Relance {rank} le {date}",
   "quick_add_send_hint": "Ctrl Entrée : ajouter En prospection et lui envoyer un Positionnement.",
-  "positioning_used_refused": "Ce Positionnement a déjà été utilisé : archive-le plutôt."
+  "positioning_used_refused": "Ce Positionnement a déjà été utilisé : archive-le plutôt.",
+  "follow_up_sent": "« {label} » envoyé le {date}",
+  "follow_up_rank_message": "Message de la Relance {rank}",
+  "follow_up_no_message": "Pas de message pour la Relance {rank} : écris le tien.",
+  "follow_up_next_recap": "Puis la Relance {rank} le {date}",
+  "follow_up_next_recap_overdue": "Puis la Relance {rank} le {date} · déjà en retard",
+  "follow_up_then_window": "Puis le Délai de réponse ({days} j)",
+  "note_interaction_pushes_follow_up": "La Relance {rank} passe au {date}",
+  "reply_stops_cadence": "La Cadence s'arrête : la Relance du {date} reste planifiée, hors Cadence",
+  "reply_cancel_follow_up_rank": "Annuler la Relance {rank} du {date}"
 }

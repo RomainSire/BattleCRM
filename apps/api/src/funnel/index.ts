@@ -72,3 +72,15 @@ export async function positioningToUse(tx: Transaction, userId: string, position
     .for('share', { of: positioning });
   return found;
 }
+
+/**
+ * The intervals of the Follow-up cadence of a Positioning of the User, archived or not: what the
+ * Follow-ups of a Contact it was sent to are scheduled by. `undefined` when the User has none by this id.
+ */
+export async function cadenceOf(tx: Transaction, userId: string, positioningId: string) {
+  const [found] = await tx
+    .select({ followUpDays: positioning.followUpDays })
+    .from(positioning)
+    .where(and(eq(positioning.userId, userId), eq(positioning.id, positioningId)));
+  return found?.followUpDays;
+}

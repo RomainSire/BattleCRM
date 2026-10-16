@@ -10,7 +10,6 @@ import {
 import { m } from '@battlecrm/i18n';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { Paperclip } from 'lucide-react';
 import { useId } from 'react';
 import { Form } from 'react-aria-components';
 import { z } from 'zod';
@@ -43,6 +42,7 @@ import {
   type Summary,
   type SummaryContact,
 } from '../summary.ts';
+import { AttachmentLinks } from './attachment-links.tsx';
 import { StageField, statusRecap } from './change-status.tsx';
 import {
   activityRecap,
@@ -380,24 +380,7 @@ function SendPanel({
                         </div>
                       </>
                     )}
-                    {attachments.length > 0 && (
-                      <ul aria-label={m.send_attachments()} className="flex flex-col gap-1">
-                        {attachments.map((attachment) => (
-                          <li key={attachment.id}>
-                            <a
-                              href={
-                                api.attachments[':id'].$url({ param: { id: attachment.id } }).href
-                              }
-                              download={attachment.name}
-                              className="inline-flex items-center gap-1.5 rounded-control text-accent-text underline-offset-4 focus-ring hover:underline"
-                            >
-                              <Paperclip aria-hidden className="size-3.5" />
-                              {attachment.name}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    <AttachmentLinks attachments={attachments} />
                     {content === undefined && attachments.length === 0 && (
                       <p className="text-muted-foreground">{m.send_nothing_to_copy()}</p>
                     )}

@@ -1,19 +1,20 @@
-import { hasFollowUps } from '@battlecrm/domain';
-import { and, eq } from 'drizzle-orm';
+import { cadenceFollowUpOn, hasFollowUps, shiftedFollowUpOn } from '@battlecrm/domain';
+import { and, desc, eq, max } from 'drizzle-orm';
 import { z } from 'zod';
 
 import type { Transaction } from '../db/index.ts';
+import { cadenceOf } from '../funnel/index.ts';
 import { touched, type Gesture } from '../gestures/index.ts';
 import { refusal } from '../refusals.ts';
 import { localDateOf } from '../settings/index.ts';
 import { contactSubject, type ContactPlace } from './contact-subject.ts';
 import { dayEntered, recordInteraction, removeInteraction } from './interactions.ts';
-import { followUp } from './tables.ts';
+import { followUp, interaction } from './tables.ts';
 
 /** The scheduled Follow-up of a Contact, if it has one. */
 export async function scheduledFollowUp(tx: Transaction, userId: string, contactId: string) {
   const [scheduled] = await tx
-    .select({ id: followUp.id, dueOn: followUp.dueOn, note: followUp.note })
+    .select({ id: followUp.id, dueOn: followUp.dueOn, note: followUp.note, rank: followUp.rank })
     .from(followUp)
     .where(
       and(
@@ -25,6 +26,78 @@ export async function scheduledFollowUp(tx: Transaction, userId: string, contact
   return scheduled;
 }
 
+/**
+ * The intervals of the Cadence a Contact is on: those of the last Positioning used on it (CONTEXT.md,
+ * Follow-up cadence); none when none was.
+ */
+async function cadenceDays(tx: Transaction, userId: string, contactId: string) {
+  const [lastUse] = await tx
+    .select({ positioningId: interaction.positioningId })
+    .from(interaction)
+    .where(
+      and(
+        eq(interaction.userId, userId),
+        eq(interaction.contactId, contactId),
+        eq(interaction.kind, 'positioning_used'),
+      ),
+    )
+    .orderBy(desc(interaction.occurredAt), desc(interaction.id))
+    .limit(1);
+  return lastUse?.positioningId ? cadenceOf(tx, userId, lastUse.positioningId) : undefined;
+}
+
+/** The local day of the last outbound Interaction done with a Contact: what each interval counts from. */
+async function lastOutboundOn(tx: Transaction, userId: string, contactId: string) {
+  const [last] = await tx
+    .select({ on: max(interaction.localDate) })
+    .from(interaction)
+    .where(
+      and(
+        eq(interaction.userId, userId),
+        eq(interaction.contactId, contactId),
+        eq(interaction.direction, 'outbound'),
+      ),
+    );
+  return last?.on ?? undefined;
+}
+
+/** What pushing a Follow-up of the Cadence back retains: the Follow-up, and its day before. */
+export const followUpPushed = z.object({ followUpId: z.uuid(), dueOn: z.iso.date() });
+
+/**
+ * Once an outbound Interaction is recorded (spec UX §6.4): the scheduled Follow-up of the Cadence
+ * pushed back, its interval counted from the last one done. What it was, if it moved.
+ */
+export async function pushFollowUpBack(
+  tx: Transaction,
+  userId: string,
+  contactId: string,
+): Promise<z.infer<typeof followUpPushed> | undefined> {
+  const scheduled = await scheduledFollowUp(tx, userId, contactId);
+  if (scheduled?.rank == null) return undefined;
+  const days = await cadenceDays(tx, userId, contactId);
+  const lastOn = await lastOutboundOn(tx, userId, contactId);
+  if (days === undefined || lastOn === undefined) return undefined;
+  const dueOn = shiftedFollowUpOn(scheduled, lastOn, days);
+  if (dueOn === scheduled.dueOn) return undefined;
+  await tx
+    .update(followUp)
+    .set({ dueOn })
+    .where(and(eq(followUp.userId, userId), eq(followUp.id, scheduled.id)));
+  return { followUpId: scheduled.id, dueOn: scheduled.dueOn };
+}
+
+/** Gives a Follow-up of the Cadence pushed back its day as it was. */
+export const restoreFollowUpDay = (
+  tx: Transaction,
+  userId: string,
+  { followUpId, dueOn }: z.infer<typeof followUpPushed>,
+) =>
+  tx
+    .update(followUp)
+    .set({ dueOn })
+    .where(and(eq(followUp.userId, userId), eq(followUp.id, followUpId)));
+
 /** Cancels a Follow-up, or schedules it again, as it was. */
 export const setFollowUpStatus = (
   tx: Transaction,
@@ -35,6 +108,18 @@ export const setFollowUpStatus = (
   tx
     .update(followUp)
     .set({ status })
+    .where(and(eq(followUp.userId, userId), eq(followUp.id, followUpId)));
+
+/** Takes a Follow-up off the Cadence, or gives it its rank back. */
+export const setFollowUpRank = (
+  tx: Transaction,
+  userId: string,
+  followUpId: string,
+  rank: number | null,
+) =>
+  tx
+    .update(followUp)
+    .set({ rank })
     .where(and(eq(followUp.userId, userId), eq(followUp.id, followUpId)));
 
 /** What “Schedule a follow-up” retains: the Follow-up, and what it was before, if it was. */
@@ -121,12 +206,38 @@ export const cancelFollowUp: Gesture<
   },
 };
 
-/** What “Follow up…” retains: the Follow-up done, and the Interaction it became. */
-const followedUp = z.object({ followUpId: z.uuid(), interactionId: z.uuid() });
+/** Schedules the Follow-up of a rank of the Cadence, if it has one: its id. */
+async function scheduleNextRank(
+  tx: Transaction,
+  userId: string,
+  contactId: string,
+  rank: number,
+  now: Date,
+) {
+  const days = await cadenceDays(tx, userId, contactId);
+  const lastOn = await lastOutboundOn(tx, userId, contactId);
+  const dueOn = days && lastOn && cadenceFollowUpOn(rank, lastOn, days);
+  if (!dueOn) return undefined;
+  const [scheduled] = await tx
+    .insert(followUp)
+    .values({ userId, contactId, status: 'scheduled', dueOn, rank, scheduledAt: now })
+    .returning({ id: followUp.id });
+  if (!scheduled) throw new Error('A Follow-up was not scheduled');
+  return scheduled.id;
+}
+
+/** What “Follow up…” retains: the Follow-up done, the Interaction it became, the next one it scheduled. */
+const followedUp = z.object({
+  followUpId: z.uuid(),
+  interactionId: z.uuid(),
+  // Absent from the gestures recorded before the Cadence.
+  nextFollowUpId: z.uuid().optional(),
+});
 
 /**
  * Follow up… (spec UX §6.3): the scheduled Follow-up becomes an outbound Interaction, dated the local
- * day entered (ST-36), a Prospecting action.
+ * day entered (ST-36), a Prospecting action. Of the Cadence, the app schedules the next rank, its
+ * interval after the last outbound Interaction done; past the last rank, the Response window is next.
  */
 export const recordFollowUp: Gesture<
   'followed_up',
@@ -154,14 +265,24 @@ export const recordFollowUp: Gesture<
       .update(followUp)
       .set({ status: 'done', interactionId })
       .where(and(eq(followUp.userId, userId), eq(followUp.id, scheduled.id)));
+    const nextFollowUpId =
+      scheduled.rank === null
+        ? undefined
+        : await scheduleNextRank(tx, userId, contactId, scheduled.rank + 1, now);
     return {
-      retained: { followUpId: scheduled.id, interactionId },
+      retained: { followUpId: scheduled.id, interactionId, nextFollowUpId },
       touched: touched({ contactIds: [contactId] }),
     };
   },
   retained: followedUp,
-  /** The Interaction leaves no trace, and the Follow-up is scheduled again. */
-  async inverse(tx, { userId, subjectId: contactId, retained: { followUpId, interactionId } }) {
+  /** The Interaction leaves no trace, nor the next Follow-up, and the Follow-up is scheduled again. */
+  async inverse(tx, { userId, subjectId: contactId, retained }) {
+    const { followUpId, interactionId, nextFollowUpId } = retained;
+    if (nextFollowUpId !== undefined) {
+      await tx
+        .delete(followUp)
+        .where(and(eq(followUp.userId, userId), eq(followUp.id, nextFollowUpId)));
+    }
     await tx
       .update(followUp)
       .set({ status: 'scheduled', interactionId: null })

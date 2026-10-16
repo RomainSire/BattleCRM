@@ -12,7 +12,7 @@ import {
   stageToEnter,
 } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useId, useState } from 'react';
 import { Form } from 'react-aria-components';
@@ -38,7 +38,9 @@ import { useLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { todayOf, type Summary, type SummaryContact } from '../summary.ts';
+import { pushedFollowUpOn } from './cadence.ts';
 import { StageField, statusChangedMessage, statusRecap } from './change-status.tsx';
+import { contactRecordQuery } from './contact-record-query.ts';
 import {
   doneDayDraft,
   doneDayOf,
@@ -122,6 +124,7 @@ function NoteInteractionPanel({
   onClose: () => void;
   onReply: () => void;
 }) {
+  const locale = useLocale();
   const api = useApi();
   const sendGesture = useSendGesture();
   const today = todayOf(summary);
@@ -132,6 +135,12 @@ function NoteInteractionPanel({
     noteDraft,
   );
   const { day: occurredOn, isValid: isDayValid } = doneDayOf(draft, today);
+  const { data: record } = useQuery(contactRecordQuery(api, contact.id));
+  // It pushes the Follow-up of the Cadence back (spec UX §6.4).
+  const pushedOn =
+    isDayValid && record
+      ? pushedFollowUpOn(contact.followUp, record.thread, summary, occurredOn)
+      : undefined;
   const close = () => {
     clearDraft();
     onClose();
@@ -202,7 +211,19 @@ function NoteInteractionPanel({
                   {m.verb_reply()}
                 </Button>
               </p>
-              <Recap lines={[m.note_interaction_off_activity()]} />
+              <Recap
+                lines={[
+                  m.note_interaction_off_activity(),
+                  ...(pushedOn !== undefined && contact.followUp?.rank != null
+                    ? [
+                        m.note_interaction_pushes_follow_up({
+                          rank: contact.followUp.rank,
+                          date: formatLocalDay(pushedOn, locale),
+                        }),
+                      ]
+                    : []),
+                ]}
+              />
               <ErrorMessage>{note.isError ? m.auth_error() : refusalText(note.data)}</ErrorMessage>
             </GesturePanelBody>
             <GesturePanelFooter>
@@ -318,6 +339,10 @@ function ReplyPanel({
   const recap: string[] = [];
   if (cancelsFollowUp) {
     recap.push(m.change_status_cancels_follow_up({ date: formatLocalDay(followUp.dueOn, locale) }));
+  } else if (followUp?.rank != null) {
+    // `!= null`, fallback: a summary kept on the device by a version from before ranks carries none.
+    // The reply stops the Cadence: the Follow-up kept is off it (CONTEXT.md, Follow-up cadence).
+    recap.push(m.reply_stops_cadence({ date: formatLocalDay(followUp.dueOn, locale) }));
   }
   // The Days since contact of an Ally count from its last Interaction done (CONTEXT.md): the reply,
   // unless a later one was done.
@@ -421,7 +446,12 @@ function ReplyPanel({
                       onChange={(cancelFollowUp) => setDraft({ ...draft, cancelFollowUp })}
                       className="max-md:min-h-11"
                     >
-                      {m.reply_cancel_follow_up({ date: formatLocalDay(followUp.dueOn, locale) })}
+                      {followUp.rank == null
+                        ? m.reply_cancel_follow_up({ date: formatLocalDay(followUp.dueOn, locale) })
+                        : m.reply_cancel_follow_up_rank({
+                            rank: followUp.rank,
+                            date: formatLocalDay(followUp.dueOn, locale),
+                          })}
                     </Checkbox>
                   )}
                   {mayScheduleFollowUp && (
