@@ -4,6 +4,8 @@ import { commands, page } from 'vitest/browser';
 import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi, signedOut } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
+import { contact, summary } from '../../test/summary.ts';
+import { SUMMARY_KEY } from '../summary.ts';
 
 const PASSWORD = 'correct horse battery staple';
 const SIGN_IN = 'POST /api/auth/sign-in/email';
@@ -386,25 +388,7 @@ describe('signing out', () => {
 
   test('from the sidebar: no confirmation, the device keeps nothing, back to signing in', async () => {
     const { screen, router, api, queryClient } = await renderApp('/contacts', fakeApi(signsOut));
-    queryClient.setQueryData(['summary'], {
-      contacts: [
-        {
-          id: '01990000-0000-7000-8000-000000000001',
-          name: 'Jean Dupont',
-          status: 'pool',
-          stageId: null,
-          organizationId: null,
-          jobTitle: null,
-          email: null,
-          phone: null,
-          linkedinUrl: null,
-          lastInteractionAt: '2026-01-06T09:00:00.000Z',
-          lastInteractionOn: '2026-01-06',
-        },
-      ],
-      stages: [],
-      organizations: [],
-    });
+    queryClient.setQueryData(SUMMARY_KEY, summary({ contacts: [contact()] }));
     const menu = screen.getByRole('navigation', { name: 'Menu principal' });
     await expect.element(menu.getByText('jane@example.com')).toBeVisible();
 
@@ -413,7 +397,7 @@ describe('signing out', () => {
     await expect.element(heading(screen, 'Connexion')).toBeVisible();
     expect(router.state.location.href).toBe('/sign-in');
     expect(api.sent(SIGN_OUT)).toHaveLength(1);
-    expect(queryClient.getQueryData(['summary'])).toBeUndefined();
+    expect(queryClient.getQueryData(SUMMARY_KEY)).toBeUndefined();
     expect(queryClient.getQueryData(['session'])).toBeNull();
   });
 

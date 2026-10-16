@@ -1,10 +1,12 @@
-import { setLocale } from '@battlecrm/i18n/runtime';
+import { getLocale, setLocale } from '@battlecrm/i18n/runtime';
 import { beforeEach, describe, expect, test } from 'vitest';
 import { commands, page } from 'vitest/browser';
 
 import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
+import { contact, summary } from '../../test/summary.ts';
+import { SUMMARY_KEY } from '../summary.ts';
 
 const SESSIONS = 'GET /api/sessions';
 const REVOKE_OTHERS = 'POST /api/sessions/revoke-others';
@@ -36,6 +38,8 @@ const unnamed = {
 function withSessions(...initial: (typeof laptop | typeof unnamed)[]) {
   let sessions = initial;
   return fakeApi({
+    // The User speaks the language of this device: the summary keeps it.
+    'GET /api/summary': () => Response.json(summary({ settings: { locale: getLocale() } })),
     [SESSIONS]: () => Response.json({ sessions }),
     [REVOKE_OTHERS]: () => {
       sessions = sessions.filter((session) => session.current);
@@ -234,19 +238,7 @@ describe('a device whose session was ended from elsewhere (ST-04)', () => {
     await expect
       .element(screen.getByRole('heading', { level: 1 }))
       .toHaveTextContent("Aujourd'hui");
-    queryClient.setQueryData(['summary'], {
-      contacts: [
-        {
-          id: '01990000-0000-7000-8000-000000000001',
-          name: 'Jean Dupont',
-          status: 'pool',
-          stageId: null,
-          lastInteractionAt: '2026-01-06T09:00:00.000Z',
-          lastInteractionOn: '2026-01-06',
-        },
-      ],
-      stages: [],
-    });
+    queryClient.setQueryData(SUMMARY_KEY, summary({ contacts: [contact()] }));
 
     await screen
       .getByRole('navigation', { name: 'Menu principal' })
@@ -256,7 +248,7 @@ describe('a device whose session was ended from elsewhere (ST-04)', () => {
     await expect
       .element(screen.getByRole('heading', { level: 1, name: 'Connexion' }))
       .toBeVisible();
-    expect(queryClient.getQueryData(['summary'])).toBeUndefined();
+    expect(queryClient.getQueryData(SUMMARY_KEY)).toBeUndefined();
     expect(queryClient.getQueryData(['session'])).toBeNull();
     expect(router.state.location.pathname).toBe('/sign-in');
     expect(router.state.location.search).toEqual({ redirect: '/settings' });

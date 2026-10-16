@@ -4,39 +4,28 @@ import { commands, page, userEvent } from 'vitest/browser';
 import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
+import { contact, organization, stage, summary } from '../../test/summary.ts';
+import type { SummaryContact } from '../summary.ts';
 
 const desktop = () => page.viewport(1280, 800);
 const mobile = () => page.viewport(390, 800);
 
-const CAPGEMINI = {
+const CAPGEMINI = organization({
   id: '01990000-0000-7000-8000-000000000021',
   name: 'Capgemini',
   type: 'consultancy',
-};
-const NORDIKA = { id: '01990000-0000-7000-8000-000000000022', name: 'Nordika', type: 'end_client' };
-const OUTREACH = {
+});
+const NORDIKA = organization({
+  id: '01990000-0000-7000-8000-000000000022',
+  name: 'Nordika',
+  type: 'end_client',
+});
+const OUTREACH = stage({
   id: '01990000-0000-7000-8000-000000000011',
   name: 'Approche',
   aim: 'CV à envoyer',
-  archived: false,
-};
-
-/** A Contact as the summary carries it, with nothing but what is given. */
-const contact = <F extends { id: string; lastInteractionAt: string; lastInteractionOn: string }>(
-  fields: F,
-) => ({
-  stageId: null as string | null,
-  organizationId: null as string | null,
-  jobTitle: null as string | null,
-  email: null as string | null,
-  phone: null as string | null,
-  linkedinUrl: null as string | null,
-  funnelEntryDays: [] as string[],
-  statusReason: null as string | null,
-  followUp: null as { dueOn: string; note: string | null } | null,
-  prospectingActionDays: [] as string[],
-  ...fields,
 });
+
 const JULIE = contact({
   id: '01990000-0000-7000-8000-000000000001',
   name: 'Julie Martin',
@@ -116,10 +105,10 @@ const recordOf = (
 
 const RECORD_ROUTE = (id: string) => `GET /api/contacts/${id}/record`;
 
-const contactsApi = (contacts: unknown[] = CONTACTS) =>
+const contactsApi = (contacts: SummaryContact[] = CONTACTS) =>
   fakeApi({
     'GET /api/summary': () =>
-      Response.json({ contacts, stages: [OUTREACH], organizations: [CAPGEMINI, NORDIKA] }),
+      Response.json(summary({ contacts, stages: [OUTREACH], organizations: [CAPGEMINI, NORDIKA] })),
     [RECORD_ROUTE(JULIE.id)]: () => Response.json(JULIE_RECORD),
     [RECORD_ROUTE(THOMAS.id)]: () => Response.json(recordOf(THOMAS, 'pool')),
     [RECORD_ROUTE(INES.id)]: () => Response.json(recordOf(INES, 'ally')),
@@ -301,8 +290,7 @@ test('the thread that does not load says so, and the rest of the record stays', 
   await renderApp(
     `/contacts/${THOMAS.id}`,
     fakeApi({
-      'GET /api/summary': () =>
-        Response.json({ contacts: CONTACTS, stages: [OUTREACH], organizations: [] }),
+      'GET /api/summary': () => Response.json(summary({ contacts: CONTACTS, stages: [OUTREACH] })),
     }),
   );
 

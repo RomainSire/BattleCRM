@@ -6,6 +6,8 @@ import { z } from 'zod';
 import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
+import { changes, contact, stage, summary } from '../../test/summary.ts';
+import type { SummaryContact } from '../summary.ts';
 
 const desktop = () => page.viewport(1280, 800);
 
@@ -18,57 +20,36 @@ const shown = (day: string) =>
     new Date(`${day}T12:00:00Z`),
   );
 
-const OUTREACH = {
-  id: '01990000-0000-7000-8000-000000000011',
-  name: 'Approche',
-  aim: null,
-  archived: false,
-};
+const OUTREACH = stage({ id: '01990000-0000-7000-8000-000000000011', name: 'Approche' });
 
-type FollowUp = { dueOn: string; note: string | null } | null;
-type Row = {
-  id: string;
-  name: string;
-  status: string;
-  followUp: FollowUp;
-  prospectingActionDays: string[];
-};
-
-const contact = (fields: Pick<Row, 'id' | 'name'> & Partial<Row>) => ({
-  status: 'prospecting',
-  stageId: OUTREACH.id,
-  organizationId: null,
-  jobTitle: null,
-  email: null,
-  phone: null,
-  linkedinUrl: null,
-  lastInteractionAt: '2026-01-08T09:00:00.000Z',
-  lastInteractionOn: '2026-01-08',
-  funnelEntryDays: [] as string[],
-  statusReason: null,
-  followUp: null as FollowUp,
-  prospectingActionDays: [] as string[],
-  ...fields,
-});
+/** A Contact Prospecting at Approche, unless told otherwise. */
+const prospect = (fields: Partial<SummaryContact>) =>
+  contact({
+    status: 'prospecting',
+    stageId: OUTREACH.id,
+    lastInteractionAt: '2026-01-08T09:00:00.000Z',
+    lastInteractionOn: '2026-01-08',
+    ...fields,
+  });
 
 /** Prospecting, nothing scheduled. */
-const MARC = contact({ id: '01990000-0000-7000-8000-000000000002', name: 'Marc Petit' });
+const MARC = prospect({ id: '01990000-0000-7000-8000-000000000002', name: 'Marc Petit' });
 /** Prospecting, her Follow-up two days overdue; she was followed up once already. */
 const julie = () =>
-  contact({
+  prospect({
     id: '01990000-0000-7000-8000-000000000001',
     name: 'Julie Martin',
     followUp: { dueOn: addDays(today(), -2), note: 'Relancer sur le devis' },
   });
 /** An Ally whose Follow-up is to come. */
 const ines = () =>
-  contact({
+  prospect({
     id: '01990000-0000-7000-8000-000000000003',
     name: 'Inès Moreau',
     status: 'ally',
     followUp: { dueOn: addDays(today(), 5), note: null },
   });
-const LEA = contact({
+const LEA = prospect({
   id: '01990000-0000-7000-8000-000000000004',
   name: 'Léa Bernard',
   status: 'pool',
@@ -79,15 +60,6 @@ const UNDO_ROUTE = `POST /api/gestures/${UNDO_TOKEN}/undo`;
 const scheduleRoute = (id: string) => `POST /api/contacts/${id}/schedule-follow-up`;
 const cancelRoute = (id: string) => `POST /api/contacts/${id}/cancel-follow-up`;
 const followUpRoute = (id: string) => `POST /api/contacts/${id}/follow-up`;
-
-const changes = (contacts: object[]) => ({
-  contacts,
-  removedContactIds: [],
-  organizations: [],
-  removedOrganizationIds: [],
-  positionings: [],
-  removedPositioningIds: [],
-});
 
 /** Julie's thread: the last time she was followed up, with what was sent. */
 const thread = (id: string) => ({
@@ -116,34 +88,25 @@ function followUpApi(
   const contacts = [MARC, julie(), ines(), LEA];
   // Two Prospecting actions today already, on another Contact.
   contacts.push(
-    contact({
+    prospect({
       id: '01990000-0000-7000-8000-000000000005',
       name: 'Paul Durand',
       prospectingActionDays: [today(), today()],
     }),
   );
   // What “Undo” gives back: the Contact as it was before the latest gesture.
-  let undone: object = MARC;
+  let undone: SummaryContact = MARC;
   const routes: Parameters<typeof fakeApi>[0] = {
     'GET /api/summary': () =>
-      Response.json({
-        timeZone: TIME_ZONE,
-        settings: {
-          locale: 'fr',
-          timeZone: { inEffect: TIME_ZONE, chosen: TIME_ZONE },
-          activityGoal: { inEffect: activityGoal, chosen: activityGoal },
-          entryGoal: { inEffect: 5, chosen: 5 },
-          celebrateGoal: true,
-          singleKeyShortcuts: true,
-          checkInRhythmDays: 28,
-          circleSizeGoal: 10,
-          defaultCadence: { intervals: [3, 7, 14], responseWindowDays: 14 },
-        },
-        contacts,
-        stages: [OUTREACH],
-        organizations: [],
-      }),
-    [UNDO_ROUTE]: () => Response.json({ changes: changes([undone]) }),
+      Response.json(
+        summary({
+          timeZone: TIME_ZONE,
+          settings: { activityGoal: { inEffect: activityGoal, chosen: activityGoal } },
+          contacts,
+          stages: [OUTREACH],
+        }),
+      ),
+    [UNDO_ROUTE]: () => Response.json({ changes: changes({ contacts: [undone] }) }),
   };
   for (const before of contacts) {
     routes[`GET /api/contacts/${before.id}/record`] = () => Response.json(thread(before.id));
@@ -153,14 +116,14 @@ function followUpApi(
         .parse(body);
       undone = before;
       return Response.json({
-        changes: changes([{ ...before, followUp: { dueOn, note: note ?? null } }]),
+        changes: changes({ contacts: [{ ...before, followUp: { dueOn, note: note ?? null } }] }),
         undoToken: UNDO_TOKEN,
       });
     };
     routes[cancelRoute(before.id)] = () => {
       undone = before;
       return Response.json({
-        changes: changes([{ ...before, followUp: null }]),
+        changes: changes({ contacts: [{ ...before, followUp: null }] }),
         undoToken: UNDO_TOKEN,
       });
     };
@@ -170,13 +133,15 @@ function followUpApi(
         .parse(body);
       undone = before;
       return Response.json({
-        changes: changes([
-          {
-            ...before,
-            followUp: null,
-            prospectingActionDays: [...before.prospectingActionDays, occurredOn],
-          },
-        ]),
+        changes: changes({
+          contacts: [
+            {
+              ...before,
+              followUp: null,
+              prospectingActionDays: [...before.prospectingActionDays, occurredOn],
+            },
+          ],
+        }),
         undoToken: UNDO_TOKEN,
       });
     };

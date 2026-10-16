@@ -12,6 +12,7 @@ export type {
   SummaryContact,
   SummaryOrganization,
   SummaryPositioning,
+  SummarySettings,
 } from '@battlecrm/contract';
 
 export const SUMMARY_KEY = ['summary'];
@@ -33,11 +34,20 @@ export const summaryQuery = (api: ApiClient) =>
     retry: false,
   });
 
-/** Today for the User, in its time zone: what a Follow-up is due on, the Activity and the Funnel entries counted on. */
-export const todayOf = (summary: Summary) => localDay(new Date(), summary.timeZone);
+/** The time zone of the User in effect now. */
+export function timeZoneOf(summary: Summary | undefined): string {
+  // Fallback: while the summary is read, or in a summary kept on the device by a version from
+  // before the time zone, this device's.
+  const timeZone: string | undefined = summary?.timeZone;
+  return timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
 
-/** The Positionings of the User, the earliest first; none in a summary kept from before them. */
+/** Today for the User, in its time zone: what a Follow-up is due on, the Activity and the Funnel entries counted on. */
+export const todayOf = (summary: Summary) => localDay(new Date(), timeZoneOf(summary));
+
+/** The Positionings of the User, the earliest first. */
 export function positioningsOf(summary: Summary): SummaryPositioning[] {
+  // Fallback: a summary kept on the device by a version from before Positionings carries none.
   const positionings: SummaryPositioning[] | undefined = summary.positionings;
   return positionings ?? [];
 }
@@ -45,8 +55,9 @@ export function positioningsOf(summary: Summary): SummaryPositioning[] {
 /** Frozen from its first Trial (CONTEXT.md, Positioning). */
 export const isFrozen = ({ trialCount }: SummaryPositioning) => trialCount > 0;
 
-/** The attachments of a Positioning; none in a summary kept from before them. */
+/** The attachments of a Positioning. */
 export function attachmentsOf(positioning: SummaryPositioning): SummaryPositioning['attachments'] {
+  // Fallback: a summary kept on the device by a version from before attachments carries none.
   const attachments: SummaryPositioning['attachments'] | undefined = positioning.attachments;
   return attachments ?? [];
 }

@@ -6,6 +6,8 @@ import { z } from 'zod';
 import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
+import { changes, contact, stage, summary } from '../../test/summary.ts';
+import type { SummaryContact } from '../summary.ts';
 
 const desktop = () => page.viewport(1280, 800);
 
@@ -18,51 +20,35 @@ const shown = (day: string) =>
     new Date(`${day}T12:00:00Z`),
   );
 
-const OUTREACH = {
-  id: '01990000-0000-7000-8000-000000000011',
-  name: 'Approche',
-  aim: null,
-  archived: false,
-};
+const OUTREACH = stage({ id: '01990000-0000-7000-8000-000000000011', name: 'Approche' });
 
-type FollowUp = { dueOn: string; note: string | null } | null;
-type Row = { id: string; name: string; status: string; followUp: FollowUp };
-
-const contact = (fields: Pick<Row, 'id' | 'name'> & Partial<Row>) => ({
-  status: 'prospecting',
-  stageId: OUTREACH.id,
-  organizationId: null,
-  jobTitle: null,
-  email: null,
-  phone: null,
-  linkedinUrl: null,
-  lastInteractionAt: '2026-01-08T09:00:00.000Z',
-  lastInteractionOn: '2026-01-08',
-  lastDoneInteractionOn: null as string | null,
-  funnelEntryDays: [] as string[],
-  statusReason: null,
-  followUp: null as FollowUp,
-  prospectingActionDays: [] as string[],
-  ...fields,
-});
+/** A Contact Prospecting at Approche, unless told otherwise. */
+const prospect = (fields: Partial<SummaryContact>) =>
+  contact({
+    status: 'prospecting',
+    stageId: OUTREACH.id,
+    lastInteractionAt: '2026-01-08T09:00:00.000Z',
+    lastInteractionOn: '2026-01-08',
+    ...fields,
+  });
 
 /** Prospecting, nothing scheduled. */
-const MARC = contact({ id: '01990000-0000-7000-8000-000000000002', name: 'Marc Petit' });
+const MARC = prospect({ id: '01990000-0000-7000-8000-000000000002', name: 'Marc Petit' });
 /** Prospecting, a Follow-up to come. */
 const julie = () =>
-  contact({
+  prospect({
     id: '01990000-0000-7000-8000-000000000001',
     name: 'Julie Martin',
     followUp: { dueOn: addDays(today(), 4), note: 'Relancer sur le devis' },
   });
 /** An Ally, nothing scheduled. */
-const INES = contact({
+const INES = prospect({
   id: '01990000-0000-7000-8000-000000000003',
   name: 'Inès Moreau',
   status: 'ally',
 });
 /** In the Pool, where it left the Funnel at Outreach. */
-const LEA = contact({
+const LEA = prospect({
   id: '01990000-0000-7000-8000-000000000004',
   name: 'Léa Bernard',
   status: 'pool',
@@ -73,39 +59,21 @@ const UNDO_ROUTE = `POST /api/gestures/${UNDO_TOKEN}/undo`;
 const noteRoute = (id: string) => `POST /api/contacts/${id}/note-interaction`;
 const replyRoute = (id: string) => `POST /api/contacts/${id}/record-reply`;
 
-const changes = (contacts: object[]) => ({
-  contacts,
-  removedContactIds: [],
-  organizations: [],
-  removedOrganizationIds: [],
-  positionings: [],
-  removedPositioningIds: [],
-});
-
 /** An API that notes Interactions and records replies as the server would, and takes them back. */
 function interactionApi(overrides: Parameters<typeof fakeApi>[0] = {}) {
   const contacts = [MARC, julie(), INES, LEA];
-  let undone: object = MARC;
+  let undone: SummaryContact = MARC;
   const routes: Parameters<typeof fakeApi>[0] = {
     'GET /api/summary': () =>
-      Response.json({
-        timeZone: TIME_ZONE,
-        settings: {
-          locale: 'fr',
-          timeZone: { inEffect: TIME_ZONE, chosen: TIME_ZONE },
-          activityGoal: { inEffect: 3, chosen: 3 },
-          entryGoal: { inEffect: 5, chosen: 5 },
-          celebrateGoal: true,
-          singleKeyShortcuts: true,
-          checkInRhythmDays: 28,
-          circleSizeGoal: 10,
-          defaultCadence: { intervals: [3, 7, 14], responseWindowDays: 14 },
-        },
-        contacts,
-        stages: [OUTREACH],
-        organizations: [],
-      }),
-    [UNDO_ROUTE]: () => Response.json({ changes: changes([undone]) }),
+      Response.json(
+        summary({
+          timeZone: TIME_ZONE,
+          settings: { activityGoal: { inEffect: 3, chosen: 3 } },
+          contacts,
+          stages: [OUTREACH],
+        }),
+      ),
+    [UNDO_ROUTE]: () => Response.json({ changes: changes({ contacts: [undone] }) }),
   };
   for (const before of contacts) {
     routes[`GET /api/contacts/${before.id}/record`] = () =>
@@ -116,7 +84,7 @@ function interactionApi(overrides: Parameters<typeof fakeApi>[0] = {}) {
         .parse(body);
       undone = before;
       return Response.json({
-        changes: changes([{ ...before, lastDoneInteractionOn: occurredOn }]),
+        changes: changes({ contacts: [{ ...before, lastDoneInteractionOn: occurredOn }] }),
         undoToken: UNDO_TOKEN,
       });
     };
@@ -133,14 +101,16 @@ function interactionApi(overrides: Parameters<typeof fakeApi>[0] = {}) {
         .parse(body);
       undone = before;
       return Response.json({
-        changes: changes([
-          {
-            ...before,
-            lastDoneInteractionOn: occurredOn,
-            ...(cancelFollowUp && { followUp: null }),
-            ...(status && { status, stageId: stageId ?? before.stageId }),
-          },
-        ]),
+        changes: changes({
+          contacts: [
+            {
+              ...before,
+              lastDoneInteractionOn: occurredOn,
+              ...(cancelFollowUp && { followUp: null }),
+              ...(status && { status, stageId: stageId ?? before.stageId }),
+            },
+          ],
+        }),
         undoToken: UNDO_TOKEN,
       });
     };

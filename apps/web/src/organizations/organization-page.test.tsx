@@ -5,99 +5,92 @@ import { z } from 'zod';
 import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
+import { changes, contact, organization, stage, summary } from '../../test/summary.ts';
 
 const desktop = () => page.viewport(1280, 800);
 
-const ACME = { id: '01990000-0000-7000-8000-000000000021', name: 'Acme', type: 'end_client' };
-const ACME_TYPO = { id: '01990000-0000-7000-8000-000000000022', name: 'Acmé', type: 'consultancy' };
-const GLOBEX = { id: '01990000-0000-7000-8000-000000000023', name: 'Globex', type: 'consultancy' };
-const OUTREACH = {
+const ACME = organization({
+  id: '01990000-0000-7000-8000-000000000021',
+  name: 'Acme',
+  type: 'end_client',
+});
+const ACME_TYPO = organization({ id: '01990000-0000-7000-8000-000000000022', name: 'Acmé' });
+const GLOBEX = organization({ id: '01990000-0000-7000-8000-000000000023', name: 'Globex' });
+const OUTREACH = stage({
   id: '01990000-0000-7000-8000-000000000011',
   name: 'Approche',
   aim: 'CV à envoyer',
-  archived: false,
-};
+});
 
-const JULIE = {
+const JULIE = contact({
   id: '01990000-0000-7000-8000-000000000001',
   name: 'Julie Martin',
   status: 'prospecting',
   stageId: OUTREACH.id,
   organizationId: ACME.id,
-  jobTitle: null,
-  email: null,
-  phone: null,
-  linkedinUrl: null,
   lastInteractionAt: '2026-01-08T09:00:00.000Z',
   lastInteractionOn: '2026-01-08',
-  followUp: null,
-  prospectingActionDays: [],
-};
-const INES = {
+});
+const INES = contact({
   ...JULIE,
   id: '01990000-0000-7000-8000-000000000003',
   name: 'Inès Moreau',
   status: 'ally',
   stageId: null,
-};
-const PAUL = {
+});
+const PAUL = contact({
   ...JULIE,
   id: '01990000-0000-7000-8000-000000000004',
   name: 'Paul Durand',
   status: 'pool',
   stageId: null,
   organizationId: ACME_TYPO.id,
-};
-
-const changes = (organizations: object[], more: object = {}) => ({
-  contacts: [],
-  removedContactIds: [],
-  organizations,
-  removedOrganizationIds: [],
-  positionings: [],
-  removedPositioningIds: [],
-  ...more,
 });
 
-const route = (organization: { id: string }, gesture: string) =>
-  `POST /api/organizations/${organization.id}/${gesture}`;
+const route = (target: { id: string }, gesture: string) =>
+  `POST /api/organizations/${target.id}/${gesture}`;
 
 /** An API that knows Acme and its two Contacts, Acmé and Paul, Globex alone; each gesture answers as the server would. */
 function organizationApi(routes: Parameters<typeof fakeApi>[0] = {}) {
   let merged = false;
   return fakeApi({
     'GET /api/summary': () =>
-      Response.json({
-        contacts: [JULIE, INES, merged ? { ...PAUL, organizationId: ACME.id } : PAUL],
-        stages: [OUTREACH],
-        organizations: merged ? [ACME, GLOBEX] : [ACME, ACME_TYPO, GLOBEX],
-      }),
+      Response.json(
+        summary({
+          contacts: [JULIE, INES, merged ? { ...PAUL, organizationId: ACME.id } : PAUL],
+          stages: [OUTREACH],
+          organizations: merged ? [ACME, GLOBEX] : [ACME, ACME_TYPO, GLOBEX],
+        }),
+      ),
     [`GET /api/contacts/${JULIE.id}/record`]: () => Response.json({ note: null, thread: [] }),
     [route(ACME, 'rename')]: (body) =>
       Response.json({
-        changes: changes([{ ...ACME, name: z.object({ name: z.string() }).parse(body).name }]),
+        changes: changes({
+          organizations: [{ ...ACME, name: z.object({ name: z.string() }).parse(body).name }],
+        }),
       }),
     [route(ACME, 'change-type')]: () =>
-      Response.json({ changes: changes([{ ...ACME, type: 'consultancy' }]) }),
+      Response.json({ changes: changes({ organizations: [{ ...ACME, type: 'consultancy' }] }) }),
     [route(GLOBEX, 'change-type')]: () =>
-      Response.json({ changes: changes([{ ...GLOBEX, type: 'end_client' }]) }),
+      Response.json({ changes: changes({ organizations: [{ ...GLOBEX, type: 'end_client' }] }) }),
     [route(ACME_TYPO, 'merge')]: () => {
       merged = true;
       return Response.json({
-        changes: changes([ACME], {
+        changes: changes({
+          organizations: [ACME],
           contacts: [{ ...PAUL, organizationId: ACME.id }],
           removedOrganizationIds: [ACME_TYPO.id],
         }),
       });
     },
     [route(GLOBEX, 'delete')]: () =>
-      Response.json({ changes: changes([], { removedOrganizationIds: [GLOBEX.id] }) }),
+      Response.json({ changes: changes({ removedOrganizationIds: [GLOBEX.id] }) }),
     ...routes,
   });
 }
 
-async function openOrganization(organization: { id: string }, api = organizationApi()) {
-  const rendered = await renderApp(`/organizations/${organization.id}`, api);
+async function openOrganization(target: { id: string }, api = organizationApi()) {
+  const rendered = await renderApp(`/organizations/${target.id}`, api);
   return { ...rendered, api };
 }
 
@@ -255,7 +248,7 @@ test('the Organization of the page may be the one that stays', async () => {
       [route(ACME_TYPO, 'merge')]: () => Response.json({ error: 'unexpected' }, { status: 500 }),
       [route(GLOBEX, 'merge')]: () =>
         Response.json({
-          changes: changes([ACME], { removedOrganizationIds: [GLOBEX.id] }),
+          changes: changes({ organizations: [ACME], removedOrganizationIds: [GLOBEX.id] }),
         }),
     }),
   );

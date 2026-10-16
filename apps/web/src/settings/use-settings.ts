@@ -17,7 +17,7 @@ import { notify } from '../components/ui/toast.tsx';
 import { changeLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useShortcuts } from '../shortcuts.ts';
-import { SUMMARY_KEY, summaryQuery, type Summary } from '../summary.ts';
+import { SUMMARY_KEY, summaryQuery, timeZoneOf, type Summary } from '../summary.ts';
 
 /** Settings, as the summary carries them (spec UX §5.8). */
 export type Settings = Summary['settings'];
@@ -31,8 +31,8 @@ export type SettingsChange = InferRequestType<ApiClient['settings']['$post']>['j
  * What the app assumes until the summary says: a summary kept on the device from before Settings
  * carries none (ADR 0004). The language stays the device's own.
  */
-function defaultSettings(timeZone: string | undefined): Omit<Settings, 'locale'> {
-  const zone = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+function defaultSettings(summary: Summary | undefined): Omit<Settings, 'locale'> {
+  const zone = timeZoneOf(summary);
   return {
     timeZone: { inEffect: zone, chosen: zone },
     activityGoal: { inEffect: DEFAULT_ACTIVITY_GOAL, chosen: DEFAULT_ACTIVITY_GOAL },
@@ -52,9 +52,9 @@ function defaultSettings(timeZone: string | undefined): Omit<Settings, 'locale'>
 export function settingsOf(
   summary: Summary | undefined,
 ): Omit<Settings, 'locale'> & { locale?: Settings['locale'] } {
-  // `undefined` in a summary kept from before Settings existed.
+  // Fallback: a summary kept on the device by a version from before Settings carries none.
   const settings: Settings | undefined = summary?.settings;
-  return settings ?? defaultSettings(summary?.timeZone);
+  return settings ?? defaultSettings(summary);
 }
 
 export function useSettings() {

@@ -3,7 +3,9 @@ import { expect, test } from 'vitest';
 import { commands, page, userEvent } from 'vitest/browser';
 
 import { expectNoAxeViolations } from '../../test/axe.ts';
+import { fakeApi } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
+import { summary } from '../../test/summary.ts';
 import { applyDocumentLanguage } from '../i18n.ts';
 
 const desktop = () => page.viewport(1280, 800);
@@ -160,7 +162,12 @@ test('speaks English when the locale is English, and says so to the page', async
   await desktop();
   await setLocale('en', { reload: false });
   applyDocumentLanguage();
-  const { screen } = await renderApp('/');
+  const { screen } = await renderApp(
+    '/',
+    fakeApi({
+      'GET /api/summary': () => Response.json(summary({ settings: { locale: 'en' } })),
+    }),
+  );
 
   await expect.element(screen.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible();
   await expect.element(screen.getByRole('link', { name: 'Insights' })).toBeVisible();

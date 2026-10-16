@@ -6,26 +6,14 @@ import { z } from 'zod';
 import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
+import { settings as newUserSettings, summary } from '../../test/summary.ts';
+import type { SummarySettings } from '../summary.ts';
 
 const desktop = () => page.viewport(1280, 800);
 const phone = () => page.viewport(390, 844);
 
 const TIME_ZONE = 'Europe/Paris';
 const SETTINGS_ROUTE = 'POST /api/settings';
-
-/** What a new User finds in Settings (CONTEXT.md). */
-const defaults = () => ({
-  locale: 'fr' as 'fr' | 'en',
-  timeZone: { inEffect: TIME_ZONE, chosen: TIME_ZONE },
-  activityGoal: { inEffect: 1 as number | null, chosen: 1 as number | null },
-  entryGoal: { inEffect: 5 as number | null, chosen: 5 as number | null },
-  celebrateGoal: true,
-  singleKeyShortcuts: true,
-  checkInRhythmDays: 28,
-  circleSizeGoal: 10 as number | null,
-  defaultCadence: { intervals: [3, 7, 14], responseWindowDays: 14 },
-});
-type Settings = ReturnType<typeof defaults>;
 
 /** What the SPA sends to save settings: only what changes. */
 const settingsChange = z.strictObject({
@@ -43,11 +31,11 @@ const settingsChange = z.strictObject({
 });
 
 /** An API that saves settings as the server does: only what is sent, the dated ones as chosen. */
-function settingsApi(start: Partial<Settings> = {}) {
-  let settings: Settings = { ...defaults(), ...start };
+function settingsApi(start: Partial<SummarySettings> = {}) {
+  // A new User's Settings (CONTEXT.md), changed by what the test starts from.
+  let settings = newUserSettings(start, TIME_ZONE);
   return fakeApi({
-    'GET /api/summary': () =>
-      Response.json({ timeZone: TIME_ZONE, settings, contacts: [], stages: [], organizations: [] }),
+    'GET /api/summary': () => Response.json(summary({ timeZone: TIME_ZONE, settings })),
     [SETTINGS_ROUTE]: (body) => {
       const { activityGoal, entryGoal, timeZone, ...rest } = settingsChange.parse(body);
       // A key left out is absent from what Zod parsed, never `undefined`.

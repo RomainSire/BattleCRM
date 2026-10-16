@@ -1,6 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { afterEach, expect, test } from 'vitest';
 
+import { changes, contact, organization, summary } from '../test/summary.ts';
 import { createApiClient } from './api-client.ts';
 import { toasts } from './components/ui/toast.tsx';
 import { sendGesture } from './gesture.ts';
@@ -9,22 +10,13 @@ import { SUMMARY_KEY, type Summary } from './summary.ts';
 const CONTACT_ID = '01990000-0000-7000-8000-000000000001';
 const ORGANIZATION_ID = '01990000-0000-7000-8000-000000000002';
 
-const NO_CHANGES = {
-  contacts: [],
-  removedContactIds: [],
-  organizations: [],
-  removedOrganizationIds: [],
-  positionings: [],
-  removedPositioningIds: [],
-};
-
 /** A summary of one Contact named “Before”, read by the device. */
 function setUp(answer: () => Response) {
   const queryClient = new QueryClient();
-  queryClient.setQueryData(SUMMARY_KEY, {
-    ...NO_CHANGES,
-    contacts: [{ id: CONTACT_ID, name: 'Before' }],
-  });
+  queryClient.setQueryData(
+    SUMMARY_KEY,
+    summary({ contacts: [contact({ id: CONTACT_ID, name: 'Before' })] }),
+  );
   const api = createApiClient(() => Promise.resolve(answer()));
   const cancel = () => api.contacts[':id']['cancel-follow-up'].$post({ param: { id: CONTACT_ID } });
   return { queryClient, cancel };
@@ -42,7 +34,7 @@ afterEach(() => {
 test('a gesture done puts its rows into the summary and says so, with “Undo”', async () => {
   const { queryClient, cancel } = setUp(() =>
     Response.json({
-      changes: { ...NO_CHANGES, contacts: [{ id: CONTACT_ID, name: 'After' }] },
+      changes: changes({ contacts: [contact({ id: CONTACT_ID, name: 'After' })] }),
       undoToken: 'token',
     }),
   );
@@ -61,7 +53,9 @@ test('a gesture never undone says so without “Undo”', async () => {
   const api = createApiClient(() =>
     Promise.resolve(
       Response.json({
-        changes: { ...NO_CHANGES, organizations: [{ id: ORGANIZATION_ID, name: 'Renamed' }] },
+        changes: changes({
+          organizations: [organization({ id: ORGANIZATION_ID, name: 'Renamed' })],
+        }),
       }),
     ),
   );

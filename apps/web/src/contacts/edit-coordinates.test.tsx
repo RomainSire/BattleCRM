@@ -5,24 +5,24 @@ import { z } from 'zod';
 import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
+import { changes, contact, organization, stage, summary } from '../../test/summary.ts';
 
 const desktop = () => page.viewport(1280, 800);
 
-const CAPGEMINI = {
-  id: '01990000-0000-7000-8000-000000000021',
-  name: 'Capgemini',
-  type: 'consultancy',
-};
-const NORDIKA = { id: '01990000-0000-7000-8000-000000000022', name: 'Nordika', type: 'end_client' };
-const SOPRA = { id: '01990000-0000-7000-8000-000000000023', name: 'Sopra', type: 'consultancy' };
-const OUTREACH = {
+const CAPGEMINI = organization({ id: '01990000-0000-7000-8000-000000000021', name: 'Capgemini' });
+const NORDIKA = organization({
+  id: '01990000-0000-7000-8000-000000000022',
+  name: 'Nordika',
+  type: 'end_client',
+});
+const SOPRA = organization({ id: '01990000-0000-7000-8000-000000000023', name: 'Sopra' });
+const OUTREACH = stage({
   id: '01990000-0000-7000-8000-000000000011',
   name: 'Approche',
   aim: 'CV à envoyer',
-  archived: false,
-};
+});
 
-const JULIE = {
+const JULIE = contact({
   id: '01990000-0000-7000-8000-000000000001',
   name: 'Julie Martin',
   status: 'prospecting',
@@ -30,14 +30,11 @@ const JULIE = {
   organizationId: CAPGEMINI.id,
   jobTitle: 'Responsable recrutement',
   email: 'julie.martin@capgemini.com',
-  phone: null,
   linkedinUrl: 'https://linkedin.com/in/juliemartin',
   lastInteractionAt: '2026-01-08T09:00:00.000Z',
   lastInteractionOn: '2026-01-08',
-  followUp: null,
-  prospectingActionDays: [],
-};
-const INES = {
+});
+const INES = contact({
   ...JULIE,
   id: '01990000-0000-7000-8000-000000000003',
   name: 'Inès Moreau',
@@ -47,7 +44,7 @@ const INES = {
   jobTitle: null,
   email: 'ines@nordika.io',
   linkedinUrl: 'https://linkedin.com/in/ines-moreau',
-};
+});
 
 const record = (note: string | null) => ({
   note,
@@ -85,15 +82,6 @@ const editRequest = z.object({
   note: z.string().optional(),
 });
 
-const changes = (contacts: object[], organizations: object[] = []) => ({
-  contacts,
-  removedContactIds: [],
-  organizations,
-  removedOrganizationIds: [],
-  positionings: [],
-  removedPositioningIds: [],
-});
-
 /**
  * An API that knows Julie and Inès, edits Julie with what is sent, as the server would, and takes the
  * edit back; the note it keeps follows.
@@ -102,19 +90,21 @@ function editApi() {
   let note: string | null = 'Rencontrée au meetup Rust Lyon.';
   return fakeApi({
     'GET /api/summary': () =>
-      Response.json({
-        contacts: [JULIE, INES],
-        stages: [OUTREACH],
-        organizations: [CAPGEMINI, NORDIKA],
-      }),
+      Response.json(
+        summary({
+          contacts: [JULIE, INES],
+          stages: [OUTREACH],
+          organizations: [CAPGEMINI, NORDIKA],
+        }),
+      ),
     [RECORD_ROUTE]: () => Response.json(record(note)),
     [EDIT_ROUTE]: (body) => {
       const sent = editRequest.parse(body);
       note = sent.note ?? null;
       const created = sent.newOrganization ? SOPRA : undefined;
       return Response.json({
-        changes: changes(
-          [
+        changes: changes({
+          contacts: [
             {
               ...JULIE,
               name: sent.name,
@@ -125,14 +115,14 @@ function editApi() {
               linkedinUrl: sent.linkedinUrl ?? null,
             },
           ],
-          created ? [created] : [],
-        ),
+          ...(created && { organizations: [created] }),
+        }),
         undoToken: UNDO_TOKEN,
       });
     },
     [UNDO_ROUTE]: () => {
       note = 'Rencontrée au meetup Rust Lyon.';
-      return Response.json({ changes: changes([JULIE]) });
+      return Response.json({ changes: changes({ contacts: [JULIE] }) });
     },
   });
 }

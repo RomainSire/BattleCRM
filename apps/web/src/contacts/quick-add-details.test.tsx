@@ -4,51 +4,36 @@ import { commands, page, userEvent } from 'vitest/browser';
 import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
+import { changes, contact, organization, summary } from '../../test/summary.ts';
 
 const desktop = () => page.viewport(1280, 800);
 
-const CAPGEMINI = {
-  id: '01990000-0000-7000-8000-000000000021',
-  name: 'Capgemini',
-  type: 'consultancy',
-};
-const SOCIETE_GENERALE = {
+const CAPGEMINI = organization({ id: '01990000-0000-7000-8000-000000000021', name: 'Capgemini' });
+const SOCIETE_GENERALE = organization({
   id: '01990000-0000-7000-8000-000000000022',
   name: 'Société Générale',
   type: 'end_client',
-};
-const SOPRA = {
-  id: '01990000-0000-7000-8000-000000000023',
-  name: 'Sopra Steria',
-  type: 'consultancy',
-};
+});
+const SOPRA = organization({ id: '01990000-0000-7000-8000-000000000023', name: 'Sopra Steria' });
 const ORGANIZATIONS = [CAPGEMINI, SOCIETE_GENERALE];
 
-const contactRow = (fields: Record<string, unknown>) => ({
+/** Jean Dupont, at Capgemini, already in the summary. */
+const JEAN = contact({
   id: '01990000-0000-7000-8000-000000000001',
   name: 'Jean Dupont',
-  status: 'pool',
-  stageId: null,
-  organizationId: null,
-  jobTitle: null,
-  email: null,
-  phone: null,
-  linkedinUrl: null,
-  lastInteractionAt: '2026-01-06T09:00:00.000Z',
-  lastInteractionOn: '2026-01-06',
-  followUp: null,
-  prospectingActionDays: [],
-  ...fields,
-});
-
-/** Jean Dupont, at Capgemini, already in the summary. */
-const JEAN = contactRow({
   organizationId: CAPGEMINI.id,
   email: 'jean.dupont@example.com',
   phone: '06 12 34 56 78',
   linkedinUrl: 'https://linkedin.com/in/jean-dupont',
+  lastInteractionAt: '2026-01-06T09:00:00.000Z',
+  lastInteractionOn: '2026-01-06',
 });
-const PAUL = contactRow({ id: '01990000-0000-7000-8000-000000000003', name: 'Paul Durand' });
+const PAUL = contact({
+  id: '01990000-0000-7000-8000-000000000003',
+  name: 'Paul Durand',
+  lastInteractionAt: '2026-01-06T09:00:00.000Z',
+  lastInteractionOn: '2026-01-06',
+});
 
 const UNDO_TOKEN = '01990000-0000-7000-8000-00000000000a';
 
@@ -56,18 +41,11 @@ const UNDO_TOKEN = '01990000-0000-7000-8000-00000000000a';
 const quickAddApi = (routes: Parameters<typeof fakeApi>[0] = {}) =>
   fakeApi({
     'GET /api/summary': () =>
-      Response.json({ contacts: [JEAN], stages: [], organizations: ORGANIZATIONS }),
+      Response.json(summary({ contacts: [JEAN], organizations: ORGANIZATIONS })),
     'POST /api/contacts': () =>
       Response.json(
         {
-          changes: {
-            contacts: [PAUL],
-            removedContactIds: [],
-            organizations: [],
-            removedOrganizationIds: [],
-            positionings: [],
-            removedPositioningIds: [],
-          },
+          changes: changes({ contacts: [PAUL] }),
           undoToken: UNDO_TOKEN,
         },
         { status: 201 },
@@ -138,14 +116,10 @@ test('a new Organization is created with its type, which must be chosen, and joi
       'POST /api/contacts': () =>
         Response.json(
           {
-            changes: {
+            changes: changes({
               contacts: [{ ...PAUL, organizationId: SOPRA.id }],
-              removedContactIds: [],
               organizations: [SOPRA],
-              removedOrganizationIds: [],
-              positionings: [],
-              removedPositioningIds: [],
-            },
+            }),
             undoToken: UNDO_TOKEN,
           },
           { status: 201 },
@@ -286,12 +260,13 @@ test('a profile taken on another device meanwhile: the summary is read again, an
     quickAddApi({
       'GET /api/summary': () => {
         summaries += 1;
-        const paul = contactRow({ ...PAUL, linkedinUrl: 'https://linkedin.com/in/paul' });
-        return Response.json({
-          contacts: summaries === 1 ? [JEAN] : [JEAN, paul],
-          stages: [],
-          organizations: ORGANIZATIONS,
-        });
+        const paul = contact({ ...PAUL, linkedinUrl: 'https://linkedin.com/in/paul' });
+        return Response.json(
+          summary({
+            contacts: summaries === 1 ? [JEAN] : [JEAN, paul],
+            organizations: ORGANIZATIONS,
+          }),
+        );
       },
       'POST /api/contacts': () =>
         Response.json({ error: 'linkedin_url_taken', contactId: PAUL.id }, { status: 409 }),
@@ -314,11 +289,12 @@ test('an Organization created on another device meanwhile: said so, and chosen i
     quickAddApi({
       'GET /api/summary': () => {
         summaries += 1;
-        return Response.json({
-          contacts: [JEAN],
-          stages: [],
-          organizations: summaries === 1 ? ORGANIZATIONS : [...ORGANIZATIONS, SOPRA],
-        });
+        return Response.json(
+          summary({
+            contacts: [JEAN],
+            organizations: summaries === 1 ? ORGANIZATIONS : [...ORGANIZATIONS, SOPRA],
+          }),
+        );
       },
       'POST /api/contacts': () => Response.json({ error: 'organization_taken' }, { status: 409 }),
     }),

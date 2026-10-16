@@ -6,6 +6,8 @@ import { z } from 'zod';
 import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
+import { changes, contact, organization, stage, summary } from '../../test/summary.ts';
+import type { SummaryContact, SummarySettings } from '../summary.ts';
 
 const desktop = () => page.viewport(1280, 800);
 
@@ -13,87 +15,55 @@ const TIME_ZONE = 'Europe/Paris';
 /** Today for the User, as the SPA reads it: the entries are counted in its week. */
 const today = () => localDay(new Date(), TIME_ZONE);
 
-const OUTREACH = {
-  id: '01990000-0000-7000-8000-000000000011',
-  name: 'Approche',
-  aim: null,
-  archived: false,
-};
-const AGENCY = {
-  id: '01990000-0000-7000-8000-000000000012',
-  name: 'Qualif ESN',
-  aim: null,
-  archived: false,
-};
-const OLD = {
+const OUTREACH = stage({ id: '01990000-0000-7000-8000-000000000011', name: 'Approche' });
+const AGENCY = stage({ id: '01990000-0000-7000-8000-000000000012', name: 'Qualif ESN' });
+const OLD = stage({
   id: '01990000-0000-7000-8000-000000000013',
   name: 'Relance salon',
-  aim: null,
   archived: true,
-};
-const CAPGEMINI = {
-  id: '01990000-0000-7000-8000-000000000021',
-  name: 'Capgemini',
-  type: 'consultancy',
-};
-
-type Row = {
-  id: string;
-  name: string;
-  status: string;
-  stageId: string | null;
-  funnelEntryDays: string[];
-  statusReason: string | null;
-};
-
-const contact = (fields: Pick<Row, 'id' | 'name'> & Partial<Row>) => ({
-  status: 'pool',
-  stageId: null,
-  organizationId: CAPGEMINI.id,
-  jobTitle: null,
-  email: null,
-  phone: null,
-  linkedinUrl: null,
-  lastInteractionAt: '2026-01-08T09:00:00.000Z',
-  lastInteractionOn: '2026-01-08',
-  funnelEntryDays: [] as string[],
-  statusReason: null as string | null,
-  followUp: null as { dueOn: string; note: string | null } | null,
-  prospectingActionDays: [] as string[],
-  ...fields,
 });
+const CAPGEMINI = organization({ id: '01990000-0000-7000-8000-000000000021', name: 'Capgemini' });
+
+/** A Contact at Capgemini, in the Pool unless told otherwise. */
+const atCapgemini = (fields: Partial<SummaryContact>) =>
+  contact({
+    organizationId: CAPGEMINI.id,
+    lastInteractionAt: '2026-01-08T09:00:00.000Z',
+    lastInteractionOn: '2026-01-08',
+    ...fields,
+  });
 
 /** In the Pool, out of the Funnel at Qualif ESN; she entered it twice this week already, with Marc. */
 const julie = () =>
-  contact({
+  atCapgemini({
     id: '01990000-0000-7000-8000-000000000001',
     name: 'Julie Martin',
     stageId: AGENCY.id,
     funnelEntryDays: ['2025-06-02', mondayOf(today())],
   });
 const marc = () =>
-  contact({
+  atCapgemini({
     id: '01990000-0000-7000-8000-000000000002',
     name: 'Marc Petit',
     status: 'prospecting',
     stageId: OUTREACH.id,
     funnelEntryDays: [today()],
   });
-const INES = contact({
+const INES = atCapgemini({
   id: '01990000-0000-7000-8000-000000000003',
   name: 'Inès Moreau',
   status: 'ally',
 });
-const PAUL = contact({
+const PAUL = atCapgemini({
   id: '01990000-0000-7000-8000-000000000004',
   name: 'Paul Durand',
   stageId: OLD.id,
 });
-const LEA = contact({
+const LEA = atCapgemini({
   id: '01990000-0000-7000-8000-000000000006',
   name: 'Léa Bernard',
 });
-const NINA = contact({
+const NINA = atCapgemini({
   id: '01990000-0000-7000-8000-000000000005',
   name: 'Nina Roux',
   status: 'archived',
@@ -110,15 +80,6 @@ const changeRequest = z.strictObject({
   status: z.enum(['pool', 'prospecting', 'ally', 'archived']),
   stageId: z.string().optional(),
   reason: z.string().optional(),
-});
-
-const changes = (contacts: object[]) => ({
-  contacts,
-  removedContactIds: [],
-  organizations: [],
-  removedOrganizationIds: [],
-  positionings: [],
-  removedPositioningIds: [],
 });
 
 const threadOf = (reason: string | null) => ({
@@ -140,22 +101,21 @@ const threadOf = (reason: string | null) => ({
   ],
 });
 
-/**
- * An API that changes the Status of any Contact as the server would, and takes it back. Without
- * `settings`, a summary kept from before Settings: the defaults.
- */
-function statusApi(settings?: object) {
+/** An API that changes the Status of any Contact as the server would, and takes it back. */
+function statusApi(settings: Partial<SummarySettings> = {}) {
   const contacts = [julie(), marc(), INES, PAUL, NINA, LEA];
   const routes: Parameters<typeof fakeApi>[0] = {
     'GET /api/summary': () =>
-      Response.json({
-        timeZone: TIME_ZONE,
-        ...(settings && { settings }),
-        contacts,
-        stages: [OUTREACH, AGENCY, OLD],
-        organizations: [CAPGEMINI],
-      }),
-    [UNDO_ROUTE]: () => Response.json({ changes: changes([julie()]) }),
+      Response.json(
+        summary({
+          timeZone: TIME_ZONE,
+          settings,
+          contacts,
+          stages: [OUTREACH, AGENCY, OLD],
+          organizations: [CAPGEMINI],
+        }),
+      ),
+    [UNDO_ROUTE]: () => Response.json({ changes: changes({ contacts: [julie()] }) }),
   };
   for (const before of contacts) {
     routes[`GET /api/contacts/${before.id}/record`] = () =>
@@ -164,16 +124,18 @@ function statusApi(settings?: object) {
       const sent = changeRequest.parse(body);
       const entered = sent.status === 'prospecting';
       return Response.json({
-        changes: changes([
-          {
-            ...before,
-            status: sent.status,
-            stageId: sent.stageId ?? before.stageId,
-            funnelEntryDays: entered
-              ? [...before.funnelEntryDays, today()]
-              : before.funnelEntryDays,
-          },
-        ]),
+        changes: changes({
+          contacts: [
+            {
+              ...before,
+              status: sent.status,
+              stageId: sent.stageId ?? before.stageId,
+              funnelEntryDays: entered
+                ? [...before.funnelEntryDays, today()]
+                : before.funnelEntryDays,
+            },
+          ],
+        }),
         undoToken: UNDO_TOKEN,
       });
     };
@@ -241,15 +203,15 @@ test('a Stage must be chosen when the last one reached is archived', async () =>
     .toHaveTextContent('Au Vivier · dernière Étape : Relance salon');
   await page.getByRole('button', { name: 'Faire entrer…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Faire entrer Paul Durand' });
-  const stage = dialog.getByRole('combobox', { name: 'Étape' });
-  await expect.element(stage).toHaveValue('');
+  const stageField = dialog.getByRole('combobox', { name: 'Étape' });
+  await expect.element(stageField).toHaveValue('');
 
   await dialog.getByRole('button', { name: 'Faire entrer' }).click();
 
   await expect.element(dialog.getByText("Choisis l'Étape où il entre.")).toBeVisible();
-  await expect.element(stage).toHaveAttribute('aria-invalid', 'true');
+  await expect.element(stageField).toHaveAttribute('aria-invalid', 'true');
   expect(api.sent(changeRoute(PAUL.id))).toEqual([]);
-  await stage.selectOptions(OUTREACH.id);
+  await stageField.selectOptions(OUTREACH.id);
   await dialog.getByRole('button', { name: 'Faire entrer' }).click();
   await expect.poll(() => api.sent(changeRoute(PAUL.id))).toHaveLength(1);
   expect(api.sent(changeRoute(PAUL.id))[0]?.body).toEqual({
@@ -285,16 +247,10 @@ test('from the panel, “Add to Circle…” keeps the last Stage and says where
 test('the summaries read the goals and the rhythm of the User: a goal turned off shows the count alone', async () => {
   await desktop();
   const api = statusApi({
-    locale: 'fr',
-    timeZone: { inEffect: TIME_ZONE, chosen: TIME_ZONE },
-    activityGoal: { inEffect: 1, chosen: 1 },
     // Turned off from next Monday: this week keeps its goal.
     entryGoal: { inEffect: 4, chosen: null },
-    celebrateGoal: true,
-    singleKeyShortcuts: true,
     checkInRhythmDays: 21,
     circleSizeGoal: null,
-    defaultCadence: { intervals: [3, 7, 14], responseWindowDays: 14 },
   });
   await renderApp(`/contacts/${julie().id}`, api);
   await page.getByRole('button', { name: 'Faire entrer…' }).click();

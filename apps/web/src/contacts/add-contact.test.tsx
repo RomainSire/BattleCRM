@@ -5,88 +5,55 @@ import { commands, page, userEvent } from 'vitest/browser';
 import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
+import { changes, contact, stage, summary } from '../../test/summary.ts';
 import { notify } from '../components/ui/toast.tsx';
 import { DEVICE_DATA_KEY } from '../device-data.ts';
+import type { SummaryContact } from '../summary.ts';
 
 const desktop = () => page.viewport(1280, 800);
 
-const JEAN = {
+const JEAN = contact({
   id: '01990000-0000-7000-8000-000000000001',
   name: 'Jean Dupont',
-  status: 'pool',
-  stageId: null as string | null,
-  organizationId: null as string | null,
-  jobTitle: null as string | null,
-  email: null as string | null,
-  phone: null as string | null,
-  linkedinUrl: null as string | null,
   lastInteractionAt: '2026-01-06T09:00:00.000Z',
   lastInteractionOn: '2026-01-06',
-};
-const JULIE = {
+});
+const JULIE = contact({
   id: '01990000-0000-7000-8000-000000000002',
   name: 'Julie Martin',
-  status: 'pool',
-  stageId: null,
-  organizationId: null,
-  jobTitle: null,
-  email: null,
-  phone: null,
-  linkedinUrl: null,
   lastInteractionAt: '2026-01-05T09:00:00.000Z',
   lastInteractionOn: '2026-01-05',
-};
-const OUTREACH = {
+});
+const OUTREACH = stage({
   id: '01990000-0000-7000-8000-000000000011',
   name: 'Approche',
   aim: 'CV à envoyer',
-  archived: false,
-};
-const ARCHIVED = {
+});
+const ARCHIVED = stage({
   id: '01990000-0000-7000-8000-000000000012',
   name: 'Ancienne',
-  aim: null,
   archived: true,
-};
-const SCREENING = {
-  id: '01990000-0000-7000-8000-000000000013',
-  name: 'Qualif ESN',
-  aim: null,
-  archived: false,
-};
+});
+const SCREENING = stage({ id: '01990000-0000-7000-8000-000000000013', name: 'Qualif ESN' });
 const STAGES = [ARCHIVED, OUTREACH, SCREENING];
 const UNDO_TOKEN = '01990000-0000-7000-8000-00000000000a';
 const UNDO_ROUTE = `POST /api/gestures/${UNDO_TOKEN}/undo`;
 
 /** An API that knows these Contacts, adds Jean and takes the addition back. */
-const contactsApi = (contacts: (typeof JEAN)[] = [], routes: Parameters<typeof fakeApi>[0] = {}) =>
+const contactsApi = (contacts: SummaryContact[] = [], routes: Parameters<typeof fakeApi>[0] = {}) =>
   fakeApi({
-    'GET /api/summary': () => Response.json({ contacts, stages: STAGES, organizations: [] }),
+    'GET /api/summary': () => Response.json(summary({ contacts, stages: STAGES })),
     'POST /api/contacts': () =>
       Response.json(
         {
-          changes: {
-            contacts: [JEAN],
-            removedContactIds: [],
-            organizations: [],
-            removedOrganizationIds: [],
-            positionings: [],
-            removedPositioningIds: [],
-          },
+          changes: changes({ contacts: [JEAN] }),
           undoToken: UNDO_TOKEN,
         },
         { status: 201 },
       ),
     [UNDO_ROUTE]: () =>
       Response.json({
-        changes: {
-          contacts: [],
-          removedContactIds: [JEAN.id],
-          organizations: [],
-          removedOrganizationIds: [],
-          positionings: [],
-          removedPositioningIds: [],
-        },
+        changes: changes({ removedContactIds: [JEAN.id] }),
       }),
     ...routes,
   });
@@ -180,18 +147,18 @@ test('the quick add offers Pool, Prospecting or Ally, the Pool by default, and a
   await expect.element(dialog.getByRole('combobox', { name: 'Étape' })).not.toBeInTheDocument();
 
   await chooseStatus(dialog, 'En prospection');
-  const stage = dialog.getByRole('combobox', { name: 'Étape' });
+  const stageField = dialog.getByRole('combobox', { name: 'Étape' });
   // The Stages of the Funnel, archived ones left out, the first by default.
-  await expect.element(stage).toHaveValue(OUTREACH.id);
+  await expect.element(stageField).toHaveValue(OUTREACH.id);
   expect(
-    stage
+    stageField
       .getByRole('option')
       .elements()
       .map((option) => option.textContent),
   ).toEqual(['Approche', 'Qualif ESN']);
 
   await chooseStatus(dialog, 'Allié');
-  await expect.element(stage).not.toBeInTheDocument();
+  await expect.element(stageField).not.toBeInTheDocument();
 });
 
 test('added Prospecting at a chosen Stage, the Contact enters the Funnel there', async () => {
@@ -202,14 +169,9 @@ test('added Prospecting at a chosen Stage, the Contact enters the Funnel there',
       'POST /api/contacts': () =>
         Response.json(
           {
-            changes: {
+            changes: changes({
               contacts: [{ ...JEAN, status: 'prospecting', stageId: SCREENING.id }],
-              removedContactIds: [],
-              organizations: [],
-              removedOrganizationIds: [],
-              positionings: [],
-              removedPositioningIds: [],
-            },
+            }),
             undoToken: UNDO_TOKEN,
           },
           { status: 201 },
@@ -269,14 +231,7 @@ test('added as an Ally, the Contact joins the Circle; the next opening is back o
       'POST /api/contacts': () =>
         Response.json(
           {
-            changes: {
-              contacts: [{ ...JEAN, status: 'ally' }],
-              removedContactIds: [],
-              organizations: [],
-              removedOrganizationIds: [],
-              positionings: [],
-              removedPositioningIds: [],
-            },
+            changes: changes({ contacts: [{ ...JEAN, status: 'ally' }] }),
             undoToken: UNDO_TOKEN,
           },
           { status: 201 },

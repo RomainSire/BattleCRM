@@ -5,56 +5,26 @@ import { z } from 'zod';
 import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
+import { changes, positioning as summaryPositioning, stage, summary } from '../../test/summary.ts';
+import type { SummaryPositioning } from '../summary.ts';
 
 const desktop = () => page.viewport(1280, 900);
 const phone = () => page.viewport(390, 844);
 
-const OUTREACH = {
-  id: '01990000-0000-7000-8000-000000000011',
-  name: 'Approche',
-  aim: null,
-  archived: false,
-};
-const SCREENING = {
-  id: '01990000-0000-7000-8000-000000000012',
-  name: 'Qualif ESN',
-  aim: null,
-  archived: false,
-};
+const OUTREACH = stage({ id: '01990000-0000-7000-8000-000000000011', name: 'Approche' });
+const SCREENING = stage({ id: '01990000-0000-7000-8000-000000000012', name: 'Qualif ESN' });
 
-type Positioning = {
-  id: string;
-  stageId: string;
-  label: string;
-  channel: 'email' | 'linkedin' | 'phone' | 'mail';
-  content: string | null;
-  followUps: { days: number; message: string | null }[];
-  responseWindowDays: number;
-  derivedFromId: string | null;
-  archived: boolean;
-  attachments: { id: string; name: string; contentType: string; size: number }[];
-  used: boolean;
-  trialCount: number;
-};
-
-const positioning = (
-  fields: Pick<Positioning, 'id' | 'label'> & Partial<Positioning>,
-): Positioning => ({
-  stageId: OUTREACH.id,
-  channel: 'email',
-  content: 'Bonjour {prénom}',
-  followUps: [
-    { days: 3, message: 'Petit up sur mon message.' },
-    { days: 7, message: null },
-  ],
-  responseWindowDays: 14,
-  derivedFromId: null,
-  archived: false,
-  attachments: [],
-  used: false,
-  trialCount: 0,
-  ...fields,
-});
+/** A Positioning of Approche, by e-mail, with its message and two Follow-ups, unless told otherwise. */
+const positioning = (fields: Partial<SummaryPositioning>) =>
+  summaryPositioning({
+    stageId: OUTREACH.id,
+    content: 'Bonjour {prénom}',
+    followUps: [
+      { days: 3, message: 'Petit up sur mon message.' },
+      { days: 7, message: null },
+    ],
+    ...fields,
+  });
 
 const CV_A = {
   id: '01990000-0000-7000-8000-000000000031',
@@ -104,15 +74,6 @@ const UNDO_TOKEN = '01990000-0000-7000-8000-00000000000a';
 const UNDO_ROUTE = `POST /api/gestures/${UNDO_TOKEN}/undo`;
 const gestureRoute = (id: string, gesture: string) => `POST /api/positionings/${id}/${gesture}`;
 
-const changes = (positionings: object[], removedPositioningIds: string[] = []) => ({
-  contacts: [],
-  removedContactIds: [],
-  organizations: [],
-  removedOrganizationIds: [],
-  positionings,
-  removedPositioningIds,
-});
-
 const fields = z.strictObject({
   label: z.string(),
   channel: z.enum(['email', 'linkedin', 'phone', 'mail']),
@@ -134,19 +95,22 @@ const stored = (body: z.infer<typeof fields>) => ({
 function workshopApi(overrides: Parameters<typeof fakeApi>[0] = {}) {
   let positionings = [MAIL_LONG, MAIL_COURT, LINKEDIN, OLD];
   let before = positionings;
-  let undone = changes([]);
+  let undone = changes();
   /** A gesture changed or removed rows: the summary keeps them, “Undo” gives back those it replaced. */
-  const answer = (changed: Positioning[], removedIds: string[] = [], status = 200) => {
+  const answer = (changed: SummaryPositioning[], removedIds: string[] = [], status = 200) => {
     const replaced = new Set([...removedIds, ...changed.map(({ id }) => id)]);
     const created = changed.filter(({ id }) => !positionings.some((row) => row.id === id));
     before = positionings;
-    undone = changes(
-      positionings.filter(({ id }) => replaced.has(id)),
-      created.map(({ id }) => id),
-    );
+    undone = changes({
+      positionings: positionings.filter(({ id }) => replaced.has(id)),
+      removedPositioningIds: created.map(({ id }) => id),
+    });
     positionings = [...positionings.filter(({ id }) => !replaced.has(id)), ...changed];
     return Response.json(
-      { changes: changes(changed, removedIds), undoToken: UNDO_TOKEN },
+      {
+        changes: changes({ positionings: changed, removedPositioningIds: removedIds }),
+        undoToken: UNDO_TOKEN,
+      },
       { status },
     );
   };
@@ -157,24 +121,17 @@ function workshopApi(overrides: Parameters<typeof fakeApi>[0] = {}) {
   };
   const routes: Parameters<typeof fakeApi>[0] = {
     'GET /api/summary': () =>
-      Response.json({
-        timeZone: 'Europe/Paris',
-        settings: {
-          locale: 'fr',
-          timeZone: { inEffect: 'Europe/Paris', chosen: 'Europe/Paris' },
-          activityGoal: { inEffect: 3, chosen: 3 },
-          entryGoal: { inEffect: 5, chosen: 5 },
-          celebrateGoal: true,
-          singleKeyShortcuts: true,
-          checkInRhythmDays: 28,
-          circleSizeGoal: 10,
-          defaultCadence: { intervals: [2, 5, 9], responseWindowDays: 12 },
-        },
-        contacts: [],
-        stages: [OUTREACH, SCREENING],
-        organizations: [],
-        positionings,
-      }),
+      Response.json(
+        summary({
+          timeZone: 'Europe/Paris',
+          settings: {
+            activityGoal: { inEffect: 3, chosen: 3 },
+            defaultCadence: { intervals: [2, 5, 9], responseWindowDays: 12 },
+          },
+          stages: [OUTREACH, SCREENING],
+          positionings,
+        }),
+      ),
     'POST /api/positionings': (body) => {
       const { stageId, derivedFromId, ...rest } = fields
         .extend({ stageId: z.uuid(), derivedFromId: z.uuid().optional() })
