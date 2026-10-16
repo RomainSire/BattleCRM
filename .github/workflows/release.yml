@@ -1,6 +1,7 @@
 name: release
 
-# A v* tag on main delivers (ADR 0013, spec stack §10.3): CI again, images, deploy.sh over SSH, GitHub Release.
+# A v* tag on main delivers (ADR 0013, spec stack §10.3): CI, images, deploy.sh over SSH, GitHub Release.
+# The CI is the one of the branch push on the same commit when it passed, run again otherwise.
 # Rolling back: run this workflow by hand with a tag already released; it only delivers that tag again.
 on:
   push:
@@ -27,7 +28,13 @@ jobs:
   verify:
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    # Waits for the CI of the branch push.
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      ci: ${{ steps.ci.outputs.conclusion }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -40,12 +47,33 @@ jobs:
           test "v$(node -p 'require("./package.json").version')" = "$TAG"
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
+      # push --follow-tags pushes the branch too: its CI already checks this commit. Missing,
+      # cancelled by a later push or failed, the ci job below runs it again.
+      - id: ci
+        name: The CI of the branch push, on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The branch run can be created a few seconds after this one.
+          for _ in 1 2 3 4 5 6; do
+            id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" \
+              --event push --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+            [ -n "$id" ] && break
+            sleep 10
+          done
+          if [ -n "$id" ] && gh run watch "$id" --repo "$GITHUB_REPOSITORY" --exit-status >/dev/null; then
+            echo conclusion=success >>"$GITHUB_OUTPUT"
+          fi
+
   ci:
     needs: verify
+    if: needs.verify.outputs.ci != 'success'
     uses: ./.github/workflows/ci.yml
 
   images:
-    needs: ci
+    needs: [verify, ci]
+    # Also when ci was skipped: the CI of the branch push passed.
+    if: ${{ !failure() && !cancelled() && needs.verify.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
