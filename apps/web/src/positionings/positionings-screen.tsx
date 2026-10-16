@@ -469,7 +469,10 @@ function PositioningRecord({
         </Button>
       </div>
       <ErrorMessage>
-        {act.isError ? m.auth_error() : act.data !== undefined && m.positioning_behind()}
+        {act.isError
+          ? m.auth_error()
+          : act.data !== undefined &&
+            (act.data.error === 'used' ? m.positioning_used_refused() : m.positioning_behind())}
       </ErrorMessage>
       <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
         <dt className="text-muted-foreground">{m.positioning_content()}</dt>

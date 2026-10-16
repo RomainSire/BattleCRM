@@ -25,6 +25,8 @@ export const REFUSAL_STATUS = {
   no_follow_up: 409,
   check_in_instead: 409,
   no_status_choice: 409,
+  used: 409,
+  other_stage: 409,
   expired: 409,
   superseded: 409,
 } as const;

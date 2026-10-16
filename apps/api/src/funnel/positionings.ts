@@ -141,6 +141,29 @@ const removedPositioning = (positioningId: string, copyIds: string[] = []) =>
 const byId = (userId: string, positioningId: string) =>
   and(eq(positioning.userId, userId), eq(positioning.id, positioningId));
 
+/** Whether a Positioning was ever used (spec UX §6.1): `prospecting` records the uses, and answers. */
+export type PositioningUses = {
+  any: (tx: Transaction, userId: string, positioningId: string) => Promise<boolean>;
+};
+
+/**
+ * Whether a Positioning was ever used, its row locked first: a use under way, which shares it, is
+ * then written and seen (ST-32).
+ */
+async function isUsed(
+  tx: Transaction,
+  uses: PositioningUses,
+  userId: string,
+  positioningId: string,
+) {
+  await tx
+    .select({ id: positioning.id })
+    .from(positioning)
+    .where(byId(userId, positioningId))
+    .for('update');
+  return uses.any(tx, userId, positioningId);
+}
+
 /** The copies of a Positioning: they name it as their original. */
 async function copiesOf(tx: Transaction, userId: string, positioningId: string) {
   const copies = await tx
@@ -172,12 +195,14 @@ const attachmentSubject: GestureSubject<PositioningRow> = {
 };
 
 /** A new Positioning at a Stage of the Funnel, or a modified copy of one (spec UX §6.10). */
-const createPositioning: Creation<
+const createPositioning = (
+  uses: PositioningUses,
+): Creation<
   'positioning_created',
   z.infer<typeof createRequest>,
   z.infer<typeof nothingRetained>,
   'unknown_stage' | 'unknown_positioning' | 'quota_exceeded'
-> = {
+> => ({
   kind: 'positioning_created',
   subject: positioningSubject,
   async write({ tx, userId, input: { stageId, derivedFromId, ...fields }, now }) {
@@ -212,15 +237,16 @@ const createPositioning: Creation<
     return { subjectId: created.id, retained: {}, touched: touchedPositioning(created.id) };
   },
   retained: nothingRetained,
-  /** The Positioning leaves no trace, unless a copy was made of it since. */
+  /** The Positioning leaves no trace, unless a copy was made of it since, or it was used. */
   async inverse(tx, { userId, subjectId: positioningId }) {
+    if (await isUsed(tx, uses, userId, positioningId)) return 'superseded';
     if ((await copiesOf(tx, userId, positioningId)).length > 0) return 'superseded';
     // A modified copy came with the attachments of its original.
     await eraseAttachmentsOf(tx, userId, positioningId);
     await tx.delete(positioning).where(byId(userId, positioningId));
     return removedPositioning(positioningId);
   },
-};
+});
 
 /**
  * Everything but its Stage and its Channel (another Channel is another Positioning), as long as it is
@@ -334,17 +360,20 @@ const unarchivePositioning: Gesture<
   },
 };
 
-/** Delete one never used (spec UX §5.6); its copies stay, without an original. */
-const deletePositioning: Gesture<
+/** Delete one never used (spec UX §5.6); once used, it is archived instead. Its copies stay, without an original. */
+const deletePositioning = (
+  uses: PositioningUses,
+): Gesture<
   'positioning_deleted',
   PositioningRow,
   undefined,
   z.infer<typeof positioningDeleted>,
-  never
-> = {
+  'used'
+> => ({
   kind: 'positioning_deleted',
   subject: positioningSubject,
   async write({ tx, userId, subjectId: positioningId, subject: before, now }) {
+    if (await isUsed(tx, uses, userId, positioningId)) return refusal('used');
     const copyIds = await copiesOf(tx, userId, positioningId);
     if (copyIds.length > 0) {
       await tx
@@ -401,7 +430,7 @@ const deletePositioning: Gesture<
             .returning({ id: positioning.id });
     return touched({ positioningIds: [deleted.id, ...relinked.map(({ id }) => id)] });
   },
-};
+});
 
 /**
  * Join a file (ST-35): of any type, within 5 MiB, and within the room of the User. Frozen with its
@@ -480,23 +509,26 @@ function contentDispositionOf(name: string) {
  * each, through the common circuit, which answers with the rows of the summary it changed and the
  * token that takes it back (ADR 0011).
  *
- * Frozen once used in a Trial, and no longer deletable once used at all: both facts arrive with the
- * use of a Positioning (tickets 25, 28), which adds their refusals here, read in the transaction of
- * the gesture (ST-32). Until then, every Positioning is never used.
+ * No longer deletable once used, read in the transaction of the gesture (ST-32); frozen once used in
+ * a Trial, which comes with Trials (ticket 28).
  */
 export function createPositionings<Changes>({
   clock,
   requireUser,
   changesOf,
+  uses,
 }: {
   clock: Clock;
   requireUser: RequireUser;
   changesOf: ChangesOf<Changes>;
+  uses: PositioningUses;
 }) {
   const { perform, create } = createCircuit({ clock, changesOf });
+  const created = createPositioning(uses);
+  const deleted = deletePositioning(uses);
   const routes = new Hono<AppEnv>()
     .post('/positionings', requireUser, jsonBody(createRequest), (c) =>
-      create(c, createPositioning, c.req.valid('json')),
+      create(c, created, c.req.valid('json')),
     )
     .post('/positionings/:id/edit', requireUser, jsonBody(editRequest), (c) =>
       perform(c, editPositioning, c.req.valid('json')),
@@ -513,7 +545,7 @@ export function createPositionings<Changes>({
     .post('/positionings/:id/unarchive', requireUser, (c) =>
       perform(c, unarchivePositioning, undefined),
     )
-    .post('/positionings/:id/delete', requireUser, (c) => perform(c, deletePositioning, undefined))
+    .post('/positionings/:id/delete', requireUser, (c) => perform(c, deleted, undefined))
     .post(
       '/positionings/:id/attachments',
       requireUser,
@@ -560,12 +592,12 @@ export function createPositionings<Changes>({
     });
 
   const gestures = [
-    createPositioning,
+    created,
     editPositioning,
     relabelPositioning,
     archivePositioning,
     unarchivePositioning,
-    deletePositioning,
+    deleted,
     joinAttachment,
     removeAttachment,
   ] as const;

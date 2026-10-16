@@ -39,7 +39,7 @@ const julie = () =>
   prospect({
     id: '01990000-0000-7000-8000-000000000001',
     name: 'Julie Martin',
-    followUp: { dueOn: addDays(today(), -2), note: 'Relancer sur le devis' },
+    followUp: { dueOn: addDays(today(), -2), note: 'Relancer sur le devis', rank: null },
   });
 /** An Ally whose Follow-up is to come. */
 const ines = () =>
@@ -47,7 +47,7 @@ const ines = () =>
     id: '01990000-0000-7000-8000-000000000003',
     name: 'Inès Moreau',
     status: 'ally',
-    followUp: { dueOn: addDays(today(), 5), note: null },
+    followUp: { dueOn: addDays(today(), 5), note: null, rank: null },
   });
 const LEA = prospect({
   id: '01990000-0000-7000-8000-000000000004',
@@ -116,7 +116,14 @@ function followUpApi(
         .parse(body);
       undone = before;
       return Response.json({
-        changes: changes({ contacts: [{ ...before, followUp: { dueOn, note: note ?? null } }] }),
+        changes: changes({
+          contacts: [
+            {
+              ...before,
+              followUp: { dueOn, note: note ?? null, rank: before.followUp?.rank ?? null },
+            },
+          ],
+        }),
         undoToken: UNDO_TOKEN,
       });
     };

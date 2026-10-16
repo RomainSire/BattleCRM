@@ -105,8 +105,10 @@ export const summaryContact = z.strictObject({
   funnelEntryDays: z.array(z.iso.date()),
   /** The reason of the change that put it in its Status, if the User gave one. */
   statusReason: z.string().nullable(),
-  /** Its scheduled Follow-up, if it has one. */
-  followUp: z.strictObject({ dueOn: z.iso.date(), note: z.string().nullable() }).nullable(),
+  /** Its scheduled Follow-up, if it has one: its rank in the Cadence, or none off the Cadence. */
+  followUp: z
+    .strictObject({ dueOn: z.iso.date(), note: z.string().nullable(), rank: z.int().nullable() })
+    .nullable(),
   /** The local days of its Prospecting actions, the earliest first: what the Activity is counted from. */
   prospectingActionDays: z.array(z.iso.date()),
 });

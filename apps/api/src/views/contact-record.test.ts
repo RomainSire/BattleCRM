@@ -26,6 +26,7 @@ const contactRecord = z.strictObject({
       note: z.string().nullable(),
       /** The Channel of a reply. */
       channel: z.enum(CHANNELS).nullable(),
+      positioningId: z.uuid().nullable(),
       statusChange: z
         .strictObject({
           fromStatus: z.string().nullable(),
@@ -61,6 +62,7 @@ test('the record of a Contact carries its note and its thread: the addition open
         localDate: contact.lastInteractionOn,
         note: null,
         channel: null,
+        positioningId: null,
         statusChange: {
           fromStatus: null,
           toStatus: 'prospecting',

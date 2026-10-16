@@ -226,7 +226,7 @@ test('“Replied…” keeps the Follow-up unless asked; never a nature, never a
     occurredOn: '2026-01-05',
     channel: 'phone',
   });
-  expect(replied.followUp).toEqual({ dueOn: '2026-01-08', note: null });
+  expect(replied.followUp).toEqual({ dueOn: '2026-01-08', note: null, rank: null });
 });
 
 test('a spontaneous reply brings a Contact of the Pool into the Funnel, dated now; “Undo” leaves no Funnel entry', async () => {

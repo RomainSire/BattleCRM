@@ -23,6 +23,7 @@ import { useLocale, type Locale } from '../i18n.ts';
 import { useApi } from '../session.ts';
 import { isModalOpen, useShortcuts } from '../shortcuts.ts';
 import {
+  positioningsOf,
   summaryQuery,
   todayOf,
   type Summary,
@@ -37,6 +38,7 @@ import { FollowUpHead, FollowUpPanels, useFollowUpGesture } from './follow-up.ts
 import { formatLocalDay } from './format.ts';
 import { InteractionPanels, useInteractionGesture } from './interactions.tsx';
 import { targetText } from './organization-field.tsx';
+import { SendPanels, useSendPositioning } from './use-positioning.tsx';
 import {
   otherStatuses,
   prospectingStageOf,
@@ -45,6 +47,7 @@ import {
   STATUS_VERB,
   type FollowUpGesture,
   type InteractionGesture,
+  type SendGesture,
   type StatusGesture,
 } from './status.ts';
 
@@ -70,6 +73,10 @@ function stageLabel(contact: SummaryContact, summary: Summary) {
   return stage.aim === null ? stage.name : `${stage.name} · ${stage.aim}`;
 }
 
+/** The label of the Positioning a use sent, as the summary has it. */
+const positioningLabel = (summary: Summary, positioningId: string | null) =>
+  positioningsOf(summary).find(({ id }) => id === positioningId)?.label ?? '';
+
 /** What an Interaction done says, before its note. */
 const DONE_LABEL: Partial<Record<ThreadEntry['kind'], () => string>> = {
   follow_up: m.thread_follow_up,
@@ -83,11 +90,17 @@ const DONE_LABEL: Partial<Record<ThreadEntry['kind'], () => string>> = {
  * What an entry of the thread says: the Interactions done, with their note, a reply with its Channel;
  * the additions and the changes of Status, discreetly.
  */
-function threadEntryLabel({ kind, note, channel, statusChange }: ThreadEntry, summary: Summary) {
-  const done =
-    kind === 'reply' && channel !== null
-      ? m.thread_reply({ channel: CHANNEL_LABEL[channel]() })
-      : DONE_LABEL[kind]?.();
+function threadEntryLabel(
+  { kind, note, channel, positioningId, statusChange }: ThreadEntry,
+  summary: Summary,
+) {
+  let done = DONE_LABEL[kind]?.();
+  if (kind === 'reply' && channel !== null) {
+    done = m.thread_reply({ channel: CHANNEL_LABEL[channel]() });
+  }
+  if (kind === 'positioning_used') {
+    done = m.thread_positioning_used({ label: positioningLabel(summary, positioningId) });
+  }
   if (done) return [done, note].filter(Boolean).join(' · ');
   if (!statusChange) return undefined;
   const { fromStatus, toStatus, stageId, reason } = statusChange;
@@ -368,6 +381,7 @@ const followUpOfKey = (key: unknown): FollowUpGesture | undefined =>
 const INTERACTION_MENU = { 'interaction:note': 'note', 'interaction:reply': 'reply' } as const;
 const interactionOfKey = (key: unknown): InteractionGesture | undefined =>
   Object.entries(INTERACTION_MENU).find(([candidate]) => candidate === key)?.[1];
+const SEND_MENU_KEY = 'send:positioning';
 
 /**
  * The block Next action (spec UX §5.3): what the Status of the Contact calls for, its full button, and
@@ -382,6 +396,7 @@ function NextAction({
   onGesture,
   onFollowUp,
   onInteraction,
+  onSend,
 }: {
   contact: SummaryContact;
   summary: Summary;
@@ -390,6 +405,7 @@ function NextAction({
   onGesture: (gesture: StatusGesture) => void;
   onFollowUp: (gesture: FollowUpGesture) => void;
   onInteraction: (gesture: InteractionGesture) => void;
+  onSend: (gesture: SendGesture) => void;
 }) {
   const locale = useLocale();
   const headingId = useId();
@@ -401,6 +417,8 @@ function NextAction({
   // A Follow-up due, today or overdue, is the action of the moment (spec UX §5.3).
   const isDue =
     contact.followUp !== null && isFollowUpDue(contact.followUp.dueOn, todayOf(summary));
+  // Neither a Follow-up nor a Trial (Trials come with ticket 28): a Positioning to use (spec UX §5.3).
+  const sendsFirst = contact.status === 'prospecting' && contact.followUp === null;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2 rounded-card border p-3">
       <Heading id={headingId} className="text-xs font-semibold text-muted-foreground uppercase">
@@ -422,6 +440,11 @@ function NextAction({
         {isDue && (
           <Button className="max-md:min-h-11" onPress={() => onFollowUp('do')}>
             {m.verb_follow_up()}
+          </Button>
+        )}
+        {sendsFirst && (
+          <Button className="max-md:min-h-11" onPress={() => onSend('positioning')}>
+            {m.verb_use_positioning()}
           </Button>
         )}
         {canNoteInteraction(contact.status) && (
@@ -463,8 +486,10 @@ function NextAction({
             if (followUp) onFollowUp(followUp);
             const interaction = interactionOfKey(key);
             if (interaction) onInteraction(interaction);
+            if (key === SEND_MENU_KEY) onSend('positioning');
           }}
         >
+          {!sendsFirst && <MenuItem id={SEND_MENU_KEY}>{m.verb_use_positioning()}</MenuItem>}
           <MenuItem id="interaction:reply">{m.verb_reply()}</MenuItem>
           {contact.followUp && !isDue && (
             <MenuItem id="follow-up:do">{m.verb_follow_up()}</MenuItem>
@@ -489,13 +514,14 @@ function NextAction({
 /**
  * The keys of the record that has the focus (spec UX §3.3): anywhere on its page, within its panel
  * only. `S` opens “Change status…”, `P` Schedule or Edit the follow-up, `F` Follow up…, `I` Note an
- * Interaction.
+ * Interaction, `U` Use a Positioning.
  */
 function useRecordKeys(
   contact: SummaryContact | undefined,
   status: ReturnType<typeof useStatusGesture>,
   followUp: ReturnType<typeof useFollowUpGesture>,
   interaction: ReturnType<typeof useInteractionGesture>,
+  send: ReturnType<typeof useSendPositioning>,
   scope?: RefObject<HTMLElement | null>,
 ) {
   const onKey = (open: () => void) => (event: KeyboardEvent) => {
@@ -516,6 +542,7 @@ function useRecordKeys(
     i: onKey(() => {
       if (contact && canNoteInteraction(contact.status)) interaction.open('note');
     }),
+    u: onKey(() => send.open('positioning')),
   });
 }
 
@@ -547,7 +574,8 @@ export function ContactPanel({
   const status = useStatusGesture();
   const followUp = useFollowUpGesture();
   const interaction = useInteractionGesture();
-  useRecordKeys(contact, status, followUp, interaction, panelRef);
+  const send = useSendPositioning();
+  useRecordKeys(contact, status, followUp, interaction, send, panelRef);
   const close = (
     <Button variant="ghost" size="icon-sm" aria-label={m.close()} onPress={onClose}>
       <X />
@@ -597,6 +625,7 @@ export function ContactPanel({
           onGesture={status.open}
           onFollowUp={followUp.open}
           onInteraction={interaction.open}
+          onSend={send.open}
         />
         <Tabs>
           <TabList aria-label={contact.name} className="flex gap-1 border-b pb-2">
@@ -645,6 +674,7 @@ export function ContactPanel({
         gesture={interaction.gesture}
         interaction={interaction}
       />
+      <SendPanels contact={contact} summary={summary} send={send} />
     </>
   );
 }
@@ -657,7 +687,8 @@ export function ContactPage({ contactId }: { contactId: string }) {
   const status = useStatusGesture();
   const followUp = useFollowUpGesture();
   const interaction = useInteractionGesture();
-  useRecordKeys(contact, status, followUp, interaction);
+  const send = useSendPositioning();
+  useRecordKeys(contact, status, followUp, interaction, send);
   const backToContacts = (
     <Link to="/contacts" className="rounded-control underline-offset-4 focus-ring hover:underline">
       {m.contacts()}
@@ -704,6 +735,7 @@ export function ContactPage({ contactId }: { contactId: string }) {
             onGesture={status.open}
             onFollowUp={followUp.open}
             onInteraction={interaction.open}
+            onSend={send.open}
           />
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
             {/* Stacked on mobile, the Coordinates come first (spec UX §5.3). */}
@@ -745,6 +777,7 @@ export function ContactPage({ contactId }: { contactId: string }) {
             gesture={interaction.gesture}
             interaction={interaction}
           />
+          <SendPanels contact={contact} summary={summary} send={send} />
         </>
       )}
     </div>

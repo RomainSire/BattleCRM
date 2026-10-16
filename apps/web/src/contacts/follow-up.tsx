@@ -83,9 +83,14 @@ const dayLabel = (choice: (typeof SCHEDULE_CHOICES)[number]) => {
   return m.follow_up_in_days({ days: Number(choice) });
 };
 
+/** What a Follow-up is called: its rank in the Cadence, or off the Cadence. */
+export const followUpTitle = (followUp: { rank?: number | null }) =>
+  // Fallback: a summary kept on the device by a version from before ranks carries none.
+  followUp.rank == null ? m.follow_up_off_cadence() : m.follow_up_rank({ rank: followUp.rank });
+
 /**
- * The head of the thread (spec UX §5.3): the scheduled Follow-up as what comes next, off the Cadence,
- * with its signal and note, and Follow up… / Edit / Postpone / Cancel; or, without one, the reminder
+ * The head of the thread (spec UX §5.3): the scheduled Follow-up as what comes next, its rank or off
+ * the Cadence, with its signal and note, and Follow up… / Edit / Postpone / Cancel; or, without one, the reminder
  * that nothing comes next and “Schedule a follow-up”. Nothing for a Contact that has no Follow-ups.
  */
 export function FollowUpHead({
@@ -159,7 +164,7 @@ export function FollowUpHead({
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h3 id={headingId} className="font-medium">
-          {m.follow_up_off_cadence()}
+          {followUpTitle(followUp)}
         </h3>
         <p className="text-xs">
           <time dateTime={followUp.dueOn}>{formatLocalDay(followUp.dueOn, locale)}</time>
@@ -321,7 +326,15 @@ function ScheduleFollowUpPanel({
               <NoteField value={draft.note} onChange={(note) => setDraft({ ...draft, note })} />
               {isDayValid && (
                 <Recap
-                  lines={[m.schedule_follow_up_recap({ date: formatLocalDay(dueOn, locale) })]}
+                  lines={[
+                    // Edited, it keeps its rank (CONTEXT.md, Follow-up).
+                    followUp?.rank == null
+                      ? m.schedule_follow_up_recap({ date: formatLocalDay(dueOn, locale) })
+                      : m.schedule_follow_up_recap_rank({
+                          rank: followUp.rank,
+                          date: formatLocalDay(dueOn, locale),
+                        }),
+                  ]}
                 />
               )}
               <ErrorMessage>
@@ -540,8 +553,8 @@ function FollowUpPanel({
   );
 }
 
-/** What “Follow up…” adds to the Activity: today's count against its goal, or the day it was done. */
-function activityRecap(
+/** What a Prospecting action adds to the Activity: today's count against its goal, or the day it was done. */
+export function activityRecap(
   day: string,
   today: string,
   count: number,
@@ -599,18 +612,20 @@ export function EnterSubmits({
 }
 
 /** A local day picked by the User, within a bound. */
-function DayField({
+export function DayField({
   value,
   onChange,
   min,
   max,
   error,
+  label = m.follow_up_pick_day(),
 }: {
   value: string;
   onChange: (day: string) => void;
   min?: string;
   max?: string;
   error: string;
+  label?: string;
 }) {
   const isInvalid =
     value !== '' && ((min !== undefined && value < min) || (max !== undefined && value > max));
@@ -621,7 +636,7 @@ function DayField({
       isInvalid={isInvalid}
       className="flex flex-col gap-1.5"
     >
-      <Label>{m.follow_up_pick_day()}</Label>
+      <Label>{label}</Label>
       {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- “Pick a date” was just chosen: its field takes the focus. */}
       <Input type="date" min={min} max={max} autoFocus className="max-md:h-11" />
       <FieldErrorMessage>{error}</FieldErrorMessage>

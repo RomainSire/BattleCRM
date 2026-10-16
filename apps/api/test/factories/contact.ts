@@ -149,6 +149,14 @@ export const recordReply = (
   },
 ) => contactGesture(harness, user, `/api/contacts/${contactId}/record-reply`, body);
 
+/** “Use a Positioning”: sent to a Contact on a local day, and what comes with it. */
+export const usePositioning = (
+  harness: Harness,
+  user: { cookie: string },
+  contactId: string,
+  body: { positioningId: string; occurredOn: string; followUpOn?: string; bringIn?: boolean },
+) => contactGesture(harness, user, `/api/contacts/${contactId}/use-positioning`, body);
+
 /** The whole working summary of a User, checked against the contract. */
 export async function summaryOf(harness: Harness, user: { cookie: string }) {
   const response = await harness.app.request('/api/summary', { headers: { Cookie: user.cookie } });

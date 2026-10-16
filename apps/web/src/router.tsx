@@ -22,7 +22,12 @@ import { CancellingRecovery, RecoveryCancelledScreen } from './auth/two-factor-r
 import { AuthError, InvalidLinkScreen, VerifyingEmail } from './auth/verify-email-screen.tsx';
 import { ContactPage } from './contacts/contact-record.tsx';
 import { ContactsScreen } from './contacts/contacts-screen.tsx';
-import { FOLLOW_UP_GESTURES, INTERACTION_GESTURES, STATUS_GESTURES } from './contacts/status.ts';
+import {
+  FOLLOW_UP_GESTURES,
+  INTERACTION_GESTURES,
+  SEND_GESTURES,
+  STATUS_GESTURES,
+} from './contacts/status.ts';
 import { clearDeviceData } from './device-data.ts';
 import { OrganizationPage } from './organizations/organization-page.tsx';
 import { POSITIONING_PANELS } from './positionings/positioning-panel.tsx';
@@ -211,6 +216,8 @@ const statusToSearch = z.enum(STATUS_GESTURES).optional().catch(undefined);
 const followUpSearch = z.enum(FOLLOW_UP_GESTURES).optional().catch(undefined);
 /** The gesture that records an Interaction open on a record (spec UX §6.2, §6.4), kept by the address (ST-70). */
 const interactionSearch = z.enum(INTERACTION_GESTURES).optional().catch(undefined);
+/** The use of a Positioning open on a record (spec UX §6.1), kept by the address (ST-70). */
+const sendSearch = z.enum(SEND_GESTURES).optional().catch(undefined);
 
 const contactsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -221,6 +228,7 @@ const contactsRoute = createRoute({
     statusTo: statusToSearch,
     followUp: followUpSearch,
     interaction: interactionSearch,
+    send: sendSearch,
   }),
   component: ContactsScreen,
 });
@@ -233,6 +241,7 @@ const contactRoute = createRoute({
     statusTo: statusToSearch,
     followUp: followUpSearch,
     interaction: interactionSearch,
+    send: sendSearch,
   }),
   component: function ContactRecordPage() {
     const { contactId } = contactRoute.useParams();

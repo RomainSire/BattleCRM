@@ -17,6 +17,7 @@ import {
 } from '@battlecrm/contract';
 import {
   canNoteInteraction,
+  firstFollowUpOn,
   isInFunnel,
   isPoolOrArchived,
   normalizeLinkedInUrl,
@@ -31,7 +32,7 @@ import type { AppEnv } from '../app.ts';
 import type { RequireUser } from '../auth/index.ts';
 import type { Clock } from '../clock.ts';
 import { violates, type Transaction } from '../db/index.ts';
-import { stageOrder } from '../funnel/index.ts';
+import { positioningToUse, stageOrder, type PositioningUses } from '../funnel/index.ts';
 import {
   createCircuit,
   touched,
@@ -48,6 +49,7 @@ import {
   type OrganizationMembers,
 } from '../organizations/index.ts';
 import { refusal } from '../refusals.ts';
+import { localDateOf } from '../settings/index.ts';
 import { contactSubject, type ContactPlace } from './contact-subject.ts';
 import {
   cancelFollowUp,
@@ -62,7 +64,7 @@ import {
   recordInteractionNow,
   removeInteraction,
 } from './interactions.ts';
-import { contact, statusChange } from './tables.ts';
+import { contact, followUp, interaction, statusChange } from './tables.ts';
 
 // Read by `views`, which never writes them.
 export {
@@ -192,8 +194,32 @@ const recordReplyRequest = z
     path: ['stageId'],
   });
 
+/**
+ * Use a Positioning (spec UX §6.1): which one, the local day it was sent on, today or earlier
+ * (ST-36), and the day of its first Follow-up when the User changes it (today or later). From the
+ * Pool or Archived, the Contact may be brought in first, at the Stage of the Positioning.
+ */
+const usePositioningRequest = z.object({
+  positioningId: z.uuid(),
+  occurredOn: z.iso.date(),
+  followUpOn: z.iso.date().optional(),
+  bringIn: z.boolean().optional(),
+});
+
 /** The summary row of one Contact changed. */
 const touchedContact = (contactId: string) => touched({ contactIds: [contactId] });
+
+/** Whether a Positioning was ever used: a use is an Interaction that names it (CONTEXT.md, Positioning). */
+export const positioningUses: PositioningUses = {
+  async any(tx, userId, positioningId) {
+    const [use] = await tx
+      .select({ id: interaction.id })
+      .from(interaction)
+      .where(and(eq(interaction.userId, userId), eq(interaction.positioningId, positioningId)))
+      .limit(1);
+    return use !== undefined;
+  },
+};
 
 /** The Contacts of an Organization, as its own gestures read and move them (spec stack §5.2). */
 export const organizationMembers: OrganizationMembers = {
@@ -718,6 +744,128 @@ const recordReply: Gesture<
 };
 
 /**
+ * What “Use a Positioning” retains: the Interaction it recorded, the first Follow-up it scheduled and
+ * the one it replaced, the change of Status that brought the Contact in.
+ */
+const positioningUsed = z.object({
+  interactionId: z.uuid(),
+  positioningId: z.uuid(),
+  scheduledFollowUpId: z.uuid().optional(),
+  canceledFollowUpId: z.uuid().optional(),
+  statusChanged: statusChanged.optional(),
+});
+
+/**
+ * Use a Positioning (spec UX §6.1), off any Battle: an outbound Interaction that names it, dated the
+ * day it was sent (ST-36), a Prospecting action, without a Trial (Trials come with ticket 28). For a
+ * Contact Prospecting, at the Stage of the Positioning, it starts the Cadence: its first Follow-up
+ * replaces the one scheduled. An Ally keeps its own Follow-up; a Contact of the Pool or Archived,
+ * unless brought in first, has none.
+ */
+const usePositioning: Gesture<
+  'positioning_used',
+  ContactPlace,
+  z.infer<typeof usePositioningRequest>,
+  z.infer<typeof positioningUsed>,
+  | 'future_day'
+  | 'past_day'
+  | 'unknown_positioning'
+  | 'archived'
+  | 'other_stage'
+  | 'no_status_choice'
+  | 'no_follow_up'
+  | 'same_status'
+  | 'stage_required'
+  | 'unknown_stage'
+> = {
+  kind: 'positioning_used',
+  subject: contactSubject,
+  async refuse({ subject, input: { bringIn = false } }) {
+    // Only out of the Funnel and of the Circle is there a way in first (spec UX §6.1).
+    return bringIn && !isPoolOrArchived(subject.status) ? refusal('no_status_choice') : undefined;
+  },
+  async write({ tx, userId, subjectId: contactId, subject, input, now }) {
+    const { positioningId, occurredOn, followUpOn, bringIn = false } = input;
+    const day = await dayEntered(tx, userId, occurredOn, now);
+    if ('error' in day) return day;
+    const used = await positioningToUse(tx, userId, positioningId);
+    if (!used) return refusal('unknown_positioning');
+    if (used.archived) return refusal('archived');
+    // A Contact Prospecting is sent what its own Stage offers.
+    if (subject.status === 'prospecting' && used.stageId !== subject.stageId) {
+      return refusal('other_stage');
+    }
+    // Only a Contact Prospecting has a Follow-up of the Cadence (CONTEXT.md, Status).
+    const isProspecting = bringIn || subject.status === 'prospecting';
+    const firstOn = isProspecting ? firstFollowUpOn(occurredOn, used.followUpDays) : undefined;
+    if (followUpOn !== undefined) {
+      if (firstOn === undefined) return refusal('no_follow_up');
+      if (followUpOn < (await localDateOf(tx, userId, now))) return refusal('past_day');
+    }
+    const changed = bringIn
+      ? await writeStatusChange(
+          tx,
+          userId,
+          contactId,
+          subject,
+          { status: 'prospecting', stageId: used.stageId },
+          now,
+        )
+      : undefined;
+    if (changed && 'error' in changed) return changed;
+    const interactionId = await recordInteraction(tx, {
+      userId,
+      contactId,
+      kind: 'positioning_used',
+      direction: 'outbound',
+      ...day,
+      positioningId,
+    });
+    const dueOn = followUpOn ?? firstOn;
+    let replaced: Awaited<ReturnType<typeof scheduledFollowUp>>;
+    let scheduledFollowUpId: string | undefined;
+    if (dueOn !== undefined) {
+      replaced = await scheduledFollowUp(tx, userId, contactId);
+      if (replaced) await setFollowUpStatus(tx, userId, replaced.id, 'canceled');
+      const [scheduled] = await tx
+        .insert(followUp)
+        .values({ userId, contactId, status: 'scheduled', dueOn, rank: 1, scheduledAt: now })
+        .returning({ id: followUp.id });
+      if (!scheduled) throw new Error('A Follow-up was not scheduled');
+      scheduledFollowUpId = scheduled.id;
+    }
+    return {
+      retained: {
+        interactionId,
+        positioningId,
+        scheduledFollowUpId,
+        canceledFollowUpId: replaced?.id,
+        statusChanged: changed,
+      },
+      touched: touched({ contactIds: [contactId], positioningIds: [positioningId] }),
+    };
+  },
+  retained: positioningUsed,
+  /** The use leaves no trace, nor its Follow-up; the one it replaced comes back, the Status too. */
+  async inverse(tx, { userId, subjectId: contactId, retained }) {
+    const { interactionId, positioningId, scheduledFollowUpId, canceledFollowUpId } = retained;
+    const changed = retained.statusChanged;
+    if (changed && !(await canRestoreStatus(tx, userId, changed))) return 'superseded';
+    if (scheduledFollowUpId !== undefined) {
+      await tx
+        .delete(followUp)
+        .where(and(eq(followUp.userId, userId), eq(followUp.id, scheduledFollowUpId)));
+    }
+    if (canceledFollowUpId !== undefined) {
+      await setFollowUpStatus(tx, userId, canceledFollowUpId, 'scheduled');
+    }
+    await removeInteraction(tx, userId, interactionId);
+    if (changed) await takeBackStatusChange(tx, userId, contactId, changed);
+    return touched({ contactIds: [contactId], positioningIds: [positioningId] });
+  },
+};
+
+/**
  * The gestures of the Contact (spec stack §5.2, §5.4): one endpoint each, through the common circuit,
  * which answers with the rows of the summary it changed and the token that undoes it.
  */
@@ -763,6 +911,9 @@ export function createProspecting<Changes>({
     )
     .post('/contacts/:id/record-reply', requireUser, jsonBody(recordReplyRequest), (c) =>
       perform(c, recordReply, c.req.valid('json')),
+    )
+    .post('/contacts/:id/use-positioning', requireUser, jsonBody(usePositioningRequest), (c) =>
+      perform(c, usePositioning, c.req.valid('json')),
     );
 
   const gestures = [
@@ -774,6 +925,7 @@ export function createProspecting<Changes>({
     recordFollowUp,
     noteInteraction,
     recordReply,
+    usePositioning,
   ] as const;
   return { routes, gestures };
 }

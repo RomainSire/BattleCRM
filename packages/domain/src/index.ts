@@ -29,3 +29,4 @@ export {
   statusChangeCancelsFollowUp,
 } from './status.ts';
 export { funnelOf, isInFunnel, stageToEnter } from './funnel.ts';
+export { firstFollowUpOn, firstNameOf, personalized } from './positioning.ts';

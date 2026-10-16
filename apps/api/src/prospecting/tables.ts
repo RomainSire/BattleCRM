@@ -10,13 +10,14 @@ import {
   timestamp,
   unique,
   uniqueIndex,
+  integer,
   uuid,
 } from 'drizzle-orm/pg-core';
 
 // oxlint-disable-next-line no-restricted-imports -- a foreign key to the User: tables files reference each other directly, drizzle-kit loads them alone.
 import { user } from '../auth/tables.ts';
-// oxlint-disable-next-line no-restricted-imports -- a foreign key to the Stage of a Contact: tables files reference each other directly, drizzle-kit loads them alone.
-import { stage } from '../funnel/tables.ts';
+// oxlint-disable-next-line no-restricted-imports -- foreign keys to the Stage of a Contact and to the Positioning an Interaction used: tables files reference each other directly, drizzle-kit loads them alone.
+import { positioning, stage } from '../funnel/tables.ts';
 // oxlint-disable-next-line no-restricted-imports -- a foreign key to the Organization of a Contact: tables files reference each other directly, drizzle-kit loads them alone.
 import { organization } from '../organizations/tables.ts';
 
@@ -96,10 +97,12 @@ export const INTERACTION_KINDS = [
   'follow_up',
   ...NOTED_INTERACTION_KINDS,
   'reply',
+  'positioning_used',
 ] as const;
 /** The kinds that are Prospecting actions, what the Activity counts (CONTEXT.md). */
 export const PROSPECTING_ACTION_KINDS = [
   'follow_up',
+  'positioning_used',
 ] as const satisfies readonly (typeof INTERACTION_KINDS)[number][];
 /** Adding a Contact, like a change of Stage or of Status, is neither outbound nor inbound. */
 export const INTERACTION_DIRECTIONS = ['outbound', 'inbound', 'none'] as const;
@@ -121,6 +124,8 @@ export const interaction = pgTable(
     note: text(),
     /** The Channel a reply came by; none for any other kind. */
     channel: text({ enum: CHANNELS }),
+    /** The Positioning a use sent, which can then no longer be deleted; none for any other kind. */
+    positioningId: uuid('positioning_id'),
   },
   (table) => [
     unique('interaction_user_id_id_unique').on(table.userId, table.id),
@@ -141,6 +146,16 @@ export const interaction = pgTable(
       'interaction_reply_channel_check',
       sql`(${table.kind} = 'reply') = (${table.channel} is not null)`,
     ),
+    foreignKey({
+      name: 'interaction_positioning_fk',
+      columns: [table.userId, table.positioningId],
+      foreignColumns: [positioning.userId, positioning.id],
+    }),
+    check(
+      'interaction_positioning_check',
+      sql`(${table.kind} = 'positioning_used') = (${table.positioningId} is not null)`,
+    ),
+    index('interaction_positioning_idx').on(table.userId, table.positioningId),
   ],
 );
 
@@ -162,6 +177,8 @@ export const followUp = pgTable(
     dueOn: date('due_on').notNull(),
     /** Why to follow up, what was said; optional. */
     note: text(),
+    /** Its rank in the Cadence of the last Positioning used, from 1; none off the Cadence. */
+    rank: integer(),
     /** The Interaction it became, once done. */
     interactionId: uuid('interaction_id'),
     scheduledAt: instant('scheduled_at').notNull(),
@@ -188,6 +205,7 @@ export const followUp = pgTable(
       sql`(${table.status} = 'done') = (${table.interactionId} is not null)`,
     ),
     check('follow_up_note_check', sql`${table.note} <> ''`),
+    check('follow_up_rank_check', sql`${table.rank} > 0`),
   ],
 );
 
@@ -262,4 +280,5 @@ export const CONTACT_GESTURE_KINDS = [
   'followed_up',
   'interaction_noted',
   'reply_recorded',
+  'positioning_used',
 ] as const;

@@ -11,7 +11,8 @@ import {
 import { findDuplicates, funnelOf, normalizeLinkedInUrl } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useDeferredValue, useId, useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
+import { useDeferredValue, useId, useRef, useState } from 'react';
 import { Form, TextField } from 'react-aria-components';
 
 import { Button } from '../components/ui/button.tsx';
@@ -42,6 +43,7 @@ import { prospectingStageOf, STATUS_LABEL } from './status.ts';
  * The quick add of a Contact (spec UX §6.8): a modal opened by `N` or “+ Add”. A name, its
  * Organization, its LinkedIn profile, and the Status it is added in: the Pool by default, Prospecting
  * at a Stage, or Ally; “More fields” opens the rest. Nothing is kept from one opening to the next.
+ * `Ctrl Enter` adds it Prospecting and goes on to send it a Positioning (spec UX §6.1).
  */
 export function QuickAdd({
   isOpen,
@@ -71,6 +73,10 @@ const filled = (text: string) => text.trim() || undefined;
 function QuickAddForm({ onDone }: { onDone: () => void }) {
   const api = useApi();
   const sendGesture = useSendGesture();
+  const navigate = useNavigate();
+  const formRef = useRef<HTMLFormElement>(null);
+  // Set by `Ctrl Enter` for the submission it starts.
+  const sendsNext = useRef(false);
   const stageFieldId = useId();
   // The summary the shell reads, not read again for a modal: the Stages of the Funnel, the
   // Organizations and the Contacts the checks compare with, without a round trip (ADR 0012).
@@ -101,13 +107,16 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
   const [sameEmail] = duplicates.sameEmail;
   const [samePhone] = duplicates.samePhone;
   const add = useMutation({
-    mutationFn: () =>
-      sendGesture(
+    mutationFn: async ({ sendNext }: { sendNext: boolean }) => {
+      // `Ctrl Enter` adds it Prospecting, whatever the Status chosen.
+      const addedStatus = sendNext ? 'prospecting' : status;
+      let addedId: string | undefined;
+      const refused = await sendGesture(
         api.contacts.$post({
           json: {
             name,
-            status,
-            ...(status === 'prospecting' && stageId !== undefined && { stageId }),
+            status: addedStatus,
+            ...(addedStatus === 'prospecting' && stageId !== undefined && { stageId }),
             ...(organizationId !== null && { organizationId }),
             ...(organization.kind === 'new' &&
               organization.type && {
@@ -120,184 +129,215 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
             note: filled(note),
           },
         }),
-        ({ contacts: [added] }) => added && addedMessage(added, stages),
-      ),
-    onSuccess: (refused) => {
-      if (!refused) onDone();
-      else if (refused.error === 'unknown_stage') setChosenStageId(undefined);
+        ({ contacts: [added] }) => {
+          addedId = added?.id;
+          return added && addedMessage(added, stages);
+        },
+      );
+      return { refused, sendTo: sendNext ? addedId : undefined };
+    },
+    onSuccess: ({ refused, sendTo }) => {
+      if (refused) {
+        if (refused.error === 'unknown_stage') setChosenStageId(undefined);
+        return;
+      }
+      onDone();
+      if (sendTo !== undefined) {
+        void navigate({
+          to: '/contacts/$contactId',
+          params: { contactId: sendTo },
+          search: { send: 'positioning' },
+        });
+      }
     },
   });
   return (
-    <Form
-      className="flex flex-col gap-4"
-      onSubmit={(event) => {
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- `Ctrl Enter` from any field (spec UX §6.8).
+    <div
+      className="contents"
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' || !(event.ctrlKey || event.metaKey)) return;
+        if (event.target instanceof HTMLTextAreaElement) return;
         event.preventDefault();
-        setWasSent(true);
-        if (add.isPending || (organization.kind === 'new' && organization.type === null)) return;
-        // Never checked on Enter: a duplicate profile already says so, and blocks (spec UX §6.8).
-        if (findDuplicates(typed, contacts).sameLinkedIn) return;
-        add.mutate();
+        sendsNext.current = true;
+        formRef.current?.requestSubmit();
       }}
     >
-      <TextField
-        name="name"
-        value={name}
-        onChange={setName}
-        // oxlint-disable-next-line jsx-a11y/no-autofocus -- the User just opened this modal to type a name: its field takes the focus, which closing gives back.
-        autoFocus
-        autoComplete="off"
-        maxLength={CONTACT_NAME_MAX_LENGTH}
-        validate={(candidate) => (candidate.trim() === '' ? m.contact_name_required() : null)}
-        className="flex flex-col gap-1.5"
-      >
-        <Label>{m.contact_name()}</Label>
-        <Input className="max-md:h-11" />
-        <FieldErrorMessage />
-        <DuplicateNote>
-          {sameName &&
-            (duplicates.sameNameInOrganization && organization.kind === 'existing'
-              ? m.contact_same_name_in_organization({
-                  organization: organization.organization.name,
-                })
-              : m.contact_same_name({ contact: contactLabel(sameName, organizations) }))}
-        </DuplicateNote>
-      </TextField>
-      <OrganizationField
-        draft={organizationDraft}
-        onChange={setOrganizationDraft}
-        organizations={organizations}
-        isTypeMissing={wasSent}
-      />
-      <TextField
-        name="linkedinUrl"
-        value={linkedinUrl}
-        onChange={setLinkedinUrl}
-        autoComplete="off"
-        maxLength={CONTACT_LINKEDIN_URL_MAX_LENGTH}
-        validate={(url) =>
-          url.trim() !== '' && normalizeLinkedInUrl(url) === null
-            ? m.contact_linkedin_url_invalid()
-            : null
-        }
-        className="flex flex-col gap-1.5"
-      >
-        <Label>{m.contact_linkedin_url()}</Label>
-        <Input
-          inputMode="url"
-          className={duplicates.sameLinkedIn ? `${invalidInputClass} max-md:h-11` : 'max-md:h-11'}
-        />
-        <FieldErrorMessage />
-      </TextField>
-      <LinkedInTaken
-        owner={duplicates.sameLinkedIn}
-        organizations={organizations}
-        onLeave={onDone}
-      />
-      <SegmentedControl
-        value={status}
-        onChange={(value) => {
-          const chosen = ADDABLE_CONTACT_STATUSES.find((candidate) => candidate === value);
-          if (chosen) setStatus(chosen);
+      <Form
+        ref={formRef}
+        className="flex flex-col gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const sendNext = sendsNext.current;
+          sendsNext.current = false;
+          setWasSent(true);
+          if (add.isPending || (organization.kind === 'new' && organization.type === null)) return;
+          // Never checked on Enter: a duplicate profile already says so, and blocks (spec UX §6.8).
+          if (findDuplicates(typed, contacts).sameLinkedIn) return;
+          add.mutate({ sendNext });
         }}
       >
-        <Label>{m.contact_status()}</Label>
-        <SegmentedControlItems>
-          {ADDABLE_CONTACT_STATUSES.map((candidate) => (
-            <SegmentedControlItem key={candidate} value={candidate}>
-              {STATUS_LABEL[candidate]()}
-            </SegmentedControlItem>
-          ))}
-        </SegmentedControlItems>
-      </SegmentedControl>
-      {status === 'prospecting' && funnel.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={stageFieldId}>{m.contact_stage()}</Label>
-          <select
-            id={stageFieldId}
-            value={stageId}
-            onChange={(event) => setChosenStageId(event.target.value)}
-            className="h-8 w-full rounded-control border border-input bg-background px-2 text-base focus-ring max-md:h-11 md:text-sm"
-          >
-            {funnel.map((stage) => (
-              <option key={stage.id} value={stage.id}>
-                {stage.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-      {showsMoreFields ? (
-        <>
-          <TextField
-            name="jobTitle"
-            value={jobTitle}
-            onChange={setJobTitle}
-            // oxlint-disable-next-line jsx-a11y/no-autofocus -- “More fields” was just pressed: the first of them takes the focus.
-            autoFocus
-            maxLength={CONTACT_JOB_TITLE_MAX_LENGTH}
-            className="flex flex-col gap-1.5"
-          >
-            <Label>{m.contact_job_title()}</Label>
-            <Input className="max-md:h-11" />
-          </TextField>
-          <TextField
-            name="email"
-            value={email}
-            onChange={setEmail}
-            autoComplete="off"
-            maxLength={CONTACT_EMAIL_MAX_LENGTH}
-            className="flex flex-col gap-1.5"
-          >
-            <Label>{m.contact_email()}</Label>
-            <Input inputMode="email" className="max-md:h-11" />
-            <DuplicateNote>
-              {sameEmail &&
-                m.contact_same_email({ contact: contactLabel(sameEmail, organizations) })}
-            </DuplicateNote>
-          </TextField>
-          <TextField
-            name="phone"
-            type="tel"
-            value={phone}
-            onChange={setPhone}
-            autoComplete="off"
-            maxLength={CONTACT_PHONE_MAX_LENGTH}
-            className="flex flex-col gap-1.5"
-          >
-            <Label>{m.contact_phone()}</Label>
-            <Input className="max-md:h-11" />
-            <DuplicateNote>
-              {samePhone &&
-                m.contact_same_phone({ contact: contactLabel(samePhone, organizations) })}
-            </DuplicateNote>
-          </TextField>
-          <TextField
-            name="note"
-            value={note}
-            onChange={setNote}
-            maxLength={CONTACT_NOTE_MAX_LENGTH}
-            className="flex flex-col gap-1.5"
-          >
-            <Label>{m.contact_note()}</Label>
-            <Textarea />
-          </TextField>
-        </>
-      ) : (
-        <Button
-          variant="link"
-          className="h-auto self-start p-0"
-          onPress={() => setShowsMoreFields(true)}
+        <TextField
+          name="name"
+          value={name}
+          onChange={setName}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- the User just opened this modal to type a name: its field takes the focus, which closing gives back.
+          autoFocus
+          autoComplete="off"
+          maxLength={CONTACT_NAME_MAX_LENGTH}
+          validate={(candidate) => (candidate.trim() === '' ? m.contact_name_required() : null)}
+          className="flex flex-col gap-1.5"
         >
-          {m.more_fields()}
-        </Button>
-      )}
-      <ErrorMessage>{add.isError ? m.auth_error() : refusalText(add.data)}</ErrorMessage>
-      <DialogFooter>
-        <Button type="submit" className="max-md:min-h-11" isDisabled={add.isPending}>
-          {m.add()}
-        </Button>
-      </DialogFooter>
-    </Form>
+          <Label>{m.contact_name()}</Label>
+          <Input className="max-md:h-11" />
+          <FieldErrorMessage />
+          <DuplicateNote>
+            {sameName &&
+              (duplicates.sameNameInOrganization && organization.kind === 'existing'
+                ? m.contact_same_name_in_organization({
+                    organization: organization.organization.name,
+                  })
+                : m.contact_same_name({ contact: contactLabel(sameName, organizations) }))}
+          </DuplicateNote>
+        </TextField>
+        <OrganizationField
+          draft={organizationDraft}
+          onChange={setOrganizationDraft}
+          organizations={organizations}
+          isTypeMissing={wasSent}
+        />
+        <TextField
+          name="linkedinUrl"
+          value={linkedinUrl}
+          onChange={setLinkedinUrl}
+          autoComplete="off"
+          maxLength={CONTACT_LINKEDIN_URL_MAX_LENGTH}
+          validate={(url) =>
+            url.trim() !== '' && normalizeLinkedInUrl(url) === null
+              ? m.contact_linkedin_url_invalid()
+              : null
+          }
+          className="flex flex-col gap-1.5"
+        >
+          <Label>{m.contact_linkedin_url()}</Label>
+          <Input
+            inputMode="url"
+            className={duplicates.sameLinkedIn ? `${invalidInputClass} max-md:h-11` : 'max-md:h-11'}
+          />
+          <FieldErrorMessage />
+        </TextField>
+        <LinkedInTaken
+          owner={duplicates.sameLinkedIn}
+          organizations={organizations}
+          onLeave={onDone}
+        />
+        <SegmentedControl
+          value={status}
+          onChange={(value) => {
+            const chosen = ADDABLE_CONTACT_STATUSES.find((candidate) => candidate === value);
+            if (chosen) setStatus(chosen);
+          }}
+        >
+          <Label>{m.contact_status()}</Label>
+          <SegmentedControlItems>
+            {ADDABLE_CONTACT_STATUSES.map((candidate) => (
+              <SegmentedControlItem key={candidate} value={candidate}>
+                {STATUS_LABEL[candidate]()}
+              </SegmentedControlItem>
+            ))}
+          </SegmentedControlItems>
+        </SegmentedControl>
+        {status === 'prospecting' && funnel.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={stageFieldId}>{m.contact_stage()}</Label>
+            <select
+              id={stageFieldId}
+              value={stageId}
+              onChange={(event) => setChosenStageId(event.target.value)}
+              className="h-8 w-full rounded-control border border-input bg-background px-2 text-base focus-ring max-md:h-11 md:text-sm"
+            >
+              {funnel.map((stage) => (
+                <option key={stage.id} value={stage.id}>
+                  {stage.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        {showsMoreFields ? (
+          <>
+            <TextField
+              name="jobTitle"
+              value={jobTitle}
+              onChange={setJobTitle}
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- “More fields” was just pressed: the first of them takes the focus.
+              autoFocus
+              maxLength={CONTACT_JOB_TITLE_MAX_LENGTH}
+              className="flex flex-col gap-1.5"
+            >
+              <Label>{m.contact_job_title()}</Label>
+              <Input className="max-md:h-11" />
+            </TextField>
+            <TextField
+              name="email"
+              value={email}
+              onChange={setEmail}
+              autoComplete="off"
+              maxLength={CONTACT_EMAIL_MAX_LENGTH}
+              className="flex flex-col gap-1.5"
+            >
+              <Label>{m.contact_email()}</Label>
+              <Input inputMode="email" className="max-md:h-11" />
+              <DuplicateNote>
+                {sameEmail &&
+                  m.contact_same_email({ contact: contactLabel(sameEmail, organizations) })}
+              </DuplicateNote>
+            </TextField>
+            <TextField
+              name="phone"
+              type="tel"
+              value={phone}
+              onChange={setPhone}
+              autoComplete="off"
+              maxLength={CONTACT_PHONE_MAX_LENGTH}
+              className="flex flex-col gap-1.5"
+            >
+              <Label>{m.contact_phone()}</Label>
+              <Input className="max-md:h-11" />
+              <DuplicateNote>
+                {samePhone &&
+                  m.contact_same_phone({ contact: contactLabel(samePhone, organizations) })}
+              </DuplicateNote>
+            </TextField>
+            <TextField
+              name="note"
+              value={note}
+              onChange={setNote}
+              maxLength={CONTACT_NOTE_MAX_LENGTH}
+              className="flex flex-col gap-1.5"
+            >
+              <Label>{m.contact_note()}</Label>
+              <Textarea />
+            </TextField>
+          </>
+        ) : (
+          <Button
+            variant="link"
+            className="h-auto self-start p-0"
+            onPress={() => setShowsMoreFields(true)}
+          >
+            {m.more_fields()}
+          </Button>
+        )}
+        <ErrorMessage>{add.isError ? m.auth_error() : refusalText(add.data?.refused)}</ErrorMessage>
+        <p className="text-sm text-muted-foreground max-md:hidden">{m.quick_add_send_hint()}</p>
+        <DialogFooter>
+          <Button type="submit" className="max-md:min-h-11" isDisabled={add.isPending}>
+            {m.add()}
+          </Button>
+        </DialogFooter>
+      </Form>
+    </div>
   );
 }
 

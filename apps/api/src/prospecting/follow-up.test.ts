@@ -57,7 +57,7 @@ test('“Schedule a follow-up” gives a Contact Prospecting a Follow-up for a d
   const { changes, undoToken } = gestureAnswer.parse(await response.json());
   // Neither an Interaction nor a Prospecting action: nothing was done yet.
   expect(changes.contacts).toEqual([
-    { ...jean, followUp: { dueOn: '2026-01-08', note: 'Ask about the tender' } },
+    { ...jean, followUp: { dueOn: '2026-01-08', note: 'Ask about the tender', rank: null } },
   ]);
   expect((await summaryOf(harness, user)).contacts).toEqual(changes.contacts);
   const { followUps, interactions } = await rowsOf(user);
@@ -85,7 +85,7 @@ test('scheduling again modifies the Follow-up: at most one per Contact; “Undo�
   });
 
   // A note left out is emptied: the panel sends every field.
-  expect(modified.followUp).toEqual({ dueOn: '2026-01-12', note: null });
+  expect(modified.followUp).toEqual({ dueOn: '2026-01-12', note: null, rank: null });
   const { followUps } = await rowsOf(user);
   expect(followUps).toHaveLength(1);
   expect(followUps[0]?.id).toBe(before.followUps[0]?.id);
@@ -127,7 +127,7 @@ test('an Ally may have a Follow-up; a Contact of the Pool or Archived may not, n
   expect(await rowsOf(user)).toEqual(before);
   // Today is fine.
   const { contact } = await scheduleFollowUp(harness, user, ally.id, { dueOn: '2026-01-06' });
-  expect(contact.followUp).toEqual({ dueOn: '2026-01-06', note: null });
+  expect(contact.followUp).toEqual({ dueOn: '2026-01-06', note: null, rank: null });
 });
 
 test('“Cancel” takes the scheduled Follow-up away, and “Undo” schedules it again', async () => {
@@ -151,6 +151,7 @@ test('“Cancel” takes the scheduled Follow-up away, and “Undo” schedules 
   expect(undone.parse(await undoing.json()).changes.contacts[0]?.followUp).toEqual({
     dueOn: '2026-01-08',
     note: 'Tender',
+    rank: null,
   });
   expect(await rowsOf(user)).toEqual(before);
 });
@@ -211,7 +212,7 @@ test('“Follow up…” turns the Follow-up into an outbound Interaction dated 
 
   expect(undoing.status).toBe(200);
   expect(undone.parse(await undoing.json()).changes.contacts).toEqual([
-    { ...jean, followUp: { dueOn: '2026-01-09', note: 'Tender' } },
+    { ...jean, followUp: { dueOn: '2026-01-09', note: 'Tender', rank: null } },
   ]);
   expect(await rowsOf(user)).toEqual(before);
 });
@@ -264,7 +265,7 @@ test('leaving Prospecting, or going to the Pool or Archived, cancels the schedul
 
   expect(toAlly.contact.followUp).toBeNull();
   // An Ally entering the Funnel keeps its own.
-  expect(toProspecting.contact.followUp).toEqual({ dueOn: '2026-01-09', note: null });
+  expect(toProspecting.contact.followUp).toEqual({ dueOn: '2026-01-09', note: null, rank: null });
   expect(toPool.contact.followUp).toBeNull();
 
   expect((await undo(harness, user, toAlly.undoToken)).status).toBe(200);

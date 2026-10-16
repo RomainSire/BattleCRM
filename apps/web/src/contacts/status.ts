@@ -48,6 +48,13 @@ export const otherStatuses = (current: ContactStatus): ContactStatus[] =>
 export const FOLLOW_UP_GESTURES = ['schedule', 'do'] as const;
 export type FollowUpGesture = (typeof FOLLOW_UP_GESTURES)[number];
 
+/**
+ * Use a Positioning, as the User opens it (spec UX §6.1): its panel, or the creation of a Positioning
+ * for the Stage that has none, which leads back to it.
+ */
+export const SEND_GESTURES = ['positioning', 'new-positioning'] as const;
+export type SendGesture = (typeof SEND_GESTURES)[number];
+
 /** A gesture that records an Interaction the User opens: Note an Interaction, or Replied… (spec UX §6.2, §6.4). */
 export const INTERACTION_GESTURES = ['note', 'reply'] as const;
 export type InteractionGesture = (typeof INTERACTION_GESTURES)[number];

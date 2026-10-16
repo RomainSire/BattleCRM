@@ -4,12 +4,24 @@
 
 **Blocked by:** 21, 23, 19 ; architecture 05, 07, 09 (`.scratch/battlecrm-architecture/issues/`)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Panneau en trois temps (Quoi envoyer, Envoie-le, Confirme) ; « C'est envoyé » (`Entrée`) ou « Plus tard » ; notification avec « Annuler »
-- [ ] Copier le message (`{prénom}` remplacé) par l'API Clipboard, calculé localement
-- [ ] Date d'envoi (aujourd'hui, hier, autre) ; récapitulatif : « sans Essai », Relance 1 à sa date (« déjà en retard » si besoin, lien « modifier »), +1 à l'Activité du jour de l'Interaction
-- [ ] Garde-fous : Vivier ou Archivé (« Faire entrer et continuer » par défaut, ou « Enregistrer sans Essai ») ; Allié (sans Essai, remet ses Jours sans contact à 0) ; Étape sans Positionnement (geste bloqué : « Créer un Positionnement pour cette Étape » ou « Noter une Interaction libre »)
-- [ ] Bloc Prochaine action : sans Relance ni Essai → « Utiliser un Positionnement »
-- [ ] `Ctrl Entrée` dans l'ajout rapide : ajoute En prospection puis enchaîne sur ce geste ; « Créer et l'envoyer à <Contact> » depuis l'atelier
-- [ ] Test nominal + Annuler (l'Interaction et la Relance planifiée disparaissent)
+- [x] Panneau en trois temps (Quoi envoyer, Envoie-le, Confirme) ; « C'est envoyé » (`Entrée`) ou « Plus tard » ; notification avec « Annuler »
+- [x] Copier le message (`{prénom}` remplacé) par l'API Clipboard, calculé localement
+- [x] Date d'envoi (aujourd'hui, hier, autre) ; récapitulatif : « sans Essai », Relance 1 à sa date (« déjà en retard » si besoin, lien « modifier »), +1 à l'Activité du jour de l'Interaction
+- [x] Garde-fous : Vivier ou Archivé (« Faire entrer et continuer » par défaut, ou « Enregistrer sans Essai ») ; Allié (sans Essai, remet ses Jours sans contact à 0) ; Étape sans Positionnement (geste bloqué : « Créer un Positionnement pour cette Étape » ou « Noter une Interaction libre »)
+- [x] Bloc Prochaine action : sans Relance ni Essai → « Utiliser un Positionnement »
+- [x] `Ctrl Entrée` dans l'ajout rapide : ajoute En prospection puis enchaîne sur ce geste ; « Créer et l'envoyer à <Contact> » depuis l'atelier
+- [x] Test nominal + Annuler (l'Interaction et la Relance planifiée disparaissent)
+
+## Comments
+
+**2026-10-16, implémentation (agent).**
+
+- **API** (`prospecting`) : genre d'Interaction `positioning_used` (sortante, Action de prospection), `interaction.positioning_id` (clé composite vers le Positionnement, `CHECK` qu'une utilisation, et elle seule, en nomme un), `follow_up.rank` (rang dans la Cadence, `null` hors Cadence). Migration `0028_positioning_uses` (RLS levée le temps de la clé étrangère, colonnes facultatives : compatible avec la version précédente), appliquée à la base de dev. Geste `POST /contacts/:id/use-positioning` `{ positioningId, occurredOn, followUpOn?, bringIn? }` : daté du jour saisi (ST-36), sans Essai ; En prospection (ou entré par `bringIn` depuis le Vivier ou Archivé, à l'Étape du Positionnement), Relance 1 planifiée à `occurredOn` + premier intervalle (en retard si besoin, `followUpOn` la change, aujourd'hui ou plus tard), qui remplace la Relance planifiée ; un Allié garde la sienne, un Contact du Vivier ou Archivé n'en a pas. Refus : 400 `unknown_positioning` (inconnu, d'un autre, Étape archivée), 409 `archived`, 409 `other_stage` (Contact En prospection, autre Étape), 409 `no_status_choice` (`bringIn` hors Vivier/Archivé), 409 `no_follow_up` (`followUpOn` sans Relance 1), 400 `future_day` / `past_day`. « Annuler » supprime l'Interaction et la Relance 1, rend la Relance remplacée et l'État.
+- **`funnel`** : `positioningToUse` (ligne partagée `FOR SHARE` le temps de l'utilisation) ; suppression refusée une fois utilisé (409 `used`) et annulation d'une création refusée (`superseded`), après verrou de la ligne : `prospecting` dit si un Positionnement a servi (`positioningUses`, injecté comme `organizationMembers`).
+- **Résumé** : `followUp.rank`, `used` compté, `positioningId` sur chaque entrée du fil. **`packages/domain`** : `firstNameOf`, `personalized` (`{prénom}` et `{first name}`), `firstFollowUpOn`, testés.
+- **SPA** (`contacts/use-positioning.tsx`) : panneau « Envoyer à <Contact> » ouvert dans l'adresse (`?send=positioning`, ST-70), brouillon en `sessionStorage` ; `U`, bouton plein du bloc Prochaine action (En prospection sans Relance), `⋯` ailleurs. Quoi envoyer (Positionnements non archivés de l'Étape ; Étape au choix hors En prospection), Envoie-le (Canal, texte avec le prénom, « Copier le message », pièces jointes à télécharger), Confirme (aujourd'hui, hier, une date ; récapitulatif « sans Essai », « Relance 1 le … » / « déjà en retard » avec « modifier », Entrée n°…, Jours sans contact remis à 0, +1 à l'Activité). « C'est envoyé » (`Entrée`) ou « Plus tard », notification avec « Annuler ». Garde-fous : Vivier / Archivé (« Faire entrer et continuer » par défaut, « Enregistrer sans Essai »), Allié, Étape sans Positionnement (« Créer un Positionnement pour cette Étape » ouvre le panneau de l'atelier avec « Créer et l'envoyer à <Contact> » / « Annuler et revenir », ou « Noter une Interaction libre »). Tête du fil « Relance 1 », fil « « CV B » envoyé ». Ajout rapide : `Ctrl Entrée` ajoute En prospection puis ouvre le geste sur la fiche du Contact. Atelier : refus « utilisé » dit comme tel.
+- **Revue** : refus vérifiés avant toute écriture ; message propre au refus `used`.
+- **Laissé aux tickets suivants** : Tirage, Essai, dérogation, Battle (28) ; rangs suivants et messages de Cadence (26) ; Canal prérempli dans « A répondu… », lien « Utiliser un Positionnement » depuis « Noter une Interaction », enchaînement après un changement d'Étape, une réponse ou « Faire entrer… » (22, 28, 30) ; palette, Aujourd'hui, carte du Funnel (33, 37, 41).
+- **À trancher** : `Ctrl Entrée` mène toujours à la fiche du Contact, quel que soit l'écran d'origine ; le côté SPA nomme le geste « send » (`?send=`, `SendPanel`), l'API `use-positioning`.

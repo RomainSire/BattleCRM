@@ -106,6 +106,7 @@ test('the addition is an Interaction neither outbound nor inbound, dated by the 
         recordedAt: now,
         note: null,
         channel: null,
+        positioningId: null,
       },
     ],
     // Its first Status is written down as a change from none.

@@ -109,7 +109,12 @@ async function summaryContacts(
     .as('actions');
   // The scheduled Follow-up, at most one per Contact.
   const scheduled = tx
-    .select({ contactId: followUp.contactId, dueOn: followUp.dueOn, note: followUp.note })
+    .select({
+      contactId: followUp.contactId,
+      dueOn: followUp.dueOn,
+      note: followUp.note,
+      rank: followUp.rank,
+    })
     .from(followUp)
     .where(
       and(
@@ -152,6 +157,7 @@ async function summaryContacts(
       statusReason: current.reason,
       followUpDueOn: scheduled.dueOn,
       followUpNote: scheduled.note,
+      followUpRank: scheduled.rank,
       prospectingActionDays: actions.days,
     })
     .from(contact)
@@ -163,11 +169,14 @@ async function summaryContacts(
     .leftJoin(actions, eq(actions.contactId, contact.id))
     .where(and(eq(contact.userId, userId), ids && inArray(contact.id, ids)))
     .orderBy(desc(latest.occurredAt), desc(contact.id));
-  return rows.map(({ followUpDueOn, followUpNote, ...row }) => ({
+  return rows.map(({ followUpDueOn, followUpNote, followUpRank, ...row }) => ({
     ...row,
     lastInteractionAt: row.lastInteractionAt.toISOString(),
     funnelEntryDays: row.funnelEntryDays ?? [],
-    followUp: followUpDueOn === null ? null : { dueOn: followUpDueOn, note: followUpNote },
+    followUp:
+      followUpDueOn === null
+        ? null
+        : { dueOn: followUpDueOn, note: followUpNote, rank: followUpRank },
     prospectingActionDays: row.prospectingActionDays ?? [],
   }));
 }
@@ -229,6 +238,18 @@ async function summaryPositionings(
       ),
     )
     .orderBy(positioningAttachment.id);
+  // The ones used at least once: no longer deletable (CONTEXT.md, Positioning).
+  const uses = await tx
+    .selectDistinct({ positioningId: interaction.positioningId })
+    .from(interaction)
+    .where(
+      and(
+        eq(interaction.userId, userId),
+        isNotNull(interaction.positioningId),
+        ids && inArray(interaction.positioningId, ids),
+      ),
+    );
+  const used = new Set(uses.map(({ positioningId }) => positioningId));
   return rows.map(({ followUpDays, followUpMessages, ...row }) => ({
     ...row,
     attachments: attachments
@@ -238,9 +259,8 @@ async function summaryPositionings(
       days,
       message: followUpMessages[rank] ?? null,
     })),
-    // Its uses and its Trials are counted once a Positioning can be used (tickets 25, 28): until
-    // then, none is used, so every one may be edited and deleted.
-    used: false,
+    used: used.has(row.id),
+    // Its Trials come with Trials (ticket 28): until then, none is frozen.
     trialCount: 0,
   }));
 }
@@ -261,8 +281,8 @@ async function summaryOrganizations(
 
 /**
  * What the record of a Contact reads beyond the summary, on demand (spec stack §3): its note, and its
- * thread from the latest Interaction to the earliest, each with its note, the Channel of a reply and
- * the change of Status it recorded.
+ * thread from the latest Interaction to the earliest, each with its note, the Channel of a reply, the
+ * Positioning a use sent and the change of Status it recorded.
  * `undefined` when the User has no such Contact.
  */
 async function contactRecord(tx: Transaction, userId: string, contactId: string) {
@@ -280,6 +300,7 @@ async function contactRecord(tx: Transaction, userId: string, contactId: string)
       localDate: interaction.localDate,
       note: interaction.note,
       channel: interaction.channel,
+      positioningId: interaction.positioningId,
       fromStatus: statusChange.fromStatus,
       toStatus: statusChange.toStatus,
       stageId: statusChange.stageId,

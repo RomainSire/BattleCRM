@@ -39,7 +39,7 @@ const julie = () =>
   prospect({
     id: '01990000-0000-7000-8000-000000000001',
     name: 'Julie Martin',
-    followUp: { dueOn: addDays(today(), 4), note: 'Relancer sur le devis' },
+    followUp: { dueOn: addDays(today(), 4), note: 'Relancer sur le devis', rank: null },
   });
 /** An Ally, nothing scheduled. */
 const INES = prospect({

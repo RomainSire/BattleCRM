@@ -270,6 +270,15 @@ const CROSS_ACCESS: Record<
       body: { occurredOn: '2026-01-05', channel: 'email', status: 'ally' },
     };
   },
+  'POST /api/contacts/:id/use-positioning': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice, 'Jean Dupont', { status: 'prospecting' });
+    const { positioning } = await positioningOf(harness, alice);
+    return {
+      id: contact.id,
+      state: () => getJson(harness, alice, '/api/summary'),
+      body: { positioningId: positioning.id, occurredOn: '2026-01-05' },
+    };
+  },
   'GET /api/contacts/:id/record': async (harness, alice) => {
     const { contact } = await addContact(harness, alice);
     return { id: contact.id, state: () => getJson(harness, alice, '/api/summary') };
