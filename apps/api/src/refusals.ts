@@ -16,6 +16,8 @@ export const REFUSAL_STATUS = {
   champion_required: 400,
   too_large: 413,
   same_status: 409,
+  same_stage: 409,
+  not_prospecting: 409,
   archived: 409,
   not_archived: 409,
   quota_exceeded: 409,

@@ -20,7 +20,11 @@ export async function recordInteractionNow(
     userId,
     contactId,
     kind,
-  }: { userId: string; contactId: string; kind: 'contact_added' | 'status_changed' },
+  }: {
+    userId: string;
+    contactId: string;
+    kind: 'contact_added' | 'status_changed' | 'stage_changed';
+  },
   now: Date,
 ) {
   return recordInteraction(tx, {

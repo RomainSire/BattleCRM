@@ -8,6 +8,7 @@ import { testApp } from '../test/app.ts';
 import { openBattle } from '../test/factories/battle.ts';
 import {
   addContact,
+  changeStage,
   editContact,
   revealAssignment,
   scheduleFollowUp,
@@ -20,6 +21,7 @@ import {
   fileOf,
   positioningGesture,
   positioningOf,
+  stageIdsOf,
 } from '../test/factories/positioning.ts';
 import { makeUser } from '../test/factories/user.ts';
 import { postFile, postJson } from '../test/http.ts';
@@ -102,6 +104,7 @@ describe('catalogue', () => {
         'positioning_attachment',
         'organization',
         'stage',
+        'stage_change',
         'status_change',
       ]),
     );
@@ -197,6 +200,10 @@ test('a query that forgot its filter only sees the rows of its User, in every bu
     });
     // Its Follow-up moved during the Trial: a deviation traced on it.
     await scheduleFollowUp(harness, user, contact.id, { dueOn: '2026-01-20' });
+    // Another Contact moves on to the next Stage.
+    const { contact: moving } = await addContact(harness, user, 'Paul', { status: 'prospecting' });
+    const [, next = ''] = await stageIdsOf(harness, user);
+    await changeStage(harness, user, moving.id, { stageId: next });
   }
 
   for (const { name } of await businessTables()) {
@@ -340,6 +347,15 @@ const CROSS_ACCESS: Record<
       id: contact.id,
       state: () => getJson(harness, alice, '/api/summary'),
       body: { outcome: 'no_result' },
+    };
+  },
+  'POST /api/contacts/:id/change-stage': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice, 'Jean Dupont', { status: 'prospecting' });
+    const [, next = ''] = await stageIdsOf(harness, alice);
+    return {
+      id: contact.id,
+      state: () => getJson(harness, alice, '/api/summary'),
+      body: { stageId: next },
     };
   },
   'GET /api/contacts/:id/record': async (harness, alice) => {

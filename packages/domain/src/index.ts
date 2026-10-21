@@ -28,7 +28,7 @@ export {
   isPoolOrArchived,
   statusChangeCancelsFollowUp,
 } from './status.ts';
-export { funnelOf, isInFunnel, stageToEnter } from './funnel.ts';
+export { funnelOf, isInFunnel, nextStageOf, stageMove, stageToEnter } from './funnel.ts';
 export {
   cadenceFollowUpOn,
   firstFollowUpOn,

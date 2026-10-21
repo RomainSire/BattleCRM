@@ -757,5 +757,35 @@
   "no_result_behind": "The Trial changed on another device: check, then try again.",
   "follow_up_anyway_title": "Follow up with {name} anyway",
   "follow_up_anyway_recap": "Off the Cadence: a deviation traced on the Trial",
-  "schedule_follow_up_deviation": "Changing its day during a Trial: a deviation traced on the Trial"
+  "schedule_follow_up_deviation": "Changing its day during a Trial: a deviation traced on the Trial",
+  "verb_change_stage": "Change Stage…",
+  "stage_pill_label": "Change Stage: {stage}",
+  "change_stage_title": "Move {name} to another Stage",
+  "change_stage_to": "New Stage",
+  "change_stage_option_forward": "Move on to {stage}",
+  "change_stage_option_back": "Go back to {stage}",
+  "change_stage_option_stay": "Stay at {stage}",
+  "change_stage_forward": "Moving on: from {from} to {to}",
+  "change_stage_back": "Going back: from {from} to {to}",
+  "change_stage_validate": "Change Stage",
+  "change_stage_chain": "Then: use a Positioning now",
+  "change_stage_positionings": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "No open Battle at {stage}: {count} Positioning available.",
+        "countPlural=*": "No open Battle at {stage}: {count} Positionings available."
+      }
+    }
+  ],
+  "change_stage_no_positioning": "No open Battle at {stage}, and no Positioning yet.",
+  "change_stage_behind": "This Contact changed on another device: check, then try again.",
+  "stage_changed_forward": "{name} moves on to {stage}",
+  "stage_changed_back": "{name} goes back to {stage}",
+  "last_stage_question": "Success at the last Stage: add {name} to the Circle?",
+  "last_stage_add_to_circle": "Add to Circle",
+  "last_stage_stay": "Stay Prospecting at {stage}",
+  "thread_stage_changed": "Stage: {from} → {to}",
+  "thread_stage_back": "Back: {from} → {to}"
 }

@@ -215,6 +215,11 @@ const circleRoute = createRoute({
 
 /** The change of Status open on a record (spec UX §6.11), kept by the address (ST-70). */
 const statusToSearch = z.enum(STATUS_GESTURES).optional().catch(undefined);
+/** The change of Stage open on a record (spec UX §6.6), to a Stage or to choose, kept by the address (ST-70). */
+const stageToSearch = z
+  .union([z.literal('choose'), z.uuid()])
+  .optional()
+  .catch(undefined);
 /** The gesture on the Follow-up open on a record (spec UX §6.3, §6.5), kept by the address (ST-70). */
 const followUpSearch = z.enum(FOLLOW_UP_GESTURES).optional().catch(undefined);
 /** The gesture that records an Interaction open on a record (spec UX §6.2, §6.4), kept by the address (ST-70). */
@@ -231,6 +236,7 @@ const contactsRoute = createRoute({
   validateSearch: z.object({
     contact: z.uuid().optional().catch(undefined),
     statusTo: statusToSearch,
+    stageTo: stageToSearch,
     followUp: followUpSearch,
     interaction: interactionSearch,
     send: sendSearch,
@@ -245,6 +251,7 @@ const contactRoute = createRoute({
   path: '/contacts/$contactId',
   validateSearch: z.object({
     statusTo: statusToSearch,
+    stageTo: stageToSearch,
     followUp: followUpSearch,
     interaction: interactionSearch,
     send: sendSearch,

@@ -22,3 +22,28 @@ export function stageToEnter(
   const wanted = chosen ?? last;
   return wanted != null && isInFunnel(funnel, wanted) ? wanted : undefined;
 }
+
+/**
+ * A change of Stage in the order of the Funnel of the moment (CONTEXT.md, Funnel; ADR 0003): the
+ * positions of both Stages, kept as they are so that reordering never rewrites it, and whether it goes
+ * forward. None to the same Stage, or to or from one out of the Funnel.
+ */
+export function stageMove(
+  funnel: readonly { id: string }[],
+  fromId: string,
+  toId: string,
+): { fromPosition: number; toPosition: number; forward: boolean } | undefined {
+  const fromPosition = funnel.findIndex(({ id }) => id === fromId);
+  const toPosition = funnel.findIndex(({ id }) => id === toId);
+  if (fromPosition < 0 || toPosition < 0 || fromPosition === toPosition) return undefined;
+  return { fromPosition, toPosition, forward: toPosition > fromPosition };
+}
+
+/** The Stage after this one in the Funnel; none after the last one, or for one out of it. */
+export function nextStageOf<Stage extends { id: string }>(
+  funnel: readonly Stage[],
+  stageId: string | null | undefined,
+): Stage | undefined {
+  const position = funnel.findIndex(({ id }) => id === stageId);
+  return position < 0 ? undefined : funnel[position + 1];
+}

@@ -65,3 +65,9 @@ export type InteractionGesture = (typeof INTERACTION_GESTURES)[number];
 /** A gesture on the Trial in progress the User opens: No result… (spec UX §6.7). */
 export const TRIAL_GESTURES = ['no-result'] as const;
 export type TrialGesture = (typeof TRIAL_GESTURES)[number];
+
+/**
+ * A change of Stage the User opens (spec UX §6.6): to a Stage already chosen, by its id, or the choice
+ * of it first.
+ */
+export type StageGesture = 'choose' | (string & {});

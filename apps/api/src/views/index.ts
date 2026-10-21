@@ -24,6 +24,7 @@ import {
   followUp,
   interaction,
   PROSPECTING_ACTION_KINDS,
+  stageChange,
   statusChange,
   trial,
 } from '../prospecting/index.ts';
@@ -400,7 +401,8 @@ async function summaryOrganizations(
 /**
  * What the record of a Contact reads beyond the summary, on demand (spec stack §3): its note, and its
  * thread from the latest Interaction to the earliest, each with its note, the Channel of a reply, the
- * Positioning a use sent and the change of Status it recorded.
+ * Positioning a use sent, the change of Status or of Stage it recorded: forward or back as the Funnel
+ * read then (ADR 0003).
  * `undefined` when the User has no such Contact.
  */
 async function contactRecord(tx: Transaction, userId: string, contactId: string) {
@@ -423,21 +425,46 @@ async function contactRecord(tx: Transaction, userId: string, contactId: string)
       toStatus: statusChange.toStatus,
       stageId: statusChange.stageId,
       reason: statusChange.reason,
+      fromStageId: stageChange.fromStageId,
+      toStageId: stageChange.toStageId,
+      fromPosition: stageChange.fromPosition,
+      toPosition: stageChange.toPosition,
     })
     .from(interaction)
     .leftJoin(
       statusChange,
       and(eq(statusChange.userId, userId), eq(statusChange.interactionId, interaction.id)),
     )
+    .leftJoin(
+      stageChange,
+      and(eq(stageChange.userId, userId), eq(stageChange.interactionId, interaction.id)),
+    )
     .where(and(eq(interaction.userId, userId), eq(interaction.contactId, contactId)))
     .orderBy(desc(interaction.occurredAt), desc(interaction.id));
   return {
     note: found.note,
-    thread: thread.map(({ fromStatus, toStatus, stageId, reason, occurredAt, ...recorded }) => ({
-      ...recorded,
-      occurredAt: occurredAt.toISOString(),
-      statusChange: toStatus === null ? null : { fromStatus, toStatus, stageId, reason },
-    })),
+    thread: thread.map(
+      ({
+        fromStatus,
+        toStatus,
+        stageId,
+        reason,
+        fromStageId,
+        toStageId,
+        fromPosition,
+        toPosition,
+        occurredAt,
+        ...recorded
+      }) => ({
+        ...recorded,
+        occurredAt: occurredAt.toISOString(),
+        statusChange: toStatus === null ? null : { fromStatus, toStatus, stageId, reason },
+        stageChange:
+          fromStageId === null || toStageId === null
+            ? null
+            : { fromStageId, toStageId, forward: (toPosition ?? 0) > (fromPosition ?? 0) },
+      }),
+    ),
   };
 }
 

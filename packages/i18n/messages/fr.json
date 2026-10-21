@@ -757,5 +757,35 @@
   "no_result_behind": "L'Essai a changé sur un autre appareil : vérifie puis recommence.",
   "follow_up_anyway_title": "Relancer {name} quand même",
   "follow_up_anyway_recap": "Hors Cadence : un écart tracé sur l'Essai",
-  "schedule_follow_up_deviation": "Changer sa date pendant un Essai : un écart tracé sur l'Essai"
+  "schedule_follow_up_deviation": "Changer sa date pendant un Essai : un écart tracé sur l'Essai",
+  "verb_change_stage": "Changer d'Étape…",
+  "stage_pill_label": "Changer d'Étape : {stage}",
+  "change_stage_title": "Changer {name} d'Étape",
+  "change_stage_to": "Nouvelle Étape",
+  "change_stage_option_forward": "Avancer à {stage}",
+  "change_stage_option_back": "Revenir à {stage}",
+  "change_stage_option_stay": "Rester à {stage}",
+  "change_stage_forward": "Avance : de {from} à {to}",
+  "change_stage_back": "Recul : de {from} à {to}",
+  "change_stage_validate": "Changer d'Étape",
+  "change_stage_chain": "Enchaîner : utiliser un Positionnement maintenant",
+  "change_stage_positionings": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Pas de Battle ouverte à {stage} : {count} Positionnement disponible.",
+        "countPlural=*": "Pas de Battle ouverte à {stage} : {count} Positionnements disponibles."
+      }
+    }
+  ],
+  "change_stage_no_positioning": "Pas de Battle ouverte à {stage}, ni de Positionnement pour l'instant.",
+  "change_stage_behind": "Ce Contact a changé sur un autre appareil : vérifie puis recommence.",
+  "stage_changed_forward": "{name} avance à {stage}",
+  "stage_changed_back": "{name} revient à {stage}",
+  "last_stage_question": "Succès à la dernière Étape : ajouter {name} au Cercle ?",
+  "last_stage_add_to_circle": "Ajouter au Cercle",
+  "last_stage_stay": "Rester En prospection à {stage}",
+  "thread_stage_changed": "Étape : {from} → {to}",
+  "thread_stage_back": "Recul : {from} → {to}"
 }

@@ -103,6 +103,7 @@ export const contact = pgTable(
 export const INTERACTION_KINDS = [
   'contact_added',
   'status_changed',
+  'stage_changed',
   'follow_up',
   ...NOTED_INTERACTION_KINDS,
   'reply',
@@ -277,6 +278,58 @@ export const statusChange = pgTable(
 );
 
 /**
+ * The history of the Stage of a Contact Prospecting (ST-33), each change recorded by an Interaction of
+ * its own, neither outbound nor inbound, dated from the clock of the app. It keeps the positions of
+ * both Stages in the Funnel of the moment: reordering never turns a step forward into a step back
+ * (ADR 0003).
+ */
+export const stageChange = pgTable(
+  'stage_change',
+  {
+    id: id(),
+    userId: userId(),
+    contactId: uuid('contact_id').notNull(),
+    /** Its date and local day, from the clock of the app. */
+    interactionId: uuid('interaction_id').notNull(),
+    fromStageId: uuid('from_stage_id').notNull(),
+    toStageId: uuid('to_stage_id').notNull(),
+    /** The places of both Stages in the Funnel then, from 0. */
+    fromPosition: integer('from_position').notNull(),
+    toPosition: integer('to_position').notNull(),
+  },
+  (table) => [
+    unique('stage_change_user_id_id_unique').on(table.userId, table.id),
+    unique('stage_change_interaction_unique').on(table.userId, table.interactionId),
+    foreignKey({
+      name: 'stage_change_contact_fk',
+      columns: [table.userId, table.contactId],
+      foreignColumns: [contact.userId, contact.id],
+    }),
+    foreignKey({
+      name: 'stage_change_interaction_fk',
+      columns: [table.userId, table.interactionId],
+      foreignColumns: [interaction.userId, interaction.id],
+    }),
+    foreignKey({
+      name: 'stage_change_from_stage_fk',
+      columns: [table.userId, table.fromStageId],
+      foreignColumns: [stage.userId, stage.id],
+    }),
+    foreignKey({
+      name: 'stage_change_to_stage_fk',
+      columns: [table.userId, table.toStageId],
+      foreignColumns: [stage.userId, stage.id],
+    }),
+    check('stage_change_change_check', sql`${table.fromStageId} <> ${table.toStageId}`),
+    check(
+      'stage_change_position_check',
+      sql`${table.fromPosition} >= 0 and ${table.toPosition} >= 0 and ${table.fromPosition} <> ${table.toPosition}`,
+    ),
+    index('stage_change_contact_idx').on(table.userId, table.contactId),
+  ],
+);
+
+/**
  * The Assignment of a Contact (CONTEXT.md, ADR 0002): the Positioning the open Battle of its Stage
  * drew for it, once revealed, never drawn again. It stands as long as the Battle is open and the
  * Contact stays Prospecting at that Stage, and falls otherwise; it survives “Undo” (ADR 0011). At most
@@ -430,6 +483,7 @@ export const CONTACT_GESTURE_KINDS = [
   'contact_added',
   'contact_edited',
   'status_changed',
+  'stage_changed',
   'follow_up_scheduled',
   'follow_up_canceled',
   'followed_up',

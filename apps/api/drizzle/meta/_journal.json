@@ -246,6 +246,20 @@
       "when": 1792605871172,
       "tag": "0034_trial_deviation_access",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1792613245300,
+      "tag": "0035_stage_changes",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792613252828,
+      "tag": "0036_stage_changes_access",
+      "breakpoints": true
     }
   ]
 }

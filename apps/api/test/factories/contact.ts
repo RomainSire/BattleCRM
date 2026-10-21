@@ -208,3 +208,11 @@ export const settleTrial = (
   contactId: string,
   body: { outcome: 'no_result'; status?: 'pool' | 'archived'; reason?: string },
 ) => contactGesture(harness, user, `/api/contacts/${contactId}/settle-trial`, body);
+
+/** “Change Stage”: a Contact Prospecting moved to another Stage, and what comes with it. */
+export const changeStage = (
+  harness: Harness,
+  user: { cookie: string },
+  contactId: string,
+  body: { stageId: string; trialOutcome?: ReplyTrialOutcome; cancelFollowUp?: boolean },
+) => contactGesture(harness, user, `/api/contacts/${contactId}/change-stage`, body);

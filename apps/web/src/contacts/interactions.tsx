@@ -9,6 +9,8 @@ import {
   canNoteInteraction,
   funnelOf,
   hasFollowUps,
+  isInFunnel,
+  nextStageOf,
   isPoolOrArchived,
   responseWindowEndsOn,
   stageToEnter,
@@ -42,6 +44,17 @@ import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { todayOf, type Summary, type SummaryContact } from '../summary.ts';
 import { pushedFollowUpOn } from './cadence.ts';
+import {
+  cancelFollowUpLabel,
+  ChainField,
+  chainsAt,
+  endsFunnel,
+  LAST_STAGE_CHOICES,
+  LastStageField,
+  stageChangedMessage,
+  stageMoveRecap,
+  StageMoveField,
+} from './change-stage.tsx';
 import { StageField, statusChangedMessage, statusRecap } from './change-status.tsx';
 import { contactRecordQuery } from './contact-record-query.ts';
 import {
@@ -67,7 +80,8 @@ import {
 
 /**
  * The gesture that records an Interaction open on the record, carried by the address (ST-70): `open`
- * shows its panel, `close` takes it away, `chain` gives way to a gesture on the Follow-up.
+ * shows its panel, `close` takes it away, `chain` gives way to a gesture on the Follow-up, `chainSend`
+ * to the central gesture (spec UX §6.1).
  */
 export function useInteractionGesture() {
   const { interaction } = useSearch({ strict: false });
@@ -86,6 +100,15 @@ export function useInteractionGesture() {
       void navigate({
         to: '.',
         search: ({ interaction: _closed, ...search }) => ({ ...search, followUp }),
+        replace: true,
+      }),
+    chainSend: () =>
+      void navigate({
+        to: '.',
+        search: ({ interaction: _closed, ...search }) => ({
+          ...search,
+          send: 'positioning' as const,
+        }),
         replace: true,
       }),
   };
@@ -268,6 +291,10 @@ const replyDraft = z.object({
   trialOutcome: z.enum(REPLY_TRIAL_OUTCOMES).optional(),
   afterNoResult: z.enum(NO_RESULT_CHOICES),
   reason: z.string(),
+  /** The Stage a Contact Prospecting moves to, once the User chose it; by default, from the outcome. */
+  moveTo: z.string().optional(),
+  lastStage: z.enum(LAST_STAGE_CHOICES).optional(),
+  chain: z.boolean().optional(),
 });
 
 /**
@@ -275,18 +302,22 @@ const replyDraft = z.object({
  * comes next. From the Pool or Archived: leave it (by default), bring it in or add it to the Circle.
  * The scheduled Follow-up canceled (checked), or “Schedule a follow-up…” once recorded. With a Trial
  * in progress, its Criterion recalled and its outcome chosen, never preselected (ADR 0005): saved only
- * once it is; after a No result, back to the Pool by default (§6.7).
+ * once it is; after a No result, back to the Pool by default (§6.7). Prospecting, the Stage: the next
+ * one after a Success, the same one otherwise, or another; after a Success at the last Stage, the
+ * Circle (preselected) or staying; an open Battle at the arrival chains to the central gesture (§6.6).
  */
 function ReplyPanel({
   contact,
   summary,
   onClose,
   onScheduleFollowUp,
+  onChain,
 }: {
   contact: SummaryContact;
   summary: Summary;
   onClose: () => void;
   onScheduleFollowUp: () => void;
+  onChain: () => void;
 }) {
   const locale = useLocale();
   const api = useApi();
@@ -322,7 +353,24 @@ function ReplyPanel({
       : undefined;
   const [wasSent, setWasSent] = useState(false);
   const { day: occurredOn, isValid: isDayValid } = doneDayOf(draft, today);
-  const status = isOut && draft.status !== 'stay' ? draft.status : afterNoResult;
+  // Prospecting and staying so, the Stage it is at next (spec UX §6.2).
+  const funnel = funnelOf(summary.stages);
+  const movesOn = contact.status === 'prospecting' && afterNoResult === undefined;
+  const endsAtLastStage =
+    movesOn && trial !== undefined && endsFunnel(summary, trial, trialOutcome);
+  const toCircle = endsAtLastStage && (draft.lastStage ?? 'circle') === 'circle';
+  const proposedStageId =
+    (trialOutcome === 'success' && nextStageOf(funnel, contact.stageId)?.id) || contact.stageId;
+  const chosenStageId = draft.moveTo ?? proposedStageId ?? undefined;
+  const movedTo =
+    movesOn && !toCircle && chosenStageId !== contact.stageId && isInFunnel(funnel, chosenStageId)
+      ? chosenStageId
+      : undefined;
+  const chains = chainsAt(summary, movedTo, draft.chain ?? true);
+  const status =
+    isOut && draft.status !== 'stay'
+      ? draft.status
+      : (afterNoResult ?? (toCircle ? 'ally' : undefined));
   const stageId = stageToEnter(funnelOf(summary.stages), { chosen: draft.stageId });
   const isStageMissing = status === 'prospecting' && stageId === undefined;
   // Its scheduled Follow-up may be canceled; one may be scheduled once in a Status that has some.
@@ -346,15 +394,16 @@ function ReplyPanel({
             ...(trialOutcome && { trialOutcome }),
             ...(status && { status }),
             ...(status === 'prospecting' && stageId !== undefined && { stageId }),
+            ...(movedTo !== undefined && { stageId: movedTo }),
             ...(afterNoResult && draft.reason.trim() !== '' && { reason: draft.reason.trim() }),
           },
         }),
         (changes) => {
           const [changed] = changes.contacts;
           if (!changed) return undefined;
-          const said = status
-            ? statusChangedMessage(changed, status, summary)
-            : m.reply_toast({ name });
+          let said: string = m.reply_toast({ name });
+          if (status) said = statusChangedMessage(changed, status, summary);
+          else if (movedTo) said = stageChangedMessage(summary, name, contact.stageId, movedTo);
           return trialSettledMessage(trialOutcome, trial, changes, said);
         },
       ),
@@ -364,7 +413,8 @@ function ReplyPanel({
         return;
       }
       clearDraft();
-      if (mayScheduleFollowUp && draft.scheduleFollowUp) onScheduleFollowUp();
+      if (chains) onChain();
+      else if (mayScheduleFollowUp && draft.scheduleFollowUp) onScheduleFollowUp();
       else onClose();
     },
   });
@@ -396,6 +446,8 @@ function ReplyPanel({
   // unless a later one was done.
   const { lastDoneInteractionOn: before } = contact;
   const lastDoneOn = before !== null && before > occurredOn ? before : occurredOn;
+  const moveLine = movedTo && stageMoveRecap(summary, contact.stageId, movedTo);
+  if (moveLine) recap.push(moveLine);
   if (status)
     recap.push(...statusRecap(status, summary, locale, isDayValid ? lastDoneOn : undefined));
   if (isDayValid && lastDoneOn === occurredOn && statusAfter === 'ally') {
@@ -486,7 +538,7 @@ function ReplyPanel({
                   )}
                 </section>
               )}
-              {(isOut || followUp !== null || mayScheduleFollowUp) && (
+              {(isOut || movesOn || followUp !== null || mayScheduleFollowUp) && (
                 <section aria-labelledby={thenId} className="flex flex-col gap-4">
                   <h3 id={thenId} className="text-xs font-semibold text-muted-foreground uppercase">
                     {m.reply_then()}
@@ -515,6 +567,32 @@ function ReplyPanel({
                       </SegmentedControlItems>
                     </SegmentedControl>
                   )}
+                  {endsAtLastStage && (
+                    <LastStageField
+                      name={name}
+                      stageName={funnel.find(({ id }) => id === contact.stageId)?.name ?? ''}
+                      choice={draft.lastStage ?? 'circle'}
+                      onChange={(lastStage) => setDraft({ ...draft, lastStage })}
+                    />
+                  )}
+                  {movesOn && !endsAtLastStage && (
+                    <StageMoveField
+                      summary={summary}
+                      fromId={contact.stageId}
+                      stageId={chosenStageId}
+                      onChange={(moveTo) => setDraft({ ...draft, moveTo })}
+                      offersStay
+                      label={m.contact_stage()}
+                    />
+                  )}
+                  {movedTo !== undefined && (
+                    <ChainField
+                      summary={summary}
+                      stageId={movedTo}
+                      isChecked={draft.chain ?? true}
+                      onChange={(chain) => setDraft({ ...draft, chain })}
+                    />
+                  )}
                   {status === 'prospecting' && (
                     <StageField
                       summary={summary}
@@ -529,12 +607,7 @@ function ReplyPanel({
                       onChange={(cancelFollowUp) => setDraft({ ...draft, cancelFollowUp })}
                       className="max-md:min-h-11"
                     >
-                      {followUp.rank == null
-                        ? m.reply_cancel_follow_up({ date: formatLocalDay(followUp.dueOn, locale) })
-                        : m.reply_cancel_follow_up_rank({
-                            rank: followUp.rank,
-                            date: formatLocalDay(followUp.dueOn, locale),
-                          })}
+                      {cancelFollowUpLabel(followUp, locale)}
                     </Checkbox>
                   )}
                   {mayScheduleFollowUp && (
@@ -589,6 +662,7 @@ export function InteractionPanels({
         summary={summary}
         onClose={interaction.close}
         onScheduleFollowUp={() => interaction.chain('schedule')}
+        onChain={interaction.chainSend}
       />
     );
   }

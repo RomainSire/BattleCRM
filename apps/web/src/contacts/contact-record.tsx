@@ -30,6 +30,7 @@ import {
   type SummaryContact,
   type SummaryOrganization,
 } from '../summary.ts';
+import { ChangeStagePanel, useStageGesture } from './change-stage.tsx';
 import { ChangeStatusPanel, useStatusGesture } from './change-status.tsx';
 import { ContactName } from './contact-name.tsx';
 import { contactRecordQuery, type ThreadEntry } from './contact-record-query.ts';
@@ -99,7 +100,7 @@ const DONE_LABEL: Partial<Record<ThreadEntry['kind'], () => string>> = {
  * the additions and the changes of Status, discreetly.
  */
 function threadEntryLabel(
-  { kind, note, channel, positioningId, statusChange }: ThreadEntry,
+  { kind, note, channel, positioningId, statusChange, stageChange }: ThreadEntry,
   summary: Summary,
 ) {
   let done = DONE_LABEL[kind]?.();
@@ -110,6 +111,13 @@ function threadEntryLabel(
     done = m.thread_positioning_used({ label: positioningLabel(summary, positioningId) });
   }
   if (done) return [done, note].filter(Boolean).join(' · ');
+  // Fallback: a record read from a version from before changes of Stage carries none.
+  if (stageChange != null) {
+    const nameOf = (stageId: string) => summary.stages.find(({ id }) => id === stageId)?.name ?? '';
+    const names = { from: nameOf(stageChange.fromStageId), to: nameOf(stageChange.toStageId) };
+    // Forward or back as the Funnel read then (ADR 0003).
+    return stageChange.forward ? m.thread_stage_changed(names) : m.thread_stage_back(names);
+  }
   if (!statusChange) return undefined;
   const { fromStatus, toStatus, stageId, reason } = statusChange;
   let label;
@@ -138,10 +146,6 @@ const OrganizationLink = ({ organization }: { organization: SummaryOrganization 
   </Link>
 );
 
-const Pill = ({ children }: { children: ReactNode }) => (
-  <span className="rounded-control border px-1.5 py-0.5 text-xs text-neutral-text">{children}</span>
-);
-
 /** The head of a record: name, Organization and Target, Stage and Status, LinkedIn (spec UX §5.3). */
 function RecordHeader({
   contact,
@@ -150,6 +154,7 @@ function RecordHeader({
   headingId,
   headingRef,
   onChangeStatus,
+  onChangeStage,
 }: {
   contact: SummaryContact;
   summary: Summary;
@@ -158,6 +163,8 @@ function RecordHeader({
   headingRef?: Ref<HTMLHeadingElement>;
   /** The pill of the Status opens “Change status…” (spec UX §5.3). */
   onChangeStatus: () => void;
+  /** The pill of the Stage opens “Change stage…” (spec UX §6.6). */
+  onChangeStage: () => void;
 }) {
   const Heading = level === 1 ? 'h1' : 'h2';
   const organization = organizationOf(contact, summary);
@@ -182,7 +189,17 @@ function RecordHeader({
         )}
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
-        {stage && <Pill>{stage}</Pill>}
+        {stage && (
+          <Button
+            variant="outline"
+            size="xs"
+            className="font-normal text-neutral-text max-md:min-h-11"
+            aria-label={m.stage_pill_label({ stage })}
+            onPress={onChangeStage}
+          >
+            {stage}
+          </Button>
+        )}
         <Button
           variant="outline"
           size="xs"
@@ -399,6 +416,7 @@ const INTERACTION_MENU = { 'interaction:note': 'note', 'interaction:reply': 'rep
 const interactionOfKey = (key: unknown): InteractionGesture | undefined =>
   Object.entries(INTERACTION_MENU).find(([candidate]) => candidate === key)?.[1];
 const SEND_MENU_KEY = 'send:positioning';
+const STAGE_MENU_KEY = 'stage:choose';
 
 /**
  * The block Next action (spec UX §5.3): what the Status of the Contact calls for, its full button, and
@@ -415,11 +433,13 @@ function NextAction({
   onInteraction,
   onSend,
   onTrial,
+  onStage,
 }: {
   contact: SummaryContact;
   summary: Summary;
   level: 2 | 3;
   showsVerbs: boolean;
+  onStage: () => void;
   onGesture: (gesture: StatusGesture) => void;
   onFollowUp: (gesture: FollowUpGesture) => void;
   onInteraction: (gesture: InteractionGesture) => void;
@@ -532,6 +552,7 @@ function NextAction({
             const interaction = interactionOfKey(key);
             if (interaction) onInteraction(interaction);
             if (key === SEND_MENU_KEY) onSend('positioning');
+            if (key === STAGE_MENU_KEY) onStage();
           }}
         >
           {!sendsFirst && <MenuItem id={SEND_MENU_KEY}>{m.verb_use_positioning()}</MenuItem>}
@@ -544,6 +565,7 @@ function NextAction({
               {contact.followUp ? m.verb_edit_follow_up() : m.verb_schedule_follow_up()}
             </MenuItem>
           )}
+          {isProspecting && <MenuItem id={STAGE_MENU_KEY}>{m.verb_change_stage()}</MenuItem>}
           {others.map((status) => (
             <MenuItem key={status} id={status}>
               {STATUS_VERB[status]()}
@@ -558,8 +580,8 @@ function NextAction({
 
 /**
  * The keys of the record that has the focus (spec UX §3.3): anywhere on its page, within its panel
- * only. `S` opens “Change status…”, `P` Schedule or Edit the follow-up, `F` Follow up…, `I` Note an
- * Interaction, `U` Use a Positioning.
+ * only. `S` opens “Change status…”, `E` “Change stage…”, `P` Schedule or Edit the follow-up, `F`
+ * Follow up…, `I` Note an Interaction, `U` Use a Positioning.
  */
 function useRecordKeys(
   contact: SummaryContact | undefined,
@@ -567,6 +589,7 @@ function useRecordKeys(
   followUp: ReturnType<typeof useFollowUpGesture>,
   interaction: ReturnType<typeof useInteractionGesture>,
   send: ReturnType<typeof useSendPositioning>,
+  stage: ReturnType<typeof useStageGesture>,
   scope?: RefObject<HTMLElement | null>,
 ) {
   const onKey = (open: () => void) => (event: KeyboardEvent) => {
@@ -578,6 +601,10 @@ function useRecordKeys(
   };
   useShortcuts({
     s: onKey(() => status.open('choose')),
+    // Only a Contact Prospecting changes Stage (CONTEXT.md, Status).
+    e: onKey(() => {
+      if (contact?.status === 'prospecting') stage.open('choose');
+    }),
     p: onKey(() => {
       if (contact && hasFollowUps(contact.status)) followUp.open('schedule');
     }),
@@ -637,7 +664,8 @@ export function ContactPanel({
   const interaction = useInteractionGesture();
   const send = useSendPositioning();
   const trial = useTrialGesture();
-  useRecordKeys(contact, status, followUp, interaction, send, panelRef);
+  const stage = useStageGesture();
+  useRecordKeys(contact, status, followUp, interaction, send, stage, panelRef);
   const close = (
     <Button variant="ghost" size="icon-sm" aria-label={m.close()} onPress={onClose}>
       <X />
@@ -675,6 +703,7 @@ export function ContactPanel({
             headingId={headingId}
             headingRef={headingRef}
             onChangeStatus={() => status.open('choose')}
+            onChangeStage={() => stage.open('choose')}
           />
           {close}
         </div>
@@ -689,6 +718,7 @@ export function ContactPanel({
           onInteraction={interaction.open}
           onSend={send.open}
           onTrial={trial.open}
+          onStage={() => stage.open('choose')}
         />
         <Tabs>
           <TabList aria-label={contact.name} className="flex gap-1 border-b pb-2">
@@ -731,6 +761,16 @@ export function ContactPanel({
           onClose={status.close}
         />
       )}
+      {stage.gesture && contact.status === 'prospecting' && (
+        <ChangeStagePanel
+          key={contact.id}
+          contact={contact}
+          summary={summary}
+          gesture={stage.gesture}
+          onClose={stage.close}
+          onChain={stage.chain}
+        />
+      )}
       <FollowUpPanels
         contact={contact}
         summary={summary}
@@ -764,7 +804,8 @@ export function ContactPage({ contactId }: { contactId: string }) {
   const interaction = useInteractionGesture();
   const send = useSendPositioning();
   const trial = useTrialGesture();
-  useRecordKeys(contact, status, followUp, interaction, send);
+  const stage = useStageGesture();
+  useRecordKeys(contact, status, followUp, interaction, send, stage);
   const backToContacts = (
     <Link to="/contacts" className="rounded-control underline-offset-4 focus-ring hover:underline">
       {m.contacts()}
@@ -802,6 +843,7 @@ export function ContactPage({ contactId }: { contactId: string }) {
             summary={summary}
             level={1}
             onChangeStatus={() => status.open('choose')}
+            onChangeStage={() => stage.open('choose')}
           />
           <NextAction
             contact={contact}
@@ -813,6 +855,7 @@ export function ContactPage({ contactId }: { contactId: string }) {
             onInteraction={interaction.open}
             onSend={send.open}
             onTrial={trial.open}
+            onStage={() => stage.open('choose')}
           />
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
             {/* Stacked on mobile, the Trial in progress and the Coordinates come first (spec UX §5.3). */}
@@ -849,6 +892,16 @@ export function ContactPage({ contactId }: { contactId: string }) {
               summary={summary}
               gesture={status.gesture}
               onClose={status.close}
+            />
+          )}
+          {stage.gesture && contact.status === 'prospecting' && (
+            <ChangeStagePanel
+              key={contact.id}
+              contact={contact}
+              summary={summary}
+              gesture={stage.gesture}
+              onClose={stage.close}
+              onChain={stage.chain}
             />
           )}
           <FollowUpPanels

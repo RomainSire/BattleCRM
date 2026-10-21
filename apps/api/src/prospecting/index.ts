@@ -76,6 +76,12 @@ import {
   recordInteractionNow,
   removeInteraction,
 } from './interactions.ts';
+import {
+  canRestoreStage,
+  stageChanged,
+  takeBackStageChange,
+  writeStageChange,
+} from './stage-changes.ts';
 import { contact, followUp, interaction, statusChange } from './tables.ts';
 import {
   anyAssignmentIn,
@@ -102,6 +108,7 @@ export {
   followUp,
   interaction,
   PROSPECTING_ACTION_KINDS,
+  stageChange,
   statusChange,
   trial,
 } from './tables.ts';
@@ -238,7 +245,8 @@ const noteInteractionRequest = z.object({
  * Replied… (spec UX §6.2): the local day of the reply, today or earlier, its Channel and note, never a
  * nature; what it does to the Trial in progress; then the scheduled Follow-up canceled if asked, and,
  * spontaneous from the Pool or Archived, the Contact brought in (at a Stage, as a change of Status
- * takes it) or added to the Circle; after a No result, back to the Pool or Archived (§6.7).
+ * takes it) or added to the Circle; after a No result, back to the Pool or Archived (§6.7); after a
+ * Success, to the Circle. A Contact Prospecting may move to another Stage (§6.6).
  */
 const recordReplyRequest = z
   .object({
@@ -252,9 +260,23 @@ const recordReplyRequest = z
     stageId: z.uuid().optional(),
     reason: optionalText(STATUS_REASON_MAX_LENGTH),
   })
-  .refine(({ status, stageId }) => stageId === undefined || status === 'prospecting', {
-    path: ['stageId'],
-  });
+  // Without a Status, the Stage a Contact Prospecting moves to.
+  .refine(
+    ({ status, stageId }) =>
+      stageId === undefined || status === undefined || status === 'prospecting',
+    { path: ['stageId'] },
+  );
+
+/**
+ * Change Stage (spec UX §6.6): the Stage of the Funnel a Contact Prospecting moves to; what it does to
+ * the Trial in progress, a Success, a No result or left in progress, to say when there is one; then
+ * the scheduled Follow-up canceled if asked.
+ */
+const changeStageRequest = z.object({
+  stageId: z.uuid(),
+  trialOutcome: z.enum(REPLY_TRIAL_OUTCOMES).optional(),
+  cancelFollowUp: z.boolean().optional(),
+});
 
 /**
  * No result… (spec UX §6.7), from a Trial whose Response window elapsed: the Trial settled with no
@@ -804,6 +826,8 @@ const replyRecorded = z.object({
   statusChanged: statusChanged.optional(),
   // The Trial in progress it settled.
   settledTrial: settledTrial.optional(),
+  // The change of Stage it made, Prospecting.
+  stageChanged: stageChanged.optional(),
 });
 
 /**
@@ -823,19 +847,22 @@ const recordReply: Gesture<
   | 'stage_required'
   | 'unknown_stage'
   | 'trial_in_progress'
+  | 'not_prospecting'
+  | 'same_stage'
 > = {
   kind: 'reply_recorded',
   subject: contactSubject,
   async refuse({ subject, input: { status, trialOutcome } }) {
     if (status === undefined) return undefined;
     // Out of the Funnel and of the Circle, a reply may bring the Contact in or add it to the Circle
-    // (spec UX §6.2); a No result may put it back in the Pool or archive it (§6.7). Nothing else.
+    // (spec UX §6.2); a No result may put it back in the Pool or archive it (§6.7), a Success add it
+    // to the Circle. Nothing else.
     const isOut = isPoolOrArchived(subject.status);
-    const choices: readonly string[] = isOut
-      ? ['prospecting', 'ally']
-      : subject.status === 'prospecting' && trialOutcome === 'no_result'
-        ? ['pool', 'archived']
-        : [];
+    const isProspecting = subject.status === 'prospecting';
+    let choices: readonly string[] = [];
+    if (isOut) choices = ['prospecting', 'ally'];
+    else if (isProspecting && trialOutcome === 'no_result') choices = ['pool', 'archived'];
+    else if (isProspecting && trialOutcome === 'success') choices = ['ally'];
     return choices.includes(status) ? undefined : refusal('no_status_choice');
   },
   async write({ tx, userId, subjectId: contactId, subject, input, now }) {
@@ -880,6 +907,12 @@ const recordReply: Gesture<
         ? undefined
         : await writeStatusChange(tx, userId, contactId, subject, { status, stageId, reason }, now);
     if (changed && 'error' in changed) return changed;
+    // Without a Status, the Stage is where a Contact Prospecting moves to.
+    const moved =
+      status === undefined && stageId !== undefined
+        ? await writeStageChange(tx, userId, contactId, subject, stageId, now)
+        : undefined;
+    if (moved && 'error' in moved) return moved;
     return {
       retained: {
         interactionId,
@@ -887,15 +920,19 @@ const recordReply: Gesture<
         unranked,
         statusChanged: changed,
         settledTrial: settled,
+        stageChanged: moved,
       },
       touched: touchedWithTrial(contactId, settled),
     };
   },
   retained: replyRecorded,
-  /** The reply leaves no trace, the Follow-up comes back with its rank, the Status too. */
+  /** The reply leaves no trace, the Follow-up comes back with its rank, the Status and the Stage too. */
   async inverse(tx, { userId, subjectId: contactId, retained }) {
     const { interactionId, canceledFollowUpId, unranked, statusChanged: changed } = retained;
+    const moved = retained.stageChanged;
     if (changed && !(await canRestoreStatus(tx, userId, contactId, changed))) return 'superseded';
+    if (moved && !(await canRestoreStage(tx, userId, contactId, moved))) return 'superseded';
+    if (moved) await takeBackStageChange(tx, userId, contactId, moved);
     if (changed) await takeBackStatusChange(tx, userId, contactId, changed);
     if (retained.settledTrial) await unsettleTrial(tx, userId, retained.settledTrial.id);
     await removeInteraction(tx, userId, interactionId);
@@ -904,6 +941,65 @@ const recordReply: Gesture<
     }
     if (unranked) await setFollowUpRank(tx, userId, unranked.followUpId, unranked.rank);
     return touchedWithTrial(contactId, retained.settledTrial);
+  },
+};
+
+/** What “Change Stage” retains: the change itself, the Trial it settled, the Follow-up it canceled. */
+const stageChangeRecorded = z.object({
+  stageChanged,
+  settledTrial: settledTrial.optional(),
+  canceledFollowUpId: z.uuid().optional(),
+});
+
+/**
+ * Change Stage (spec UX §6.6): a Contact Prospecting moves forward or back in the Funnel, dated now.
+ * Its Trial in progress is settled first, or left in progress where it is; settled, the scheduled
+ * Follow-up may be canceled. Neither outbound nor inbound, it touches neither the Cadence nor the
+ * Response window (CONTEXT.md, Interaction).
+ */
+const changeContactStage: Gesture<
+  'stage_changed',
+  ContactPlace,
+  z.infer<typeof changeStageRequest>,
+  z.infer<typeof stageChangeRecorded>,
+  'not_prospecting' | 'same_stage' | 'unknown_stage' | 'trial_in_progress' | 'no_follow_up'
+> = {
+  kind: 'stage_changed',
+  subject: contactSubject,
+  async write({ tx, userId, subjectId: contactId, subject, input, now }) {
+    const { stageId, trialOutcome, cancelFollowUp: cancelsFollowUp = false } = input;
+    const moved = await writeStageChange(tx, userId, contactId, subject, stageId, now);
+    if ('error' in moved) return moved;
+    // What becomes of the Trial in progress is the User's to say (spec UX §6.6).
+    if (trialOutcome === undefined && (await hasTrialInProgress(tx, userId, contactId))) {
+      return refusal('trial_in_progress');
+    }
+    const settled =
+      trialOutcome === undefined || trialOutcome === 'in_progress'
+        ? undefined
+        : await settleTrial(tx, userId, contactId, { outcome: trialOutcome }, now);
+    const canceled = cancelsFollowUp ? await scheduledFollowUp(tx, userId, contactId) : undefined;
+    if (cancelsFollowUp && !canceled) return refusal('no_follow_up');
+    if (canceled) await setFollowUpStatus(tx, userId, canceled.id, 'canceled');
+    return {
+      retained: { stageChanged: moved, settledTrial: settled, canceledFollowUpId: canceled?.id },
+      touched: touchedWithTrial(contactId, settled),
+    };
+  },
+  retained: stageChangeRecorded,
+  /**
+   * The Contact back at the Stage it left, with its Assignment, its Trial in progress again, its
+   * Follow-up scheduled again. Refused when that Stage was archived since.
+   */
+  async inverse(tx, { userId, subjectId: contactId, retained }) {
+    const { stageChanged: moved, settledTrial: settled, canceledFollowUpId } = retained;
+    if (!(await canRestoreStage(tx, userId, contactId, moved))) return 'superseded';
+    await takeBackStageChange(tx, userId, contactId, moved);
+    if (settled) await unsettleTrial(tx, userId, settled.id);
+    if (canceledFollowUpId !== undefined) {
+      await setFollowUpStatus(tx, userId, canceledFollowUpId, 'scheduled');
+    }
+    return touchedWithTrial(contactId, settled);
   },
 };
 
@@ -1134,6 +1230,9 @@ export function createProspecting<Changes>({
     .post('/contacts/:id/change-status', requireUser, jsonBody(changeStatusRequest), (c) =>
       perform(c, changeContactStatus, c.req.valid('json')),
     )
+    .post('/contacts/:id/change-stage', requireUser, jsonBody(changeStageRequest), (c) =>
+      perform(c, changeContactStage, c.req.valid('json')),
+    )
     // Schedule a follow-up, or Edit the follow-up (spec UX §6.5): off the Cadence when there was none.
     .post(
       '/contacts/:id/schedule-follow-up',
@@ -1201,6 +1300,7 @@ export function createProspecting<Changes>({
     addContact,
     editContact,
     changeContactStatus,
+    changeContactStage,
     scheduleFollowUp,
     cancelFollowUp,
     recordFollowUp,

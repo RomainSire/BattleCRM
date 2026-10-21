@@ -35,6 +35,10 @@ const contactRecord = z.strictObject({
           reason: z.string().nullable(),
         })
         .nullable(),
+      /** A change of Stage, forward or back as the Funnel read then. */
+      stageChange: z
+        .strictObject({ fromStageId: z.uuid(), toStageId: z.uuid(), forward: z.boolean() })
+        .nullable(),
     }),
   ),
 });
@@ -69,6 +73,7 @@ test('the record of a Contact carries its note and its thread: the addition open
           stageId: outreach!.id,
           reason: null,
         },
+        stageChange: null,
       },
     ],
   });
