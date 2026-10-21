@@ -201,6 +201,11 @@ _Avoid_: Résultat, conclusion
 Ce qui fait d'un Essai un succès dans une Battle donnée (par ex. « a répondu positivement »), fixé à l'ouverture de la Battle et inchangé ensuite. L'Utilisateur valide chaque succès à la main au regard de ce critère.
 _EN_: Success criterion
 
+**Écart**:
+Ce qui, pour un Contact donné, s'éloigne de la Cadence de relance pendant son Essai en cours, tracé sur l'Essai : une Relance faite hors Cadence (« Relancer quand même » une fois le Délai de réponse dépassé) ou la date d'une Relance changée. Il ne change pas l'issue de l'Essai. À distinguer de la dérogation, qui porte sur le Positionnement utilisé (voir Tirage).
+_EN_: Deviation; values Off-cadence follow-up, Follow-up moved (avoid: override, exception)
+_Avoid_: Dérogation (réservé au Tirage), exception
+
 **Délai de réponse**:
 L'attente, une fois la Cadence de relance épuisée ou arrêtée, au-delà de laquelle un Essai en cours est signalé « délai dépassé » (14 jours par défaut). Il fait partie de la Cadence et se compte depuis la dernière Interaction sortante faite ou entrante : la dernière Relance prévue, l'Interaction entrante qui a arrêté la Cadence, ou toute Interaction sortante ou entrante survenue depuis. Tant que la Cadence n'est pas épuisée, un silence appelle la Relance suivante, pas ce signal. Le délai ne tranche rien : c'est l'Utilisateur qui confirme que l'Essai est sans suite.
 _EN_: Response window; signal Window elapsed

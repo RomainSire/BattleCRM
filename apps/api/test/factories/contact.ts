@@ -7,6 +7,8 @@ import {
   type ContactStatus,
   type NotedInteractionKind,
   type OrganizationType,
+  type ReplyTrialOutcome,
+  type SettledTrialOutcome,
 } from '@battlecrm/contract';
 import { z } from 'zod';
 
@@ -77,7 +79,13 @@ export async function changeStatus(
   harness: Harness,
   user: { cookie: string },
   contactId: string,
-  body: { status: ContactStatus; stageId?: string; reason?: string },
+  body: {
+    status: ContactStatus;
+    stageId?: string;
+    reason?: string;
+    trialOutcome?: SettledTrialOutcome;
+    cancelReason?: string;
+  },
 ) {
   const response = await postJson(
     harness.app,
@@ -124,7 +132,7 @@ export const followUp = (
   harness: Harness,
   user: { cookie: string },
   contactId: string,
-  body: { occurredOn: string; note?: string },
+  body: { occurredOn: string; note?: string; anyway?: boolean },
 ) => contactGesture(harness, user, `/api/contacts/${contactId}/follow-up`, body);
 
 /** “Note an Interaction”: an outbound Interaction off any Positioning, on a local day. */
@@ -145,8 +153,10 @@ export const recordReply = (
     channel: Channel;
     note?: string;
     cancelFollowUp?: boolean;
-    status?: 'prospecting' | 'ally';
+    trialOutcome?: ReplyTrialOutcome;
+    status?: ContactStatus;
     stageId?: string;
+    reason?: string;
   },
 ) => contactGesture(harness, user, `/api/contacts/${contactId}/record-reply`, body);
 
@@ -190,3 +200,11 @@ export async function summaryOf(harness: Harness, user: { cookie: string }) {
   if (response.status !== 200) throw new Error(`summaryOf: the API answered ${response.status}`);
   return summary.parse(await response.json());
 }
+
+/** “No result…”: the Trial in progress of a Contact settled without a reply, and what comes next. */
+export const settleTrial = (
+  harness: Harness,
+  user: { cookie: string },
+  contactId: string,
+  body: { outcome: 'no_result'; status?: 'pool' | 'archived'; reason?: string },
+) => contactGesture(harness, user, `/api/contacts/${contactId}/settle-trial`, body);

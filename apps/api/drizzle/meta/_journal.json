@@ -232,6 +232,20 @@
       "when": 1792602287649,
       "tag": "0032_trials_access",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1792605863545,
+      "tag": "0033_trial_settled",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792605871172,
+      "tag": "0034_trial_deviation_access",
+      "breakpoints": true
     }
   ]
 }

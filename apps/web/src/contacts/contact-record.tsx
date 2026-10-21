@@ -38,6 +38,13 @@ import { FollowUpHead, FollowUpPanels, useFollowUpGesture } from './follow-up.ts
 import { formatLocalDay } from './format.ts';
 import { InteractionPanels, useInteractionGesture } from './interactions.tsx';
 import { targetText } from './organization-field.tsx';
+import {
+  TrialBlock,
+  TrialPanels,
+  trialStateOf,
+  useTrialGesture,
+  type TrialState,
+} from './trial.tsx';
 import { SendPanels, useSendPositioning } from './use-positioning.tsx';
 import {
   otherStatuses,
@@ -49,6 +56,7 @@ import {
   type InteractionGesture,
   type SendGesture,
   type StatusGesture,
+  type TrialGesture,
 } from './status.ts';
 
 /** The Contact of the summary, and its Organization; `contact` stays undefined while the summary is not read. */
@@ -350,6 +358,13 @@ function followUpText(dueOn: string, today: string, locale: Locale) {
   }
 }
 
+/** What a Contact Prospecting without a Follow-up waits for: its Trial in progress, and its Response window. */
+function trialText({ positioning, isElapsed, endsOn }: TrialState, locale: Locale) {
+  const label = positioning.label;
+  if (isElapsed || endsOn === undefined) return m.next_action_trial_elapsed({ label });
+  return m.next_action_trial_waiting({ label, date: formatLocalDay(endsOn, locale) });
+}
+
 /** What the record says of the Status of the Contact, before its actions (spec UX §5.3). */
 function nextActionText(contact: SummaryContact, summary: Summary, locale: Locale): string {
   const { followUp } = contact;
@@ -358,9 +373,11 @@ function nextActionText(contact: SummaryContact, summary: Summary, locale: Local
       const last = summary.stages.find(({ id }) => id === contact.stageId);
       return last ? m.next_action_pool({ stage: last.name }) : m.next_action_pool_never();
     }
-    // Its Trial comes with ticket 28.
-    case 'prospecting':
-      return followUp ? followUpText(followUp.dueOn, todayOf(summary), locale) : m.no_next_action();
+    case 'prospecting': {
+      if (followUp) return followUpText(followUp.dueOn, todayOf(summary), locale);
+      const trial = trialStateOf(contact, summary);
+      return trial ? trialText(trial, locale) : m.no_next_action();
+    }
     // Its Days since contact come with the Circle (ticket 36); a Follow-up comes first.
     case 'ally':
       return followUp
@@ -397,6 +414,7 @@ function NextAction({
   onFollowUp,
   onInteraction,
   onSend,
+  onTrial,
 }: {
   contact: SummaryContact;
   summary: Summary;
@@ -406,6 +424,7 @@ function NextAction({
   onFollowUp: (gesture: FollowUpGesture) => void;
   onInteraction: (gesture: InteractionGesture) => void;
   onSend: (gesture: SendGesture) => void;
+  onTrial: (gesture: TrialGesture) => void;
 }) {
   const locale = useLocale();
   const headingId = useId();
@@ -417,8 +436,14 @@ function NextAction({
   // A Follow-up due, today or overdue, is the action of the moment (spec UX §5.3).
   const isDue =
     contact.followUp !== null && isFollowUpDue(contact.followUp.dueOn, todayOf(summary));
-  // Neither a Follow-up nor a Trial (Trials come with ticket 28): a Positioning to use (spec UX §5.3).
-  const sendsFirst = contact.status === 'prospecting' && contact.followUp === null;
+  const isProspecting = contact.status === 'prospecting';
+  const trial = isProspecting ? trialStateOf(contact, summary) : undefined;
+  // Its Trial past its Response window, nothing scheduled: No result… (spec UX §5.3).
+  const isElapsed = trial?.isElapsed === true;
+  // Neither a Follow-up nor a Trial: a Positioning to use (spec UX §5.3).
+  const sendsFirst = isProspecting && contact.followUp === null && trial === undefined;
+  // Waiting, a reply is what may come next (spec UX §5.3).
+  const repliesFirst = isProspecting && !isDue && !isElapsed && !sendsFirst;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2 rounded-card border p-3">
       <Heading id={headingId} className="text-xs font-semibold text-muted-foreground uppercase">
@@ -447,6 +472,26 @@ function NextAction({
             {m.verb_use_positioning()}
           </Button>
         )}
+        {isElapsed && (
+          <>
+            <Button className="max-md:min-h-11" onPress={() => onTrial('no-result')}>
+              {m.verb_no_result()}
+            </Button>
+            <Button
+              variant="outline"
+              className="max-md:min-h-11"
+              size={level === 3 ? 'sm' : 'default'}
+              onPress={() => onFollowUp('anyway')}
+            >
+              {m.verb_follow_up_anyway()}
+            </Button>
+          </>
+        )}
+        {repliesFirst && (
+          <Button className="max-md:min-h-11" onPress={() => onInteraction('reply')}>
+            {m.verb_reply()}
+          </Button>
+        )}
         {canNoteInteraction(contact.status) && (
           <Button
             variant="outline"
@@ -457,7 +502,7 @@ function NextAction({
             {m.verb_note_interaction()}
           </Button>
         )}
-        {showsVerbs && (
+        {showsVerbs && !repliesFirst && (
           <Button
             variant="outline"
             className="max-md:hidden"
@@ -546,6 +591,22 @@ function useRecordKeys(
   });
 }
 
+/** The Trial in progress of a Contact Prospecting, if it has one (spec UX §5.3). */
+function CurrentTrial({
+  contact,
+  summary,
+  ...props
+}: {
+  contact: SummaryContact;
+  summary: Summary;
+  level: 2 | 3;
+  onReply: () => void;
+  className?: string;
+}) {
+  const state = contact.status === 'prospecting' ? trialStateOf(contact, summary) : undefined;
+  return state ? <TrialBlock state={state} {...props} /> : null;
+}
+
 /** While the summary is read: nothing, or why it cannot be. */
 const SummaryMissing = ({ isError }: { isError: boolean }) => (
   <ErrorMessage>{isError && m.contacts_load_error()}</ErrorMessage>
@@ -575,6 +636,7 @@ export function ContactPanel({
   const followUp = useFollowUpGesture();
   const interaction = useInteractionGesture();
   const send = useSendPositioning();
+  const trial = useTrialGesture();
   useRecordKeys(contact, status, followUp, interaction, send, panelRef);
   const close = (
     <Button variant="ghost" size="icon-sm" aria-label={m.close()} onPress={onClose}>
@@ -626,6 +688,7 @@ export function ContactPanel({
           onFollowUp={followUp.open}
           onInteraction={interaction.open}
           onSend={send.open}
+          onTrial={trial.open}
         />
         <Tabs>
           <TabList aria-label={contact.name} className="flex gap-1 border-b pb-2">
@@ -640,7 +703,13 @@ export function ContactPanel({
             <FollowUpHead contact={contact} summary={summary} onGesture={followUp.open} />
             <Thread contactId={contactId} summary={summary} />
           </TabPanel>
-          <TabPanel id="details" className="rounded-control pt-3 focus-ring">
+          <TabPanel id="details" className="flex flex-col gap-4 rounded-control pt-3 focus-ring">
+            <CurrentTrial
+              contact={contact}
+              summary={summary}
+              level={3}
+              onReply={() => interaction.open('reply')}
+            />
             <Coordinates contact={contact} summary={summary} level={3} />
           </TabPanel>
         </Tabs>
@@ -675,6 +744,12 @@ export function ContactPanel({
         interaction={interaction}
       />
       <SendPanels contact={contact} summary={summary} send={send} />
+      <TrialPanels
+        contact={contact}
+        summary={summary}
+        gesture={trial.gesture}
+        onClose={trial.close}
+      />
     </>
   );
 }
@@ -688,6 +763,7 @@ export function ContactPage({ contactId }: { contactId: string }) {
   const followUp = useFollowUpGesture();
   const interaction = useInteractionGesture();
   const send = useSendPositioning();
+  const trial = useTrialGesture();
   useRecordKeys(contact, status, followUp, interaction, send);
   const backToContacts = (
     <Link to="/contacts" className="rounded-control underline-offset-4 focus-ring hover:underline">
@@ -736,15 +812,25 @@ export function ContactPage({ contactId }: { contactId: string }) {
             onFollowUp={followUp.open}
             onInteraction={interaction.open}
             onSend={send.open}
+            onTrial={trial.open}
           />
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
-            {/* Stacked on mobile, the Coordinates come first (spec UX §5.3). */}
-            <Coordinates
-              contact={contact}
-              summary={summary}
-              level={2}
-              className="self-start rounded-card border p-4 md:col-start-2 md:row-start-1"
-            />
+            {/* Stacked on mobile, the Trial in progress and the Coordinates come first (spec UX §5.3). */}
+            <div className="flex flex-col gap-4 self-start md:col-start-2 md:row-start-1">
+              <CurrentTrial
+                contact={contact}
+                summary={summary}
+                level={2}
+                className="rounded-card border p-4"
+                onReply={() => interaction.open('reply')}
+              />
+              <Coordinates
+                contact={contact}
+                summary={summary}
+                level={2}
+                className="rounded-card border p-4"
+              />
+            </div>
             <section aria-labelledby={threadHeadingId} className="md:col-start-1 md:row-start-1">
               <h2
                 id={threadHeadingId}
@@ -778,6 +864,12 @@ export function ContactPage({ contactId }: { contactId: string }) {
             interaction={interaction}
           />
           <SendPanels contact={contact} summary={summary} send={send} />
+          <TrialPanels
+            contact={contact}
+            summary={summary}
+            gesture={trial.gesture}
+            onClose={trial.close}
+          />
         </>
       )}
     </div>

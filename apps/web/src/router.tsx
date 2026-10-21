@@ -28,6 +28,7 @@ import {
   FOLLOW_UP_GESTURES,
   INTERACTION_GESTURES,
   SEND_GESTURES,
+  TRIAL_GESTURES,
   STATUS_GESTURES,
 } from './contacts/status.ts';
 import { clearDeviceData } from './device-data.ts';
@@ -220,6 +221,8 @@ const followUpSearch = z.enum(FOLLOW_UP_GESTURES).optional().catch(undefined);
 const interactionSearch = z.enum(INTERACTION_GESTURES).optional().catch(undefined);
 /** The use of a Positioning open on a record (spec UX §6.1), kept by the address (ST-70). */
 const sendSearch = z.enum(SEND_GESTURES).optional().catch(undefined);
+/** The gesture on the Trial in progress open on a record (spec UX §6.7), kept by the address (ST-70). */
+const trialSearch = z.enum(TRIAL_GESTURES).optional().catch(undefined);
 
 const contactsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -231,6 +234,7 @@ const contactsRoute = createRoute({
     followUp: followUpSearch,
     interaction: interactionSearch,
     send: sendSearch,
+    trial: trialSearch,
   }),
   component: ContactsScreen,
 });
@@ -244,6 +248,7 @@ const contactRoute = createRoute({
     followUp: followUpSearch,
     interaction: interactionSearch,
     send: sendSearch,
+    trial: trialSearch,
   }),
   component: function ContactRecordPage() {
     const { contactId } = contactRoute.useParams();

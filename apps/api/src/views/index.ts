@@ -341,7 +341,23 @@ async function summaryBattles(
   ids?: string[],
 ): Promise<SummaryBattle[]> {
   if (ids?.length === 0) return [];
-  return tx
+  // Its Trials started, the canceled ones aside, and the finished ones among them.
+  const trials = tx
+    .select({
+      battleId: trial.battleId,
+      started: sql<number>`count(*) filter (where ${trial.outcome} <> 'canceled')::int`.as(
+        'started',
+      ),
+      finished:
+        sql<number>`count(*) filter (where ${trial.outcome} in ('success', 'no_result'))::int`.as(
+          'finished',
+        ),
+    })
+    .from(trial)
+    .where(and(eq(trial.userId, userId), ids && inArray(trial.battleId, ids)))
+    .groupBy(trial.battleId)
+    .as('battle_trials');
+  const rows = await tx
     .select({
       id: battle.id,
       stageId: battle.stageId,
@@ -353,10 +369,18 @@ async function summaryBattles(
       horizon: battle.horizon,
       openedOn: battle.openedOn,
       open: isNull(battle.closedAt).mapWith(Boolean),
+      startedTrials: trials.started,
+      finishedTrials: trials.finished,
     })
     .from(battle)
+    .leftJoin(trials, eq(trials.battleId, battle.id))
     .where(and(eq(battle.userId, userId), ids && inArray(battle.id, ids)))
     .orderBy(battle.openedAt, battle.id);
+  return rows.map(({ startedTrials, finishedTrials, ...row }) => ({
+    ...row,
+    startedTrials: startedTrials ?? 0,
+    finishedTrials: finishedTrials ?? 0,
+  }));
 }
 
 /** Every Organization of the User, or the ones a gesture touched, by name. */

@@ -53,3 +53,6 @@ export async function dayEntered(tx: Transaction, userId: string, occurredOn: st
     recordedAt: now,
   };
 }
+
+/** The day an Interaction the User dated happened, once accepted. */
+export type EnteredDay = Exclude<Awaited<ReturnType<typeof dayEntered>>, { error: unknown }>;

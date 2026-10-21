@@ -101,6 +101,20 @@ export const SUCCESS_CRITERION_MAX_LENGTH = 200;
 export const TRIAL_OUTCOMES = ['in_progress', 'success', 'no_result', 'canceled'] as const;
 export type TrialOutcome = (typeof TRIAL_OUTCOMES)[number];
 
+/**
+ * How “Replied…” leaves the Trial in progress (spec UX §6.2): settled as a Success or No result, or
+ * left in progress, its Response window counted from the reply. Never preselected (ADR 0005).
+ */
+export const REPLY_TRIAL_OUTCOMES = ['success', 'no_result', 'in_progress'] as const;
+export type ReplyTrialOutcome = (typeof REPLY_TRIAL_OUTCOMES)[number];
+
+/** How a Trial is settled without a reply, or leaving Prospecting (spec UX §6.7, §6.11). */
+export const SETTLED_TRIAL_OUTCOMES = ['success', 'no_result', 'canceled'] as const;
+export type SettledTrialOutcome = (typeof SETTLED_TRIAL_OUTCOMES)[number];
+
+/** Why a Trial is canceled, required (CONTEXT.md, Trial). */
+export const CANCEL_REASON_MAX_LENGTH = 500;
+
 /** The optional reason of an Override (CONTEXT.md, Assignment), traced on the Trial. */
 export const OVERRIDE_REASON_MAX_LENGTH = 500;
 
@@ -215,6 +229,9 @@ export const summaryBattle = z.strictObject({
   /** The local day it was opened on. */
   openedOn: z.iso.date(),
   open: z.boolean(),
+  /** Its Trials started, the canceled ones aside, and among them the finished ones (spec UX §6.7). */
+  startedTrials: z.int(),
+  finishedTrials: z.int(),
 });
 export type SummaryBattle = z.infer<typeof summaryBattle>;
 

@@ -2,6 +2,7 @@ import {
   CHANNELS,
   INTERACTION_NOTE_MAX_LENGTH,
   NOTED_INTERACTION_KINDS,
+  REPLY_TRIAL_OUTCOMES,
   type NotedInteractionKind,
 } from '@battlecrm/contract';
 import {
@@ -9,7 +10,9 @@ import {
   funnelOf,
   hasFollowUps,
   isPoolOrArchived,
+  responseWindowEndsOn,
   stageToEnter,
+  statusChangeCancelsFollowUp,
 } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -52,6 +55,15 @@ import {
 } from './follow-up.tsx';
 import { formatLocalDay } from './format.ts';
 import type { FollowUpGesture, InteractionGesture } from './status.ts';
+import {
+  NO_RESULT_CHOICES,
+  NoResultChoiceField,
+  trialRecap,
+  TrialOutcomeField,
+  TrialRecall,
+  trialSettledMessage,
+  trialStateOf,
+} from './trial.tsx';
 
 /**
  * The gesture that records an Interaction open on the record, carried by the address (ST-70): `open`
@@ -253,13 +265,17 @@ const replyDraft = z.object({
   stageId: z.string().optional(),
   cancelFollowUp: z.boolean(),
   scheduleFollowUp: z.boolean(),
+  trialOutcome: z.enum(REPLY_TRIAL_OUTCOMES).optional(),
+  afterNoResult: z.enum(NO_RESULT_CHOICES),
+  reason: z.string(),
 });
 
 /**
  * Replied… (spec UX §6.2): the reply, its day, Channel and note, never a nature (ADR 0005); then what
  * comes next. From the Pool or Archived: leave it (by default), bring it in or add it to the Circle.
- * The scheduled Follow-up canceled (checked), or “Schedule a follow-up…” once recorded. Settling a
- * Trial comes with Trials (ticket 29).
+ * The scheduled Follow-up canceled (checked), or “Schedule a follow-up…” once recorded. With a Trial
+ * in progress, its Criterion recalled and its outcome chosen, never preselected (ADR 0005): saved only
+ * once it is; after a No result, back to the Pool by default (§6.7).
  */
 function ReplyPanel({
   contact,
@@ -277,6 +293,7 @@ function ReplyPanel({
   const sendGesture = useSendGesture();
   const theirReplyId = useId();
   const thenId = useId();
+  const trialHeadingId = useId();
   const today = todayOf(summary);
   const { name, followUp } = contact;
   const isOut = isPoolOrArchived(contact.status);
@@ -291,12 +308,21 @@ function ReplyPanel({
       stageId: stageToEnter(funnelOf(summary.stages), { last: contact.stageId }),
       cancelFollowUp: true,
       scheduleFollowUp: false,
+      afterNoResult: 'pool' as const,
+      reason: '',
     },
     replyDraft,
   );
+  const trial = contact.status === 'prospecting' ? trialStateOf(contact, summary) : undefined;
+  const trialOutcome = trial ? draft.trialOutcome : undefined;
+  const isTrialUnsettled = trial !== undefined && trialOutcome === undefined;
+  const afterNoResult =
+    trialOutcome === 'no_result' && draft.afterNoResult !== 'prospecting'
+      ? draft.afterNoResult
+      : undefined;
   const [wasSent, setWasSent] = useState(false);
   const { day: occurredOn, isValid: isDayValid } = doneDayOf(draft, today);
-  const status = isOut && draft.status !== 'stay' ? draft.status : undefined;
+  const status = isOut && draft.status !== 'stay' ? draft.status : afterNoResult;
   const stageId = stageToEnter(funnelOf(summary.stages), { chosen: draft.stageId });
   const isStageMissing = status === 'prospecting' && stageId === undefined;
   // Its scheduled Follow-up may be canceled; one may be scheduled once in a Status that has some.
@@ -317,13 +343,20 @@ function ReplyPanel({
             channel: draft.channel,
             ...trimmed(draft.note),
             ...(cancelsFollowUp && { cancelFollowUp: true }),
+            ...(trialOutcome && { trialOutcome }),
             ...(status && { status }),
             ...(status === 'prospecting' && stageId !== undefined && { stageId }),
+            ...(afterNoResult && draft.reason.trim() !== '' && { reason: draft.reason.trim() }),
           },
         }),
-        ({ contacts: [changed] }) =>
-          changed &&
-          (status ? statusChangedMessage(changed, status, summary) : m.reply_toast({ name })),
+        (changes) => {
+          const [changed] = changes.contacts;
+          if (!changed) return undefined;
+          const said = status
+            ? statusChangedMessage(changed, status, summary)
+            : m.reply_toast({ name });
+          return trialSettledMessage(trialOutcome, trial, changes, said);
+        },
       ),
     onSuccess: (refused) => {
       if (refused) {
@@ -337,7 +370,22 @@ function ReplyPanel({
   });
 
   const recap: string[] = [];
-  if (cancelsFollowUp) {
+  if (trial && trialOutcome) {
+    // Left in progress, its Response window counts from the reply, unless a Follow-up stays
+    // scheduled (CONTEXT.md, Response window).
+    const keepsFollowUp = followUp !== null && !cancelsFollowUp;
+    const lastOn = trial.lastDoneOn > occurredOn ? trial.lastDoneOn : occurredOn;
+    const endsOn = responseWindowEndsOn({
+      followUp: keepsFollowUp ? followUp : null,
+      lastDoneOn: lastOn,
+      responseWindowDays: trial.positioning.responseWindowDays,
+    });
+    recap.push(trialRecap(trialOutcome, trial, isDayValid ? endsOn : undefined, locale));
+  }
+  // Canceled by the reply, or by the Status it leaves for.
+  const isFollowUpCanceled =
+    cancelsFollowUp || (afterNoResult !== undefined && statusChangeCancelsFollowUp(afterNoResult));
+  if (followUp && isFollowUpCanceled) {
     recap.push(m.change_status_cancels_follow_up({ date: formatLocalDay(followUp.dueOn, locale) }));
   } else if (followUp?.rank != null) {
     // `!= null`, fallback: a summary kept on the device by a version from before ranks carries none.
@@ -364,7 +412,9 @@ function ReplyPanel({
             onSubmit={(event) => {
               event.preventDefault();
               setWasSent(true);
-              if (isDayValid && !isStageMissing && !reply.isPending) reply.mutate();
+              if (isDayValid && !isStageMissing && !isTrialUnsettled && !reply.isPending) {
+                reply.mutate();
+              }
             }}
           >
             <GesturePanelBody>
@@ -403,6 +453,39 @@ function ReplyPanel({
                   takesFocus
                 />
               </section>
+              {trial && (
+                <section aria-labelledby={trialHeadingId} className="flex flex-col gap-4">
+                  <h3
+                    id={trialHeadingId}
+                    className="text-xs font-semibold text-muted-foreground uppercase"
+                  >
+                    {m.trial_in_progress()}
+                  </h3>
+                  <TrialRecall state={trial} />
+                  <TrialOutcomeField
+                    outcomes={REPLY_TRIAL_OUTCOMES}
+                    value={trialOutcome}
+                    onChange={(outcome) => setDraft({ ...draft, trialOutcome: outcome })}
+                  />
+                  {trialOutcome === 'no_result' && (
+                    <NoResultChoiceField
+                      name={name}
+                      choice={draft.afterNoResult}
+                      reason={draft.reason}
+                      onChange={({ choice, reason }) =>
+                        setDraft({
+                          ...draft,
+                          afterNoResult: choice ?? draft.afterNoResult,
+                          reason: reason ?? draft.reason,
+                        })
+                      }
+                    />
+                  )}
+                  {isTrialUnsettled && (
+                    <p className="text-muted-foreground">{m.trial_outcome_to_settle()}</p>
+                  )}
+                </section>
+              )}
               {(isOut || followUp !== null || mayScheduleFollowUp) && (
                 <section aria-labelledby={thenId} className="flex flex-col gap-4">
                   <h3 id={thenId} className="text-xs font-semibold text-muted-foreground uppercase">
@@ -474,7 +557,7 @@ function ReplyPanel({
               <Button
                 type="submit"
                 className="max-md:min-h-11"
-                isDisabled={!isDayValid || reply.isPending}
+                isDisabled={!isDayValid || isTrialUnsettled || reply.isPending}
               >
                 {m.reply_validate()}
               </Button>

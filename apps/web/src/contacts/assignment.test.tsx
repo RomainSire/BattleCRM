@@ -290,7 +290,7 @@ test('from the Pool, at a Stage with an open Battle, the Contact enters first, t
   await expect.element(page.getByText(/Léa Bernard entre dans le Funnel à Approche/)).toBeVisible();
 });
 
-test('with a Trial in progress, leaving Prospecting waits for it to be settled', async () => {
+test('with a Trial in progress, leaving Prospecting settles it: back to the Pool proposes No result', async () => {
   await desktop();
   const tried: SummaryContact = {
     ...MARC,
@@ -305,10 +305,7 @@ test('with a Trial in progress, leaving Prospecting waits for it to be settled',
   await renderApp(`/contacts/${MARC.id}?statusTo=pool`, api);
   const dialog = page.getByRole('dialog');
 
-  await expect
-    .element(dialog)
-    .toHaveTextContent(
-      'Marc Petit a un Essai en cours : règle-le avant de quitter En prospection.',
-    );
-  await expect.element(dialog.getByRole('button', { name: 'Remettre au Vivier' })).toBeDisabled();
+  await expect.element(dialog).toHaveTextContent('Critère : a répondu positivement');
+  await expect.element(dialog.getByRole('radio', { name: 'Sans suite' })).toBeChecked();
+  await expect.element(dialog.getByRole('button', { name: 'Remettre au Vivier' })).toBeEnabled();
 });

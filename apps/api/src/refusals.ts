@@ -35,6 +35,7 @@ export const REFUSAL_STATUS = {
   in_battle: 409,
   frozen: 409,
   trial_in_progress: 409,
+  no_trial: 409,
   assignment_required: 409,
   not_in_battle: 409,
   expired: 409,

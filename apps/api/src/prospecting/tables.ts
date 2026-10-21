@@ -341,6 +341,8 @@ export const trial = pgTable(
     outcome: text({ enum: TRIAL_OUTCOMES }).notNull(),
     /** Why it was canceled (“Battle closed”, “Contact deleted”, the User's own). */
     cancelReason: text('cancel_reason'),
+    /** When the User settled it, from the clock of the app; none while in progress. */
+    settledAt: instant('settled_at'),
   },
   (table) => [
     unique('trial_user_id_id_unique').on(table.userId, table.id),
@@ -381,9 +383,42 @@ export const trial = pgTable(
       sql`${table.overrideReason} is null or (${table.overrideReason} <> '' and ${table.overridden})`,
     ),
     check(
+      'trial_settled_check',
+      sql`(${table.outcome} = 'in_progress') = (${table.settledAt} is null)`,
+    ),
+    check(
       'trial_cancel_reason_check',
       sql`(${table.outcome} = 'canceled') = (${table.cancelReason} is not null) and (${table.cancelReason} is null or ${table.cancelReason} <> '')`,
     ),
+  ],
+);
+
+/**
+ * What departs from the Cadence of a Trial (CONTEXT.md, Follow-up cadence): a Follow-up done off it
+ * once the Response window elapsed (“Follow up anyway”), the day of a Follow-up changed.
+ */
+export const TRIAL_DEVIATION_KINDS = ['off_cadence_follow_up', 'follow_up_moved'] as const;
+export type TrialDeviationKind = (typeof TRIAL_DEVIATION_KINDS)[number];
+
+/** A deviation traced on a Trial in progress (ST-34), gone with it when “Undo” removes it. */
+export const trialDeviation = pgTable(
+  'trial_deviation',
+  {
+    id: id(),
+    userId: userId(),
+    trialId: uuid('trial_id').notNull(),
+    kind: text({ enum: TRIAL_DEVIATION_KINDS }).notNull(),
+    recordedAt: instant('recorded_at').notNull(),
+  },
+  (table) => [
+    unique('trial_deviation_user_id_id_unique').on(table.userId, table.id),
+    foreignKey({
+      name: 'trial_deviation_trial_fk',
+      columns: [table.userId, table.trialId],
+      foreignColumns: [trial.userId, trial.id],
+    }).onDelete('cascade'),
+    index('trial_deviation_trial_idx').on(table.userId, table.trialId),
+    check('trial_deviation_kind_check', sql`${table.kind} in (${quoted(TRIAL_DEVIATION_KINDS)})`),
   ],
 );
 
@@ -401,4 +436,5 @@ export const CONTACT_GESTURE_KINDS = [
   'interaction_noted',
   'reply_recorded',
   'positioning_used',
+  'trial_settled',
 ] as const;

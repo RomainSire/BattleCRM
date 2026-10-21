@@ -195,6 +195,8 @@ test('a query that forgot its filter only sees the rows of its User, in every bu
       positioningId: assignment.positioningId,
       occurredOn: '2026-01-05',
     });
+    // Its Follow-up moved during the Trial: a deviation traced on it.
+    await scheduleFollowUp(harness, user, contact.id, { dueOn: '2026-01-20' });
   }
 
   for (const { name } of await businessTables()) {
@@ -315,6 +317,31 @@ const CROSS_ACCESS: Record<
     });
     return { id: contact.id, state: () => getJson(harness, alice, '/api/summary') };
   },
+  'POST /api/contacts/:id/settle-trial': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice, 'Jean Dupont', { status: 'prospecting' });
+    const { positioning } = await positioningOf(harness, alice);
+    const { positioning: challenger } = await createPositioning(
+      harness,
+      alice,
+      positioning.stageId,
+    );
+    await openBattle(harness, alice, {
+      stageId: positioning.stageId,
+      championId: positioning.id,
+      challengerId: challenger.id,
+    });
+    const { assignment } = await revealAssignment(harness, alice, contact.id);
+    if (!assignment) throw new Error('No Assignment revealed');
+    await usePositioning(harness, alice, contact.id, {
+      positioningId: assignment.positioningId,
+      occurredOn: '2026-01-05',
+    });
+    return {
+      id: contact.id,
+      state: () => getJson(harness, alice, '/api/summary'),
+      body: { outcome: 'no_result' },
+    };
+  },
   'GET /api/contacts/:id/record': async (harness, alice) => {
     const { contact } = await addContact(harness, alice);
     return { id: contact.id, state: () => getJson(harness, alice, '/api/summary') };
@@ -393,7 +420,8 @@ const CROSS_ACCESS: Record<
 };
 
 test('the id of another User answers 404 and changes nothing, on every route that takes one', async () => {
-  const harness = testApp();
+  // The Assignment of the Trial to settle takes one chance.
+  const harness = testApp({}, { chances: [0] });
   const routes = [
     ...new Set(
       harness.app.routes

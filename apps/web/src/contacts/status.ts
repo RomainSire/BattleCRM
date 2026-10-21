@@ -44,8 +44,11 @@ export const STATUS_ACTION: Record<ContactStatus, () => string> = {
 export const otherStatuses = (current: ContactStatus): ContactStatus[] =>
   (['prospecting', 'ally', 'pool', 'archived'] as const).filter((status) => status !== current);
 
-/** A gesture on the Follow-up the User opens: Schedule or Edit it, or Follow up… (spec UX §6.3, §6.5). */
-export const FOLLOW_UP_GESTURES = ['schedule', 'do'] as const;
+/**
+ * A gesture on the Follow-up the User opens: Schedule or Edit it, Follow up… (spec UX §6.3, §6.5), or
+ * Follow up anyway once the Response window of the Trial elapsed (§5.1).
+ */
+export const FOLLOW_UP_GESTURES = ['schedule', 'do', 'anyway'] as const;
 export type FollowUpGesture = (typeof FOLLOW_UP_GESTURES)[number];
 
 /**
@@ -58,3 +61,7 @@ export type SendGesture = (typeof SEND_GESTURES)[number];
 /** A gesture that records an Interaction the User opens: Note an Interaction, or Replied… (spec UX §6.2, §6.4). */
 export const INTERACTION_GESTURES = ['note', 'reply'] as const;
 export type InteractionGesture = (typeof INTERACTION_GESTURES)[number];
+
+/** A gesture on the Trial in progress the User opens: No result… (spec UX §6.7). */
+export const TRIAL_GESTURES = ['no-result'] as const;
+export type TrialGesture = (typeof TRIAL_GESTURES)[number];

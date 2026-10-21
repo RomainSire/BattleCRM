@@ -37,3 +37,4 @@ export {
   shiftedFollowUpOn,
 } from './positioning.ts';
 export { chooseAssignment, type AssignmentCandidate } from './assignment.ts';
+export { isWindowElapsed, responseWindowEndsOn, type TrialWindow } from './trial.ts';

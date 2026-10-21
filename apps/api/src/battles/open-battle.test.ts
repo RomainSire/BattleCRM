@@ -51,6 +51,8 @@ test('the first Battle of a Stage: its initial Champion against a Challenger, it
     horizon: 30,
     openedOn: '2026-01-05',
     open: true,
+    startedTrials: 0,
+    finishedTrials: 0,
   });
   expect((await summaryOf(harness, user)).battles).toEqual([battle]);
 

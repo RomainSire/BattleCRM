@@ -1,5 +1,6 @@
 import {
   ADDABLE_CONTACT_STATUSES,
+  CANCEL_REASON_MAX_LENGTH,
   CONTACT_EMAIL_MAX_LENGTH,
   CONTACT_JOB_TITLE_MAX_LENGTH,
   CONTACT_LINKEDIN_URL_MAX_LENGTH,
@@ -14,6 +15,8 @@ import {
   ORGANIZATION_NAME_MAX_LENGTH,
   ORGANIZATION_TYPES,
   OVERRIDE_REASON_MAX_LENGTH,
+  REPLY_TRIAL_OUTCOMES,
+  SETTLED_TRIAL_OUTCOMES,
   STATUS_REASON_MAX_LENGTH,
 } from '@battlecrm/contract';
 import {
@@ -84,8 +87,12 @@ import {
   removeTrial,
   restoreAssignment,
   revealAssignment,
+  settledTrial,
+  settleTrial,
   startTrial,
+  traceDeviation,
   trialToStart,
+  unsettleTrial,
 } from './trials.ts';
 
 // Read by `views`, which never writes them.
@@ -165,6 +172,24 @@ const addContactRequest = coordinates
 const editContactRequest = coordinates.refine(oneOrganization, { path: ['newOrganization'] });
 
 /**
+ * How the Trial in progress is settled, leaving Prospecting or without a reply (spec UX §6.7, §6.11):
+ * canceled, with its reason.
+ */
+const trialSettlement = {
+  trialOutcome: z.enum(SETTLED_TRIAL_OUTCOMES).optional(),
+  cancelReason: optionalText(CANCEL_REASON_MAX_LENGTH),
+};
+
+/** A Trial is canceled with its reason, and only canceled has one (CONTEXT.md, Trial). */
+const hasCancelReason = ({
+  trialOutcome,
+  cancelReason,
+}: {
+  trialOutcome?: string | undefined;
+  cancelReason?: string | undefined;
+}) => (trialOutcome === 'canceled') === (cancelReason !== undefined);
+
+/**
  * A change of Status (spec UX §6.11): to Prospecting, at the Stage chosen or else the last one reached;
  * to any other Status, the Contact keeps its last Stage, and none is chosen. The reason is optional.
  */
@@ -173,10 +198,12 @@ const changeStatusRequest = z
     status: z.enum(CONTACT_STATUSES),
     stageId: z.uuid().optional(),
     reason: optionalText(STATUS_REASON_MAX_LENGTH),
+    ...trialSettlement,
   })
   .refine(({ status, stageId }) => stageId === undefined || status === 'prospecting', {
     path: ['stageId'],
-  });
+  })
+  .refine(hasCancelReason, { path: ['cancelReason'] });
 
 /** The note of a Follow-up, or of the Interaction it becomes: blank, there is none. */
 const followUpNote = optionalText(FOLLOW_UP_NOTE_MAX_LENGTH);
@@ -187,8 +214,15 @@ const followUpNote = optionalText(FOLLOW_UP_NOTE_MAX_LENGTH);
  */
 const scheduleFollowUpRequest = z.object({ dueOn: z.iso.date(), note: followUpNote });
 
-/** Follow up… (spec UX §6.3): the local day it was done on, today or earlier (ST-36), and its note. */
-const followUpRequest = z.object({ occurredOn: z.iso.date(), note: followUpNote });
+/**
+ * Follow up… (spec UX §6.3): the local day it was done on, today or earlier (ST-36), and its note;
+ * `anyway` without a Follow-up scheduled, once the Response window of the Trial elapsed (§5.1).
+ */
+const followUpRequest = z.object({
+  occurredOn: z.iso.date(),
+  note: followUpNote,
+  anyway: z.boolean().optional(),
+});
 
 /** The note of an Interaction the User writes down: blank, there is none. */
 const interactionNote = optionalText(INTERACTION_NOTE_MAX_LENGTH);
@@ -202,8 +236,9 @@ const noteInteractionRequest = z.object({
 
 /**
  * Replied… (spec UX §6.2): the local day of the reply, today or earlier, its Channel and note, never a
- * nature; then the scheduled Follow-up canceled if asked, and, spontaneous from the Pool or Archived,
- * the Contact brought in (at a Stage, as a change of Status takes it) or added to the Circle.
+ * nature; what it does to the Trial in progress; then the scheduled Follow-up canceled if asked, and,
+ * spontaneous from the Pool or Archived, the Contact brought in (at a Stage, as a change of Status
+ * takes it) or added to the Circle; after a No result, back to the Pool or Archived (§6.7).
  */
 const recordReplyRequest = z
   .object({
@@ -211,12 +246,26 @@ const recordReplyRequest = z
     channel: z.enum(CHANNELS),
     note: interactionNote,
     cancelFollowUp: z.boolean().optional(),
-    status: z.enum(['prospecting', 'ally']).optional(),
+    /** What the reply does to the Trial in progress; left out, it stays in progress. */
+    trialOutcome: z.enum(REPLY_TRIAL_OUTCOMES).optional(),
+    status: z.enum(CONTACT_STATUSES).optional(),
     stageId: z.uuid().optional(),
+    reason: optionalText(STATUS_REASON_MAX_LENGTH),
   })
   .refine(({ status, stageId }) => stageId === undefined || status === 'prospecting', {
     path: ['stageId'],
   });
+
+/**
+ * No result… (spec UX §6.7), from a Trial whose Response window elapsed: the Trial settled with no
+ * result, without a reply; then, kept Prospecting unless said otherwise, the Contact put back in the
+ * Pool or archived, with an optional reason.
+ */
+const settleTrialRequest = z.object({
+  outcome: z.literal('no_result'),
+  status: z.enum(['pool', 'archived']).optional(),
+  reason: optionalText(STATUS_REASON_MAX_LENGTH),
+});
 
 /**
  * Use a Positioning (spec UX §6.1): which one, the local day it was sent on, today or earlier
@@ -545,6 +594,8 @@ const statusChanged = z.object({
   canceledFollowUpId: z.uuid().optional(),
   // Leaving Prospecting, the Assignment that fell; absent before Assignments.
   droppedAssignment: droppedAssignment.optional(),
+  // Leaving Prospecting, the Trial in progress it settled.
+  settledTrial: settledTrial.optional(),
 });
 
 /**
@@ -556,15 +607,19 @@ async function writeStatusChange(
   userId: string,
   contactId: string,
   before: ContactPlace,
-  { status, stageId, reason }: z.infer<typeof changeStatusRequest>,
+  { status, stageId, reason, trialOutcome, cancelReason }: z.infer<typeof changeStatusRequest>,
   now: Date,
 ) {
   if (before.status === status) return refusal('same_status');
-  // Leaving Prospecting settles the Trial in progress first (ticket 29); its Assignment falls.
+  // Leaving Prospecting settles the Trial in progress first (spec UX §6.11); its Assignment falls.
   const leaves = before.status === 'prospecting';
   if (leaves && (await hasTrialInProgress(tx, userId, contactId))) {
-    return refusal('trial_in_progress');
+    if (trialOutcome === undefined) return refusal('trial_in_progress');
   }
+  const settled =
+    leaves && trialOutcome !== undefined
+      ? await settleTrial(tx, userId, contactId, { outcome: trialOutcome, cancelReason }, now)
+      : undefined;
   const dropped = leaves ? await dropAssignment(tx, userId, contactId) : undefined;
   // Out of Prospecting, the Contact keeps the last Stage it reached: where it left the Funnel.
   let stageAfter = before.stageId;
@@ -607,6 +662,7 @@ async function writeStatusChange(
     before,
     canceledFollowUpId: canceled?.id,
     droppedAssignment: dropped,
+    settledTrial: settled,
   } satisfies z.infer<typeof statusChanged>;
 }
 
@@ -634,6 +690,7 @@ async function takeBackStatusChange(
     before,
     canceledFollowUpId,
     droppedAssignment: dropped,
+    settledTrial: settled,
   }: z.infer<typeof statusChanged>,
 ) {
   await tx
@@ -651,7 +708,12 @@ async function takeBackStatusChange(
   if (dropped && before.stageId !== null) {
     await restoreAssignment(tx, { userId, contactId, stageId: before.stageId }, dropped);
   }
+  if (settled) await unsettleTrial(tx, userId, settled.id);
 }
+
+/** The summary rows of a gesture on one Contact, with the Battle of the Trial it settled. */
+const touchedWithTrial = (contactId: string, settled: z.infer<typeof settledTrial> | undefined) =>
+  touched({ contactIds: [contactId], battleIds: settled ? [settled.battleId] : [] });
 
 /**
  * Bring in…, Back to Pool…, Add to Circle…, Archive… (spec UX §6.11): any Status to any other, dated
@@ -669,7 +731,7 @@ const changeContactStatus: Gesture<
   async write({ tx, userId, subjectId: contactId, subject, input, now }) {
     const changed = await writeStatusChange(tx, userId, contactId, subject, input, now);
     if ('error' in changed) return changed;
-    return { retained: changed, touched: touchedContact(contactId) };
+    return { retained: changed, touched: touchedWithTrial(contactId, changed.settledTrial) };
   },
   retained: statusChanged,
   /**
@@ -680,7 +742,7 @@ const changeContactStatus: Gesture<
   async inverse(tx, { userId, subjectId: contactId, retained }) {
     if (!(await canRestoreStatus(tx, userId, contactId, retained))) return 'superseded';
     await takeBackStatusChange(tx, userId, contactId, retained);
-    return touchedContact(contactId);
+    return touchedWithTrial(contactId, retained.settledTrial);
   },
 };
 
@@ -740,6 +802,8 @@ const replyRecorded = z.object({
   // Absent from the gestures recorded before the Cadence.
   unranked: z.object({ followUpId: z.uuid(), rank: z.int() }).optional(),
   statusChanged: statusChanged.optional(),
+  // The Trial in progress it settled.
+  settledTrial: settledTrial.optional(),
 });
 
 /**
@@ -762,12 +826,17 @@ const recordReply: Gesture<
 > = {
   kind: 'reply_recorded',
   subject: contactSubject,
-  async refuse({ subject, input: { status } }) {
-    // Only out of the Funnel and of the Circle is there a choice of Status (spec UX §6.2).
-    if (status !== undefined && !isPoolOrArchived(subject.status)) {
-      return refusal('no_status_choice');
-    }
-    return undefined;
+  async refuse({ subject, input: { status, trialOutcome } }) {
+    if (status === undefined) return undefined;
+    // Out of the Funnel and of the Circle, a reply may bring the Contact in or add it to the Circle
+    // (spec UX §6.2); a No result may put it back in the Pool or archive it (§6.7). Nothing else.
+    const isOut = isPoolOrArchived(subject.status);
+    const choices: readonly string[] = isOut
+      ? ['prospecting', 'ally']
+      : subject.status === 'prospecting' && trialOutcome === 'no_result'
+        ? ['pool', 'archived']
+        : [];
+    return choices.includes(status) ? undefined : refusal('no_status_choice');
   },
   async write({ tx, userId, subjectId: contactId, subject, input, now }) {
     const {
@@ -775,8 +844,10 @@ const recordReply: Gesture<
       channel,
       note = null,
       cancelFollowUp: cancelsFollowUp = false,
+      trialOutcome,
       status,
       stageId,
+      reason,
     } = input;
     const day = await dayEntered(tx, userId, occurredOn, now);
     if ('error' in day) return day;
@@ -798,10 +869,16 @@ const recordReply: Gesture<
       note,
       channel,
     });
+    // Settled by the reply, the Trial is a data point; left in progress, its Response window counts
+    // from the reply (CONTEXT.md, Response window).
+    const settled =
+      trialOutcome === undefined || trialOutcome === 'in_progress'
+        ? undefined
+        : await settleTrial(tx, userId, contactId, { outcome: trialOutcome }, now);
     const changed =
       status === undefined
         ? undefined
-        : await writeStatusChange(tx, userId, contactId, subject, { status, stageId }, now);
+        : await writeStatusChange(tx, userId, contactId, subject, { status, stageId, reason }, now);
     if (changed && 'error' in changed) return changed;
     return {
       retained: {
@@ -809,8 +886,9 @@ const recordReply: Gesture<
         canceledFollowUpId: canceled?.id,
         unranked,
         statusChanged: changed,
+        settledTrial: settled,
       },
-      touched: touchedContact(contactId),
+      touched: touchedWithTrial(contactId, settled),
     };
   },
   retained: replyRecorded,
@@ -819,12 +897,54 @@ const recordReply: Gesture<
     const { interactionId, canceledFollowUpId, unranked, statusChanged: changed } = retained;
     if (changed && !(await canRestoreStatus(tx, userId, contactId, changed))) return 'superseded';
     if (changed) await takeBackStatusChange(tx, userId, contactId, changed);
+    if (retained.settledTrial) await unsettleTrial(tx, userId, retained.settledTrial.id);
     await removeInteraction(tx, userId, interactionId);
     if (canceledFollowUpId !== undefined) {
       await setFollowUpStatus(tx, userId, canceledFollowUpId, 'scheduled');
     }
     if (unranked) await setFollowUpRank(tx, userId, unranked.followUpId, unranked.rank);
-    return touchedContact(contactId);
+    return touchedWithTrial(contactId, retained.settledTrial);
+  },
+};
+
+/** What “No result…” retains: the Trial it settled, the change of Status it made. */
+const trialSettled = z.object({
+  settledTrial,
+  statusChanged: statusChanged.optional(),
+});
+
+/** No result… (spec UX §6.7): the Trial in progress settled, a data point of its Battle; then the Status. */
+const settleTrialGesture: Gesture<
+  'trial_settled',
+  ContactPlace,
+  z.infer<typeof settleTrialRequest>,
+  z.infer<typeof trialSettled>,
+  'no_trial' | 'same_status' | 'stage_required' | 'unknown_stage' | 'trial_in_progress'
+> = {
+  kind: 'trial_settled',
+  subject: contactSubject,
+  async write({ tx, userId, subjectId: contactId, subject, input, now }) {
+    const { outcome, status, reason } = input;
+    const settled = await settleTrial(tx, userId, contactId, { outcome }, now);
+    if (!settled) return refusal('no_trial');
+    const changed =
+      status === undefined
+        ? undefined
+        : await writeStatusChange(tx, userId, contactId, subject, { status, reason }, now);
+    if (changed && 'error' in changed) return changed;
+    return {
+      retained: { settledTrial: settled, statusChanged: changed },
+      touched: touchedWithTrial(contactId, settled),
+    };
+  },
+  retained: trialSettled,
+  /** The Trial is in progress again, and the Contact gets its Status back. */
+  async inverse(tx, { userId, subjectId: contactId, retained }) {
+    const { settledTrial: settled, statusChanged: changed } = retained;
+    if (changed && !(await canRestoreStatus(tx, userId, contactId, changed))) return 'superseded';
+    if (changed) await takeBackStatusChange(tx, userId, contactId, changed);
+    await unsettleTrial(tx, userId, settled.id);
+    return touchedWithTrial(contactId, settled);
   },
 };
 
@@ -925,6 +1045,11 @@ const usePositioning: Gesture<
         ...toStart,
         overrideReason: toStart.overridden ? (overrideReason ?? null) : null,
       }));
+    // The first Follow-up moved from its day departs from the Cadence: traced on the Trial (ST-34),
+    // which takes it along when “Undo” removes it.
+    if (trialId && followUpOn !== undefined && followUpOn !== firstOn) {
+      await traceDeviation(tx, userId, contactId, 'follow_up_moved', now);
+    }
     const dueOn = followUpOn ?? firstOn;
     let replaced: Awaited<ReturnType<typeof scheduledFollowUp>>;
     let scheduledFollowUpId: string | undefined;
@@ -1023,8 +1148,8 @@ export function createProspecting<Changes>({
       perform(c, cancelFollowUp, undefined),
     )
     .post('/contacts/:id/follow-up', requireUser, jsonBody(followUpRequest), (c) => {
-      const { occurredOn, note = null } = c.req.valid('json');
-      return perform(c, recordFollowUp, { occurredOn, note });
+      const { occurredOn, note = null, anyway = false } = c.req.valid('json');
+      return perform(c, recordFollowUp, { occurredOn, note, anyway });
     })
     .post('/contacts/:id/note-interaction', requireUser, jsonBody(noteInteractionRequest), (c) =>
       perform(c, noteInteraction, c.req.valid('json')),
@@ -1034,6 +1159,9 @@ export function createProspecting<Changes>({
     )
     .post('/contacts/:id/use-positioning', requireUser, jsonBody(usePositioningRequest), (c) =>
       perform(c, usePositioning, c.req.valid('json')),
+    )
+    .post('/contacts/:id/settle-trial', requireUser, jsonBody(settleTrialRequest), (c) =>
+      perform(c, settleTrialGesture, c.req.valid('json')),
     )
     // Reveal the Assignment (spec UX §6.1): opening “Send to” at a Stage with an open Battle. Not a
     // gesture: nothing takes it back, it stays reserved (ADR 0002).
@@ -1079,6 +1207,7 @@ export function createProspecting<Changes>({
     noteInteraction,
     recordReply,
     usePositioning,
+    settleTrialGesture,
   ] as const;
   return { routes, gestures };
 }

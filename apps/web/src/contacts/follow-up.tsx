@@ -37,7 +37,7 @@ import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { CopyButton } from '../settings/copy-button.tsx';
 import { settingsOf } from '../settings/use-settings.ts';
-import { attachmentsOf, todayOf, type Summary, type SummaryContact } from '../summary.ts';
+import { attachmentsOf, todayOf, trialOf, type Summary, type SummaryContact } from '../summary.ts';
 import { AttachmentLinks } from './attachment-links.tsx';
 import { lastOutboundOn, lastUseOf } from './cadence.ts';
 import { contactRecordQuery } from './contact-record-query.ts';
@@ -345,6 +345,10 @@ function ScheduleFollowUpPanel({
                           rank: followUp.rank,
                           date: formatLocalDay(dueOn, locale),
                         }),
+                    // Its day changed during a Trial departs from the Cadence (spec UX §6.5).
+                    ...(followUp !== null && dueOn !== followUp.dueOn && trialOf(contact) !== null
+                      ? [m.schedule_follow_up_deviation()]
+                      : []),
                   ]}
                 />
               )}
@@ -431,14 +435,18 @@ export function DoneDayField({
  * message of the rank and the attachments; off it, the note of the Follow-up and the last outbound
  * Interaction), then the day it was done and its note, and the summary: +1 to the Activity, then the
  * next Follow-up or the Response window. `Enter` validates, then “Undo”. No “Done” in one click.
+ * `anyway`, without a Follow-up scheduled once the Response window of the Trial elapsed: one off the
+ * Cadence, a deviation traced on the Trial (spec UX §5.1).
  */
 function FollowUpPanel({
   contact,
   summary,
+  anyway = false,
   onClose,
 }: {
   contact: SummaryContact;
   summary: Summary;
+  anyway?: boolean;
   onClose: () => void;
 }) {
   const locale = useLocale();
@@ -480,7 +488,7 @@ function FollowUpPanel({
       sendGesture(
         api.contacts[':id']['follow-up'].$post({
           param: { id: contact.id },
-          json: { occurredOn, ...trimmed(draft.note) },
+          json: { occurredOn, ...trimmed(draft.note), ...(anyway && { anyway: true }) },
         }),
         ({ contacts: [changed] }) => changed && doneMessage(),
       ),
@@ -489,9 +497,14 @@ function FollowUpPanel({
     },
   });
   // Another device did it, or canceled it, meanwhile: nothing left to do.
-  if (followUp === null) return null;
+  if (followUp === null && !anyway) return null;
+  // The note of the Follow-up: why to follow up, if the User said.
+  const reasonNote = followUp?.note ?? null;
   return (
-    <GesturePanel title={m.follow_up_title({ name })} onClose={close}>
+    <GesturePanel
+      title={anyway ? m.follow_up_anyway_title({ name }) : m.follow_up_title({ name })}
+      onClose={close}
+    >
       <EnterSubmits>
         {(formRef) => (
           <Form
@@ -511,13 +524,13 @@ function FollowUpPanel({
                   {m.follow_up_send_it()}
                 </h3>
                 {lastUse && rank !== null ? (
-                  <CadenceToSend sent={lastUse} rank={rank} name={name} note={followUp.note} />
+                  <CadenceToSend sent={lastUse} rank={rank} name={name} note={reasonNote} />
                 ) : (
                   <>
                     <p>
-                      {followUp.note === null
+                      {reasonNote === null
                         ? m.follow_up_no_note()
-                        : m.follow_up_why({ note: followUp.note })}
+                        : m.follow_up_why({ note: reasonNote })}
                     </p>
                     {record && (
                       <p className="text-muted-foreground">
@@ -557,6 +570,7 @@ function FollowUpPanel({
                   <Recap
                     lines={[
                       activityRecap(occurredOn, today, count, activityGoal, locale),
+                      ...(anyway ? [m.follow_up_anyway_recap()] : []),
                       ...(lastUse && rank !== null && record
                         ? [
                             nextFollowUpRecap(
@@ -683,9 +697,21 @@ export function FollowUpPanels({
 }) {
   // None for a Contact that cannot have one, from an address kept from before.
   if (gesture === undefined || !hasFollowUps(contact.status)) return null;
-  return gesture === 'do' ? (
-    <FollowUpPanel key={contact.id} contact={contact} summary={summary} onClose={onClose} />
-  ) : (
+  if (gesture !== 'schedule') {
+    // Anyway only without one scheduled, with a Trial in progress; with one, it is followed up.
+    const anyway = gesture === 'anyway' && contact.followUp === null;
+    if (anyway && trialOf(contact) === null) return null;
+    return (
+      <FollowUpPanel
+        key={contact.id}
+        contact={contact}
+        summary={summary}
+        anyway={anyway}
+        onClose={onClose}
+      />
+    );
+  }
+  return (
     <ScheduleFollowUpPanel key={contact.id} contact={contact} summary={summary} onClose={onClose} />
   );
 }

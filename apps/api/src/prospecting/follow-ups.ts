@@ -8,8 +8,14 @@ import { touched, type Gesture } from '../gestures/index.ts';
 import { refusal } from '../refusals.ts';
 import { localDateOf } from '../settings/index.ts';
 import { contactSubject, type ContactPlace } from './contact-subject.ts';
-import { dayEntered, recordInteraction, removeInteraction } from './interactions.ts';
+import {
+  dayEntered,
+  recordInteraction,
+  removeInteraction,
+  type EnteredDay,
+} from './interactions.ts';
 import { followUp, interaction } from './tables.ts';
+import { removeDeviation, traceDeviation } from './trials.ts';
 
 /** The scheduled Follow-up of a Contact, if it has one. */
 export async function scheduledFollowUp(tx: Transaction, userId: string, contactId: string) {
@@ -126,11 +132,14 @@ export const setFollowUpRank = (
 const followUpScheduled = z.object({
   followUpId: z.uuid(),
   before: z.object({ dueOn: z.iso.date(), note: z.string().nullable() }).nullable(),
+  // Its day changed during a Trial: the deviation traced on it.
+  deviationId: z.uuid().optional(),
 });
 
 /**
  * Schedule a follow-up, or Edit the follow-up when there is one (spec UX §6.5): its local day, today
- * or later, and its note. Off the Cadence when there was none.
+ * or later, and its note. Off the Cadence when there was none. Its day changed during a Trial is a
+ * deviation traced on it (ST-34).
  */
 export const scheduleFollowUp: Gesture<
   'follow_up_scheduled',
@@ -162,14 +171,26 @@ export const scheduleFollowUp: Gesture<
         .set({ dueOn, note })
         .where(and(eq(followUp.userId, userId), eq(followUp.id, followUpId)));
     }
+    const deviationId =
+      before && before.dueOn !== dueOn
+        ? await traceDeviation(tx, userId, contactId, 'follow_up_moved', now)
+        : undefined;
     return {
-      retained: { followUpId, before: before ? { dueOn: before.dueOn, note: before.note } : null },
+      retained: {
+        followUpId,
+        before: before ? { dueOn: before.dueOn, note: before.note } : null,
+        deviationId,
+      },
       touched: touched({ contactIds: [contactId] }),
     };
   },
   retained: followUpScheduled,
   /** A new Follow-up leaves no trace, a modified one gets its day and note back. */
-  async inverse(tx, { userId, subjectId: contactId, retained: { followUpId, before } }) {
+  async inverse(
+    tx,
+    { userId, subjectId: contactId, retained: { followUpId, before, deviationId } },
+  ) {
+    if (deviationId !== undefined) await removeDeviation(tx, userId, deviationId);
     const where = and(eq(followUp.userId, userId), eq(followUp.id, followUpId));
     if (before === null) await tx.delete(followUp).where(where);
     else await tx.update(followUp).set(before).where(where);
@@ -232,27 +253,35 @@ const followedUp = z.object({
   interactionId: z.uuid(),
   // Absent from the gestures recorded before the Cadence.
   nextFollowUpId: z.uuid().optional(),
+  // Followed up anyway: the Follow-up it added, done, and the deviation traced on the Trial.
+  deviationId: z.uuid().optional(),
 });
 
 /**
  * Follow up… (spec UX §6.3): the scheduled Follow-up becomes an outbound Interaction, dated the local
  * day entered (ST-36), a Prospecting action. Of the Cadence, the app schedules the next rank, its
  * interval after the last outbound Interaction done; past the last rank, the Response window is next.
+ * Without one scheduled, “Follow up anyway” (spec UX §5.1): a Follow-up off the Cadence, added done,
+ * a deviation traced on the Trial in progress, which it needs.
  */
 export const recordFollowUp: Gesture<
   'followed_up',
   ContactPlace,
-  { occurredOn: string; note: string | null },
+  { occurredOn: string; note: string | null; anyway: boolean },
   z.infer<typeof followedUp>,
   'future_day' | 'no_follow_up'
 > = {
   kind: 'followed_up',
   subject: contactSubject,
-  async write({ tx, userId, subjectId: contactId, input: { occurredOn, note }, now }) {
+  async write({ tx, userId, subjectId: contactId, input: { occurredOn, note, anyway }, now }) {
     const day = await dayEntered(tx, userId, occurredOn, now);
     if ('error' in day) return day;
     const scheduled = await scheduledFollowUp(tx, userId, contactId);
-    if (!scheduled) return refusal('no_follow_up');
+    if (!scheduled) {
+      return anyway
+        ? followUpAnyway(tx, { userId, contactId, day, note }, now)
+        : refusal('no_follow_up');
+    }
     const interactionId = await recordInteraction(tx, {
       userId,
       contactId,
@@ -275,9 +304,20 @@ export const recordFollowUp: Gesture<
     };
   },
   retained: followedUp,
-  /** The Interaction leaves no trace, nor the next Follow-up, and the Follow-up is scheduled again. */
+  /**
+   * The Interaction leaves no trace, nor the next Follow-up, and the Follow-up is scheduled again;
+   * one followed up anyway leaves no trace either, nor its deviation.
+   */
   async inverse(tx, { userId, subjectId: contactId, retained }) {
-    const { followUpId, interactionId, nextFollowUpId } = retained;
+    const { followUpId, interactionId, nextFollowUpId, deviationId } = retained;
+    if (deviationId !== undefined) {
+      await removeDeviation(tx, userId, deviationId);
+      await tx
+        .delete(followUp)
+        .where(and(eq(followUp.userId, userId), eq(followUp.id, followUpId)));
+      await removeInteraction(tx, userId, interactionId);
+      return touched({ contactIds: [contactId] });
+    }
     if (nextFollowUpId !== undefined) {
       await tx
         .delete(followUp)
@@ -291,3 +331,51 @@ export const recordFollowUp: Gesture<
     return touched({ contactIds: [contactId] });
   },
 };
+
+/**
+ * Follow up anyway (spec UX §5.1): with the Response window elapsed and no Follow-up scheduled, a
+ * Follow-up off the Cadence, added done, and the deviation traced on the Trial in progress.
+ */
+async function followUpAnyway(
+  tx: Transaction,
+  {
+    userId,
+    contactId,
+    day,
+    note,
+  }: {
+    userId: string;
+    contactId: string;
+    day: EnteredDay;
+    note: string | null;
+  },
+  now: Date,
+) {
+  const deviationId = await traceDeviation(tx, userId, contactId, 'off_cadence_follow_up', now);
+  if (deviationId === undefined) return refusal('no_follow_up');
+  const interactionId = await recordInteraction(tx, {
+    userId,
+    contactId,
+    kind: 'follow_up',
+    direction: 'outbound',
+    ...day,
+    note,
+  });
+  const [added] = await tx
+    .insert(followUp)
+    .values({
+      userId,
+      contactId,
+      status: 'done',
+      dueOn: day.localDate,
+      note,
+      interactionId,
+      scheduledAt: now,
+    })
+    .returning({ id: followUp.id });
+  if (!added) throw new Error('A Follow-up was not added');
+  return {
+    retained: { followUpId: added.id, interactionId, deviationId },
+    touched: touched({ contactIds: [contactId] }),
+  };
+}

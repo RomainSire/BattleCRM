@@ -112,6 +112,8 @@ export const battle = (
     horizon: DEFAULT_BATTLE_HORIZON,
     openedOn: '2026-01-05',
     open: true,
+    startedTrials: 0,
+    finishedTrials: 0,
     ...fields,
   } satisfies SummaryBattle);
 

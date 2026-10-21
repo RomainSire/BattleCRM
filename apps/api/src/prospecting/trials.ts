@@ -1,4 +1,4 @@
-import { TARGETS, type WithoutTrialReason } from '@battlecrm/contract';
+import { TARGETS, type SettledTrialOutcome, type WithoutTrialReason } from '@battlecrm/contract';
 import { chooseAssignment, targetOf, type Target } from '@battlecrm/domain';
 import { and, eq, ne, notExists, sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -8,7 +8,7 @@ import type { Transaction } from '../db/index.ts';
 import { organizationTypeOf } from '../organizations/index.ts';
 import type { Random } from '../random.ts';
 import { refusal } from '../refusals.ts';
-import { assignment, contact, trial } from './tables.ts';
+import { assignment, contact, trial, trialDeviation, type TrialDeviationKind } from './tables.ts';
 
 type OpenBattle = NonNullable<Awaited<ReturnType<typeof openBattleToAssignAt>>>;
 
@@ -45,18 +45,16 @@ async function trialsIn(tx: Transaction, userId: string, battleId: string, targe
   return new Map(rows.map(({ positioningId, count }) => [positioningId, count]));
 }
 
+/** The Trial in progress of a Contact: at most one. */
+const inProgressOf = (userId: string, contactId: string) =>
+  and(eq(trial.userId, userId), eq(trial.contactId, contactId), eq(trial.outcome, 'in_progress'));
+
 /** The Battle of a Trial in progress of a Contact, if it has one: at most one. */
 async function trialInProgressOf(tx: Transaction, userId: string, contactId: string) {
   const [found] = await tx
     .select({ battleId: trial.battleId })
     .from(trial)
-    .where(
-      and(
-        eq(trial.userId, userId),
-        eq(trial.contactId, contactId),
-        eq(trial.outcome, 'in_progress'),
-      ),
-    );
+    .where(inProgressOf(userId, contactId));
   return found?.battleId;
 }
 
@@ -253,6 +251,73 @@ export async function removeTrial(tx: Transaction, userId: string, trialId: stri
 /** Whether a Contact has a Trial in progress: it must be settled before leaving Prospecting. */
 export const hasTrialInProgress = async (tx: Transaction, userId: string, contactId: string) =>
   (await trialInProgressOf(tx, userId, contactId)) !== undefined;
+
+/** A Trial a gesture settled, as it keeps it to put it back in progress with “Undo”. */
+export const settledTrial = z.object({ id: z.uuid(), battleId: z.uuid() });
+
+/**
+ * Settles the Trial in progress of a Contact (CONTEXT.md, Trial): a Success or No result, a data
+ * point of its Battle, or canceled with its reason, which is not counted. The Trial settled, if the
+ * Contact had one in progress.
+ */
+export async function settleTrial(
+  tx: Transaction,
+  userId: string,
+  contactId: string,
+  { outcome, cancelReason }: { outcome: SettledTrialOutcome; cancelReason?: string | undefined },
+  now: Date,
+): Promise<z.infer<typeof settledTrial> | undefined> {
+  const [settled] = await tx
+    .update(trial)
+    .set({
+      outcome,
+      cancelReason: outcome === 'canceled' ? (cancelReason ?? null) : null,
+      settledAt: now,
+    })
+    .where(inProgressOf(userId, contactId))
+    .returning({ id: trial.id, battleId: trial.battleId });
+  return settled;
+}
+
+/**
+ * Puts a Trial settled back in progress, as “Undo” takes back the gesture that settled it (ADR 0011):
+ * no other Trial of the Contact started since, which only a later gesture on it could do.
+ */
+export const unsettleTrial = (tx: Transaction, userId: string, trialId: string) =>
+  tx
+    .update(trial)
+    .set({ outcome: 'in_progress', cancelReason: null, settledAt: null })
+    .where(and(eq(trial.userId, userId), eq(trial.id, trialId)));
+
+/**
+ * Traces a deviation from the Cadence on the Trial in progress of a Contact (ST-34): its id, or none
+ * without a Trial in progress.
+ */
+export async function traceDeviation(
+  tx: Transaction,
+  userId: string,
+  contactId: string,
+  kind: TrialDeviationKind,
+  now: Date,
+) {
+  const [inProgress] = await tx
+    .select({ id: trial.id })
+    .from(trial)
+    .where(inProgressOf(userId, contactId));
+  if (!inProgress) return undefined;
+  const [traced] = await tx
+    .insert(trialDeviation)
+    .values({ userId, trialId: inProgress.id, kind, recordedAt: now })
+    .returning({ id: trialDeviation.id });
+  return traced?.id;
+}
+
+/** A deviation traced by a gesture “Undo” takes back. */
+export async function removeDeviation(tx: Transaction, userId: string, deviationId: string) {
+  await tx
+    .delete(trialDeviation)
+    .where(and(eq(trialDeviation.userId, userId), eq(trialDeviation.id, deviationId)));
+}
 
 /** An Assignment as a gesture that dropped it keeps it, to bring it back with “Undo”. */
 export const droppedAssignment = z.object({

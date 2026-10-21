@@ -1,7 +1,10 @@
 import {
+  CANCEL_REASON_MAX_LENGTH,
   CONTACT_STATUSES,
+  SETTLED_TRIAL_OUTCOMES,
   STATUS_REASON_MAX_LENGTH,
   type ContactStatus,
+  type SettledTrialOutcome,
 } from '@battlecrm/contract';
 import {
   addDays,
@@ -19,7 +22,7 @@ import { Form, TextField } from 'react-aria-components';
 import { z } from 'zod';
 
 import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
+import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
 import {
   GesturePanel,
   GesturePanelBody,
@@ -37,9 +40,16 @@ import { useLocale, type Locale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { settingsOf } from '../settings/use-settings.ts';
-import { todayOf, trialOf, type Summary, type SummaryContact } from '../summary.ts';
+import { todayOf, type Summary, type SummaryContact } from '../summary.ts';
 import { formatLocalDay } from './format.ts';
 import { otherStatuses, STATUS_ACTION, type StatusGesture } from './status.ts';
+import {
+  trialRecap,
+  TrialOutcomeField,
+  TrialRecall,
+  trialSettledMessage,
+  trialStateOf,
+} from './trial.tsx';
 
 /**
  * The change of Status open on the record, carried by the address (ST-70): `open` shows its panel,
@@ -80,14 +90,25 @@ const draftSchema = z.object({
   target: z.enum(CONTACT_STATUSES).optional(),
   stageId: z.string().optional(),
   reason: z.string(),
+  trialOutcome: z.enum(SETTLED_TRIAL_OUTCOMES).optional(),
+  cancelReason: z.string().optional(),
 });
+
+/**
+ * The outcome proposed for the Trial in progress when the Contact leaves Prospecting (spec UX
+ * §6.11): a Success to the Circle, a No result to the Pool, none to Archived.
+ */
+const PROPOSED_OUTCOME: Partial<Record<ContactStatus, SettledTrialOutcome>> = {
+  ally: 'success',
+  pool: 'no_result',
+};
 type Draft = z.infer<typeof draftSchema>;
 
 /**
  * Bring in…, Back to Pool…, Add to Circle…, Archive…, or Change status… which chooses the target
  * first (spec UX §6.11): one panel, set to its target. The Stage to enter, the reason, the summary;
- * `Enter` validates, then “Undo”. With a Trial in progress, leaving Prospecting waits: settling it
- * comes with ticket 29.
+ * `Enter` validates, then “Undo”. Leaving Prospecting settles the Trial in progress: a Success, a No
+ * result, or canceled with its reason.
  */
 export function ChangeStatusPanel({
   contact,
@@ -118,9 +139,15 @@ export function ChangeStatusPanel({
   // Archived meanwhile, the Stage chosen is to be chosen again.
   const stageId = stageToEnter(funnelOf(summary.stages), { chosen: draft.stageId });
   const isStageMissing = target === 'prospecting' && stageId === undefined;
-  // Leaving Prospecting settles the Trial in progress first, which comes with ticket 29.
-  const isTrialInProgress =
-    target !== undefined && target !== 'prospecting' && trialOf(contact) !== null;
+  // Leaving Prospecting settles the Trial in progress (spec UX §6.11).
+  const trial =
+    target !== undefined && target !== 'prospecting' && contact.status === 'prospecting'
+      ? trialStateOf(contact, summary)
+      : undefined;
+  const trialOutcome = trial && (draft.trialOutcome ?? (target && PROPOSED_OUTCOME[target]));
+  const cancelReason = draft.cancelReason?.trim() ?? '';
+  const isTrialUnsettled = trial !== undefined && trialOutcome === undefined;
+  const isCancelReasonMissing = trialOutcome === 'canceled' && cancelReason === '';
 
   const close = () => {
     clearDraft();
@@ -137,9 +164,16 @@ export function ChangeStatusPanel({
             status: to,
             ...(to === 'prospecting' && stageId !== undefined && { stageId }),
             ...(reason !== '' && { reason }),
+            ...(trialOutcome && { trialOutcome }),
+            ...(trialOutcome === 'canceled' && { cancelReason }),
           },
         }),
-        ({ contacts: [changed] }) => changed && statusChangedMessage(changed, to, summary),
+        (changes) => {
+          const [changed] = changes.contacts;
+          if (!changed) return undefined;
+          const then = statusChangedMessage(changed, to, summary);
+          return trialSettledMessage(trialOutcome, trial, changes, then);
+        },
       );
     },
     onSuccess: (refused) => {
@@ -150,6 +184,7 @@ export function ChangeStatusPanel({
 
   /** The summary of what the change does (spec UX §1, §6.11). */
   const recap = target === undefined ? [] : statusRecap(target, summary, locale);
+  if (trial && trialOutcome) recap.unshift(trialRecap(trialOutcome, trial, undefined, locale));
   if (target === 'ally' && contact.status === 'prospecting' && lastStage) {
     recap.push(m.change_status_keeps_stage({ stage: lastStage.name }));
   }
@@ -177,7 +212,13 @@ export function ChangeStatusPanel({
           onSubmit={(event) => {
             event.preventDefault();
             setWasSent(true);
-            if (target === undefined || isStageMissing || isTrialInProgress || change.isPending) {
+            if (
+              target === undefined ||
+              isStageMissing ||
+              isTrialUnsettled ||
+              isCancelReasonMissing ||
+              change.isPending
+            ) {
               return;
             }
             change.mutate(target);
@@ -227,10 +268,28 @@ export function ChangeStatusPanel({
                 />
               </TextField>
             )}
-            {isTrialInProgress && (
-              <p className="font-medium">
-                {m.change_status_trial_in_progress({ name: contact.name })}
-              </p>
+            {trial && (
+              <>
+                <TrialRecall state={trial} />
+                <TrialOutcomeField
+                  outcomes={SETTLED_TRIAL_OUTCOMES}
+                  value={trialOutcome}
+                  onChange={(outcome) => setDraft({ ...draft, trialOutcome: outcome })}
+                />
+                {trialOutcome === 'canceled' && (
+                  <TextField
+                    value={draft.cancelReason ?? ''}
+                    onChange={(text) => setDraft({ ...draft, cancelReason: text })}
+                    maxLength={CANCEL_REASON_MAX_LENGTH}
+                    isInvalid={wasSent && isCancelReasonMissing}
+                    className="flex flex-col gap-1.5"
+                  >
+                    <Label>{m.trial_cancel_reason()}</Label>
+                    <Input className="max-md:h-11" />
+                    <FieldErrorMessage>{m.trial_cancel_reason_required()}</FieldErrorMessage>
+                  </TextField>
+                )}
+              </>
             )}
             {recap.length > 0 && (
               <section aria-label={m.change_status_recap()} className="rounded-control border p-3">
@@ -257,7 +316,7 @@ export function ChangeStatusPanel({
             <Button
               type="submit"
               className="max-md:min-h-11"
-              isDisabled={target === undefined || isTrialInProgress || change.isPending}
+              isDisabled={target === undefined || isTrialUnsettled || change.isPending}
             >
               {target === undefined ? m.change_status_validate() : STATUS_ACTION[target]()}
             </Button>
