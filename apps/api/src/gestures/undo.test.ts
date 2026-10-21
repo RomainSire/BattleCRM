@@ -11,7 +11,9 @@ import { gesture } from './tables.ts';
 type User = Awaited<ReturnType<typeof makeUser>>;
 
 const gesturesOf = ({ userId }: User) =>
-  withUser(userId, (tx) => tx.select().from(gesture).where(eq(gesture.userId, userId)));
+  withUser(userId, (tx) =>
+    tx.select().from(gesture).where(eq(gesture.userId, userId)).orderBy(gesture.id),
+  );
 
 test('“Undo” is refused once a later gesture touched the same Contact', async () => {
   const harness = testApp();

@@ -279,8 +279,7 @@ describe('repeated failures on one address', () => {
   });
 });
 
-// Thirty sign-ins in a row, each hashing a password: slow on a loaded CI runner.
-describe('repeated attempts from one IP address', { timeout: 20_000 }, () => {
+describe('repeated attempts from one IP address', () => {
   test('the 31st in 15 minutes is refused, whatever the address it tries', async () => {
     const harness = testApp();
     const ip = randomIp();

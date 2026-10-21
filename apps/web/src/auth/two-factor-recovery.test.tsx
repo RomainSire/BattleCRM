@@ -37,12 +37,6 @@ const lost = (screen: Screen) =>
 const request = (screen: Screen) =>
   screen.getByRole('button', { name: 'Demander la récupération' }).click();
 
-/** Off the button just pressed, and once its colour has settled, as axe measures no hover elsewhere. */
-async function pointerOff(screen: Screen) {
-  await screen.getByRole('heading', { level: 1 }).hover();
-  await expect.poll(() => document.getAnimations().length).toBe(0);
-}
-
 beforeEach(() => page.viewport(1280, 800));
 
 describe('a second factor that is lost', () => {
@@ -175,16 +169,13 @@ describe.each(['light', 'dark'] as const)('axe finds nothing in the %s theme', (
 
   test('on the request of a recovery and its answer', async () => {
     const { screen } = await atTheCode(started);
-    await pointerOff(screen);
     await expectNoAxeViolations();
 
     await lost(screen);
-    await pointerOff(screen);
     await expectNoAxeViolations();
 
     await request(screen);
     await expect.element(screen.getByText(/sera désactivée le 12 janvier 2026/)).toBeVisible();
-    await pointerOff(screen);
     await expectNoAxeViolations();
   });
 

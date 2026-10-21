@@ -17,9 +17,17 @@ type User = Awaited<ReturnType<typeof makeUser>>;
 
 const rowsOf = ({ userId }: User) =>
   withUser(userId, async (tx) => ({
-    contacts: await tx.select().from(contact).where(eq(contact.userId, userId)),
-    interactions: await tx.select().from(interaction).where(eq(interaction.userId, userId)),
-    statusChanges: await tx.select().from(statusChange).where(eq(statusChange.userId, userId)),
+    contacts: await tx.select().from(contact).where(eq(contact.userId, userId)).orderBy(contact.id),
+    interactions: await tx
+      .select()
+      .from(interaction)
+      .where(eq(interaction.userId, userId))
+      .orderBy(interaction.id),
+    statusChanges: await tx
+      .select()
+      .from(statusChange)
+      .where(eq(statusChange.userId, userId))
+      .orderBy(statusChange.id),
   }));
 
 const stagesOf = ({ userId }: User) => withUser(userId, (tx) => stageOrder(tx, userId));

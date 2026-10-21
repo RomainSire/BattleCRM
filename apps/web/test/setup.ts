@@ -16,11 +16,14 @@ beforeEach(async () => {
   document.documentElement.className = '';
   await setLocale('fr', { reload: false });
   await commands.emulateColorScheme('light');
+  await commands.parkPointer();
 });
 
 declare module 'vitest/browser' {
   interface BrowserCommands {
     /** Defined in vitest.config.ts. */
     emulateColorScheme: (scheme: 'light' | 'dark') => Promise<void>;
+    /** Defined in vitest.config.ts. */
+    parkPointer: () => Promise<void>;
   }
 }

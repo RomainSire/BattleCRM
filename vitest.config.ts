@@ -9,6 +9,15 @@ const emulateColorScheme: BrowserCommand<['light' | 'dark']> = async (context, s
   await context.page.emulateMedia({ colorScheme: scheme });
 };
 
+/**
+ * Moves the pointer to the top left corner, where no control lies: a hover left by a previous gesture,
+ * or by the previous test, would start a colour transition at any time.
+ */
+const parkPointer: BrowserCommand = async (context) => {
+  if (context.provider.name !== 'playwright') throw new Error('parkPointer needs Playwright');
+  await context.page.mouse.move(0, 0);
+};
+
 export default defineConfig({
   test: {
     passWithNoTests: true,
@@ -27,6 +36,10 @@ export default defineConfig({
           environment: 'node',
           // Time-zone cases are written explicitly; the process itself always runs in UTC.
           env: { TZ: 'UTC' },
+          // A real database and passwords hashed with scrypt, slow on purpose and slower on a busy CI
+          // runner: the timeout only catches a test that hangs, never one that takes a few seconds.
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
           globalSetup: ['test/global-setup.ts'],
           setupFiles: ['test/setup.ts'],
         },
@@ -43,7 +56,7 @@ export default defineConfig({
             headless: true,
             provider: playwright(),
             instances: [{ browser: 'chromium' }],
-            commands: { emulateColorScheme },
+            commands: { emulateColorScheme, parkPointer },
           },
         },
       },

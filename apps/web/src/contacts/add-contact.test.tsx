@@ -66,12 +66,16 @@ const names = (screen: { getByRole: typeof page.getByRole }) =>
     .elements()
     .map((item) => item.querySelector('[data-slot="contact-name"]')?.textContent);
 
-/** Opens the quick add with `N` and adds Jean. */
+/**
+ * Opens the quick add with `N` and adds Jean. Returns once the quick add has closed: while it fades
+ * out, `N` opens nothing and a key may still land in its field.
+ */
 async function addJean(screen: Awaited<ReturnType<typeof renderApp>>['screen']) {
   await userEvent.keyboard('n');
   await screen.getByRole('textbox', { name: 'Nom' }).fill('Jean Dupont');
   await userEvent.keyboard('{Enter}');
   await expect.element(screen.getByText('Jean Dupont est ajouté au Vivier')).toBeVisible();
+  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
 }
 
 /** Chooses a Status in the quick add: a radio of React Aria is clicked by its label. */

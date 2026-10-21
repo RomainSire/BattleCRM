@@ -42,15 +42,6 @@ async function giveCode(screen: Screen, code = '123456') {
   await screen.getByRole('button', { name: 'Valider' }).click();
 }
 
-/**
- * The pointer is where “Se connecter” was pressed, now over “Valider”: off it, and once its colour
- * has settled, as axe measures no hover elsewhere.
- */
-async function pointerOff(screen: Screen) {
-  await heading(screen, 'Double authentification').hover();
-  await expect.poll(() => document.getAnimations().length).toBe(0);
-}
-
 /** What `var(--error)` resolves to in the current theme. */
 function errorColour() {
   const probe = document.body.appendChild(document.createElement('span'));
@@ -464,13 +455,11 @@ describe.each(['light', 'dark'] as const)('axe finds nothing in the %s theme', (
       fakeApi({ ...signedOut, ...codeAwaited, ...codeRefusedWith('invalid_code') }),
     );
     await fillSignIn(screen);
-    await pointerOff(screen);
     await expectNoAxeViolations();
 
     await giveCode(screen);
 
     await expect.element(screen.getByText('Code incorrect.')).toBeVisible();
-    await pointerOff(screen);
     await expectNoAxeViolations();
   });
 

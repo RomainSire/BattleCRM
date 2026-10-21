@@ -39,15 +39,6 @@ async function change(screen: Screen, { password = CURRENT, newPassword = NEW } 
   await screen.getByRole('button', { name: 'Changer le mot de passe' }).click();
 }
 
-/**
- * The pointer is where “Changer le mot de passe” was pressed: off it, and once its colour has settled,
- * as axe measures no hover elsewhere.
- */
-async function pointerOff(screen: Screen) {
-  await screen.getByRole('heading', { level: 3, name: 'Mot de passe', exact: true }).hover();
-  await expect.poll(() => document.getAnimations().length).toBe(0);
-}
-
 beforeEach(() => page.viewport(1280, 800));
 
 describe('changing the password, in the Account section of Settings', () => {
@@ -216,14 +207,12 @@ describe.each(['light', 'dark'] as const)('axe finds nothing in the %s theme', (
 
     await change(screen, { password: 'not the right password' });
     await expect.element(form(screen).getByText('Mot de passe incorrect.')).toBeVisible();
-    await pointerOff(screen);
     await expectNoAxeViolations();
 
     await change(screen);
     await expect
       .element(form(screen).getByRole('status'))
       .toHaveTextContent('Mot de passe changé.');
-    await pointerOff(screen);
     await expectNoAxeViolations();
   });
 });

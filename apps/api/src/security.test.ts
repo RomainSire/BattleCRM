@@ -395,5 +395,5 @@ test('the id of another User answers 404 and changes nothing, on every route tha
     expect(response.status, `on ${route}`).toBe(404);
     expect(await state(), `on ${route}`).toEqual(before);
   }
-  // Two Users and a gesture or two per route: it grows with the routes.
-}, 20_000);
+  // Two Users and a gesture or two per route: it grows with the routes (13 s on CI in October 2026).
+}, 60_000);

@@ -4,7 +4,7 @@ import { m } from '@battlecrm/i18n';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { cn } from 'cn';
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Form, TextField } from 'react-aria-components';
 
 import { Button } from '../components/ui/button.tsx';
@@ -475,6 +475,12 @@ export function OrganizationPage({ organizationId }: { organizationId: string })
   const { data: summary, isError } = useQuery(summaryQuery(api));
   const [isRenaming, setIsRenaming] = useState(false);
   const renameButton = useRef<HTMLButtonElement>(null);
+  const wasRenaming = useRef(false);
+  // Saving or cancelling gives the focus back to “Rename”, once the button is back on the screen.
+  useEffect(() => {
+    if (wasRenaming.current && !isRenaming) renameButton.current?.focus();
+    wasRenaming.current = isRenaming;
+  }, [isRenaming]);
   const contactsHeadingId = useId();
   const organization = summary?.organizations.find(({ id }) => id === organizationId);
   const backToContacts = (
@@ -518,11 +524,7 @@ export function OrganizationPage({ organizationId }: { organizationId: string })
             <RenameOrganization
               organization={organization}
               organizations={summary.organizations}
-              onDone={() => {
-                setIsRenaming(false);
-                // Once the button is back.
-                requestAnimationFrame(() => renameButton.current?.focus());
-              }}
+              onDone={() => setIsRenaming(false)}
             />
           ) : (
             <div className="flex flex-wrap items-start gap-2">

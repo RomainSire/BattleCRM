@@ -25,7 +25,8 @@ const organizationsOf = ({ userId }: User) =>
     tx
       .select({ name: organization.name, normalizedName: organization.normalizedName })
       .from(organization)
-      .where(eq(organization.userId, userId)),
+      .where(eq(organization.userId, userId))
+      .orderBy(organization.id),
   );
 
 /** A Contact added with a new Organization, which comes back with it. */

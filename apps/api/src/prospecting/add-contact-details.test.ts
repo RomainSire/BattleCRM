@@ -17,8 +17,12 @@ type User = Awaited<ReturnType<typeof makeUser>>;
 
 const rowsOf = ({ userId }: User) =>
   withUser(userId, async (tx) => ({
-    contacts: await tx.select().from(contact).where(eq(contact.userId, userId)),
-    organizations: await tx.select().from(organization).where(eq(organization.userId, userId)),
+    contacts: await tx.select().from(contact).where(eq(contact.userId, userId)).orderBy(contact.id),
+    organizations: await tx
+      .select()
+      .from(organization)
+      .where(eq(organization.userId, userId))
+      .orderBy(organization.id),
   }));
 
 const add = (harness: Harness, user: User, body: object) =>
