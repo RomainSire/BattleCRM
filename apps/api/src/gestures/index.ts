@@ -38,6 +38,8 @@ export type Touched = {
   removedOrganizationIds: string[];
   positioningIds: string[];
   removedPositioningIds: string[];
+  battleIds: string[];
+  removedBattleIds: string[];
 };
 
 /** The rows a gesture touched, every kind it names nothing of left empty. */
@@ -48,6 +50,8 @@ export const touched = (rows: Partial<Touched>): Touched => ({
   removedOrganizationIds: [],
   positioningIds: [],
   removedPositioningIds: [],
+  battleIds: [],
+  removedBattleIds: [],
   ...rows,
 });
 
@@ -109,8 +113,8 @@ type SubjectRecord = {
 };
 
 /**
- * What gestures act on, one at a time (ADR 0011): a Contact, a Positioning… A new one, the Battle,
- * comes with its column in `gesture` and its own loader, never a branch of the circuit.
+ * What gestures act on, one at a time (ADR 0011): a Contact, a Positioning, a Battle. A new one comes
+ * with its column in `gesture` and its own loader, never a branch of the circuit.
  */
 export type GestureSubject<Row> = SubjectRecord & {
   /**

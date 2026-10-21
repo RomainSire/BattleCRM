@@ -204,6 +204,20 @@
       "when": 1792147568863,
       "tag": "0028_positioning_uses",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1792596329101,
+      "tag": "0029_battles",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1792596340294,
+      "tag": "0030_battles_access",
+      "breakpoints": true
     }
   ]
 }

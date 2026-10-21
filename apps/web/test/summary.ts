@@ -1,5 +1,7 @@
 import {
   DEFAULT_ACTIVITY_GOAL,
+  DEFAULT_BATTLE_HORIZON,
+  DEFAULT_BATTLE_THRESHOLD,
   DEFAULT_CELEBRATE_GOAL,
   DEFAULT_CHECK_IN_RHYTHM_DAYS,
   DEFAULT_CIRCLE_SIZE_GOAL,
@@ -8,6 +10,7 @@ import {
   DEFAULT_RESPONSE_WINDOW_DAYS,
   DEFAULT_SINGLE_KEY_SHORTCUTS,
   summary as summarySchema,
+  summaryBattle,
   summaryChanges,
   summaryContact,
   summaryOrganization,
@@ -15,6 +18,7 @@ import {
   summarySettings,
   summaryStage,
   type Summary,
+  type SummaryBattle,
   type SummaryChanges,
   type SummaryContact,
   type SummaryOrganization,
@@ -94,6 +98,21 @@ export const positioning = (
     ...fields,
   } satisfies SummaryPositioning);
 
+/** An open Battle, for every Target, at 85 % and an Horizon of 25, opened on 2026-01-05. */
+export const battle = (
+  fields: Partial<SummaryBattle> & Pick<SummaryBattle, 'stageId' | 'championId' | 'challengerId'>,
+): SummaryBattle =>
+  summaryBattle.parse({
+    id: nextId(),
+    successCriterion: 'a répondu positivement',
+    target: null,
+    threshold: DEFAULT_BATTLE_THRESHOLD,
+    horizon: DEFAULT_BATTLE_HORIZON,
+    openedOn: '2026-01-05',
+    open: true,
+    ...fields,
+  } satisfies SummaryBattle);
+
 /** Settings as a new User has them, in French, in `timeZone`. */
 export const settings = (
   fields: Partial<SummarySettings> = {},
@@ -126,6 +145,7 @@ export function summary(
     stages: [],
     organizations: [],
     positionings: [],
+    battles: [],
     ...fields,
     settings: settings(fields.settings, timeZone),
   } satisfies Summary);
@@ -140,5 +160,7 @@ export const changes = (fields: Partial<SummaryChanges> = {}): SummaryChanges =>
     removedOrganizationIds: [],
     positionings: [],
     removedPositioningIds: [],
+    battles: [],
+    removedBattleIds: [],
     ...fields,
   } satisfies SummaryChanges);

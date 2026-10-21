@@ -11,6 +11,7 @@ import type { Logger } from 'pino';
 
 import { failureReason, type Alert } from './alert.ts';
 import { createAuth, type Hibp } from './auth/index.ts';
+import { createBattles, positioningBattles } from './battles/index.ts';
 import { CLIENT_ERROR_MAX_BYTES, clientErrorReport } from './client-errors.ts';
 import { resolveClientIp } from './client-ip.ts';
 import type { Clock } from './clock.ts';
@@ -80,12 +81,14 @@ export function createApp({
     requireUser,
     changesOf: summaryChanges,
     uses: positioningUses,
+    battles: positioningBattles,
   });
+  const battles = createBattles({ clock, requireUser, changesOf: summaryChanges });
   // Each module brings the inverse of its own gestures (ADR 0011).
   const gestures = createGestures({
     clock,
     requireUser,
-    gestures: [...prospecting.gestures, ...positionings.gestures],
+    gestures: [...prospecting.gestures, ...positionings.gestures, ...battles.gestures],
     changesOf: summaryChanges,
   });
   const organizations = createOrganizations({
@@ -137,6 +140,7 @@ export function createApp({
     .route('/', auth.routes)
     .route('/', prospecting.routes)
     .route('/', positionings.routes)
+    .route('/', battles.routes)
     .route('/', organizations.routes)
     .route('/', gestures.routes)
     .route('/', settings.routes)

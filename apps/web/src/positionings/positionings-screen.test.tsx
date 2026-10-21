@@ -5,8 +5,14 @@ import { z } from 'zod';
 import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
-import { changes, positioning as summaryPositioning, stage, summary } from '../../test/summary.ts';
-import type { SummaryPositioning } from '../summary.ts';
+import {
+  battle,
+  changes,
+  positioning as summaryPositioning,
+  stage,
+  summary,
+} from '../../test/summary.ts';
+import type { SummaryBattle, SummaryPositioning } from '../summary.ts';
 
 const desktop = () => page.viewport(1280, 900);
 const phone = () => page.viewport(390, 844);
@@ -92,7 +98,7 @@ const stored = (body: z.infer<typeof fields>) => ({
 });
 
 /** An API that keeps the Positionings of the workshop as the server would, and takes a gesture back. */
-function workshopApi(overrides: Parameters<typeof fakeApi>[0] = {}) {
+function workshopApi(overrides: Parameters<typeof fakeApi>[0] = {}, battles: SummaryBattle[] = []) {
   let positionings = [MAIL_LONG, MAIL_COURT, LINKEDIN, OLD];
   let before = positionings;
   let undone = changes();
@@ -130,6 +136,7 @@ function workshopApi(overrides: Parameters<typeof fakeApi>[0] = {}) {
           },
           stages: [OUTREACH, SCREENING],
           positionings,
+          battles,
         }),
       ),
     'POST /api/positionings': (body) => {
@@ -475,6 +482,42 @@ test('Archive by hand, with “Undo”', async () => {
   await page.getByRole('button', { name: /^Annuler$/ }).click();
   await expect.element(page.getByText('Annulé.')).toBeVisible();
   await expect.element(page.getByRole('button', { name: 'Archiver' })).toBeVisible();
+});
+
+test('in a Battle: the Champion and the Challenger say so; neither is archived while it is open, nor deleted ever', async () => {
+  await desktop();
+  const api = workshopApi({}, [
+    battle({ stageId: OUTREACH.id, championId: LINKEDIN.id, challengerId: MAIL_COURT.id }),
+  ]);
+  await renderApp(`/positionings?positioning=${MAIL_COURT.id}`, api);
+
+  const rows = lineage().getByRole('listitem');
+  await expect.element(rows.nth(1)).toHaveTextContent('Mail courtChallenger');
+  await expect.element(rows.nth(2)).toHaveTextContent('Message LinkedInChampion');
+  const record = page.getByRole('region', { name: 'Mail court' });
+  await expect.element(record.getByRole('button', { name: 'Archiver' })).toBeDisabled();
+  await expect
+    .element(record)
+    .toHaveTextContent(
+      "Dans une Battle ouverte : il ne s'archive pas tant qu'elle n'est pas close.",
+    );
+  await expect.element(record.getByRole('button', { name: 'Supprimer' })).not.toBeInTheDocument();
+  await expect
+    .element(record)
+    .toHaveTextContent(
+      'Il a servi dans une Battle : il ne peut plus être supprimé. Archive-le plutôt.',
+    );
+
+  await lineage()
+    .getByRole('link', { name: /Message LinkedIn/ })
+    .click();
+  const champion = page.getByRole('region', { name: 'Message LinkedIn' });
+  await expect.element(champion.getByRole('button', { name: 'Archiver' })).toBeDisabled();
+  await expect
+    .element(champion)
+    .toHaveTextContent(
+      "Champion de son Étape : il ne s'archive pas. Il perd son titre quand un Challenger le bat.",
+    );
 });
 
 test('Unarchive', async () => {

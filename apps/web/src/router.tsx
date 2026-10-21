@@ -20,6 +20,8 @@ import { SignInScreen } from './auth/sign-in-screen.tsx';
 import { SignUpScreen } from './auth/sign-up-screen.tsx';
 import { CancellingRecovery, RecoveryCancelledScreen } from './auth/two-factor-recovery.tsx';
 import { AuthError, InvalidLinkScreen, VerifyingEmail } from './auth/verify-email-screen.tsx';
+import { BATTLE_PANELS } from './battles/open-battle-panel.tsx';
+import { BattlesScreen } from './battles/battles-screen.tsx';
 import { ContactPage } from './contacts/contact-record.tsx';
 import { ContactsScreen } from './contacts/contacts-screen.tsx';
 import {
@@ -268,7 +270,12 @@ const funnelRoute = createRoute({
 const battlesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/battles',
-  component: () => <Screen title={m.battles()} />,
+  // The Stage whose opening is under way, and its panel (ST-70); anything else is dropped.
+  validateSearch: z.object({
+    stage: z.uuid().optional().catch(undefined),
+    panel: z.enum(BATTLE_PANELS).optional().catch(undefined),
+  }),
+  component: BattlesScreen,
 });
 
 const positioningsRoute = createRoute({

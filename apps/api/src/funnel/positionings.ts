@@ -147,6 +147,18 @@ export type PositioningUses = {
 };
 
 /**
+ * Where a Positioning stands in the Battles (spec UX §5.6): the Champion of its Stage, in an open
+ * Battle, in a closed one only, or in none (`undefined`). `battles` keeps the Battles, and answers.
+ */
+export type PositioningBattles = {
+  standing: (
+    tx: Transaction,
+    userId: string,
+    positioningId: string,
+  ) => Promise<'champion' | 'in_open_battle' | 'in_battle' | undefined>;
+};
+
+/**
  * Whether a Positioning was ever used, its row locked first: a use under way, which shares it, is
  * then written and seen (ST-32).
  */
@@ -156,12 +168,30 @@ async function isUsed(
   userId: string,
   positioningId: string,
 ) {
-  await tx
+  await lockRow(tx, userId, positioningId);
+  return uses.any(tx, userId, positioningId);
+}
+
+/** Locks the row of a Positioning until the transaction ends. */
+const lockRow = (tx: Transaction, userId: string, positioningId: string) =>
+  tx
     .select({ id: positioning.id })
     .from(positioning)
     .where(byId(userId, positioningId))
     .for('update');
-  return uses.any(tx, userId, positioningId);
+
+/**
+ * Where a Positioning stands in the Battles, its row locked first: an opening under way, which locks
+ * it, is then written and seen.
+ */
+async function standingOf(
+  tx: Transaction,
+  battles: PositioningBattles,
+  userId: string,
+  positioningId: string,
+) {
+  await lockRow(tx, userId, positioningId);
+  return battles.standing(tx, userId, positioningId);
 }
 
 /** The copies of a Positioning: they name it as their original. */
@@ -197,6 +227,7 @@ const attachmentSubject: GestureSubject<PositioningRow> = {
 /** A new Positioning at a Stage of the Funnel, or a modified copy of one (spec UX §6.10). */
 const createPositioning = (
   uses: PositioningUses,
+  battles: PositioningBattles,
 ): Creation<
   'positioning_created',
   z.infer<typeof createRequest>,
@@ -237,9 +268,10 @@ const createPositioning = (
     return { subjectId: created.id, retained: {}, touched: touchedPositioning(created.id) };
   },
   retained: nothingRetained,
-  /** The Positioning leaves no trace, unless a copy was made of it since, or it was used. */
+  /** The Positioning leaves no trace, unless a copy was made of it since, or it was used or opposed in a Battle. */
   async inverse(tx, { userId, subjectId: positioningId }) {
     if (await isUsed(tx, uses, userId, positioningId)) return 'superseded';
+    if ((await battles.standing(tx, userId, positioningId)) !== undefined) return 'superseded';
     if ((await copiesOf(tx, userId, positioningId)).length > 0) return 'superseded';
     // A modified copy came with the attachments of its original.
     await eraseAttachmentsOf(tx, userId, positioningId);
@@ -304,21 +336,24 @@ const relabelPositioning: Gesture<
   },
 };
 
-/**
- * Archive it by hand (spec UX §5.6). Neither the Champion nor one in an open Battle: Battles come
- * with tickets 27 and 32.
- */
-const archivePositioning: Gesture<
+/** Archive it by hand (spec UX §5.6): neither the Champion of its Stage nor one in an open Battle. */
+const archivePositioning = (
+  battles: PositioningBattles,
+): Gesture<
   'positioning_archived',
   PositioningRow,
   undefined,
   z.infer<typeof nothingRetained>,
-  'archived'
-> = {
+  'archived' | 'champion' | 'in_open_battle'
+> => ({
   kind: 'positioning_archived',
   subject: positioningSubject,
-  async refuse({ subject }) {
-    return subject.archivedAt === null ? undefined : refusal('archived');
+  async refuse({ tx, userId, subjectId: positioningId, subject }) {
+    if (subject.archivedAt !== null) return refusal('archived');
+    const standing = await standingOf(tx, battles, userId, positioningId);
+    if (standing === 'champion') return refusal('champion');
+    if (standing === 'in_open_battle') return refusal('in_open_battle');
+    return undefined;
   },
   async write({ tx, userId, subjectId: positioningId, now }) {
     await tx.update(positioning).set({ archivedAt: now }).where(byId(userId, positioningId));
@@ -329,16 +364,18 @@ const archivePositioning: Gesture<
     await tx.update(positioning).set({ archivedAt: null }).where(byId(userId, positioningId));
     return touchedPositioning(positioningId);
   },
-};
+});
 
 /** Available again, as a Challenger to come. */
-const unarchivePositioning: Gesture<
+const unarchivePositioning = (
+  battles: PositioningBattles,
+): Gesture<
   'positioning_unarchived',
   PositioningRow,
   undefined,
   z.infer<typeof positioningUnarchived>,
   'not_archived'
-> = {
+> => ({
   kind: 'positioning_unarchived',
   subject: positioningSubject,
   async write({ tx, userId, subjectId: positioningId, subject: { archivedAt } }) {
@@ -351,29 +388,40 @@ const unarchivePositioning: Gesture<
     };
   },
   retained: positioningUnarchived,
+  /** Archived again, unless it is the Champion or in an open Battle since. */
   async inverse(tx, { userId, subjectId: positioningId, retained: { archivedAt } }) {
+    const standing = await standingOf(tx, battles, userId, positioningId);
+    if (standing === 'champion' || standing === 'in_open_battle') return 'superseded';
     await tx
       .update(positioning)
       .set({ archivedAt: new Date(archivedAt) })
       .where(byId(userId, positioningId));
     return touchedPositioning(positioningId);
   },
-};
+});
 
-/** Delete one never used (spec UX §5.6); once used, it is archived instead. Its copies stay, without an original. */
+/**
+ * Delete one never used nor opposed in a Battle (spec UX §5.6); otherwise, it is archived instead.
+ * Its copies stay, without an original.
+ */
 const deletePositioning = (
   uses: PositioningUses,
+  battles: PositioningBattles,
 ): Gesture<
   'positioning_deleted',
   PositioningRow,
   undefined,
   z.infer<typeof positioningDeleted>,
-  'used'
+  'used' | 'in_battle'
 > => ({
   kind: 'positioning_deleted',
   subject: positioningSubject,
   async write({ tx, userId, subjectId: positioningId, subject: before, now }) {
     if (await isUsed(tx, uses, userId, positioningId)) return refusal('used');
+    // The Champion included: one that served in a Battle is kept.
+    if ((await battles.standing(tx, userId, positioningId)) !== undefined) {
+      return refusal('in_battle');
+    }
     const copyIds = await copiesOf(tx, userId, positioningId);
     if (copyIds.length > 0) {
       await tx
@@ -509,23 +557,28 @@ function contentDispositionOf(name: string) {
  * each, through the common circuit, which answers with the rows of the summary it changed and the
  * token that takes it back (ADR 0011).
  *
- * No longer deletable once used, read in the transaction of the gesture (ST-32); frozen once used in
- * a Trial, which comes with Trials (ticket 28).
+ * No longer deletable once used or opposed in a Battle, nor archivable while the Champion or in an
+ * open Battle, read in the transaction of the gesture (ST-32); frozen once used in a Trial, which
+ * comes with Trials (ticket 28).
  */
 export function createPositionings<Changes>({
   clock,
   requireUser,
   changesOf,
   uses,
+  battles,
 }: {
   clock: Clock;
   requireUser: RequireUser;
   changesOf: ChangesOf<Changes>;
   uses: PositioningUses;
+  battles: PositioningBattles;
 }) {
   const { perform, create } = createCircuit({ clock, changesOf });
-  const created = createPositioning(uses);
-  const deleted = deletePositioning(uses);
+  const created = createPositioning(uses, battles);
+  const archived = archivePositioning(battles);
+  const unarchived = unarchivePositioning(battles);
+  const deleted = deletePositioning(uses, battles);
   const routes = new Hono<AppEnv>()
     .post('/positionings', requireUser, jsonBody(createRequest), (c) =>
       create(c, created, c.req.valid('json')),
@@ -539,12 +592,8 @@ export function createPositionings<Changes>({
       jsonBody(positioningFields.pick({ label: true })),
       (c) => perform(c, relabelPositioning, c.req.valid('json')),
     )
-    .post('/positionings/:id/archive', requireUser, (c) =>
-      perform(c, archivePositioning, undefined),
-    )
-    .post('/positionings/:id/unarchive', requireUser, (c) =>
-      perform(c, unarchivePositioning, undefined),
-    )
+    .post('/positionings/:id/archive', requireUser, (c) => perform(c, archived, undefined))
+    .post('/positionings/:id/unarchive', requireUser, (c) => perform(c, unarchived, undefined))
     .post('/positionings/:id/delete', requireUser, (c) => perform(c, deleted, undefined))
     .post(
       '/positionings/:id/attachments',
@@ -595,8 +644,8 @@ export function createPositionings<Changes>({
     created,
     editPositioning,
     relabelPositioning,
-    archivePositioning,
-    unarchivePositioning,
+    archived,
+    unarchived,
     deleted,
     joinAttachment,
     removeAttachment,

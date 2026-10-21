@@ -81,6 +81,22 @@ export const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
 export const ATTACHMENTS_MAX_BYTES_PER_USER = 100 * 1024 * 1024;
 export const ATTACHMENT_NAME_MAX_LENGTH = 255;
 
+/** The Targets a Battle may be restricted to (CONTEXT.md, Target): one of them, or none for all. */
+export const TARGETS = ['consultancy', 'end_client', 'unknown'] as const;
+export type BattleTarget = (typeof TARGETS)[number];
+
+/**
+ * The thresholds of confidence a Battle may be opened with (ADR 0001), and the bounds of its Horizon,
+ * both fixed once open. The Horizon is never below the minimum of finished Trials, which is not settable.
+ */
+export const BATTLE_THRESHOLDS = [0.8, 0.85, 0.9, 0.95] as const;
+export const DEFAULT_BATTLE_THRESHOLD = 0.85;
+export const DEFAULT_BATTLE_HORIZON = 25;
+export const BATTLE_MINIMUM_FINISHED = 10;
+export const BATTLE_MINIMUM_SUCCESSES = 5;
+export const BATTLE_HORIZON_MAX = 100;
+export const SUCCESS_CRITERION_MAX_LENGTH = 200;
+
 // The working summary (ADR 0012), described once: the API builds it to this shape, the SPA reads it,
 // the tests check the answers against it. Strict, so a field the API adds unannounced fails the tests.
 
@@ -152,6 +168,23 @@ export const summaryPositioning = z.strictObject({
 });
 export type SummaryPositioning = z.infer<typeof summaryPositioning>;
 
+/** A Battle as the working summary carries it, the earliest first (spec UX §5.5). */
+export const summaryBattle = z.strictObject({
+  id: z.uuid(),
+  stageId: z.uuid(),
+  championId: z.uuid(),
+  challengerId: z.uuid(),
+  successCriterion: z.string(),
+  /** The one Target it is restricted to, `null` for all. */
+  target: z.enum(TARGETS).nullable(),
+  threshold: z.number(),
+  horizon: z.int(),
+  /** The local day it was opened on. */
+  openedOn: z.iso.date(),
+  open: z.boolean(),
+});
+export type SummaryBattle = z.infer<typeof summaryBattle>;
+
 /** A value in effect now, and as the User chose it last. */
 const dated = <Value extends z.ZodType>(value: Value) =>
   z.strictObject({ inEffect: value, chosen: value });
@@ -179,6 +212,7 @@ export const summary = z.strictObject({
   stages: z.array(summaryStage),
   organizations: z.array(summaryOrganization),
   positionings: z.array(summaryPositioning),
+  battles: z.array(summaryBattle),
 });
 export type Summary = z.infer<typeof summary>;
 
@@ -190,5 +224,7 @@ export const summaryChanges = z.strictObject({
   removedOrganizationIds: z.array(z.uuid()),
   positionings: z.array(summaryPositioning),
   removedPositioningIds: z.array(z.uuid()),
+  battles: z.array(summaryBattle),
+  removedBattleIds: z.array(z.uuid()),
 });
 export type SummaryChanges = z.infer<typeof summaryChanges>;

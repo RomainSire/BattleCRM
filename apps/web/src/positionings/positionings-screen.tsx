@@ -5,15 +5,17 @@ import { cn } from 'cn';
 import { Lock, Paperclip, Plus } from 'lucide-react';
 import { useId, useState } from 'react';
 
+import { RolePill } from '../battles/role-pill.tsx';
 import { Button } from '../components/ui/button.tsx';
 import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { CHANNEL_LABEL } from '../channel.ts';
-import { useSendGesture } from '../gesture.ts';
+import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';
 import { Screen } from '../screens/screen.tsx';
 import { useApi, type ApiClient } from '../session.ts';
 import {
   attachmentsOf,
+  battleStandingOf,
   isFrozen,
   positioningsOf,
   summaryQuery,
@@ -150,6 +152,7 @@ export function PositioningsScreen() {
       <div className="grid items-start gap-4 md:grid-cols-[12rem_minmax(16rem,22rem)_minmax(0,1fr)]">
         <StageColumn summary={summary} positionings={positionings} />
         <LineageColumn
+          summary={summary}
           stage={stage}
           positionings={positionings.filter(({ stageId }) => stageId === stage.id)}
           onNew={() => open('new')}
@@ -219,10 +222,12 @@ function StageColumn({
 
 /** The Positionings of a Stage in lineages, the archived ones on demand (spec UX §5.6). */
 function LineageColumn({
+  summary,
   stage,
   positionings,
   onNew,
 }: {
+  summary: Summary;
   stage: Summary['stages'][number];
   positionings: SummaryPositioning[];
   onNew: () => void;
@@ -274,6 +279,7 @@ function LineageColumn({
                       {m.positioning_archived_tag()}
                     </span>
                   )}
+                  <BattleBadge summary={summary} positioning={positioning} />
                 </span>
                 <span className="text-xs text-neutral-text">
                   {CHANNEL_LABEL[positioning.channel]()} · {cadenceOf(positioning)}
@@ -323,6 +329,23 @@ function LineageColumn({
   );
 }
 
+/** “Champion” or “Challenger”, for the one in a Battle (spec UX §5.6). */
+function BattleBadge({
+  summary,
+  positioning,
+}: {
+  summary: Summary;
+  positioning: SummaryPositioning;
+}) {
+  const { isChampion, isChallenger } = battleStandingOf(summary, positioning);
+  if (!isChampion && !isChallenger) return null;
+  return (
+    <RolePill kind={isChampion ? 'champion' : 'challenger'}>
+      {isChampion ? m.positioning_champion_tag() : m.positioning_challenger_tag()}
+    </RolePill>
+  );
+}
+
 /** Archiving, bringing back or deleting a Positioning, from its record. */
 type ActGesture = 'archive' | 'unarchive' | 'delete';
 /** The answer of any of the three: named, as TypeScript infers none from a union of routes. */
@@ -334,6 +357,16 @@ const ACTED_TOAST = {
   unarchive: m.positioning_unarchived_toast,
   delete: m.positioning_deleted_toast,
 };
+
+/** What a refusal of archiving or deleting tells the User; any other, a Positioning changed elsewhere. */
+function actRefusalText(refused: RefusalOf<() => Promise<ActAnswer>> | undefined) {
+  if (refused === undefined) return undefined;
+  if (refused.error === 'used') return m.positioning_used_refused();
+  if (refused.error === 'in_battle') return m.positioning_in_battle_kept();
+  if (refused.error === 'champion') return m.positioning_archive_champion();
+  if (refused.error === 'in_open_battle') return m.positioning_archive_in_battle();
+  return m.positioning_behind();
+}
 
 /** The record of a Positioning, in place (spec UX §5.6): what it says, how it follows up, what may still change. */
 function PositioningRecord({
@@ -356,6 +389,11 @@ function PositioningRecord({
   const copies = positionings.filter(({ derivedFromId }) => derivedFromId === positioning.id);
   const stageName = summary.stages.find(({ id }) => id === positioning.stageId)?.name;
   const frozen = isFrozen(positioning);
+  const standing = battleStandingOf(summary, positioning);
+  // Neither the Champion nor one in an open Battle is archived; one that served in a Battle is kept.
+  let keptFromArchive: string | undefined;
+  if (standing.isChampion) keptFromArchive = m.positioning_archive_champion();
+  else if (standing.inOpenBattle) keptFromArchive = m.positioning_archive_in_battle();
   const act = useMutation({
     mutationFn: (gesture: ActGesture) =>
       sendGesture<ActAnswer>(
@@ -373,15 +411,18 @@ function PositioningRecord({
         <p className="text-xs text-muted-foreground">
           {stageName} · {CHANNEL_LABEL[positioning.channel]()}
         </p>
-        <h2 id={headingId} className="text-base font-semibold">
-          {label}
-          {positioning.archived && (
-            <span className="text-xs font-normal text-neutral-text">
-              {' '}
-              · {m.positioning_archived_tag()}
-            </span>
-          )}
-        </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 id={headingId} className="text-base font-semibold">
+            {label}
+            {positioning.archived && (
+              <span className="text-xs font-normal text-neutral-text">
+                {' '}
+                · {m.positioning_archived_tag()}
+              </span>
+            )}
+          </h2>
+          <BattleBadge summary={summary} positioning={positioning} />
+        </div>
         {original && (
           <p className="text-sm">
             {m.positioning_copy_of()}{' '}
@@ -447,7 +488,7 @@ function PositioningRecord({
             <Button variant="outline" className="max-md:min-h-11" onPress={() => onPanel('copy')}>
               {m.positioning_duplicate()}
             </Button>
-            {!positioning.used && (
+            {!positioning.used && !standing.inAnyBattle && (
               <Button
                 variant="outline"
                 className="max-md:min-h-11"
@@ -462,18 +503,17 @@ function PositioningRecord({
         <Button
           variant="outline"
           className="max-md:min-h-11"
-          isDisabled={act.isPending}
+          isDisabled={act.isPending || (!positioning.archived && keptFromArchive !== undefined)}
           onPress={() => act.mutate(positioning.archived ? 'unarchive' : 'archive')}
         >
           {positioning.archived ? m.positioning_unarchive() : m.positioning_archive()}
         </Button>
       </div>
-      <ErrorMessage>
-        {act.isError
-          ? m.auth_error()
-          : act.data !== undefined &&
-            (act.data.error === 'used' ? m.positioning_used_refused() : m.positioning_behind())}
-      </ErrorMessage>
+      {keptFromArchive && <p className="text-sm text-muted-foreground">{keptFromArchive}</p>}
+      {!positioning.used && standing.inAnyBattle && (
+        <p className="text-sm text-muted-foreground">{m.positioning_in_battle_kept()}</p>
+      )}
+      <ErrorMessage>{act.isError ? m.auth_error() : actRefusalText(act.data)}</ErrorMessage>
       <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
         <dt className="text-muted-foreground">{m.positioning_content()}</dt>
         <dd className="whitespace-pre-wrap">

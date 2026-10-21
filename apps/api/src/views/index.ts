@@ -1,5 +1,6 @@
 import type {
   Summary,
+  SummaryBattle,
   SummaryChanges,
   SummaryContact,
   SummaryOrganization,
@@ -10,6 +11,7 @@ import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 
 import type { AppEnv } from '../app.ts';
+import { battle } from '../battles/index.ts';
 import type { RequireUser } from '../auth/index.ts';
 import type { Clock } from '../clock.ts';
 import { withUser, type Transaction } from '../db/index.ts';
@@ -265,6 +267,31 @@ async function summaryPositionings(
   }));
 }
 
+/** Every Battle of the User, open or closed, or the ones a gesture touched; the earliest first. */
+async function summaryBattles(
+  tx: Transaction,
+  userId: string,
+  ids?: string[],
+): Promise<SummaryBattle[]> {
+  if (ids?.length === 0) return [];
+  return tx
+    .select({
+      id: battle.id,
+      stageId: battle.stageId,
+      championId: battle.championId,
+      challengerId: battle.challengerId,
+      successCriterion: battle.successCriterion,
+      target: battle.target,
+      threshold: battle.threshold,
+      horizon: battle.horizon,
+      openedOn: battle.openedOn,
+      open: isNull(battle.closedAt).mapWith(Boolean),
+    })
+    .from(battle)
+    .where(and(eq(battle.userId, userId), ids && inArray(battle.id, ids)))
+    .orderBy(battle.openedAt, battle.id);
+}
+
 /** Every Organization of the User, or the ones a gesture touched, by name. */
 async function summaryOrganizations(
   tx: Transaction,
@@ -336,6 +363,8 @@ export async function summaryChanges(
     removedOrganizationIds: touched.removedOrganizationIds,
     positionings: await summaryPositionings(tx, userId, touched.positioningIds),
     removedPositioningIds: touched.removedPositioningIds,
+    battles: await summaryBattles(tx, userId, touched.battleIds),
+    removedBattleIds: touched.removedBattleIds,
   };
 }
 
@@ -354,6 +383,7 @@ export function createViews({ clock, requireUser }: { clock: Clock; requireUser:
         stages: await summaryStages(tx, userId),
         organizations: await summaryOrganizations(tx, userId),
         positionings: await summaryPositionings(tx, userId),
+        battles: await summaryBattles(tx, userId),
       }));
       return c.json(summary, 200);
     })

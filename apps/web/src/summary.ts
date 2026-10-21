@@ -1,4 +1,9 @@
-import type { Summary, SummaryChanges, SummaryPositioning } from '@battlecrm/contract';
+import type {
+  Summary,
+  SummaryBattle,
+  SummaryChanges,
+  SummaryPositioning,
+} from '@battlecrm/contract';
 import { localDay } from '@battlecrm/domain';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 
@@ -8,6 +13,7 @@ import type { ApiClient } from './session.ts';
 // and the rows of it a gesture changed: as the contract describes them.
 export type {
   Summary,
+  SummaryBattle,
   SummaryChanges,
   SummaryContact,
   SummaryOrganization,
@@ -52,6 +58,50 @@ export function positioningsOf(summary: Summary): SummaryPositioning[] {
   return positionings ?? [];
 }
 
+/** The Battles of the User, open or closed, the earliest first. */
+export function battlesOf(summary: Summary): SummaryBattle[] {
+  // Fallback: a summary kept on the device by a version from before Battles carries none.
+  const battles: SummaryBattle[] | undefined = summary.battles;
+  return battles ?? [];
+}
+
+/** The open Battle of a Stage, if it has one: at most one (CONTEXT.md, Battle). */
+export const openBattleAt = (summary: Summary, stageId: string) =>
+  battlesOf(summary).find((battle) => battle.stageId === stageId && battle.open);
+
+/** The last Battle of a Stage, open or closed, if it had one. */
+export const lastBattleAt = (summary: Summary, stageId: string) =>
+  battlesOf(summary).findLast((battle) => battle.stageId === stageId);
+
+/**
+ * The Champion of a Stage (CONTEXT.md): the one its last Battle opposed to a Challenger, `undefined`
+ * before its first. The Verdict (ticket 32) makes the winner of a closed Battle the Champion.
+ */
+export function championAt(summary: Summary, stageId: string): SummaryPositioning | undefined {
+  const championId = lastBattleAt(summary, stageId)?.championId;
+  return positioningsOf(summary).find(({ id }) => id === championId);
+}
+
+/**
+ * Where a Positioning stands in the Battles (spec UX §5.6): the Champion of its Stage, the Challenger
+ * of its open Battle, and whether it ever served in one.
+ */
+export function battleStandingOf(summary: Summary, positioning: SummaryPositioning) {
+  const open = openBattleAt(summary, positioning.stageId);
+  const isChampion = championAt(summary, positioning.stageId)?.id === positioning.id;
+  return {
+    isChampion,
+    isChallenger: open?.challengerId === positioning.id,
+    inOpenBattle:
+      open !== undefined &&
+      (open.championId === positioning.id || open.challengerId === positioning.id),
+    inAnyBattle: battlesOf(summary).some(
+      ({ championId, challengerId }) =>
+        championId === positioning.id || challengerId === positioning.id,
+    ),
+  };
+}
+
 /** Frozen from its first Trial (CONTEXT.md, Positioning). */
 export const isFrozen = ({ trialCount }: SummaryPositioning) => trialCount > 0;
 
@@ -91,6 +141,14 @@ export async function applySummaryChanges(
     ...changes.removedPositioningIds,
     ...changes.positionings.map((positioning) => positioning.id),
   ]);
+  // Fallback: an answer from a version from before Battles carries none.
+  const answeredBattles: SummaryBattle[] | undefined = changes.battles;
+  const answeredRemovals: string[] | undefined = changes.removedBattleIds;
+  const changedBattles = answeredBattles ?? [];
+  const replacedBattles = new Set([
+    ...(answeredRemovals ?? []),
+    ...changedBattles.map(({ id }) => id),
+  ]);
   queryClient.setQueryData<Summary>(
     SUMMARY_KEY,
     (summary) =>
@@ -112,6 +170,11 @@ export async function applySummaryChanges(
           ...positioningsOf(summary).filter(
             (positioning) => !replacedPositionings.has(positioning.id),
           ),
+        ].toSorted((a, b) => a.id.localeCompare(b.id)),
+        // The earliest first, as the summary reads them (uuidv7).
+        battles: [
+          ...changedBattles,
+          ...battlesOf(summary).filter((battle) => !replacedBattles.has(battle.id)),
         ].toSorted((a, b) => a.id.localeCompare(b.id)),
       },
   );

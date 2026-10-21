@@ -5,10 +5,12 @@ import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
 
 import { testApp } from '../test/app.ts';
+import { openBattle } from '../test/factories/battle.ts';
 import { addContact, editContact, scheduleFollowUp } from '../test/factories/contact.ts';
 import {
   SHORT_EMAIL,
   attachFile,
+  createPositioning,
   fileOf,
   positioningGesture,
   positioningOf,
@@ -174,6 +176,12 @@ test('a query that forgot its filter only sees the rows of its User, in every bu
     await postJson(harness.app, '/api/settings', { activityGoal: 2, entryGoal: 6 }, user.cookie);
     const { positioning } = await positioningOf(harness, user);
     await attachFile(harness, user, positioning.id);
+    const { positioning: challenger } = await createPositioning(harness, user, positioning.stageId);
+    await openBattle(harness, user, {
+      stageId: positioning.stageId,
+      championId: positioning.id,
+      challengerId: challenger.id,
+    });
   }
 
   for (const { name } of await businessTables()) {
