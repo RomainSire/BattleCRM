@@ -1,4 +1,5 @@
 import {
+  assignmentRevealed,
   summary,
   summaryChanges,
   type AddableContactStatus,
@@ -154,8 +155,34 @@ export const usePositioning = (
   harness: Harness,
   user: { cookie: string },
   contactId: string,
-  body: { positioningId: string; occurredOn: string; followUpOn?: string; bringIn?: boolean },
+  body: {
+    positioningId: string;
+    occurredOn: string;
+    followUpOn?: string;
+    bringIn?: boolean;
+    overrideReason?: string;
+  },
 ) => contactGesture(harness, user, `/api/contacts/${contactId}/use-positioning`, body);
+
+/** The request that reveals the Assignment of a Contact, as opening “Send to” sends it. */
+export const revealAssignmentRequest = (
+  harness: Harness,
+  user: { cookie: string },
+  contactId: string,
+) => postJson(harness.app, `/api/contacts/${contactId}/reveal-assignment`, {}, user.cookie);
+
+/** The Assignment of a Contact revealed, or why its use would start no Trial. */
+export async function revealAssignment(
+  harness: Harness,
+  user: { cookie: string },
+  contactId: string,
+) {
+  const response = await revealAssignmentRequest(harness, user, contactId);
+  if (response.status !== 200) {
+    throw new Error(`revealAssignment: the API answered ${response.status}`);
+  }
+  return assignmentRevealed.parse(await response.json());
+}
 
 /** The whole working summary of a User, checked against the contract. */
 export async function summaryOf(harness: Harness, user: { cookie: string }) {

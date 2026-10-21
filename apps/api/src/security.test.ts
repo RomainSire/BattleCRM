@@ -6,7 +6,13 @@ import { z } from 'zod';
 
 import { testApp } from '../test/app.ts';
 import { openBattle } from '../test/factories/battle.ts';
-import { addContact, editContact, scheduleFollowUp } from '../test/factories/contact.ts';
+import {
+  addContact,
+  editContact,
+  revealAssignment,
+  scheduleFollowUp,
+  usePositioning,
+} from '../test/factories/contact.ts';
 import {
   SHORT_EMAIL,
   attachFile,
@@ -163,7 +169,8 @@ describe('catalogue', () => {
 });
 
 test('a query that forgot its filter only sees the rows of its User, in every business table', async () => {
-  const harness = testApp();
+  // Each Assignment settles a tie between the two Positionings.
+  const harness = testApp({}, { chances: [0, 0] });
   const alice = await makeUser(harness);
   const bob = await makeUser(harness);
   // Each User writes in every business table: a new one fails here until a gesture fills it.
@@ -181,6 +188,12 @@ test('a query that forgot its filter only sees the rows of its User, in every bu
       stageId: positioning.stageId,
       championId: positioning.id,
       challengerId: challenger.id,
+    });
+    const { assignment } = await revealAssignment(harness, user, contact.id);
+    if (!assignment) throw new Error('No Assignment revealed');
+    await usePositioning(harness, user, contact.id, {
+      positioningId: assignment.positioningId,
+      occurredOn: '2026-01-05',
     });
   }
 
@@ -286,6 +299,21 @@ const CROSS_ACCESS: Record<
       state: () => getJson(harness, alice, '/api/summary'),
       body: { positioningId: positioning.id, occurredOn: '2026-01-05' },
     };
+  },
+  'POST /api/contacts/:id/reveal-assignment': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice, 'Jean Dupont', { status: 'prospecting' });
+    const { positioning } = await positioningOf(harness, alice);
+    const { positioning: challenger } = await createPositioning(
+      harness,
+      alice,
+      positioning.stageId,
+    );
+    await openBattle(harness, alice, {
+      stageId: positioning.stageId,
+      championId: positioning.id,
+      challengerId: challenger.id,
+    });
+    return { id: contact.id, state: () => getJson(harness, alice, '/api/summary') };
   },
   'GET /api/contacts/:id/record': async (harness, alice) => {
     const { contact } = await addContact(harness, alice);

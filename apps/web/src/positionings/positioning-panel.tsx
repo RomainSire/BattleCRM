@@ -73,6 +73,7 @@ function refusalText(refused: PanelRefusal | undefined) {
   if (refused === undefined) return undefined;
   if (refused.error === 'unknown_stage') return m.contact_stage_gone();
   if (refused.error === 'quota_exceeded') return m.positioning_attachment_quota_exceeded();
+  if (refused.error === 'frozen') return m.positioning_frozen_refused();
   return m.positioning_behind();
 }
 

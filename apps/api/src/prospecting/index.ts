@@ -13,6 +13,7 @@ import {
   NOTED_INTERACTION_KINDS,
   ORGANIZATION_NAME_MAX_LENGTH,
   ORGANIZATION_TYPES,
+  OVERRIDE_REASON_MAX_LENGTH,
   STATUS_REASON_MAX_LENGTH,
 } from '@battlecrm/contract';
 import {
@@ -31,10 +32,12 @@ import { z } from 'zod';
 import type { AppEnv } from '../app.ts';
 import type { RequireUser } from '../auth/index.ts';
 import type { Clock } from '../clock.ts';
-import { violates, type Transaction } from '../db/index.ts';
+import { violates, withUser, type Transaction } from '../db/index.ts';
 import { positioningToUse, stageOrder, type PositioningUses } from '../funnel/index.ts';
+import type { BattleAssignments } from '../battles/index.ts';
 import {
   createCircuit,
+  lockSubject,
   touched,
   type ChangesOf,
   type Creation,
@@ -48,7 +51,9 @@ import {
   isOrganizationOf,
   type OrganizationMembers,
 } from '../organizations/index.ts';
-import { refusal } from '../refusals.ts';
+import type { Random } from '../random.ts';
+import { answerRefusal, refusal } from '../refusals.ts';
+import { idOf } from '../route-id.ts';
 import { localDateOf } from '../settings/index.ts';
 import { contactSubject, type ContactPlace } from './contact-subject.ts';
 import {
@@ -69,14 +74,29 @@ import {
   removeInteraction,
 } from './interactions.ts';
 import { contact, followUp, interaction, statusChange } from './tables.ts';
+import {
+  anyAssignmentIn,
+  anyTrialWith,
+  droppedAssignment,
+  dropAssignment,
+  hasAssignment,
+  hasTrialInProgress,
+  removeTrial,
+  restoreAssignment,
+  revealAssignment,
+  startTrial,
+  trialToStart,
+} from './trials.ts';
 
 // Read by `views`, which never writes them.
 export {
+  assignment,
   contact,
   followUp,
   interaction,
   PROSPECTING_ACTION_KINDS,
   statusChange,
+  trial,
 } from './tables.ts';
 
 /** An optional field of the Contact, trimmed: blank, it has no value. */
@@ -208,6 +228,8 @@ const usePositioningRequest = z.object({
   occurredOn: z.iso.date(),
   followUpOn: z.iso.date().optional(),
   bringIn: z.boolean().optional(),
+  /** Why the other Positioning was used instead of the one assigned: an Override, traced on the Trial. */
+  overrideReason: optionalText(OVERRIDE_REASON_MAX_LENGTH),
 });
 
 /** The summary row of one Contact changed. */
@@ -223,7 +245,11 @@ export const positioningUses: PositioningUses = {
       .limit(1);
     return use !== undefined;
   },
+  inTrial: anyTrialWith,
 };
+
+/** Whether a Battle assigned anything, for “Undo” of its opening (ADR 0011). */
+export const battleAssignments: BattleAssignments = { any: anyAssignmentIn };
 
 /** The Contacts of an Organization, as its own gestures read and move them (spec stack §5.2). */
 export const organizationMembers: OrganizationMembers = {
@@ -375,6 +401,8 @@ const addContact: Creation<
    * unless another Contact joined it since (ADR 0011).
    */
   async inverse(tx, { userId, subjectId: contactId, retained }) {
+    // An Assignment revealed since survives “Undo” (ADR 0011), and the Contact with it.
+    if (await hasAssignment(tx, userId, contactId)) return 'superseded';
     // Added Prospecting, it leaves no Funnel entry (ST-39).
     await tx
       .delete(statusChange)
@@ -515,6 +543,8 @@ const statusChanged = z.object({
   before: z.object({ status: z.enum(CONTACT_STATUSES), stageId: z.uuid().nullable() }),
   // Absent from the gestures recorded before Follow-ups, and when there was none to cancel.
   canceledFollowUpId: z.uuid().optional(),
+  // Leaving Prospecting, the Assignment that fell; absent before Assignments.
+  droppedAssignment: droppedAssignment.optional(),
 });
 
 /**
@@ -530,6 +560,12 @@ async function writeStatusChange(
   now: Date,
 ) {
   if (before.status === status) return refusal('same_status');
+  // Leaving Prospecting settles the Trial in progress first (ticket 29); its Assignment falls.
+  const leaves = before.status === 'prospecting';
+  if (leaves && (await hasTrialInProgress(tx, userId, contactId))) {
+    return refusal('trial_in_progress');
+  }
+  const dropped = leaves ? await dropAssignment(tx, userId, contactId) : undefined;
   // Out of Prospecting, the Contact keeps the last Stage it reached: where it left the Funnel.
   let stageAfter = before.stageId;
   if (status === 'prospecting') {
@@ -566,24 +602,39 @@ async function writeStatusChange(
     stageId: stageAfter,
     reason,
   });
-  return { interactionId, before, canceledFollowUpId: canceled?.id } satisfies z.infer<
-    typeof statusChanged
-  >;
+  return {
+    interactionId,
+    before,
+    canceledFollowUpId: canceled?.id,
+    droppedAssignment: dropped,
+  } satisfies z.infer<typeof statusChanged>;
 }
 
-/** Whether a change of Status can be taken back: never to Prospecting at a Stage archived since. */
-const canRestoreStatus = async (
+/**
+ * Whether a change of Status can be taken back: never to Prospecting at a Stage archived since, nor
+ * out of Prospecting once an Assignment was revealed there, which survives “Undo” (ADR 0011).
+ */
+async function canRestoreStatus(
   tx: Transaction,
   userId: string,
+  contactId: string,
   { before }: z.infer<typeof statusChanged>,
-) => before.status !== 'prospecting' || isInFunnel(await stageOrder(tx, userId), before.stageId);
+) {
+  if (before.status !== 'prospecting') return !(await hasAssignment(tx, userId, contactId));
+  return isInFunnel(await stageOrder(tx, userId), before.stageId);
+}
 
 /** Takes a change of Status back, with the Follow-up it canceled. */
 async function takeBackStatusChange(
   tx: Transaction,
   userId: string,
   contactId: string,
-  { interactionId, before, canceledFollowUpId }: z.infer<typeof statusChanged>,
+  {
+    interactionId,
+    before,
+    canceledFollowUpId,
+    droppedAssignment: dropped,
+  }: z.infer<typeof statusChanged>,
 ) {
   await tx
     .delete(statusChange)
@@ -596,6 +647,10 @@ async function takeBackStatusChange(
   if (canceledFollowUpId !== undefined) {
     await setFollowUpStatus(tx, userId, canceledFollowUpId, 'scheduled');
   }
+  // Back Prospecting at its Stage, it gets its Assignment back, never drawn again.
+  if (dropped && before.stageId !== null) {
+    await restoreAssignment(tx, { userId, contactId, stageId: before.stageId }, dropped);
+  }
 }
 
 /**
@@ -607,7 +662,7 @@ const changeContactStatus: Gesture<
   ContactPlace,
   z.infer<typeof changeStatusRequest>,
   z.infer<typeof statusChanged>,
-  'same_status' | 'stage_required' | 'unknown_stage'
+  'same_status' | 'stage_required' | 'unknown_stage' | 'trial_in_progress'
 > = {
   kind: 'status_changed',
   subject: contactSubject,
@@ -623,7 +678,7 @@ const changeContactStatus: Gesture<
    * only a Contact of another Status may keep one.
    */
   async inverse(tx, { userId, subjectId: contactId, retained }) {
-    if (!(await canRestoreStatus(tx, userId, retained))) return 'superseded';
+    if (!(await canRestoreStatus(tx, userId, contactId, retained))) return 'superseded';
     await takeBackStatusChange(tx, userId, contactId, retained);
     return touchedContact(contactId);
   },
@@ -703,6 +758,7 @@ const recordReply: Gesture<
   | 'same_status'
   | 'stage_required'
   | 'unknown_stage'
+  | 'trial_in_progress'
 > = {
   kind: 'reply_recorded',
   subject: contactSubject,
@@ -761,7 +817,7 @@ const recordReply: Gesture<
   /** The reply leaves no trace, the Follow-up comes back with its rank, the Status too. */
   async inverse(tx, { userId, subjectId: contactId, retained }) {
     const { interactionId, canceledFollowUpId, unranked, statusChanged: changed } = retained;
-    if (changed && !(await canRestoreStatus(tx, userId, changed))) return 'superseded';
+    if (changed && !(await canRestoreStatus(tx, userId, contactId, changed))) return 'superseded';
     if (changed) await takeBackStatusChange(tx, userId, contactId, changed);
     await removeInteraction(tx, userId, interactionId);
     if (canceledFollowUpId !== undefined) {
@@ -782,14 +838,16 @@ const positioningUsed = z.object({
   scheduledFollowUpId: z.uuid().optional(),
   canceledFollowUpId: z.uuid().optional(),
   statusChanged: statusChanged.optional(),
+  // The Trial it started, and its Battle.
+  trial: z.object({ id: z.uuid(), battleId: z.uuid() }).optional(),
 });
 
 /**
- * Use a Positioning (spec UX §6.1), off any Battle: an outbound Interaction that names it, dated the
- * day it was sent (ST-36), a Prospecting action, without a Trial (Trials come with ticket 28). For a
- * Contact Prospecting, at the Stage of the Positioning, it starts the Cadence: its first Follow-up
- * replaces the one scheduled. An Ally keeps its own Follow-up; a Contact of the Pool or Archived,
- * unless brought in first, has none.
+ * Use a Positioning (spec UX §6.1): an outbound Interaction that names it, dated the day it was sent
+ * (ST-36), a Prospecting action. For a Contact Prospecting, at the Stage of the Positioning, it starts
+ * the Cadence: its first Follow-up replaces the one scheduled; and in the open Battle of that Stage,
+ * a Trial, with an Override when it is not the Positioning assigned. An Ally keeps its own Follow-up;
+ * a Contact of the Pool or Archived, unless brought in first, has none.
  */
 const usePositioning: Gesture<
   'positioning_used',
@@ -806,6 +864,8 @@ const usePositioning: Gesture<
   | 'same_status'
   | 'stage_required'
   | 'unknown_stage'
+  | 'trial_in_progress'
+  | 'assignment_required'
 > = {
   kind: 'positioning_used',
   subject: contactSubject,
@@ -814,7 +874,7 @@ const usePositioning: Gesture<
     return bringIn && !isPoolOrArchived(subject.status) ? refusal('no_status_choice') : undefined;
   },
   async write({ tx, userId, subjectId: contactId, subject, input, now }) {
-    const { positioningId, occurredOn, followUpOn, bringIn = false } = input;
+    const { positioningId, occurredOn, followUpOn, bringIn = false, overrideReason } = input;
     const day = await dayEntered(tx, userId, occurredOn, now);
     if ('error' in day) return day;
     const used = await positioningToUse(tx, userId, positioningId);
@@ -831,6 +891,11 @@ const usePositioning: Gesture<
       if (firstOn === undefined) return refusal('no_follow_up');
       if (followUpOn < (await localDateOf(tx, userId, now))) return refusal('past_day');
     }
+    // Only a Contact Prospecting starts a Trial (CONTEXT.md, Trial), at the Stage of the Positioning.
+    const toStart = isProspecting
+      ? await trialToStart(tx, { userId, contactId, stageId: used.stageId }, positioningId)
+      : undefined;
+    if (toStart && 'error' in toStart) return toStart;
     const changed = bringIn
       ? await writeStatusChange(
           tx,
@@ -850,6 +915,16 @@ const usePositioning: Gesture<
       ...day,
       positioningId,
     });
+    const trialId =
+      toStart &&
+      (await startTrial(tx, {
+        userId,
+        contactId,
+        positioningId,
+        interactionId,
+        ...toStart,
+        overrideReason: toStart.overridden ? (overrideReason ?? null) : null,
+      }));
     const dueOn = followUpOn ?? firstOn;
     let replaced: Awaited<ReturnType<typeof scheduledFollowUp>>;
     let scheduledFollowUpId: string | undefined;
@@ -870,16 +945,25 @@ const usePositioning: Gesture<
         scheduledFollowUpId,
         canceledFollowUpId: replaced?.id,
         statusChanged: changed,
+        trial: toStart && trialId ? { id: trialId, battleId: toStart.battleId } : undefined,
       },
-      touched: touched({ contactIds: [contactId], positioningIds: [positioningId] }),
+      touched: touched({
+        contactIds: [contactId],
+        positioningIds: [positioningId],
+        battleIds: toStart ? [toStart.battleId] : [],
+      }),
     };
   },
   retained: positioningUsed,
-  /** The use leaves no trace, nor its Follow-up; the one it replaced comes back, the Status too. */
+  /**
+   * The use leaves no trace, nor its Follow-up or its Trial; the Follow-up it replaced comes back, the
+   * Status too. The Assignment stays (ADR 0011).
+   */
   async inverse(tx, { userId, subjectId: contactId, retained }) {
-    const { interactionId, positioningId, scheduledFollowUpId, canceledFollowUpId } = retained;
+    const { interactionId, positioningId, scheduledFollowUpId, canceledFollowUpId, trial } =
+      retained;
     const changed = retained.statusChanged;
-    if (changed && !(await canRestoreStatus(tx, userId, changed))) return 'superseded';
+    if (changed && !(await canRestoreStatus(tx, userId, contactId, changed))) return 'superseded';
     if (scheduledFollowUpId !== undefined) {
       await tx
         .delete(followUp)
@@ -888,9 +972,14 @@ const usePositioning: Gesture<
     if (canceledFollowUpId !== undefined) {
       await setFollowUpStatus(tx, userId, canceledFollowUpId, 'scheduled');
     }
+    if (trial) await removeTrial(tx, userId, trial.id);
     await removeInteraction(tx, userId, interactionId);
     if (changed) await takeBackStatusChange(tx, userId, contactId, changed);
-    return touched({ contactIds: [contactId], positioningIds: [positioningId] });
+    return touched({
+      contactIds: [contactId],
+      positioningIds: [positioningId],
+      battleIds: trial ? [trial.battleId] : [],
+    });
   },
 };
 
@@ -900,10 +989,12 @@ const usePositioning: Gesture<
  */
 export function createProspecting<Changes>({
   clock,
+  random,
   requireUser,
   changesOf,
 }: {
   clock: Clock;
+  random: Random;
   requireUser: RequireUser;
   changesOf: ChangesOf<Changes>;
 }) {
@@ -943,7 +1034,40 @@ export function createProspecting<Changes>({
     )
     .post('/contacts/:id/use-positioning', requireUser, jsonBody(usePositioningRequest), (c) =>
       perform(c, usePositioning, c.req.valid('json')),
-    );
+    )
+    // Reveal the Assignment (spec UX §6.1): opening “Send to” at a Stage with an open Battle. Not a
+    // gesture: nothing takes it back, it stays reserved (ADR 0002).
+    .post('/contacts/:id/reveal-assignment', requireUser, async (c) => {
+      const { userId } = c.var;
+      const contactId = idOf(c.req.param('id'));
+      // Another User's Contact, an unknown one and an id that is none answer alike.
+      if (contactId === null) return answerRefusal(c, refusal('not_found'));
+      const now = clock.now();
+      const outcome = await withUser(userId, async (tx) => {
+        // One at a time with the gestures on the Contact: a change of Status is seen, or waits.
+        await lockSubject(tx, contactId);
+        const place = await contactSubject.load(tx, userId, contactId);
+        if (!place) return refusal('not_found');
+        if (place.status !== 'prospecting' || place.stageId === null) {
+          return refusal('not_in_battle');
+        }
+        const revealed = await revealAssignment(
+          tx,
+          { userId, contactId, stageId: place.stageId },
+          { now, random },
+        );
+        if (revealed === 'not_in_battle') return refusal(revealed);
+        const { battleId, ...answer } = revealed;
+        const changes = await changesOf(
+          tx,
+          userId,
+          touched({ contactIds: [contactId], battleIds: [battleId] }),
+        );
+        return { changes, ...answer };
+      });
+      if ('error' in outcome) return answerRefusal(c, outcome);
+      return c.json(outcome, 200);
+    });
 
   const gestures = [
     addContact,

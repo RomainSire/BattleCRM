@@ -66,7 +66,7 @@ export type ChangesOf<Changes> = (
  * One at a time per subject, until the transaction ends: an undo and a gesture on the same one never
  * cross, so the undo always sees the gesture that closes its way back.
  */
-const lockSubject = (tx: Transaction, subjectId: string) =>
+export const lockSubject = (tx: Transaction, subjectId: string) =>
   tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${subjectId}, 0))`);
 
 /**

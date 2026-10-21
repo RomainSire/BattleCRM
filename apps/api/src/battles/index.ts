@@ -62,6 +62,34 @@ async function openBattleAt(tx: Transaction, userId: string, stageId: string) {
 }
 
 /**
+ * The open Battle of a Stage as an Assignment or a Trial reads it (spec stack §5.3), its row locked
+ * until the transaction ends: the Assignments and Trials of a Battle are counted one at a time.
+ * `undefined` when the Stage has none open.
+ */
+export async function openBattleToAssignAt(tx: Transaction, userId: string, stageId: string) {
+  const [found] = await tx
+    .select({
+      id: battle.id,
+      championId: battle.championId,
+      challengerId: battle.challengerId,
+      target: battle.target,
+      horizon: battle.horizon,
+    })
+    .from(battle)
+    .where(and(eq(battle.userId, userId), eq(battle.stageId, stageId), isNull(battle.closedAt)))
+    .for('update');
+  return found;
+}
+
+/**
+ * Whether a Battle assigned anything (ADR 0002): `prospecting` keeps the Assignments and Trials, and
+ * answers, handed by the composition root as `funnel` gets `PositioningUses`.
+ */
+export type BattleAssignments = {
+  any: (tx: Transaction, userId: string, battleId: string) => Promise<boolean>;
+};
+
+/**
  * The Champion of a Stage (CONTEXT.md): the one its last Battle opposed to a Challenger, the initial
  * Champion before the second; `undefined` before its first Battle. The Verdict (ticket 32) makes the
  * winner of a closed Battle the Champion.
@@ -103,12 +131,14 @@ export const positioningBattles: PositioningBattles = {
  * before the first, against a Challenger of the same Stage, archived ones included (it comes back).
  * At most one open per Stage, the Stage locked meanwhile.
  */
-const openBattle: Creation<
+const openBattle = (
+  assignments: BattleAssignments,
+): Creation<
   'battle_opened',
   z.infer<typeof openRequest>,
   z.infer<typeof battleOpened>,
   'unknown_stage' | 'unknown_positioning' | 'battle_open' | 'champion_required' | 'champion_set'
-> = {
+> => ({
   kind: 'battle_opened',
   subject: { column: 'battleId' },
   async write({ tx, userId, input, now }) {
@@ -155,8 +185,14 @@ const openBattle: Creation<
     };
   },
   retained: battleOpened,
-  /** The Battle leaves no trace, and what it brought back is archived again. Trials come with ticket 28. */
+  /**
+   * The Battle leaves no trace, and what it brought back is archived again. Refused once it assigned
+   * a Positioning to a Contact: the Assignment survives “Undo” (ADR 0011), and the Battle with it.
+   */
   async inverse(tx, { userId, subjectId: battleId, retained: { broughtBack } }) {
+    // Its row locked first: an Assignment under way, which locks it, is then written and seen.
+    await tx.select({ id: battle.id }).from(battle).where(byId(userId, battleId)).for('update');
+    if (await assignments.any(tx, userId, battleId)) return 'superseded';
     await tx.delete(battle).where(byId(userId, battleId));
     for (const { id, archivedAt } of broughtBack) {
       await setArchivedAt(tx, userId, id, new Date(archivedAt));
@@ -166,7 +202,7 @@ const openBattle: Creation<
       positioningIds: broughtBack.map(({ id }) => id),
     });
   },
-};
+});
 
 /**
  * The gestures on Battles (spec UX §6.9): open one, with “Undo”. Closing one, its Verdict and the
@@ -176,14 +212,17 @@ export function createBattles<Changes>({
   clock,
   requireUser,
   changesOf,
+  assignments,
 }: {
   clock: Clock;
   requireUser: RequireUser;
   changesOf: ChangesOf<Changes>;
+  assignments: BattleAssignments;
 }) {
   const { create } = createCircuit({ clock, changesOf });
+  const opened = openBattle(assignments);
   const routes = new Hono<AppEnv>().post('/battles', requireUser, jsonBody(openRequest), (c) =>
-    create(c, openBattle, c.req.valid('json')),
+    create(c, opened, c.req.valid('json')),
   );
-  return { routes, gestures: [openBattle] as const };
+  return { routes, gestures: [opened] as const };
 }

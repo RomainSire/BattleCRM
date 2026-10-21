@@ -218,6 +218,20 @@
       "when": 1792596340294,
       "tag": "0030_battles_access",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1792602286812,
+      "tag": "0031_trials",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1792602287649,
+      "tag": "0032_trials_access",
+      "breakpoints": true
     }
   ]
 }

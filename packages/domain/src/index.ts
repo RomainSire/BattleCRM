@@ -36,3 +36,4 @@ export {
   personalized,
   shiftedFollowUpOn,
 } from './positioning.ts';
+export { chooseAssignment, type AssignmentCandidate } from './assignment.ts';

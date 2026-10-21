@@ -97,6 +97,26 @@ export const BATTLE_MINIMUM_SUCCESSES = 5;
 export const BATTLE_HORIZON_MAX = 100;
 export const SUCCESS_CRITERION_MAX_LENGTH = 200;
 
+/** The outcome of a Trial (CONTEXT.md, Trial): in progress until the User settles it, or canceled. */
+export const TRIAL_OUTCOMES = ['in_progress', 'success', 'no_result', 'canceled'] as const;
+export type TrialOutcome = (typeof TRIAL_OUTCOMES)[number];
+
+/** The optional reason of an Override (CONTEXT.md, Assignment), traced on the Trial. */
+export const OVERRIDE_REASON_MAX_LENGTH = 500;
+
+/**
+ * Why a use at a Stage with an open Battle starts no Trial (spec UX §6.1): the Contact already has
+ * one in this Battle, is out of its Target, both Positionings reached the Horizon; or it has a
+ * Trial in progress elsewhere, to settle first.
+ */
+export const WITHOUT_TRIAL_REASONS = [
+  'already_tried',
+  'off_target',
+  'horizon',
+  'trial_in_progress',
+] as const;
+export type WithoutTrialReason = (typeof WITHOUT_TRIAL_REASONS)[number];
+
 // The working summary (ADR 0012), described once: the API builds it to this shape, the SPA reads it,
 // the tests check the answers against it. Strict, so a field the API adds unannounced fails the tests.
 
@@ -127,6 +147,19 @@ export const summaryContact = z.strictObject({
     .nullable(),
   /** The local days of its Prospecting actions, the earliest first: what the Activity is counted from. */
   prospectingActionDays: z.array(z.iso.date()),
+  /** The Positioning the open Battle of its Stage assigned it, once revealed (ADR 0002). */
+  assignment: z.strictObject({ battleId: z.uuid(), positioningId: z.uuid() }).nullable(),
+  /** Its Trial in progress, if it has one: at most one (CONTEXT.md, Trial). */
+  trial: z
+    .strictObject({
+      battleId: z.uuid(),
+      positioningId: z.uuid(),
+      /** The local day of the use that started it. */
+      startedOn: z.iso.date(),
+      /** Whether the Positioning used is not the one assigned. */
+      overridden: z.boolean(),
+    })
+    .nullable(),
 });
 export type SummaryContact = z.infer<typeof summaryContact>;
 
@@ -228,3 +261,14 @@ export const summaryChanges = z.strictObject({
   removedBattleIds: z.array(z.uuid()),
 });
 export type SummaryChanges = z.infer<typeof summaryChanges>;
+
+/**
+ * What revealing the Assignment of a Contact answers (spec UX §6.1): the Positioning to send, or why
+ * this use starts no Trial; with the rows of the summary it changed.
+ */
+export const assignmentRevealed = z.strictObject({
+  changes: summaryChanges,
+  assignment: z.strictObject({ battleId: z.uuid(), positioningId: z.uuid() }).nullable(),
+  withoutTrial: z.enum(WITHOUT_TRIAL_REASONS).nullable(),
+});
+export type AssignmentRevealed = z.infer<typeof assignmentRevealed>;

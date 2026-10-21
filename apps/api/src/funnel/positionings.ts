@@ -141,9 +141,13 @@ const removedPositioning = (positioningId: string, copyIds: string[] = []) =>
 const byId = (userId: string, positioningId: string) =>
   and(eq(positioning.userId, userId), eq(positioning.id, positioningId));
 
-/** Whether a Positioning was ever used (spec UX §6.1): `prospecting` records the uses, and answers. */
+/**
+ * Whether a Positioning was ever used (spec UX §6.1), and in a Trial, which freezes it (CONTEXT.md,
+ * Positioning): `prospecting` records the uses and the Trials, and answers.
+ */
 export type PositioningUses = {
   any: (tx: Transaction, userId: string, positioningId: string) => Promise<boolean>;
+  inTrial: (tx: Transaction, userId: string, positioningId: string) => Promise<boolean>;
 };
 
 /**
@@ -170,6 +174,20 @@ async function isUsed(
 ) {
   await lockRow(tx, userId, positioningId);
   return uses.any(tx, userId, positioningId);
+}
+
+/**
+ * Whether a Positioning is frozen, its row locked first: a use under way, which shares it, and the
+ * Trial it starts are then written and seen.
+ */
+async function isFrozen(
+  tx: Transaction,
+  uses: PositioningUses,
+  userId: string,
+  positioningId: string,
+) {
+  await lockRow(tx, userId, positioningId);
+  return uses.inTrial(tx, userId, positioningId);
 }
 
 /** Locks the row of a Positioning until the transaction ends. */
@@ -284,15 +302,20 @@ const createPositioning = (
  * Everything but its Stage and its Channel (another Channel is another Positioning), as long as it is
  * not frozen (spec UX §5.6).
  */
-const editPositioning: Gesture<
+const editPositioning = (
+  uses: PositioningUses,
+): Gesture<
   'positioning_edited',
   PositioningRow,
   z.infer<typeof editRequest>,
   z.infer<typeof positioningEdited>,
-  never
-> = {
+  'frozen'
+> => ({
   kind: 'positioning_edited',
   subject: positioningSubject,
+  async refuse({ tx, userId, subjectId }) {
+    return (await isFrozen(tx, uses, userId, subjectId)) ? refusal('frozen') : undefined;
+  },
   async write({ tx, userId, subjectId: positioningId, subject: before, input }) {
     await tx.update(positioning).set(columnsOf(input)).where(byId(userId, positioningId));
     return {
@@ -309,11 +332,13 @@ const editPositioning: Gesture<
     };
   },
   retained: positioningEdited,
+  /** Refused once frozen since: a Trial was sent what it now says. */
   async inverse(tx, { userId, subjectId: positioningId, retained: { before } }) {
+    if (await isFrozen(tx, uses, userId, positioningId)) return 'superseded';
     await tx.update(positioning).set(before).where(byId(userId, positioningId));
     return touchedPositioning(positioningId);
   },
-};
+});
 
 /** Fix the label (spec UX §5.6): a typo, even once frozen; the new one applies everywhere. */
 const relabelPositioning: Gesture<
@@ -482,40 +507,51 @@ const deletePositioning = (
 
 /**
  * Join a file (ST-35): of any type, within 5 MiB, and within the room of the User. Frozen with its
- * Positioning once used in a Trial (ticket 28).
+ * Positioning once used in a Trial.
  */
-const joinAttachment: Gesture<
+const joinAttachment = (
+  uses: PositioningUses,
+): Gesture<
   'positioning_attachment_added',
   PositioningRow,
   JoinedFile,
   z.infer<typeof attachmentChanged>,
-  'quota_exceeded'
-> = {
+  'quota_exceeded' | 'frozen'
+> => ({
   kind: 'positioning_attachment_added',
   subject: positioningSubject,
+  async refuse({ tx, userId, subjectId }) {
+    return (await isFrozen(tx, uses, userId, subjectId)) ? refusal('frozen') : undefined;
+  },
   async write({ tx, userId, subjectId: positioningId, input: file, now }) {
     const attached = await attach(tx, { userId, positioningId, file, now });
     if (attached === 'quota_exceeded') return refusal(attached);
     return { retained: attached, touched: touchedPositioning(positioningId) };
   },
   retained: attachmentChanged,
-  /** The file leaves no trace. */
+  /** The file leaves no trace, unless frozen since with the Positioning. */
   async inverse(tx, { userId, subjectId: positioningId, retained: { attachmentId } }) {
+    if (await isFrozen(tx, uses, userId, positioningId)) return 'superseded';
     await eraseAttachment(tx, userId, attachmentId);
     return touchedPositioning(positioningId);
   },
-};
+});
 
-/** Remove one, named by its own id: kept for “Undo” only. */
-const removeAttachment: Gesture<
+/** Remove one, named by its own id: kept for “Undo” only. Frozen with its Positioning. */
+const removeAttachment = (
+  uses: PositioningUses,
+): Gesture<
   'positioning_attachment_removed',
   PositioningRow,
   undefined,
   z.infer<typeof attachmentChanged>,
-  'not_found'
-> = {
+  'not_found' | 'frozen'
+> => ({
   kind: 'positioning_attachment_removed',
   subject: attachmentSubject,
+  async refuse({ tx, userId, subjectId }) {
+    return (await isFrozen(tx, uses, userId, subjectId)) ? refusal('frozen') : undefined;
+  },
   async write({ tx, userId, subjectId: positioningId, namedId: attachmentId, now }) {
     const removed = await removeAttachments(tx, { userId, attachmentIds: [attachmentId], now });
     if (removed.length === 0) return refusal('not_found');
@@ -523,10 +559,11 @@ const removeAttachment: Gesture<
   },
   retained: attachmentChanged,
   async inverse(tx, { userId, subjectId: positioningId, retained: { attachmentId } }) {
+    if (await isFrozen(tx, uses, userId, positioningId)) return 'superseded';
     if ((await restoreAttachments(tx, userId, [attachmentId])) === 0) return 'superseded';
     return touchedPositioning(positioningId);
   },
-};
+});
 
 /** The name a file is kept under: without its path or a control character, within the bound. */
 function nameOf(fileName: string) {
@@ -558,8 +595,8 @@ function contentDispositionOf(name: string) {
  * token that takes it back (ADR 0011).
  *
  * No longer deletable once used or opposed in a Battle, nor archivable while the Champion or in an
- * open Battle, read in the transaction of the gesture (ST-32); frozen once used in a Trial, which
- * comes with Trials (ticket 28).
+ * open Battle, read in the transaction of the gesture (ST-32); frozen once used in a Trial: then
+ * neither edited nor its attachments joined or removed, only its label fixed.
  */
 export function createPositionings<Changes>({
   clock,
@@ -579,12 +616,15 @@ export function createPositionings<Changes>({
   const archived = archivePositioning(battles);
   const unarchived = unarchivePositioning(battles);
   const deleted = deletePositioning(uses, battles);
+  const edited = editPositioning(uses);
+  const joined = joinAttachment(uses);
+  const removed = removeAttachment(uses);
   const routes = new Hono<AppEnv>()
     .post('/positionings', requireUser, jsonBody(createRequest), (c) =>
       create(c, created, c.req.valid('json')),
     )
     .post('/positionings/:id/edit', requireUser, jsonBody(editRequest), (c) =>
-      perform(c, editPositioning, c.req.valid('json')),
+      perform(c, edited, c.req.valid('json')),
     )
     .post(
       '/positionings/:id/relabel',
@@ -614,15 +654,15 @@ export function createPositionings<Changes>({
         if (file.size > ATTACHMENT_MAX_BYTES) return answerRefusal(c, refusal('too_large'));
         const name = nameOf(file.name);
         if (name === '') return answerRefusal(c, refusal('invalid'));
-        const joined = {
+        const upload = {
           name,
           contentType: contentTypeOf(file.type),
           data: new Uint8Array(await file.arrayBuffer()),
         };
-        return perform(c, joinAttachment, joined, 201);
+        return perform(c, joined, upload, 201);
       },
     )
-    .post('/attachments/:id/remove', requireUser, (c) => perform(c, removeAttachment, undefined))
+    .post('/attachments/:id/remove', requireUser, (c) => perform(c, removed, undefined))
     // Download one (spec stack §6): always saved, never shown, whatever its type.
     .get('/attachments/:id', requireUser, async (c) => {
       const { userId } = c.var;
@@ -642,13 +682,13 @@ export function createPositionings<Changes>({
 
   const gestures = [
     created,
-    editPositioning,
+    edited,
     relabelPositioning,
     archived,
     unarchived,
     deleted,
-    joinAttachment,
-    removeAttachment,
+    joined,
+    removed,
   ] as const;
   return { routes, gestures };
 }

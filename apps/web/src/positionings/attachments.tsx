@@ -37,6 +37,7 @@ function refusalText(refused: AttachmentRefusal | undefined, name: string) {
   if (refused === undefined) return undefined;
   if (refused.error === 'too_large') return m.positioning_attachment_too_large({ name });
   if (refused.error === 'quota_exceeded') return m.positioning_attachment_quota_exceeded();
+  if (refused.error === 'frozen') return m.positioning_frozen_refused();
   return m.positioning_behind();
 }
 

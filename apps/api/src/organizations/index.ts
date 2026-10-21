@@ -50,6 +50,19 @@ export async function isOrganizationOf(
   return found !== undefined;
 }
 
+/** The type of an Organization of the User, which sets the Target of its Contacts; `undefined` for none. */
+export async function organizationTypeOf(
+  tx: Transaction,
+  userId: string,
+  organizationId: string,
+): Promise<OrganizationType | undefined> {
+  const [found] = await tx
+    .select({ type: organization.type })
+    .from(organization)
+    .where(and(eq(organization.userId, userId), eq(organization.id, organizationId)));
+  return found?.type;
+}
+
 /** Deletes an Organization no Contact belongs to: the caller, who knows the Contacts, makes sure of it. */
 export async function deleteOrganization(
   tx: Transaction,

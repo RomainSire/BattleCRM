@@ -33,6 +33,10 @@ export const REFUSAL_STATUS = {
   champion: 409,
   in_open_battle: 409,
   in_battle: 409,
+  frozen: 409,
+  trial_in_progress: 409,
+  assignment_required: 409,
+  not_in_battle: 409,
   expired: 409,
   superseded: 409,
 } as const;

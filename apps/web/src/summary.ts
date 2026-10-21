@@ -2,6 +2,7 @@ import type {
   Summary,
   SummaryBattle,
   SummaryChanges,
+  SummaryContact,
   SummaryPositioning,
 } from '@battlecrm/contract';
 import { localDay } from '@battlecrm/domain';
@@ -100,6 +101,13 @@ export function battleStandingOf(summary: Summary, positioning: SummaryPositioni
         championId === positioning.id || challengerId === positioning.id,
     ),
   };
+}
+
+/** The Trial in progress of a Contact, if it has one. */
+export function trialOf(contact: SummaryContact): SummaryContact['trial'] {
+  // Fallback: a summary kept on the device by a version from before Trials carries none.
+  const trial: SummaryContact['trial'] | undefined = contact.trial;
+  return trial ?? null;
 }
 
 /** Frozen from its first Trial (CONTEXT.md, Positioning). */

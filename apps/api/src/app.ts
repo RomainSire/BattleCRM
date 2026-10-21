@@ -23,7 +23,12 @@ import { createGestures } from './gestures/index.ts';
 import type { InFlight } from './in-flight.ts';
 import { jsonBody } from './json-body.ts';
 import { createOrganizations } from './organizations/index.ts';
-import { createProspecting, organizationMembers, positioningUses } from './prospecting/index.ts';
+import {
+  battleAssignments,
+  createProspecting,
+  organizationMembers,
+  positioningUses,
+} from './prospecting/index.ts';
 import type { Random } from './random.ts';
 import { createSettings, initializeSettings } from './settings/index.ts';
 import { createViews, summaryChanges } from './views/index.ts';
@@ -75,7 +80,7 @@ export function createApp({
   });
 
   const { requireUser } = auth;
-  const prospecting = createProspecting({ clock, requireUser, changesOf: summaryChanges });
+  const prospecting = createProspecting({ clock, random, requireUser, changesOf: summaryChanges });
   const positionings = createPositionings({
     clock,
     requireUser,
@@ -83,7 +88,12 @@ export function createApp({
     uses: positioningUses,
     battles: positioningBattles,
   });
-  const battles = createBattles({ clock, requireUser, changesOf: summaryChanges });
+  const battles = createBattles({
+    clock,
+    requireUser,
+    changesOf: summaryChanges,
+    assignments: battleAssignments,
+  });
   // Each module brings the inverse of its own gestures (ADR 0011).
   const gestures = createGestures({
     clock,

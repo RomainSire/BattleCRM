@@ -49,7 +49,7 @@ export type BattlePanel = (typeof BATTLE_PANELS)[number];
 type Stage = Summary['stages'][number];
 
 /** “All Targets”, as the wizard chooses it: no restriction. */
-const ALL_TARGETS = 'all';
+export const ALL_TARGETS = 'all';
 const targetChoice = z.enum([ALL_TARGETS, ...TARGETS]);
 
 const openingDraft = z.object({
@@ -85,7 +85,7 @@ function useOpeningDraft(summary: Summary, stage: Stage) {
 }
 
 /** What each Target restriction reads as, in the field and in the recap. */
-const TARGET_OPTION = {
+export const TARGET_OPTION = {
   [ALL_TARGETS]: m.battle_target_all,
   consultancy: m.battle_target_consultancy,
   end_client: m.battle_target_end_client,

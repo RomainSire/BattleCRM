@@ -37,7 +37,7 @@ import { useLocale, type Locale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { settingsOf } from '../settings/use-settings.ts';
-import { todayOf, type Summary, type SummaryContact } from '../summary.ts';
+import { todayOf, trialOf, type Summary, type SummaryContact } from '../summary.ts';
 import { formatLocalDay } from './format.ts';
 import { otherStatuses, STATUS_ACTION, type StatusGesture } from './status.ts';
 
@@ -86,7 +86,8 @@ type Draft = z.infer<typeof draftSchema>;
 /**
  * Bring in…, Back to Pool…, Add to Circle…, Archive…, or Change status… which chooses the target
  * first (spec UX §6.11): one panel, set to its target. The Stage to enter, the reason, the summary;
- * `Enter` validates, then “Undo”. Settling the Trial in progress comes with Trials (ticket 29).
+ * `Enter` validates, then “Undo”. With a Trial in progress, leaving Prospecting waits: settling it
+ * comes with ticket 29.
  */
 export function ChangeStatusPanel({
   contact,
@@ -117,6 +118,9 @@ export function ChangeStatusPanel({
   // Archived meanwhile, the Stage chosen is to be chosen again.
   const stageId = stageToEnter(funnelOf(summary.stages), { chosen: draft.stageId });
   const isStageMissing = target === 'prospecting' && stageId === undefined;
+  // Leaving Prospecting settles the Trial in progress first, which comes with ticket 29.
+  const isTrialInProgress =
+    target !== undefined && target !== 'prospecting' && trialOf(contact) !== null;
 
   const close = () => {
     clearDraft();
@@ -173,7 +177,9 @@ export function ChangeStatusPanel({
           onSubmit={(event) => {
             event.preventDefault();
             setWasSent(true);
-            if (target === undefined || isStageMissing || change.isPending) return;
+            if (target === undefined || isStageMissing || isTrialInProgress || change.isPending) {
+              return;
+            }
             change.mutate(target);
           }}
         >
@@ -221,6 +227,11 @@ export function ChangeStatusPanel({
                 />
               </TextField>
             )}
+            {isTrialInProgress && (
+              <p className="font-medium">
+                {m.change_status_trial_in_progress({ name: contact.name })}
+              </p>
+            )}
             {recap.length > 0 && (
               <section aria-label={m.change_status_recap()} className="rounded-control border p-3">
                 <ul className="list-disc pl-5">
@@ -235,14 +246,18 @@ export function ChangeStatusPanel({
                 ? m.auth_error()
                 : change.data &&
                   // Data this device is behind on, changed on another one.
-                  (isStageGone(change.data) ? m.contact_stage_gone() : m.change_status_behind())}
+                  (isStageGone(change.data)
+                    ? m.contact_stage_gone()
+                    : change.data.error === 'trial_in_progress'
+                      ? m.change_status_trial_in_progress({ name: contact.name })
+                      : m.change_status_behind())}
             </ErrorMessage>
           </GesturePanelBody>
           <GesturePanelFooter>
             <Button
               type="submit"
               className="max-md:min-h-11"
-              isDisabled={target === undefined || change.isPending}
+              isDisabled={target === undefined || isTrialInProgress || change.isPending}
             >
               {target === undefined ? m.change_status_validate() : STATUS_ACTION[target]()}
             </Button>

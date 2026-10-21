@@ -1,4 +1,10 @@
-import { CHANNELS, CONTACT_STATUSES, NOTED_INTERACTION_KINDS } from '@battlecrm/contract';
+import {
+  CHANNELS,
+  CONTACT_STATUSES,
+  NOTED_INTERACTION_KINDS,
+  TARGETS,
+  TRIAL_OUTCOMES,
+} from '@battlecrm/contract';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -11,11 +17,14 @@ import {
   unique,
   uniqueIndex,
   integer,
+  boolean,
   uuid,
 } from 'drizzle-orm/pg-core';
 
 // oxlint-disable-next-line no-restricted-imports -- a foreign key to the User: tables files reference each other directly, drizzle-kit loads them alone.
 import { user } from '../auth/tables.ts';
+// oxlint-disable-next-line no-restricted-imports -- foreign keys to the Battle of an Assignment or of a Trial: tables files reference each other directly, drizzle-kit loads them alone.
+import { battle } from '../battles/tables.ts';
 // oxlint-disable-next-line no-restricted-imports -- foreign keys to the Stage of a Contact and to the Positioning an Interaction used: tables files reference each other directly, drizzle-kit loads them alone.
 import { positioning, stage } from '../funnel/tables.ts';
 // oxlint-disable-next-line no-restricted-imports -- a foreign key to the Organization of a Contact: tables files reference each other directly, drizzle-kit loads them alone.
@@ -264,6 +273,117 @@ export const statusChange = pgTable(
     ),
     check('status_change_reason_check', sql`${table.reason} <> ''`),
     index('status_change_contact_idx').on(table.userId, table.contactId),
+  ],
+);
+
+/**
+ * The Assignment of a Contact (CONTEXT.md, ADR 0002): the Positioning the open Battle of its Stage
+ * drew for it, once revealed, never drawn again. It stands as long as the Battle is open and the
+ * Contact stays Prospecting at that Stage, and falls otherwise; it survives “Undo” (ADR 0011). At most
+ * one per Contact: a Contact is at one Stage, which has at most one open Battle.
+ */
+export const assignment = pgTable(
+  'assignment',
+  {
+    id: id(),
+    userId: userId(),
+    contactId: uuid('contact_id').notNull(),
+    battleId: uuid('battle_id').notNull(),
+    positioningId: uuid('positioning_id').notNull(),
+    /** The Target of the Contact when it was drawn: what it is balanced among, a change of Target aside. */
+    target: text({ enum: TARGETS }).notNull(),
+    assignedAt: instant('assigned_at').notNull(),
+  },
+  (table) => [
+    unique('assignment_user_id_id_unique').on(table.userId, table.id),
+    uniqueIndex('assignment_contact_unique').on(table.userId, table.contactId),
+    foreignKey({
+      name: 'assignment_contact_fk',
+      columns: [table.userId, table.contactId],
+      foreignColumns: [contact.userId, contact.id],
+    }),
+    foreignKey({
+      name: 'assignment_battle_fk',
+      columns: [table.userId, table.battleId],
+      foreignColumns: [battle.userId, battle.id],
+    }),
+    foreignKey({
+      name: 'assignment_positioning_fk',
+      columns: [table.userId, table.positioningId],
+      foreignColumns: [positioning.userId, positioning.id],
+    }),
+    check('assignment_target_check', sql`${table.target} in (${quoted(TARGETS)})`),
+    index('assignment_battle_idx').on(table.userId, table.battleId),
+  ],
+);
+
+/**
+ * A Trial (CONTEXT.md): a Contact exposed to a Positioning within a Battle, from the use that
+ * recorded it, on its day. At most one in progress per Contact, never two in the same Battle but
+ * for a canceled one, which is not counted.
+ */
+export const trial = pgTable(
+  'trial',
+  {
+    id: id(),
+    userId: userId(),
+    contactId: uuid('contact_id').notNull(),
+    battleId: uuid('battle_id').notNull(),
+    positioningId: uuid('positioning_id').notNull(),
+    /** The use of the Positioning that started it: its day is the day the Trial started. */
+    interactionId: uuid('interaction_id').notNull(),
+    /** The Target of the Contact when it started, kept whatever changes since. */
+    target: text({ enum: TARGETS }).notNull(),
+    /** Whether the Positioning used is not the one assigned: an Override, allowed and traced. */
+    overridden: boolean().notNull(),
+    /** Why, in the words of the User, if it said. */
+    overrideReason: text('override_reason'),
+    outcome: text({ enum: TRIAL_OUTCOMES }).notNull(),
+    /** Why it was canceled (“Battle closed”, “Contact deleted”, the User's own). */
+    cancelReason: text('cancel_reason'),
+  },
+  (table) => [
+    unique('trial_user_id_id_unique').on(table.userId, table.id),
+    unique('trial_interaction_unique').on(table.userId, table.interactionId),
+    foreignKey({
+      name: 'trial_contact_fk',
+      columns: [table.userId, table.contactId],
+      foreignColumns: [contact.userId, contact.id],
+    }),
+    foreignKey({
+      name: 'trial_battle_fk',
+      columns: [table.userId, table.battleId],
+      foreignColumns: [battle.userId, battle.id],
+    }),
+    foreignKey({
+      name: 'trial_positioning_fk',
+      columns: [table.userId, table.positioningId],
+      foreignColumns: [positioning.userId, positioning.id],
+    }),
+    foreignKey({
+      name: 'trial_interaction_fk',
+      columns: [table.userId, table.interactionId],
+      foreignColumns: [interaction.userId, interaction.id],
+    }),
+    // At most one in progress per Contact, one counted per Battle (spec stack §6).
+    uniqueIndex('trial_in_progress_unique')
+      .on(table.userId, table.contactId)
+      .where(sql`${table.outcome} = 'in_progress'`),
+    uniqueIndex('trial_per_battle_unique')
+      .on(table.userId, table.contactId, table.battleId)
+      .where(sql`${table.outcome} <> 'canceled'`),
+    index('trial_battle_idx').on(table.userId, table.battleId),
+    index('trial_positioning_idx').on(table.userId, table.positioningId),
+    check('trial_target_check', sql`${table.target} in (${quoted(TARGETS)})`),
+    check('trial_outcome_check', sql`${table.outcome} in (${quoted(TRIAL_OUTCOMES)})`),
+    check(
+      'trial_override_reason_check',
+      sql`${table.overrideReason} is null or (${table.overrideReason} <> '' and ${table.overridden})`,
+    ),
+    check(
+      'trial_cancel_reason_check',
+      sql`(${table.outcome} = 'canceled') = (${table.cancelReason} is not null) and (${table.cancelReason} is null or ${table.cancelReason} <> '')`,
+    ),
   ],
 );
 

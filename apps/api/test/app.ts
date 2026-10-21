@@ -41,10 +41,11 @@ export const BREACHED_PASSWORD = 'password-password-password';
  * The app as main.ts composes it, with a test clock, scripted randomness, a recording alert,
  * a recording e-mail transport, a fake Have I Been Pwned and the log lines kept in memory.
  * `startsAt` sets its clock; a test that runs a purge starts before every other test, whose rows it then spares.
+ * `chances` are the outcomes of chance, in order: an Assignment settles a tie with one (ADR 0002).
  */
 export function testApp(
   env: Partial<typeof testEnv> = {},
-  { startsAt }: { startsAt?: string } = {},
+  { startsAt, chances = [] }: { startsAt?: string; chances?: number[] } = {},
 ) {
   const { logger, logs, output } = testLogger();
   const clock = testClock(startsAt);
@@ -55,7 +56,7 @@ export function testApp(
   const { app, jobs } = createApp({
     config: loadConfig({ ...testEnv, ...env }),
     clock,
-    random: scriptedRandom(),
+    random: scriptedRandom(...chances),
     logger,
     alert,
     email,

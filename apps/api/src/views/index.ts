@@ -19,11 +19,13 @@ import { FUNNEL_ORDER, positioning, positioningAttachment, stage } from '../funn
 import type { Touched } from '../gestures/index.ts';
 import { organization } from '../organizations/index.ts';
 import {
+  assignment,
   contact,
   followUp,
   interaction,
   PROSPECTING_ACTION_KINDS,
   statusChange,
+  trial,
 } from '../prospecting/index.ts';
 import { idOf } from '../route-id.ts';
 import { settingsOf, timeZoneAt } from '../settings/index.ts';
@@ -140,6 +142,28 @@ async function summaryContacts(
     .where(and(eq(statusChange.userId, userId), ids && inArray(statusChange.contactId, ids)))
     .orderBy(statusChange.contactId, desc(interaction.occurredAt), desc(interaction.id))
     .as('current_status');
+  // Its Trial in progress, at most one, from the day of the use that started it.
+  const inProgress = tx
+    .select({
+      contactId: trial.contactId,
+      battleId: trial.battleId,
+      positioningId: trial.positioningId,
+      startedOn: interaction.localDate,
+      overridden: trial.overridden,
+    })
+    .from(trial)
+    .innerJoin(
+      interaction,
+      and(eq(interaction.userId, userId), eq(interaction.id, trial.interactionId)),
+    )
+    .where(
+      and(
+        eq(trial.userId, userId),
+        eq(trial.outcome, 'in_progress'),
+        ids && inArray(trial.contactId, ids),
+      ),
+    )
+    .as('trial_in_progress');
   const rows = await tx
     .select({
       id: contact.id,
@@ -161,6 +185,12 @@ async function summaryContacts(
       followUpNote: scheduled.note,
       followUpRank: scheduled.rank,
       prospectingActionDays: actions.days,
+      assignmentBattleId: assignment.battleId,
+      assignmentPositioningId: assignment.positioningId,
+      trialBattleId: inProgress.battleId,
+      trialPositioningId: inProgress.positioningId,
+      trialStartedOn: inProgress.startedOn,
+      trialOverridden: inProgress.overridden,
     })
     .from(contact)
     .innerJoin(latest, eq(latest.contactId, contact.id))
@@ -169,18 +199,49 @@ async function summaryContacts(
     .leftJoin(current, eq(current.contactId, contact.id))
     .leftJoin(scheduled, eq(scheduled.contactId, contact.id))
     .leftJoin(actions, eq(actions.contactId, contact.id))
+    .leftJoin(assignment, and(eq(assignment.userId, userId), eq(assignment.contactId, contact.id)))
+    .leftJoin(inProgress, eq(inProgress.contactId, contact.id))
     .where(and(eq(contact.userId, userId), ids && inArray(contact.id, ids)))
     .orderBy(desc(latest.occurredAt), desc(contact.id));
-  return rows.map(({ followUpDueOn, followUpNote, followUpRank, ...row }) => ({
-    ...row,
-    lastInteractionAt: row.lastInteractionAt.toISOString(),
-    funnelEntryDays: row.funnelEntryDays ?? [],
-    followUp:
-      followUpDueOn === null
-        ? null
-        : { dueOn: followUpDueOn, note: followUpNote, rank: followUpRank },
-    prospectingActionDays: row.prospectingActionDays ?? [],
-  }));
+  return rows.map(
+    ({
+      followUpDueOn,
+      followUpNote,
+      followUpRank,
+      assignmentBattleId,
+      assignmentPositioningId,
+      trialBattleId,
+      trialPositioningId,
+      trialStartedOn,
+      trialOverridden,
+      ...row
+    }) => ({
+      ...row,
+      lastInteractionAt: row.lastInteractionAt.toISOString(),
+      funnelEntryDays: row.funnelEntryDays ?? [],
+      followUp:
+        followUpDueOn === null
+          ? null
+          : { dueOn: followUpDueOn, note: followUpNote, rank: followUpRank },
+      prospectingActionDays: row.prospectingActionDays ?? [],
+      assignment:
+        assignmentBattleId === null || assignmentPositioningId === null
+          ? null
+          : { battleId: assignmentBattleId, positioningId: assignmentPositioningId },
+      trial:
+        trialBattleId === null ||
+        trialPositioningId === null ||
+        trialStartedOn === null ||
+        trialOverridden === null
+          ? null
+          : {
+              battleId: trialBattleId,
+              positioningId: trialPositioningId,
+              startedOn: trialStartedOn,
+              overridden: trialOverridden,
+            },
+    }),
+  );
 }
 
 /** Every Stage of the User, archived ones too: a Contact may keep one as the last it reached. In the order of the Funnel. */
@@ -252,6 +313,13 @@ async function summaryPositionings(
       ),
     );
   const used = new Set(uses.map(({ positioningId }) => positioningId));
+  // Its Trials, canceled ones too: frozen from the first (CONTEXT.md, Positioning).
+  const trials = await tx
+    .select({ positioningId: trial.positioningId, count: sql<number>`count(*)::int` })
+    .from(trial)
+    .where(and(eq(trial.userId, userId), ids && inArray(trial.positioningId, ids)))
+    .groupBy(trial.positioningId);
+  const trialCounts = new Map(trials.map(({ positioningId, count }) => [positioningId, count]));
   return rows.map(({ followUpDays, followUpMessages, ...row }) => ({
     ...row,
     attachments: attachments
@@ -262,8 +330,7 @@ async function summaryPositionings(
       message: followUpMessages[rank] ?? null,
     })),
     used: used.has(row.id),
-    // Its Trials come with Trials (ticket 28): until then, none is frozen.
-    trialCount: 0,
+    trialCount: trialCounts.get(row.id) ?? 0,
   }));
 }
 
