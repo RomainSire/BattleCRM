@@ -40,6 +40,8 @@ export const REFUSAL_STATUS = {
   no_trial: 409,
   same_outcome: 409,
   battle_closed: 409,
+  designation_required: 409,
+  verdict_unsupported: 409,
   already_tried: 409,
   assignment_required: 409,
   not_in_battle: 409,

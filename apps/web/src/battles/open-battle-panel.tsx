@@ -46,9 +46,9 @@ import {
  * The panels of the Battles screen, carried by the address (ST-70): the progress of an open Battle,
  * or an opening, its wizard or the creation of a Challenger.
  */
-export const BATTLE_PANELS = ['progress', 'open', 'new-positioning'] as const;
+export const BATTLE_PANELS = ['progress', 'close', 'open', 'new-positioning'] as const;
 export type BattlePanel = (typeof BATTLE_PANELS)[number];
-export type OpeningPanel = Exclude<BattlePanel, 'progress'>;
+export type OpeningPanel = Exclude<BattlePanel, 'progress' | 'close'>;
 
 type Stage = Summary['stages'][number];
 

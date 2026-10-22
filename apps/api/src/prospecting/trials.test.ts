@@ -457,7 +457,7 @@ test('an Assignment left from a closed Battle falls: the next Battle of the Stag
   const { harness, user, approche, cvB, battle } = await battleAtApproche({ chances: [0, 1] });
   const claire = await prospect(harness, user, 'Claire');
   await revealAssignment(harness, user, claire.id);
-  await closeBattle(user, battle.id, new Date('2026-01-06T09:00:00Z'));
+  await closeBattle(harness, user, battle.id);
   const { battle: next } = await openBattle(harness, user, {
     stageId: approche,
     challengerId: cvB.id,

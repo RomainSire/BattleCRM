@@ -87,7 +87,9 @@ import { contact, followUp, interaction, statusChange } from './tables.ts';
 import {
   anyAssignmentIn,
   anyTrialWith,
+  canUndoTrialIn,
   changeTrialOutcome,
+  closeTrialsOf,
   contactOfTrial,
   droppedAssignment,
   dropAssignment,
@@ -102,6 +104,7 @@ import {
   startTrial,
   traceDeviation,
   trialOutcomeOf,
+  trialCountsIn,
   trialToStart,
   unsettleTrial,
 } from './trials.ts';
@@ -324,8 +327,12 @@ export const positioningUses: PositioningUses = {
   inTrial: anyTrialWith,
 };
 
-/** Whether a Battle assigned anything, for “Undo” of its opening (ADR 0011). */
-export const battleAssignments: BattleAssignments = { any: anyAssignmentIn };
+/** What a Battle did with its Contacts: for “Undo” of its opening (ADR 0011), and for its closing. */
+export const battleAssignments: BattleAssignments = {
+  any: anyAssignmentIn,
+  counts: trialCountsIn,
+  close: closeTrialsOf,
+};
 
 /** The Contacts of an Organization, as its own gestures read and move them (spec stack §5.2). */
 export const organizationMembers: OrganizationMembers = {
@@ -767,6 +774,7 @@ const changeContactStatus: Gesture<
    * only a Contact of another Status may keep one.
    */
   async inverse(tx, { userId, subjectId: contactId, retained }) {
+    if (!(await canUndoTrialIn(tx, userId, retained.settledTrial?.battleId))) return 'superseded';
     if (!(await canRestoreStatus(tx, userId, contactId, retained))) return 'superseded';
     await takeBackStatusChange(tx, userId, contactId, retained);
     return touchedWithTrial(contactId, retained.settledTrial);
@@ -935,6 +943,8 @@ const recordReply: Gesture<
   async inverse(tx, { userId, subjectId: contactId, retained }) {
     const { interactionId, canceledFollowUpId, unranked, statusChanged: changed } = retained;
     const moved = retained.stageChanged;
+    if (!(await canUndoTrialIn(tx, userId, retained.settledTrial?.battleId))) return 'superseded';
+    if (!(await canUndoTrialIn(tx, userId, changed?.settledTrial?.battleId))) return 'superseded';
     if (changed && !(await canRestoreStatus(tx, userId, contactId, changed))) return 'superseded';
     if (moved && !(await canRestoreStage(tx, userId, contactId, moved))) return 'superseded';
     if (moved) await takeBackStageChange(tx, userId, contactId, moved);
@@ -998,6 +1008,7 @@ const changeContactStage: Gesture<
    */
   async inverse(tx, { userId, subjectId: contactId, retained }) {
     const { stageChanged: moved, settledTrial: settled, canceledFollowUpId } = retained;
+    if (!(await canUndoTrialIn(tx, userId, settled?.battleId))) return 'superseded';
     if (!(await canRestoreStage(tx, userId, contactId, moved))) return 'superseded';
     await takeBackStageChange(tx, userId, contactId, moved);
     if (settled) await unsettleTrial(tx, userId, settled.id);
@@ -1109,6 +1120,8 @@ const settleTrialGesture: Gesture<
   /** The Trial is in progress again, and the Contact gets its Status back. */
   async inverse(tx, { userId, subjectId: contactId, retained }) {
     const { settledTrial: settled, statusChanged: changed } = retained;
+    if (!(await canUndoTrialIn(tx, userId, settled.battleId))) return 'superseded';
+    if (!(await canUndoTrialIn(tx, userId, changed?.settledTrial?.battleId))) return 'superseded';
     if (changed && !(await canRestoreStatus(tx, userId, contactId, changed))) return 'superseded';
     if (changed) await takeBackStatusChange(tx, userId, contactId, changed);
     await unsettleTrial(tx, userId, settled.id);
@@ -1256,6 +1269,7 @@ const usePositioning: Gesture<
     const { interactionId, positioningId, scheduledFollowUpId, canceledFollowUpId, trial } =
       retained;
     const changed = retained.statusChanged;
+    if (!(await canUndoTrialIn(tx, userId, trial?.battleId))) return 'superseded';
     if (changed && !(await canRestoreStatus(tx, userId, contactId, changed))) return 'superseded';
     if (scheduledFollowUpId !== undefined) {
       await tx

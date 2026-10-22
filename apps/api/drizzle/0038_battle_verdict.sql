@@ -1,0 +1,9 @@
+ALTER TABLE "gesture" DROP CONSTRAINT "gesture_kind_check";--> statement-breakpoint
+ALTER TABLE "battle" ADD COLUMN "closed_on" date;--> statement-breakpoint
+ALTER TABLE "battle" ADD COLUMN "verdict" text;--> statement-breakpoint
+ALTER TABLE "battle" ADD COLUMN "designated" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "battle" ADD COLUMN "takeaway" text;--> statement-breakpoint
+ALTER TABLE "battle" ADD CONSTRAINT "battle_verdict_check" CHECK ("battle"."verdict" in ('challenger_wins', 'title_defended', 'draw', 'not_enough_data', 'abandoned'));--> statement-breakpoint
+ALTER TABLE "battle" ADD CONSTRAINT "battle_closed_check" CHECK (("battle"."closed_at" is null) = ("battle"."verdict" is null) and ("battle"."closed_at" is null) = ("battle"."closed_on" is null) and (not "battle"."designated" or "battle"."verdict" in ('challenger_wins', 'title_defended')));--> statement-breakpoint
+ALTER TABLE "battle" ADD CONSTRAINT "battle_takeaway_check" CHECK ("battle"."takeaway" is null or ("battle"."takeaway" <> '' and "battle"."closed_at" is not null));--> statement-breakpoint
+ALTER TABLE "gesture" ADD CONSTRAINT "gesture_kind_check" CHECK ("gesture"."kind" in ('contact_added', 'contact_edited', 'status_changed', 'stage_changed', 'follow_up_scheduled', 'follow_up_canceled', 'followed_up', 'interaction_noted', 'reply_recorded', 'positioning_used', 'trial_settled', 'trial_outcome_changed', 'positioning_created', 'positioning_edited', 'positioning_relabeled', 'positioning_archived', 'positioning_unarchived', 'positioning_deleted', 'positioning_attachment_added', 'positioning_attachment_removed', 'battle_opened', 'battle_takeaway_changed'));

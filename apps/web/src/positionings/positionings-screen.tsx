@@ -10,7 +10,8 @@ import { Button } from '../components/ui/button.tsx';
 import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { CHANNEL_LABEL } from '../channel.ts';
 import { useSendGesture, type RefusalOf } from '../gesture.ts';
-import { useLocale } from '../i18n.ts';
+import { formatLocalDay } from '../contacts/format.ts';
+import { useLocale, type Locale } from '../i18n.ts';
 import { Screen } from '../screens/screen.tsx';
 import { useApi, type ApiClient } from '../session.ts';
 import {
@@ -220,6 +221,27 @@ function StageColumn({
   );
 }
 
+/**
+ * Why a Positioning is archived (spec UX §5.6): beaten in a Battle, by which and when; out after a
+ * draw or not enough data, which beat nothing; or by hand.
+ */
+function archivedReasonOf(
+  positioning: SummaryPositioning,
+  labelOf: (id: string | null) => string | undefined,
+  locale: Locale,
+) {
+  // Fallback: a summary kept on the device by a version from before closing carries none.
+  const archived: SummaryPositioning['archivedByBattle'] | undefined = positioning.archivedByBattle;
+  if (!archived) return m.positioning_archived_by_hand();
+  const args = {
+    by: labelOf(archived.againstId) ?? '…',
+    date: formatLocalDay(archived.on, locale),
+  };
+  if (archived.verdict === 'draw') return m.positioning_archived_after_draw(args);
+  if (archived.verdict === 'not_enough_data') return m.positioning_archived_not_enough_data(args);
+  return m.positioning_beaten(args);
+}
+
 /** The Positionings of a Stage in lineages, the archived ones on demand (spec UX §5.6). */
 function LineageColumn({
   summary,
@@ -232,6 +254,7 @@ function LineageColumn({
   positionings: SummaryPositioning[];
   onNew: () => void;
 }) {
+  const locale = useLocale();
   const headingId = useId();
   const [showsArchived, setShowsArchived] = useState(false);
   const archivedCount = positionings.filter(({ archived }) => archived).length;
@@ -301,7 +324,7 @@ function LineageColumn({
                 )}
                 {positioning.archived && (
                   <span className="text-xs text-neutral-text">
-                    {m.positioning_archived_by_hand()}
+                    {archivedReasonOf(positioning, labelOf, locale)}
                   </span>
                 )}
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">

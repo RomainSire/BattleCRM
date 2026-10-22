@@ -1,5 +1,6 @@
 // Hand-written Zod schemas and the API types (spec stack §2).
 
+import { VERDICTS } from '@battlecrm/domain';
 import { locales } from '@battlecrm/i18n/runtime';
 import { z } from 'zod';
 
@@ -96,6 +97,11 @@ export const DEFAULT_BATTLE_HORIZON = 25;
 export { BATTLE_MINIMUM_FINISHED, BATTLE_MINIMUM_SUCCESSES } from '@battlecrm/domain';
 export const BATTLE_HORIZON_MAX = 100;
 export const SUCCESS_CRITERION_MAX_LENGTH = 200;
+
+/** The Verdicts of a closed Battle, the Win rule's own (packages/domain, CONTEXT.md). */
+export { VERDICTS, type Verdict } from '@battlecrm/domain';
+/** The Takeaway of a closed Battle, optional (CONTEXT.md, Takeaway). */
+export const TAKEAWAY_MAX_LENGTH = 2000;
 
 /** The outcome of a Trial (CONTEXT.md, Trial): in progress until the User settles it, or canceled. */
 export const TRIAL_OUTCOMES = ['in_progress', 'success', 'no_result', 'canceled'] as const;
@@ -212,6 +218,13 @@ export const summaryPositioning = z.strictObject({
   /** Whether it was ever used, and in how many Trials: frozen from the first one. */
   used: z.boolean(),
   trialCount: z.int(),
+  /**
+   * Archived by the closing of a Battle it did not win (spec UX §5.6): against which Positioning, on
+   * which local day, and on which Verdict.
+   */
+  archivedByBattle: z
+    .strictObject({ againstId: z.uuid(), on: z.iso.date(), verdict: z.enum(VERDICTS) })
+    .nullable(),
 });
 export type SummaryPositioning = z.infer<typeof summaryPositioning>;
 
@@ -241,6 +254,11 @@ export const summaryBattle = z.strictObject({
   finishedTrials: z.int(),
   /** Its Trials per Positioning, the canceled ones aside: what the Win rule reads (ADR 0001). */
   trials: z.strictObject({ champion: trialCounts, challenger: trialCounts }),
+  /** Once closed: the local day, its Verdict, whether the User designated it, and its Takeaway. */
+  closedOn: z.iso.date().nullable(),
+  verdict: z.enum(VERDICTS).nullable(),
+  designated: z.boolean(),
+  takeaway: z.string().nullable(),
 });
 export type SummaryBattle = z.infer<typeof summaryBattle>;
 

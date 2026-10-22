@@ -11,8 +11,9 @@ import {
 import { finishedTrials, startedTrials, type TrialCounts } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
 import { queryOptions, useQuery } from '@tanstack/react-query';
+import { cn } from 'cn';
 import { X } from 'lucide-react';
-import { useId, useState, type Ref } from 'react';
+import { useId, useState, type ReactNode, type Ref } from 'react';
 import { Form, Tab, TabList, TabPanel, Tabs, TextField } from 'react-aria-components';
 
 import { Button } from '../components/ui/button.tsx';
@@ -31,12 +32,14 @@ import { useLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import {
   battleTrialsKey,
+  championAt,
   positioningsOf,
   trialCountsOf,
   winRuleOf,
   type Summary,
   type SummaryBattle,
 } from '../summary.ts';
+import { ChampionHistory, HistoryLegend } from './champion-history.tsx';
 import { TARGET_OPTION } from './open-battle-panel.tsx';
 import { Opponents } from './opponents.tsx';
 import { WinRuleGauge, winRuleSentence, winRuleStateLabel, type Sides } from './win-rule.tsx';
@@ -55,7 +58,7 @@ const battleTrialsQuery = (api: ApiClient, battleId: string) =>
     retry: false,
   });
 
-const tabClass =
+export const tabClass =
   'cursor-default rounded-control px-2 py-1 text-muted-foreground focus-ring data-hovered:text-foreground data-selected:bg-surface data-selected:font-medium data-selected:text-foreground max-md:min-h-11';
 
 /** The labels of the two sides of a Battle. */
@@ -65,28 +68,43 @@ export function sidesOf(summary: Summary, battle: SummaryBattle): Sides {
   return { champion: labelOf(battle.championId), challenger: labelOf(battle.challengerId) };
 }
 
+/** “Close…” (spec UX §2): an action out of the routine, outlined with the accent. */
+export function CloseButton({
+  onPress,
+  anyway = false,
+  className,
+}: {
+  onPress: () => void;
+  anyway?: boolean;
+  className?: string;
+}) {
+  return (
+    <Button
+      variant="outline"
+      className={cn('border-accent-text font-medium max-md:min-h-11', className)}
+      onPress={onPress}
+    >
+      {anyway ? m.battle_close_anyway() : m.battle_close()}
+    </Button>
+  );
+}
+
 /**
- * The panel of a Stage with an open Battle (spec UX §5.5), anchored next to the Battles: Progress,
- * Trials (their outcome changed in place while it is open) and By Target. No modal, a region of the
- * layout; `Escape` closes it. The Champion history of the Stage comes with closing (ticket 32).
+ * The frame of the panel of a Stage (spec UX §5.5), anchored next to the Battles: its name, ✕, then
+ * what it shows. No modal, a region of the layout; `Escape` closes it.
  */
-export function BattlePanel({
-  summary,
+function StagePanelFrame({
   stage,
-  battle,
   headingRef,
   onClose,
+  children,
 }: {
-  summary: Summary;
   stage: Stage;
-  battle: SummaryBattle;
-  headingRef?: Ref<HTMLHeadingElement>;
+  headingRef?: Ref<HTMLHeadingElement> | undefined;
   onClose: () => void;
+  children: ReactNode;
 }) {
-  useLocale();
   const headingId = useId();
-  const sides = sidesOf(summary, battle);
-  const rule = winRuleOf(battle);
   return (
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape from any control inside the panel, while the focus is there.
     <section
@@ -115,6 +133,74 @@ export function BattlePanel({
           <X />
         </Button>
       </div>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * The panel of a Stage without an open Battle (spec UX §5.5): its Champion, “Open a Battle…”, and its
+ * Champion history.
+ */
+export function StagePanel({
+  summary,
+  stage,
+  headingRef,
+  onClose,
+  onOpen,
+}: {
+  summary: Summary;
+  stage: Stage;
+  headingRef?: Ref<HTMLHeadingElement>;
+  onClose: () => void;
+  onOpen: () => void;
+}) {
+  useLocale();
+  const champion = championAt(summary, stage.id);
+  return (
+    <StagePanelFrame stage={stage} headingRef={headingRef} onClose={onClose}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-muted-foreground">
+          {champion
+            ? m.stage_panel_champion({ champion: champion.label })
+            : m.stage_panel_no_champion()}
+        </p>
+        <Button variant="outline" className="font-medium max-md:min-h-11" onPress={onOpen}>
+          {m.battles_open()}
+        </Button>
+      </div>
+      <h3 className="font-medium">{m.battles_view_history()}</h3>
+      <HistoryLegend />
+      <ChampionHistory summary={summary} stageId={stage.id} />
+    </StagePanelFrame>
+  );
+}
+
+/**
+ * The panel of a Stage with an open Battle (spec UX §5.5), anchored next to the Battles: Progress,
+ * Trials (their outcome changed in place while it is open), By Target and the Champion history of
+ * the Stage.
+ */
+export function BattlePanel({
+  summary,
+  stage,
+  battle,
+  headingRef,
+  onClose,
+  onCloseBattle,
+}: {
+  summary: Summary;
+  stage: Stage;
+  battle: SummaryBattle;
+  headingRef?: Ref<HTMLHeadingElement>;
+  onClose: () => void;
+  onCloseBattle: () => void;
+}) {
+  useLocale();
+  const sides = sidesOf(summary, battle);
+  const rule = winRuleOf(battle);
+  return (
+    <StagePanelFrame stage={stage} headingRef={headingRef} onClose={onClose}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Opponents champion={sides.champion} challenger={sides.challenger} />
         <span className="text-sm text-muted-foreground">{winRuleStateLabel(rule)}</span>
@@ -130,9 +216,12 @@ export function BattlePanel({
           <Tab id="by-target" className={tabClass}>
             {m.battle_tab_by_target()}
           </Tab>
+          <Tab id="history" className={tabClass}>
+            {m.battle_tab_history()}
+          </Tab>
         </TabList>
         <TabPanel id="progress" className="flex flex-col gap-3 rounded-control pt-3 focus-ring">
-          <ProgressTab battle={battle} sides={sides} />
+          <ProgressTab battle={battle} sides={sides} onCloseBattle={onCloseBattle} />
         </TabPanel>
         <TabPanel id="trials" className="flex flex-col gap-3 rounded-control pt-3 focus-ring">
           <TrialsTab summary={summary} battle={battle} sides={sides} />
@@ -140,8 +229,12 @@ export function BattlePanel({
         <TabPanel id="by-target" className="flex flex-col gap-3 rounded-control pt-3 focus-ring">
           <ByTargetTab battle={battle} sides={sides} />
         </TabPanel>
+        <TabPanel id="history" className="flex flex-col gap-3 rounded-control pt-3 focus-ring">
+          <HistoryLegend />
+          <ChampionHistory summary={summary} stageId={stage.id} />
+        </TabPanel>
       </Tabs>
-    </section>
+    </StagePanelFrame>
   );
 }
 
@@ -149,7 +242,15 @@ export function BattlePanel({
  * Progress (spec UX §5.5): the sentence, the banner once conclusive or at the Horizon, the gauge,
  * the progress to the minimum and the Horizon, and what the Battle was opened with.
  */
-function ProgressTab({ battle, sides }: { battle: SummaryBattle; sides: Sides }) {
+function ProgressTab({
+  battle,
+  sides,
+  onCloseBattle,
+}: {
+  battle: SummaryBattle;
+  sides: Sides;
+  onCloseBattle: () => void;
+}) {
   const locale = useLocale();
   const rule = winRuleOf(battle);
   const counts = trialCountsOf(battle);
@@ -165,16 +266,23 @@ function ProgressTab({ battle, sides }: { battle: SummaryBattle; sides: Sides })
   return (
     <>
       <p className="text-base leading-snug">{winRuleSentence(rule, sides, battle.threshold)}</p>
+      {/* “Close…” in the banner, in place of the label of its state (spec UX §5.5). */}
       {rule.state === 'conclusive' && (
-        <p className="rounded-card border border-accent-text/50 bg-accent/10 p-3">
-          <strong>{m.battle_banner_conclusive_title()}</strong>{' '}
-          {m.battle_banner_conclusive({ winner })}
-        </p>
+        <div className="flex flex-wrap items-center gap-2 rounded-card border border-accent-text/50 bg-accent/10 p-3">
+          <p className="flex-1">
+            <strong>{m.battle_banner_conclusive_title()}</strong>{' '}
+            {m.battle_banner_conclusive({ winner })}
+          </p>
+          <CloseButton onPress={onCloseBattle} />
+        </div>
       )}
       {rule.state !== 'conclusive' && rule.horizonReached && (
-        <p className="rounded-card border bg-surface p-3">
-          <strong>{m.battle_banner_horizon_title()}</strong> {m.battle_banner_horizon()}
-        </p>
+        <div className="flex flex-wrap items-center gap-2 rounded-card border bg-surface p-3">
+          <p className="flex-1">
+            <strong>{m.battle_banner_horizon_title()}</strong> {m.battle_banner_horizon()}
+          </p>
+          <CloseButton onPress={onCloseBattle} />
+        </div>
       )}
       <WinRuleGauge rule={rule} threshold={battle.threshold} sides={sides} />
       <ul className="flex flex-col gap-1 text-sm">
@@ -199,6 +307,11 @@ function ProgressTab({ battle, sides }: { battle: SummaryBattle; sides: Sides })
         <li>{m.battle_meta_horizon({ horizon: battle.horizon })}</li>
         <li>{m.battles_opened_on({ day: formatLocalDay(battle.openedOn, locale) })}</li>
       </ul>
+      {rule.state !== 'conclusive' && !rule.horizonReached && (
+        <div>
+          <CloseButton anyway onPress={onCloseBattle} />
+        </div>
+      )}
     </>
   );
 }

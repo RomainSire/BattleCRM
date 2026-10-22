@@ -210,7 +210,7 @@ test('a Trial put back in progress, its Contact Prospecting, gets its Trial back
 test('the outcome of a Trial no longer changes once its Battle is closed', async () => {
   const { harness, user, battle } = await battleUnderWay();
   const [hugoTrial] = await readTrials(harness, user, battle.id);
-  await closeBattle(user, battle.id, harness.clock.now());
+  await closeBattle(harness, user, battle.id);
 
   const response = await changeOutcome(harness, user, hugoTrial?.id ?? '', { outcome: 'success' });
 
@@ -312,7 +312,7 @@ test('a change of outcome is no longer taken back once its Battle is closed', as
   const [hugoTrial] = await readTrials(harness, user, battle.id);
   const response = await changeOutcome(harness, user, hugoTrial?.id ?? '', { outcome: 'success' });
   const { undoToken } = gestureAnswer.parse(await response.json());
-  await closeBattle(user, battle.id, harness.clock.now());
+  await closeBattle(harness, user, battle.id);
 
   const undoing = await undo(harness, user, undoToken);
 

@@ -57,6 +57,10 @@ test('the first Battle of a Stage: its initial Champion against a Challenger, it
       champion: { successes: 0, noResults: 0, inProgress: 0 },
       challenger: { successes: 0, noResults: 0, inProgress: 0 },
     },
+    closedOn: null,
+    verdict: null,
+    designated: false,
+    takeaway: null,
   });
   expect((await summaryOf(harness, user)).battles).toEqual([battle]);
 
@@ -103,7 +107,7 @@ test('the first Battle needs an initial Champion; the next ones keep the Champio
     championId: mailA.id,
     challengerId: mailB.id,
   });
-  await closeBattle(user, first.id, harness.clock.now());
+  await closeBattle(harness, user, first.id);
   const another = await openBattleRequest(harness, user, {
     stageId: outreach,
     championId: mailC.id,
@@ -207,7 +211,7 @@ test('in the workshop, the Champion and a Positioning in an open Battle cannot b
   });
 
   // Once the Battle is closed, its Challenger may be archived, never deleted; the Champion keeps its title.
-  await closeBattle(user, battle.id, harness.clock.now());
+  await closeBattle(harness, user, battle.id);
   expect((await refusalOf(`/api/positionings/${mailC.id}/archive`)).status).toBe(200);
   expect(await refusalOf(`/api/positionings/${mailC.id}/delete`)).toEqual({
     status: 409,

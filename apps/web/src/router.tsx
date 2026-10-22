@@ -282,8 +282,10 @@ const funnelRoute = createRoute({
 const battlesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/battles',
-  // The Stage whose opening is under way, and its panel (ST-70); anything else is dropped.
+  // The Champion history or the Battles, the Stage whose panel is open, and which one (ST-70);
+  // anything else is dropped.
   validateSearch: z.object({
+    view: z.literal('history').optional().catch(undefined),
     stage: z.uuid().optional().catch(undefined),
     panel: z.enum(BATTLE_PANELS).optional().catch(undefined),
   }),

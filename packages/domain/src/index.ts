@@ -49,3 +49,11 @@ export {
   type WinRuleCounts,
   type WinRuleState,
 } from './win-rule.ts';
+export {
+  VERDICTS,
+  archivedBy,
+  judgeVerdict,
+  proposedVerdict,
+  titleHolderAfter,
+  type Verdict,
+} from './verdict.ts';

@@ -6,7 +6,7 @@ import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
 
 import { testApp } from '../test/app.ts';
-import { openBattle } from '../test/factories/battle.ts';
+import { closeBattle, openBattle } from '../test/factories/battle.ts';
 import {
   addContact,
   changeStage,
@@ -33,6 +33,18 @@ import { withUser } from './db/index.ts';
 
 type Harness = ReturnType<typeof testApp>;
 type User = Awaited<ReturnType<typeof makeUser>>;
+
+/** An open Battle of a User, at the Stage of its first Positioning. */
+async function battleOf(harness: Harness, user: User) {
+  const { positioning } = await positioningOf(harness, user);
+  const { positioning: challenger } = await createPositioning(harness, user, positioning.stageId);
+  const { battle } = await openBattle(harness, user, {
+    stageId: positioning.stageId,
+    championId: positioning.id,
+    challengerId: challenger.id,
+  });
+  return battle;
+}
 
 /** Read before the User is known (ADR 0010): the only tables outside row level security, on purpose. */
 const AUTH_TABLES = [
@@ -389,18 +401,25 @@ const CROSS_ACCESS: Record<
     };
   },
   'GET /api/battles/:id/trials': async (harness, alice) => {
-    const { positioning } = await positioningOf(harness, alice);
-    const { positioning: challenger } = await createPositioning(
-      harness,
-      alice,
-      positioning.stageId,
-    );
-    const { battle } = await openBattle(harness, alice, {
-      stageId: positioning.stageId,
-      championId: positioning.id,
-      challengerId: challenger.id,
-    });
+    const battle = await battleOf(harness, alice);
     return { id: battle.id, state: () => getJson(harness, alice, '/api/summary') };
+  },
+  'POST /api/battles/:id/close': async (harness, alice) => {
+    const battle = await battleOf(harness, alice);
+    return {
+      id: battle.id,
+      state: () => getJson(harness, alice, '/api/summary'),
+      body: { verdict: 'abandoned' },
+    };
+  },
+  'POST /api/battles/:id/takeaway': async (harness, alice) => {
+    const battle = await battleOf(harness, alice);
+    await closeBattle(harness, alice, battle.id, { verdict: 'abandoned', takeaway: 'Alice' });
+    return {
+      id: battle.id,
+      state: () => getJson(harness, alice, '/api/summary'),
+      body: { takeaway: 'Bob was here' },
+    };
   },
   'GET /api/contacts/:id/record': async (harness, alice) => {
     const { contact } = await addContact(harness, alice);

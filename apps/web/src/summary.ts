@@ -5,7 +5,14 @@ import type {
   SummaryContact,
   SummaryPositioning,
 } from '@battlecrm/contract';
-import { evaluateWinRule, localDay, type WinRule, type WinRuleCounts } from '@battlecrm/domain';
+import {
+  evaluateWinRule,
+  localDay,
+  titleHolderAfter,
+  type Verdict,
+  type WinRule,
+  type WinRuleCounts,
+} from '@battlecrm/domain';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 
 import type { ApiClient } from './session.ts';
@@ -99,12 +106,28 @@ export const hasConclusiveBattle = (summary: Summary) =>
 export const lastBattleAt = (summary: Summary, stageId: string) =>
   battlesOf(summary).findLast((battle) => battle.stageId === stageId);
 
+/** The Verdict of a closed Battle, `null` while it is open. */
+export function verdictOf(battle: SummaryBattle): Verdict | null {
+  // Fallback: a summary kept on the device by a version from before closing carries none.
+  const verdict: Verdict | null | undefined = battle.verdict;
+  return verdict ?? null;
+}
+
+/** Who holds the title of a Battle: its Champion while open, the winner of its Verdict once closed. */
+export function titleHolderOf(battle: SummaryBattle) {
+  const verdict = verdictOf(battle);
+  return verdict !== null && titleHolderAfter(verdict) === 'challenger'
+    ? battle.challengerId
+    : battle.championId;
+}
+
 /**
- * The Champion of a Stage (CONTEXT.md): the one its last Battle opposed to a Challenger, `undefined`
- * before its first. The Verdict (ticket 32) makes the winner of a closed Battle the Champion.
+ * The Champion of a Stage (CONTEXT.md): the winner of its last Battle, or the Champion it defends
+ * while open, the initial Champion before the second; `undefined` before its first.
  */
 export function championAt(summary: Summary, stageId: string): SummaryPositioning | undefined {
-  const championId = lastBattleAt(summary, stageId)?.championId;
+  const last = lastBattleAt(summary, stageId);
+  const championId = last && titleHolderOf(last);
   return positioningsOf(summary).find(({ id }) => id === championId);
 }
 

@@ -5,7 +5,14 @@ import {
   type TrialOutcome,
   type WithoutTrialReason,
 } from '@battlecrm/contract';
-import { chooseAssignment, targetOf, type Target } from '@battlecrm/domain';
+import {
+  chooseAssignment,
+  targetOf,
+  type Target,
+  type TrialCounts,
+  type WinRuleCounts,
+} from '@battlecrm/domain';
+import { m } from '@battlecrm/i18n';
 import { and, eq, ne, notExists, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -14,6 +21,7 @@ import type { Transaction } from '../db/index.ts';
 import { organizationTypeOf } from '../organizations/index.ts';
 import type { Random } from '../random.ts';
 import { refusal } from '../refusals.ts';
+import { settingsOf } from '../settings/index.ts';
 import { assignment, contact, trial, trialDeviation, type TrialDeviationKind } from './tables.ts';
 
 type OpenBattle = NonNullable<Awaited<ReturnType<typeof openBattleToAssignAt>>>;
@@ -273,6 +281,10 @@ export async function settleTrial(
   { outcome, cancelReason }: { outcome: SettledTrialOutcome; cancelReason?: string | undefined },
   now: Date,
 ): Promise<z.infer<typeof settledTrial> | undefined> {
+  // Its Battle shared first, as a change of outcome takes it: a closing waits, or ran first and
+  // canceled the Trial, which is then no longer in progress (CONTEXT.md, Trial).
+  const battleId = await trialInProgressOf(tx, userId, contactId);
+  if (battleId !== undefined) await isBattleOpen(tx, userId, battleId);
   const [settled] = await tx
     .update(trial)
     .set({
@@ -498,3 +510,66 @@ export async function restoreTrialOutcome(
   await writeOutcome(tx, userId, trialId, was);
   return true;
 }
+
+/** The Trials of a Battle per Positioning, the canceled ones aside: what the Win rule reads (ADR 0001). */
+export async function trialCountsIn(
+  tx: Transaction,
+  userId: string,
+  battle: { id: string; championId: string; challengerId: string },
+): Promise<WinRuleCounts> {
+  const rows = await tx
+    .select({
+      positioningId: trial.positioningId,
+      outcome: trial.outcome,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(trial)
+    .where(countedIn(userId, battle.id))
+    .groupBy(trial.positioningId, trial.outcome);
+  const countsOf = (positioningId: string): TrialCounts => {
+    const count = (outcome: TrialOutcome) =>
+      rows.find((row) => row.positioningId === positioningId && row.outcome === outcome)?.count ??
+      0;
+    return {
+      successes: count('success'),
+      noResults: count('no_result'),
+      inProgress: count('in_progress'),
+    };
+  };
+  return { champion: countsOf(battle.championId), challenger: countsOf(battle.challengerId) };
+}
+
+/**
+ * What closing a Battle does to its Contacts (CONTEXT.md, Trial), its row locked by the closing: its
+ * Trials still in progress canceled, “Battle closed” in the language of the User, their Follow-ups
+ * untouched; its Assignments dropped (ADR 0002). The Contacts it touched.
+ */
+export async function closeTrialsOf(tx: Transaction, userId: string, battleId: string, now: Date) {
+  const { locale } = await settingsOf(tx, userId, now);
+  const canceled = await tx
+    .update(trial)
+    .set({
+      outcome: 'canceled',
+      cancelReason: m.trial_cancel_reason_battle_closed({}, { locale }),
+      settledAt: now,
+    })
+    .where(
+      and(eq(trial.userId, userId), eq(trial.battleId, battleId), eq(trial.outcome, 'in_progress')),
+    )
+    .returning({ contactId: trial.contactId });
+  const dropped = await tx
+    .delete(assignment)
+    .where(and(eq(assignment.userId, userId), eq(assignment.battleId, battleId)))
+    .returning({ contactId: assignment.contactId });
+  return [...new Set([...canceled, ...dropped].map(({ contactId }) => contactId))];
+}
+
+/**
+ * Whether “Undo” may still put back a Trial of a Battle: only while it is open, whose closing settled
+ * its Trials for good (CONTEXT.md, Trial). Always, without a Trial.
+ */
+export const canUndoTrialIn = async (
+  tx: Transaction,
+  userId: string,
+  battleId: string | undefined,
+) => battleId === undefined || isBattleOpen(tx, userId, battleId);

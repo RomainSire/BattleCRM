@@ -520,6 +520,48 @@ test('in a Battle: the Champion and the Challenger say so; neither is archived w
     );
 });
 
+test('a Positioning beaten in a Battle is archived with who beat it and when; the winner is the Champion', async () => {
+  await desktop();
+  const closed = battle({
+    stageId: OUTREACH.id,
+    championId: OLD.id,
+    challengerId: MAIL_COURT.id,
+    open: false,
+    closedOn: '2026-01-12',
+    verdict: 'challenger_wins',
+  });
+  await renderApp(
+    '/positionings',
+    fakeApi({
+      'GET /api/summary': () =>
+        Response.json(
+          summary({
+            stages: [OUTREACH, SCREENING],
+            positionings: [
+              MAIL_COURT,
+              {
+                ...OLD,
+                archivedByBattle: {
+                  againstId: MAIL_COURT.id,
+                  on: '2026-01-12',
+                  verdict: 'challenger_wins',
+                },
+              },
+            ],
+            battles: [closed],
+          }),
+        ),
+    }),
+  );
+
+  await expect
+    .element(lineage().getByRole('listitem').nth(0))
+    .toHaveTextContent('Mail courtChampion');
+  await lineage().getByRole('button', { name: 'Afficher les archivés (1)' }).click();
+  await expect.element(lineage()).toHaveTextContent('battu par Mail court le 12 janv. 2026');
+  await expect.element(lineage()).not.toHaveTextContent('archivé à la main');
+});
+
 test('Unarchive', async () => {
   await desktop();
   const api = workshopApi();

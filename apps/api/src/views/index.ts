@@ -9,6 +9,7 @@ import type {
   SummaryPositioning,
   SummaryStage,
 } from '@battlecrm/contract';
+import { archivedBy } from '@battlecrm/domain';
 import { and, desc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 
@@ -281,7 +282,7 @@ async function summaryPositionings(
       followUpMessages: positioning.followUpMessages,
       responseWindowDays: positioning.responseWindowDays,
       derivedFromId: positioning.derivedFromId,
-      archived: isNotNull(positioning.archivedAt).mapWith(Boolean),
+      archivedAt: positioning.archivedAt,
     })
     .from(positioning)
     .where(and(eq(positioning.userId, userId), ids && inArray(positioning.id, ids)))
@@ -323,8 +324,33 @@ async function summaryPositionings(
     .where(and(eq(trial.userId, userId), ids && inArray(trial.positioningId, ids)))
     .groupBy(trial.positioningId);
   const trialCounts = new Map(trials.map(({ positioningId, count }) => [positioningId, count]));
-  return rows.map(({ followUpDays, followUpMessages, ...row }) => ({
+  // The Battles whose closing archived one, at the same instant (spec UX §5.6).
+  const closed = await tx
+    .select({
+      championId: battle.championId,
+      challengerId: battle.challengerId,
+      verdict: battle.verdict,
+      closedAt: battle.closedAt,
+      closedOn: battle.closedOn,
+    })
+    .from(battle)
+    .where(and(eq(battle.userId, userId), isNotNull(battle.closedAt)));
+  const archivedByBattleOf = (positioningId: string, archivedAt: Date | null) => {
+    for (const { championId, challengerId, verdict, closedAt, closedOn } of closed) {
+      if (verdict === null || closedOn === null || archivedAt === null) continue;
+      if (closedAt?.getTime() !== archivedAt.getTime()) continue;
+      const archived = archivedBy(verdict);
+      if (archived === undefined) continue;
+      const [archivedId, againstId] =
+        archived === 'champion' ? [championId, challengerId] : [challengerId, championId];
+      if (archivedId === positioningId) return { againstId, on: closedOn, verdict };
+    }
+    return null;
+  };
+  return rows.map(({ followUpDays, followUpMessages, archivedAt, ...row }) => ({
     ...row,
+    archived: archivedAt !== null,
+    archivedByBattle: archivedByBattleOf(row.id, archivedAt),
     attachments: attachments
       .filter(({ positioningId }) => positioningId === row.id)
       .map(({ positioningId: _joinedTo, ...attachment }) => attachment),
@@ -372,6 +398,10 @@ async function summaryBattles(
       horizon: battle.horizon,
       openedOn: battle.openedOn,
       open: isNull(battle.closedAt).mapWith(Boolean),
+      closedOn: battle.closedOn,
+      verdict: battle.verdict,
+      designated: battle.designated,
+      takeaway: battle.takeaway,
       startedTrials: trials.started,
       finishedTrials: trials.finished,
     })

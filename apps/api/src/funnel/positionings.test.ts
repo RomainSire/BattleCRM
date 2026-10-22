@@ -54,6 +54,7 @@ test('a new Positioning: its Stage, label, Channel, content and cadence, a messa
     attachments: [],
     used: false,
     trialCount: 0,
+    archivedByBattle: null,
   });
   expect(await positioningsOf(harness, user)).toEqual([positioning]);
 

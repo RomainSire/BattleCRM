@@ -148,7 +148,7 @@ _Avoid_: Cible (réservé à la Cible), quota, limite
 
 **Positionnement**:
 Une façon de se présenter et de relancer, rattachée à une Étape précise (par ex. « CV A », « mail d'accroche B ») : un libellé, une description et des pièces jointes optionnelles, et une Cadence de relance avec un message facultatif par rang (pré-remplie depuis le Positionnement dont il est dérivé, sinon avec la Cadence par défaut). Il fixe le canal utilisé (deux canaux = deux Positionnements). Figé dès son premier Essai, messages de relance compris (seule une faute de frappe dans le libellé reste corrigible) : le modifier revient à créer une **copie modifiée**, un nouveau Positionnement qui indique de quel Positionnement il est dérivé. Dupliquer un Positionnement, même jamais utilisé, crée aussi une copie modifiée. Une copie modifiée reprend les pièces jointes de son original ; figées avec lui, elles se joignent et se retirent tant qu'il n'a servi à aucun Essai. Un Positionnement battu est archivé ; l'Utilisateur peut aussi archiver à la main un Positionnement qui n'est ni Champion ni dans une Battle ouverte. Un Positionnement archivé reste consultable, peut être désarchivé et peut revenir plus tard comme Challenger. Seul un Positionnement jamais utilisé peut être supprimé ; une fois utilisé, on l'archive. Le Challenger d'une Battle abandonnée n'est pas battu : il reste disponible. Ne tester qu'une chose à la fois relève de la responsabilité de l'Utilisateur.
-_EN_: Positioning; modified copy; frozen; lineage (an original and its modified copies, shown under it); attachment (avoid: pitch, template, variant, version)
+_EN_: Positioning; modified copy; frozen; lineage (an original and its modified copies, shown under it); attachment; beaten (archived by the closing of a Battle it lost) (avoid: pitch, template, variant, version)
 _Avoid_: Variante, template, pitch
 
 **Battle**:
@@ -167,7 +167,7 @@ _EN_: Champion
 
 **Historique des Champions**:
 La succession des Champions d'une Étape, Battle après Battle, avec le Verdict et l'Enseignement de chaque Battle ; elle montre la progression de l'Utilisateur. Elle distingue ce que les données ont prouvé de ce que l'Utilisateur a désigné.
-_EN_: Champion history; winners marked Proven or Designated
+_EN_: Champion history; winners marked Proven or Designated, a Champion that only keeps its title (draw, not enough data, abandoned) marked Title kept
 
 **Enseignement**:
 Une note libre et optionnelle sur une Battle close : ce que l'Utilisateur en retient, quel que soit le Verdict. Saisie à la clôture et modifiable ensuite, elle figure dans l'Historique des Champions et n'entre dans aucun calcul.

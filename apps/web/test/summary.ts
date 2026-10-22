@@ -97,6 +97,7 @@ export const positioning = (
     attachments: [],
     used: false,
     trialCount: 0,
+    archivedByBattle: null,
     ...fields,
   } satisfies SummaryPositioning);
 
@@ -118,6 +119,10 @@ export const battle = (
     startedTrials: 0,
     finishedTrials: 0,
     trials: { champion: NO_TRIALS, challenger: NO_TRIALS },
+    closedOn: null,
+    verdict: null,
+    designated: false,
+    takeaway: null,
     ...fields,
   } satisfies SummaryBattle);
 
