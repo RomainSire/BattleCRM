@@ -787,5 +787,79 @@
   "last_stage_add_to_circle": "Add to Circle",
   "last_stage_stay": "Stay Prospecting at {stage}",
   "thread_stage_changed": "Stage: {from} → {to}",
-  "thread_stage_back": "Back: {from} → {to}"
+  "thread_stage_back": "Back: {from} → {to}",
+  "battle_state_too_early": "too early",
+  "battle_state_in_progress": "in progress",
+  "battle_state_conclusive": "conclusive",
+  "battle_state_horizon": "Horizon reached",
+  "win_rule_conclusive": "{winner} has a {percent}% chance of doing better than {loser}. The Battle is conclusive.",
+  "win_rule_in_progress": "{leader} has a {percent}% chance of doing better than {other}. It takes {threshold}% to conclude.",
+  "win_rule_draw": "Horizon reached without a winner: draw. {champion} keeps its title.",
+  "win_rule_not_enough_data": "Horizon reached with too few successes: not enough data. {champion} keeps its title.",
+  "win_rule_too_early": "Too early to conclude. {trend} Still missing: {missing}.",
+  "win_rule_leads": "{positioning} leads for now.",
+  "win_rule_no_trend": "No clear trend for now.",
+  "win_rule_missing_finished": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} finished Trial for {positioning}",
+        "countPlural=*": "{count} finished Trials for {positioning}"
+      }
+    }
+  ],
+  "win_rule_missing_finished_short": "{count} for {positioning}",
+  "win_rule_missing_successes": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} success in all",
+        "countPlural=*": "{count} successes in all"
+      }
+    }
+  ],
+  "battles_row_counts": "{champion}+{challenger} finished · {successes} successes",
+  "battle_indicative": "indicative until the minimum is reached",
+  "battle_banner_conclusive_title": "Conclusive.",
+  "battle_banner_conclusive": "{winner} wins by the Win rule.",
+  "battle_banner_horizon_title": "Horizon reached.",
+  "battle_banner_horizon": "No more assignments: the Battle awaits its closing.",
+  "battle_tab_follow": "Progress",
+  "battle_tab_trials": "Trials",
+  "battle_tab_by_target": "By Target",
+  "battle_progress_side": "{positioning}: {finished}/{minimum} finished · {started}/{horizon} started",
+  "battle_progress_successes": "Successes in all: {successes}/{minimum}",
+  "battle_meta_criterion": "Success criterion: {criterion}",
+  "battle_meta_target": "Target: {target}",
+  "battle_meta_all_targets": "all",
+  "battle_meta_threshold": "Confidence threshold: {percent}%",
+  "battle_meta_horizon": "Horizon: {horizon}",
+  "battle_trials_contact": "Contact",
+  "battle_trials_positioning": "Positioning",
+  "battle_trials_started": "Started",
+  "battle_trials_outcome": "Outcome",
+  "battle_trials_editable": "The outcome can be changed while the Battle is open.",
+  "battle_trials_empty": "No Trial yet.",
+  "battle_trials_load_error": "The Trials could not be loaded. Try again in a moment.",
+  "battle_trial_outcome_label": "Outcome of the Trial of {contact}: {outcome}",
+  "battle_outcome_in_progress": "In progress",
+  "battle_outcome_cancel": "Canceled…",
+  "battle_outcome_changed_toast": "Trial of {contact}: {outcome}.",
+  "battle_cancel_trial_title": "Cancel the Trial of {contact}",
+  "battle_cancel_trial": "Cancel the Trial",
+  "battle_cancel_trial_note": "A canceled Trial does not count in the Battle.",
+  "battle_trial_closed": "This Battle was closed in the meantime.",
+  "battle_trial_elsewhere": "This Contact has a Trial in progress elsewhere: settle it first.",
+  "battle_trial_not_prospecting": "This Contact is no longer Prospecting: its Trial cannot resume.",
+  "battle_trial_already_tried": "This Contact already has another Trial in this Battle.",
+  "battle_trial_behind": "This Trial changed on another device: check, then try again.",
+  "battle_by_target_target": "Target",
+  "battle_by_target_cell": "{successes} successes out of {finished}",
+  "battle_by_target_note": "For information only: the Verdict covers all Targets. Finished Trials only.",
+  "battle_by_target_consultancy": "Consultancy",
+  "battle_by_target_end_client": "End clients",
+  "battle_by_target_unknown": "Unknown Target",
+  "nav_battle_conclusive": "Battle conclusive"
 }

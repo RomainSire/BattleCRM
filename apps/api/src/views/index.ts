@@ -1,4 +1,6 @@
 import type {
+  BattleTrial,
+  TrialOutcome,
   Summary,
   SummaryBattle,
   SummaryChanges,
@@ -7,7 +9,7 @@ import type {
   SummaryPositioning,
   SummaryStage,
 } from '@battlecrm/contract';
-import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 
 import type { AppEnv } from '../app.ts';
@@ -377,11 +379,79 @@ async function summaryBattles(
     .leftJoin(trials, eq(trials.battleId, battle.id))
     .where(and(eq(battle.userId, userId), ids && inArray(battle.id, ids)))
     .orderBy(battle.openedAt, battle.id);
+  // Its Trials per Positioning and outcome, the canceled ones aside: what the Win rule reads.
+  const outcomes = await tx
+    .select({
+      battleId: trial.battleId,
+      positioningId: trial.positioningId,
+      outcome: trial.outcome,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(trial)
+    .where(
+      and(
+        eq(trial.userId, userId),
+        ne(trial.outcome, 'canceled'),
+        ids && inArray(trial.battleId, ids),
+      ),
+    )
+    .groupBy(trial.battleId, trial.positioningId, trial.outcome);
+  const countsOf = (battleId: string, positioningId: string) => {
+    const count = (outcome: TrialOutcome) =>
+      outcomes.find(
+        (row) =>
+          row.battleId === battleId &&
+          row.positioningId === positioningId &&
+          row.outcome === outcome,
+      )?.count ?? 0;
+    return {
+      successes: count('success'),
+      noResults: count('no_result'),
+      inProgress: count('in_progress'),
+    };
+  };
   return rows.map(({ startedTrials, finishedTrials, ...row }) => ({
     ...row,
     startedTrials: startedTrials ?? 0,
     finishedTrials: finishedTrials ?? 0,
+    trials: {
+      champion: countsOf(row.id, row.championId),
+      challenger: countsOf(row.id, row.challengerId),
+    },
   }));
+}
+
+/**
+ * The Trials of a Battle, read on demand by its panel (spec UX §5.5): the latest first, each with its
+ * Contact, Positioning, day, outcome and Target. `undefined` when the User has no such Battle.
+ */
+async function battleTrials(
+  tx: Transaction,
+  userId: string,
+  battleId: string,
+): Promise<BattleTrial[] | undefined> {
+  const [found] = await tx
+    .select({ id: battle.id })
+    .from(battle)
+    .where(and(eq(battle.userId, userId), eq(battle.id, battleId)));
+  if (!found) return undefined;
+  return tx
+    .select({
+      id: trial.id,
+      contactId: trial.contactId,
+      positioningId: trial.positioningId,
+      startedOn: interaction.localDate,
+      outcome: trial.outcome,
+      target: trial.target,
+      cancelReason: trial.cancelReason,
+    })
+    .from(trial)
+    .innerJoin(
+      interaction,
+      and(eq(interaction.userId, userId), eq(interaction.id, trial.interactionId)),
+    )
+    .where(and(eq(trial.userId, userId), eq(trial.battleId, battleId)))
+    .orderBy(desc(interaction.occurredAt), desc(trial.id));
 }
 
 /** Every Organization of the User, or the ones a gesture touched, by name. */
@@ -515,6 +585,16 @@ export function createViews({ clock, requireUser }: { clock: Clock; requireUser:
         (await withUser(userId, (tx) => contactRecord(tx, userId, contactId)));
       if (!record) return c.json({ error: 'not_found' as const }, 404);
       return c.json(record, 200);
+    })
+    // The Trials of a Battle, for its panel (spec UX §5.5): Trials and By Target.
+    .get('/battles/:id/trials', requireUser, async (c) => {
+      const { userId } = c.var;
+      const battleId = idOf(c.req.param('id'));
+      // Another User's Battle, an unknown one and an id that is none answer alike.
+      const trials =
+        battleId !== null && (await withUser(userId, (tx) => battleTrials(tx, userId, battleId)));
+      if (!trials) return c.json({ error: 'not_found' as const }, 404);
+      return c.json({ trials }, 200);
     });
   return { routes };
 }

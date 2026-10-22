@@ -1,8 +1,11 @@
 import { m } from '@battlecrm/i18n';
+import { useQuery } from '@tanstack/react-query';
 import { Keyboard, Plus, Search } from 'lucide-react';
 import { useId } from 'react';
 
 import { Button } from '../components/ui/button.tsx';
+import { useApi } from '../session.ts';
+import { hasConclusiveBattle, summaryQuery } from '../summary.ts';
 import { useSettings } from '../settings/use-settings.ts';
 import { Account } from './account.tsx';
 import { Kbd } from './kbd.tsx';
@@ -17,6 +20,7 @@ import type { NavigationEntry } from './navigation.ts';
 export function Sidebar({ onAdd }: { onAdd: () => void }) {
   // A key that does nothing is not shown (spec UX §3.3).
   const { singleKeyShortcuts } = useSettings();
+  const dots = useDots();
   return (
     <nav
       aria-label={m.main_menu()}
@@ -49,7 +53,7 @@ export function Sidebar({ onAdd }: { onAdd: () => void }) {
         {singleKeyShortcuts && <Kbd>N</Kbd>}
       </Button>
       <NavGroup label={m.prospecting()} entries={prospecting} />
-      <NavGroup label={m.experimentation()} entries={experimentation} />
+      <NavGroup label={m.experimentation()} entries={experimentation} dots={dots} />
       <div className="mt-auto flex flex-col gap-0.5 border-t pt-2">
         <NavLink entry={settings} className="h-8 px-2" />
         <Button
@@ -69,7 +73,21 @@ export function Sidebar({ onAdd }: { onAdd: () => void }) {
   );
 }
 
-function NavGroup({ label, entries }: { label: string; entries: NavigationEntry[] }) {
+/** The dots of the menu (spec UX §3.1): a teal one on Battles while a Battle is conclusive. */
+function useDots(): Partial<Record<NavigationEntry['to'], string>> {
+  const { data: summary } = useQuery(summaryQuery(useApi()));
+  return summary && hasConclusiveBattle(summary) ? { '/battles': m.nav_battle_conclusive() } : {};
+}
+
+function NavGroup({
+  label,
+  entries,
+  dots = {},
+}: {
+  label: string;
+  entries: NavigationEntry[];
+  dots?: Partial<Record<NavigationEntry['to'], string>>;
+}) {
   const labelId = useId();
   return (
     <div className="mt-3 flex flex-col gap-0.5">
@@ -82,7 +100,7 @@ function NavGroup({ label, entries }: { label: string; entries: NavigationEntry[
       <ul aria-labelledby={labelId} className="flex flex-col gap-0.5">
         {entries.map((entry) => (
           <li key={entry.to}>
-            <NavLink entry={entry} className="h-8 px-2" />
+            <NavLink entry={entry} className="h-8 px-2" dot={dots[entry.to]} />
           </li>
         ))}
       </ul>

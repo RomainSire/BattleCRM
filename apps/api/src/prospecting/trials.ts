@@ -1,9 +1,15 @@
-import { TARGETS, type SettledTrialOutcome, type WithoutTrialReason } from '@battlecrm/contract';
+import {
+  TARGETS,
+  TRIAL_OUTCOMES,
+  type SettledTrialOutcome,
+  type TrialOutcome,
+  type WithoutTrialReason,
+} from '@battlecrm/contract';
 import { chooseAssignment, targetOf, type Target } from '@battlecrm/domain';
 import { and, eq, ne, notExists, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { openBattleToAssignAt } from '../battles/index.ts';
+import { isBattleOpen, openBattleToAssignAt } from '../battles/index.ts';
 import type { Transaction } from '../db/index.ts';
 import { organizationTypeOf } from '../organizations/index.ts';
 import type { Random } from '../random.ts';
@@ -391,4 +397,104 @@ export async function anyTrialWith(tx: Transaction, userId: string, positioningI
     .where(and(eq(trial.userId, userId), eq(trial.positioningId, positioningId)))
     .limit(1);
   return found !== undefined;
+}
+
+/** The Contact of a Trial a route names, `undefined` when the User has no such Trial. */
+export async function contactOfTrial(tx: Transaction, userId: string, trialId: string) {
+  const [found] = await tx
+    .select({ contactId: trial.contactId })
+    .from(trial)
+    .where(and(eq(trial.userId, userId), eq(trial.id, trialId)));
+  return found?.contactId;
+}
+
+/** The outcome of a Trial as a change keeps it, to put it back with “Undo”. */
+export const trialOutcomeOf = z.object({
+  outcome: z.enum(TRIAL_OUTCOMES),
+  cancelReason: z.string().nullable(),
+  settledAt: z.iso.datetime().nullable(),
+});
+
+/** Writes the outcome of a Trial, as a change or its “Undo” leaves it. */
+const writeOutcome = (
+  tx: Transaction,
+  userId: string,
+  trialId: string,
+  { outcome, cancelReason, settledAt }: z.infer<typeof trialOutcomeOf>,
+) =>
+  tx
+    .update(trial)
+    .set({ outcome, cancelReason, settledAt: settledAt === null ? null : new Date(settledAt) })
+    .where(and(eq(trial.userId, userId), eq(trial.id, trialId)));
+
+/**
+ * Changes the outcome of a Trial while its Battle is open (CONTEXT.md, Trial), its Contact locked:
+ * back in progress only for a Contact Prospecting without another Trial in progress; counted again
+ * only while its Contact has no other Trial counted in the Battle. What it was, for “Undo”.
+ */
+export async function changeTrialOutcome(
+  tx: Transaction,
+  { userId, contactId, trialId }: { userId: string; contactId: string; trialId: string },
+  {
+    outcome,
+    cancelReason,
+    isProspecting,
+  }: { outcome: TrialOutcome; cancelReason?: string | undefined; isProspecting: boolean },
+  now: Date,
+) {
+  const byId = and(eq(trial.userId, userId), eq(trial.id, trialId));
+  // The Battle first, then the Trial: the order a closing takes them in. A Trial never changes Battle.
+  const [inBattle] = await tx.select({ battleId: trial.battleId }).from(trial).where(byId);
+  if (!inBattle) return refusal('not_found');
+  if (!(await isBattleOpen(tx, userId, inBattle.battleId))) return refusal('battle_closed');
+  const [found] = await tx
+    .select({
+      battleId: trial.battleId,
+      outcome: trial.outcome,
+      cancelReason: trial.cancelReason,
+      settledAt: trial.settledAt,
+    })
+    .from(trial)
+    .where(byId)
+    .for('update');
+  if (!found) return refusal('not_found');
+  if (found.outcome === outcome) return refusal('same_outcome');
+  if (outcome === 'in_progress') {
+    if (!isProspecting) return refusal('not_prospecting');
+    if (await hasTrialInProgress(tx, userId, contactId)) return refusal('trial_in_progress');
+  }
+  if (found.outcome === 'canceled') {
+    const [counted] = await tx
+      .select({ id: trial.id })
+      .from(trial)
+      .where(and(countedIn(userId, found.battleId), eq(trial.contactId, contactId)));
+    if (counted) return refusal('already_tried');
+  }
+  await writeOutcome(tx, userId, trialId, {
+    outcome,
+    cancelReason: outcome === 'canceled' ? (cancelReason ?? null) : null,
+    settledAt: outcome === 'in_progress' ? null : now.toISOString(),
+  });
+  return {
+    battleId: found.battleId,
+    was: {
+      outcome: found.outcome,
+      cancelReason: found.cancelReason,
+      settledAt: found.settledAt?.toISOString() ?? null,
+    },
+  };
+}
+
+/**
+ * Puts the outcome of a Trial back as it was, as “Undo” takes its change back: only while its Battle
+ * is open, whose closing settled its Trials for good. Whether it was put back.
+ */
+export async function restoreTrialOutcome(
+  tx: Transaction,
+  { userId, battleId, trialId }: { userId: string; battleId: string; trialId: string },
+  was: z.infer<typeof trialOutcomeOf>,
+) {
+  if (!(await isBattleOpen(tx, userId, battleId))) return false;
+  await writeOutcome(tx, userId, trialId, was);
+  return true;
 }

@@ -18,6 +18,7 @@ import {
   REPLY_TRIAL_OUTCOMES,
   SETTLED_TRIAL_OUTCOMES,
   STATUS_REASON_MAX_LENGTH,
+  TRIAL_OUTCOMES,
 } from '@battlecrm/contract';
 import {
   canNoteInteraction,
@@ -86,17 +87,21 @@ import { contact, followUp, interaction, statusChange } from './tables.ts';
 import {
   anyAssignmentIn,
   anyTrialWith,
+  changeTrialOutcome,
+  contactOfTrial,
   droppedAssignment,
   dropAssignment,
   hasAssignment,
   hasTrialInProgress,
   removeTrial,
   restoreAssignment,
+  restoreTrialOutcome,
   revealAssignment,
   settledTrial,
   settleTrial,
   startTrial,
   traceDeviation,
+  trialOutcomeOf,
   trialToStart,
   unsettleTrial,
 } from './trials.ts';
@@ -1003,6 +1008,73 @@ const changeContactStage: Gesture<
   },
 };
 
+/**
+ * The outcome of a Trial changed from the Trials of its Battle (spec UX §5.5): any of them, canceled
+ * with its reason.
+ */
+const changeTrialOutcomeRequest = z
+  .object({
+    outcome: z.enum(TRIAL_OUTCOMES),
+    cancelReason: optionalText(CANCEL_REASON_MAX_LENGTH),
+  })
+  .refine(({ outcome, cancelReason }) => hasCancelReason({ trialOutcome: outcome, cancelReason }));
+
+/** What a change of outcome retains: the Trial, its Battle, and its outcome before. */
+const trialOutcomeChanged = z.object({
+  trialId: z.uuid(),
+  battleId: z.uuid(),
+  was: trialOutcomeOf,
+});
+
+/** The Contact of a Trial, as a route names it through the Trial: gestures on its Trials are its own. */
+const contactOfTrialSubject: GestureSubject<ContactPlace> = {
+  ...contactSubject,
+  of: contactOfTrial,
+};
+
+/**
+ * Change the outcome of a Trial while its Battle is open (spec UX §5.5, CONTEXT.md, Trial): from the
+ * Trials of the Battle, with the Success criterion recalled. A gesture on its Contact, whose Trial in
+ * progress it may settle or bring back.
+ */
+const changeOutcome: Gesture<
+  'trial_outcome_changed',
+  ContactPlace,
+  z.infer<typeof changeTrialOutcomeRequest>,
+  z.infer<typeof trialOutcomeChanged>,
+  | 'not_found'
+  | 'battle_closed'
+  | 'same_outcome'
+  | 'not_prospecting'
+  | 'trial_in_progress'
+  | 'already_tried'
+> = {
+  kind: 'trial_outcome_changed',
+  subject: contactOfTrialSubject,
+  async write({ tx, userId, subjectId: contactId, namedId: trialId, subject, input, now }) {
+    const changed = await changeTrialOutcome(
+      tx,
+      { userId, contactId, trialId },
+      { ...input, isProspecting: subject.status === 'prospecting' },
+      now,
+    );
+    if ('error' in changed) return changed;
+    return {
+      retained: { trialId, ...changed },
+      touched: touched({ contactIds: [contactId], battleIds: [changed.battleId] }),
+    };
+  },
+  retained: trialOutcomeChanged,
+  /**
+   * The Trial gets its outcome back while its Battle is open; a later gesture on its Contact would
+   * have closed the way.
+   */
+  async inverse(tx, { userId, subjectId: contactId, retained: { trialId, battleId, was } }) {
+    if (!(await restoreTrialOutcome(tx, { userId, battleId, trialId }, was))) return 'superseded';
+    return touched({ contactIds: [contactId], battleIds: [battleId] });
+  },
+};
+
 /** What “No result…” retains: the Trial it settled, the change of Status it made. */
 const trialSettled = z.object({
   settledTrial,
@@ -1262,6 +1334,9 @@ export function createProspecting<Changes>({
     .post('/contacts/:id/settle-trial', requireUser, jsonBody(settleTrialRequest), (c) =>
       perform(c, settleTrialGesture, c.req.valid('json')),
     )
+    .post('/trials/:id/change-outcome', requireUser, jsonBody(changeTrialOutcomeRequest), (c) =>
+      perform(c, changeOutcome, c.req.valid('json')),
+    )
     // Reveal the Assignment (spec UX §6.1): opening “Send to” at a Stage with an open Battle. Not a
     // gesture: nothing takes it back, it stays reserved (ADR 0002).
     .post('/contacts/:id/reveal-assignment', requireUser, async (c) => {
@@ -1308,6 +1383,7 @@ export function createProspecting<Changes>({
     recordReply,
     usePositioning,
     settleTrialGesture,
+    changeOutcome,
   ] as const;
   return { routes, gestures };
 }

@@ -42,9 +42,13 @@ import {
   type SummaryPositioning,
 } from '../summary.ts';
 
-/** The panels of an opening, carried by the address (ST-70): the wizard, or the creation of a Challenger. */
-export const BATTLE_PANELS = ['open', 'new-positioning'] as const;
+/**
+ * The panels of the Battles screen, carried by the address (ST-70): the progress of an open Battle,
+ * or an opening, its wizard or the creation of a Challenger.
+ */
+export const BATTLE_PANELS = ['progress', 'open', 'new-positioning'] as const;
 export type BattlePanel = (typeof BATTLE_PANELS)[number];
+export type OpeningPanel = Exclude<BattlePanel, 'progress'>;
 
 type Stage = Summary['stages'][number];
 
@@ -120,8 +124,8 @@ export function OpenBattlePanels({
 }: {
   summary: Summary;
   stage: Stage;
-  panel: BattlePanel;
-  onPanel: (panel: BattlePanel) => void;
+  panel: OpeningPanel;
+  onPanel: (panel: OpeningPanel) => void;
   onClose: () => void;
 }) {
   if (panel === 'new-positioning') {

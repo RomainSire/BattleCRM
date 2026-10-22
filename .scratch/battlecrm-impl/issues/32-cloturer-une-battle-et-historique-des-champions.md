@@ -11,4 +11,6 @@
 - [ ] Confirmation, pas d'« Annuler » ; Enseignement facultatif, mis en avant pour égalité et données insuffisantes, modifiable ensuite
 - [ ] Microcopie de la spec UX §6.9 et §10 ; « Battu » n'est jamais un titre à l'écran
 - [ ] Historique des Champions : une lignée par Étape, Champion, date, Enseignement, Verdict sur les flèches ; prouvé (fond teal) / désigné (hachuré, pointillés) / titre conservé (neutre), écrit en toutes lettres, avec légende
+- [ ] « Clôturer… » sur la ligne de l'onglet Battles et dans le bandeau « Concluante » / « Horizon atteint » du Suivi, à la place du libellé d'état (reporté du ticket 31)
+- [ ] Onglet « Historique » du panneau d'une Étape (quatrième onglet, spec UX §5.5), et panneau d'une Étape sans Battle ouverte (reporté du ticket 31)
 - [ ] Mobile : consultation et clôture

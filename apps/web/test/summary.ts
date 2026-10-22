@@ -100,6 +100,9 @@ export const positioning = (
     ...fields,
   } satisfies SummaryPositioning);
 
+/** No Trial for a Positioning of a Battle. */
+const NO_TRIALS = { successes: 0, noResults: 0, inProgress: 0 };
+
 /** An open Battle, for every Target, at 85 % and an Horizon of 25, opened on 2026-01-05. */
 export const battle = (
   fields: Partial<SummaryBattle> & Pick<SummaryBattle, 'stageId' | 'championId' | 'challengerId'>,
@@ -114,6 +117,7 @@ export const battle = (
     open: true,
     startedTrials: 0,
     finishedTrials: 0,
+    trials: { champion: NO_TRIALS, challenger: NO_TRIALS },
     ...fields,
   } satisfies SummaryBattle);
 

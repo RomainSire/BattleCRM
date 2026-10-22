@@ -396,6 +396,9 @@ importers:
 
   packages/contract:
     dependencies:
+      '@battlecrm/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@battlecrm/i18n':
         specifier: workspace:*
         version: link:../i18n

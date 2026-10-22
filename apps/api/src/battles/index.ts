@@ -82,6 +82,19 @@ export async function openBattleToAssignAt(tx: Transaction, userId: string, stag
 }
 
 /**
+ * Whether a Battle is open, its row shared until the transaction ends: its closing waits for a change
+ * of outcome of one of its Trials under way (CONTEXT.md, Trial).
+ */
+export async function isBattleOpen(tx: Transaction, userId: string, battleId: string) {
+  const [found] = await tx
+    .select({ open: isNull(battle.closedAt).mapWith(Boolean) })
+    .from(battle)
+    .where(byId(userId, battleId))
+    .for('share');
+  return found?.open === true;
+}
+
+/**
  * Whether a Battle assigned anything (ADR 0002): `prospecting` keeps the Assignments and Trials, and
  * answers, handed by the composition root as `funnel` gets `PositioningUses`.
  */

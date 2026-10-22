@@ -491,4 +491,5 @@ export const CONTACT_GESTURE_KINDS = [
   'reply_recorded',
   'positioning_used',
   'trial_settled',
+  'trial_outcome_changed',
 ] as const;

@@ -53,6 +53,10 @@ test('the first Battle of a Stage: its initial Champion against a Challenger, it
     open: true,
     startedTrials: 0,
     finishedTrials: 0,
+    trials: {
+      champion: { successes: 0, noResults: 0, inProgress: 0 },
+      challenger: { successes: 0, noResults: 0, inProgress: 0 },
+    },
   });
   expect((await summaryOf(harness, user)).battles).toEqual([battle]);
 

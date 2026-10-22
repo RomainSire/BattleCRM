@@ -5,7 +5,7 @@ import type {
   SummaryContact,
   SummaryPositioning,
 } from '@battlecrm/contract';
-import { localDay } from '@battlecrm/domain';
+import { evaluateWinRule, localDay, type WinRule, type WinRuleCounts } from '@battlecrm/domain';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 
 import type { ApiClient } from './session.ts';
@@ -26,6 +26,9 @@ export const SUMMARY_KEY = ['summary'];
 
 /** What the record of a Contact reads beyond the summary, read on demand: its note and its thread. */
 export const contactRecordKey = (contactId: string) => ['contact-record', contactId];
+
+/** What the panel of a Battle reads beyond the summary, on demand: its Trials. */
+export const battleTrialsKey = (battleId: string) => ['battle-trials', battleId];
 
 /** Read once for the whole app, kept on the device (device-data.ts), then updated by each gesture. */
 export const summaryQuery = (api: ApiClient) =>
@@ -69,6 +72,28 @@ export function battlesOf(summary: Summary): SummaryBattle[] {
 /** The open Battle of a Stage, if it has one: at most one (CONTEXT.md, Battle). */
 export const openBattleAt = (summary: Summary, stageId: string) =>
   battlesOf(summary).find((battle) => battle.stageId === stageId && battle.open);
+
+/** No Trial on either side. */
+const NO_TRIALS: WinRuleCounts = {
+  champion: { successes: 0, noResults: 0, inProgress: 0 },
+  challenger: { successes: 0, noResults: 0, inProgress: 0 },
+};
+
+/** Where a Battle stands by the Win rule (ADR 0001), computed as the API would (ADR 0012). */
+export function winRuleOf(battle: SummaryBattle): WinRule {
+  return evaluateWinRule(trialCountsOf(battle), battle.threshold, battle.horizon);
+}
+
+/** The Trials of a Battle per Positioning, the canceled ones aside. */
+export function trialCountsOf(battle: SummaryBattle): WinRuleCounts {
+  // Fallback: a summary kept on the device by a version from before the counts carries none.
+  const trials: WinRuleCounts | undefined = battle.trials;
+  return trials ?? NO_TRIALS;
+}
+
+/** Whether an open Battle is conclusive: the dot on the Battles entry (spec UX §3.1). */
+export const hasConclusiveBattle = (summary: Summary) =>
+  battlesOf(summary).some((battle) => battle.open && winRuleOf(battle).state === 'conclusive');
 
 /** The last Battle of a Stage, open or closed, if it had one. */
 export const lastBattleAt = (summary: Summary, stageId: string) =>
@@ -130,6 +155,11 @@ export async function applySummaryChanges(
 ): Promise<void> {
   for (const { id } of changes.contacts) {
     void queryClient.invalidateQueries({ queryKey: contactRecordKey(id) });
+  }
+  // Fallback: an answer from a version from before Battles carries none.
+  const battlesChanged: SummaryBattle[] | undefined = changes.battles;
+  for (const { id } of battlesChanged ?? []) {
+    void queryClient.invalidateQueries({ queryKey: battleTrialsKey(id) });
   }
   // A read under way started before the gesture: its answer must not overwrite these rows.
   await queryClient.cancelQueries({ queryKey: SUMMARY_KEY });

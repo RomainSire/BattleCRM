@@ -92,8 +92,8 @@ export type BattleTarget = (typeof TARGETS)[number];
 export const BATTLE_THRESHOLDS = [0.8, 0.85, 0.9, 0.95] as const;
 export const DEFAULT_BATTLE_THRESHOLD = 0.85;
 export const DEFAULT_BATTLE_HORIZON = 25;
-export const BATTLE_MINIMUM_FINISHED = 10;
-export const BATTLE_MINIMUM_SUCCESSES = 5;
+// The minimum is the Win rule's own (packages/domain).
+export { BATTLE_MINIMUM_FINISHED, BATTLE_MINIMUM_SUCCESSES } from '@battlecrm/domain';
 export const BATTLE_HORIZON_MAX = 100;
 export const SUCCESS_CRITERION_MAX_LENGTH = 200;
 
@@ -215,6 +215,13 @@ export const summaryPositioning = z.strictObject({
 });
 export type SummaryPositioning = z.infer<typeof summaryPositioning>;
 
+/** The Trials of one Positioning in a Battle, the canceled ones aside (packages/domain, `TrialCounts`). */
+const trialCounts = z.strictObject({
+  successes: z.int(),
+  noResults: z.int(),
+  inProgress: z.int(),
+});
+
 /** A Battle as the working summary carries it, the earliest first (spec UX §5.5). */
 export const summaryBattle = z.strictObject({
   id: z.uuid(),
@@ -232,8 +239,27 @@ export const summaryBattle = z.strictObject({
   /** Its Trials started, the canceled ones aside, and among them the finished ones (spec UX §6.7). */
   startedTrials: z.int(),
   finishedTrials: z.int(),
+  /** Its Trials per Positioning, the canceled ones aside: what the Win rule reads (ADR 0001). */
+  trials: z.strictObject({ champion: trialCounts, challenger: trialCounts }),
 });
 export type SummaryBattle = z.infer<typeof summaryBattle>;
+
+/** A Trial of a Battle, as its panel reads it on demand (spec UX §5.5), the latest first. */
+export const battleTrial = z.strictObject({
+  id: z.uuid(),
+  contactId: z.uuid(),
+  positioningId: z.uuid(),
+  /** The local day of the use that started it. */
+  startedOn: z.iso.date(),
+  outcome: z.enum(TRIAL_OUTCOMES),
+  /** The Target of the Contact when it started. */
+  target: z.enum(TARGETS),
+  cancelReason: z.string().nullable(),
+});
+export type BattleTrial = z.infer<typeof battleTrial>;
+
+/** What `GET /api/battles/:id/trials` answers. */
+export const battleTrials = z.strictObject({ trials: z.array(battleTrial) });
 
 /** A value in effect now, and as the User chose it last. */
 const dated = <Value extends z.ZodType>(value: Value) =>

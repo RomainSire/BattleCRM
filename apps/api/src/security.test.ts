@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { battleTrials } from '@battlecrm/contract';
 import { sql } from 'drizzle-orm';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -358,6 +359,49 @@ const CROSS_ACCESS: Record<
       body: { stageId: next },
     };
   },
+  'POST /api/trials/:id/change-outcome': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice, 'Jean Dupont', { status: 'prospecting' });
+    const { positioning } = await positioningOf(harness, alice);
+    const { positioning: challenger } = await createPositioning(
+      harness,
+      alice,
+      positioning.stageId,
+    );
+    const { battle } = await openBattle(harness, alice, {
+      stageId: positioning.stageId,
+      championId: positioning.id,
+      challengerId: challenger.id,
+    });
+    const { assignment } = await revealAssignment(harness, alice, contact.id);
+    if (!assignment) throw new Error('No Assignment revealed');
+    await usePositioning(harness, alice, contact.id, {
+      positioningId: assignment.positioningId,
+      occurredOn: '2026-01-05',
+    });
+    const read = await harness.app.request(`/api/battles/${battle.id}/trials`, {
+      headers: { Cookie: alice.cookie },
+    });
+    const { trials } = battleTrials.parse(await read.json());
+    return {
+      id: trials[0]?.id ?? '',
+      state: () => getJson(harness, alice, `/api/battles/${battle.id}/trials`),
+      body: { outcome: 'success' },
+    };
+  },
+  'GET /api/battles/:id/trials': async (harness, alice) => {
+    const { positioning } = await positioningOf(harness, alice);
+    const { positioning: challenger } = await createPositioning(
+      harness,
+      alice,
+      positioning.stageId,
+    );
+    const { battle } = await openBattle(harness, alice, {
+      stageId: positioning.stageId,
+      championId: positioning.id,
+      challengerId: challenger.id,
+    });
+    return { id: battle.id, state: () => getJson(harness, alice, '/api/summary') };
+  },
   'GET /api/contacts/:id/record': async (harness, alice) => {
     const { contact } = await addContact(harness, alice);
     return { id: contact.id, state: () => getJson(harness, alice, '/api/summary') };
@@ -436,8 +480,8 @@ const CROSS_ACCESS: Record<
 };
 
 test('the id of another User answers 404 and changes nothing, on every route that takes one', async () => {
-  // The Assignment of the Trial to settle takes one chance.
-  const harness = testApp({}, { chances: [0] });
+  // The Assignments of the Trials to settle and to change, one chance each.
+  const harness = testApp({}, { chances: [0, 0] });
   const routes = [
     ...new Set(
       harness.app.routes

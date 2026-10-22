@@ -38,3 +38,14 @@ export {
 } from './positioning.ts';
 export { chooseAssignment, type AssignmentCandidate } from './assignment.ts';
 export { isWindowElapsed, responseWindowEndsOn, type TrialWindow } from './trial.ts';
+export {
+  BATTLE_MINIMUM_FINISHED,
+  BATTLE_MINIMUM_SUCCESSES,
+  evaluateWinRule,
+  finishedTrials,
+  startedTrials,
+  type TrialCounts,
+  type WinRule,
+  type WinRuleCounts,
+  type WinRuleState,
+} from './win-rule.ts';
