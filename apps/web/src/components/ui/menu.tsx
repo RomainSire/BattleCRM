@@ -13,18 +13,20 @@ import {
 import { Button } from './button.tsx';
 
 /**
- * `⋯`: the actions that are not on the screen, in a menu (spec UX §5.3). With a `trigger`, a button
- * that says its `text`, named by its `label`.
+ * `⋯`: the actions that are not on the screen, in a menu (spec UX §5.3), named by its `label` where
+ * several share a screen. With a `trigger`, a button that says its `text`, named by its `label`.
  */
 function MoreActions({
   onAction,
   children,
   className,
+  label,
   trigger,
 }: {
   onAction: (key: Key) => void;
   children: ReactNode;
   className?: string;
+  label?: string;
   trigger?: { text: string; label: string };
 }) {
   return (
@@ -33,7 +35,7 @@ function MoreActions({
         <Button
           variant="outline"
           size="icon"
-          aria-label={m.more_actions()}
+          aria-label={label ?? m.more_actions()}
           className={cn('max-md:size-11', className)}
         >
           <Ellipsis />

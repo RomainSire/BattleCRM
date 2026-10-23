@@ -931,5 +931,50 @@
   "positioning_beaten": "battu par {by} le {date}",
   "history_takeaway": "« {takeaway} »",
   "positioning_archived_after_draw": "archivé après une égalité avec {by} le {date}",
-  "positioning_archived_not_enough_data": "archivé faute de données contre {by} le {date}"
+  "positioning_archived_not_enough_data": "archivé faute de données contre {by} le {date}",
+  "funnel_lane_needs_action": "À traiter",
+  "funnel_lane_waiting": "En attente",
+  "funnel_lane_no_next_step": "Sans prochaine action",
+  "funnel_stage_contacts": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Contact",
+        "countPlural=*": "{count} Contacts"
+      }
+    }
+  ],
+  "funnel_battle": "Battle : {champion} {championTrials}/{horizon} vs {challenger} {challengerTrials}/{horizon}",
+  "funnel_battle_label": "Battle ouverte : Champion {champion}, {championTrials} Essais sur {horizon} ; Challenger {challenger}, {challengerTrials} Essais sur {horizon}",
+  "funnel_no_battle": "Pas de Battle ouverte",
+  "funnel_stage_actions": "Actions de l'Étape {stage}",
+  "funnel_rename_stage": "Renommer",
+  "funnel_manage_stages": "Gérer les Étapes…",
+  "funnel_card_follow_up_overdue": "{followUp} · en retard · {days} j",
+  "funnel_card_follow_up_today": "{followUp} · aujourd'hui",
+  "funnel_card_follow_up_upcoming": "{followUp} · le {date}",
+  "funnel_card_trial_elapsed": "Essai « {label} » · délai dépassé",
+  "funnel_card_trial_waiting": "Essai « {label} » · réponse attendue d'ici le {date}",
+  "funnel_card_no_positioning": "Aucun Positionnement à cette Étape",
+  "funnel_drag": "Déplacer {name}",
+  "funnel_open_record": "Ouvrir la fiche",
+  "funnel_status_zones": "Changer d'État",
+  "funnel_filters": "Filtres",
+  "funnel_filter_search": "Nom ou Organisation",
+  "funnel_filter_target": "Cible",
+  "funnel_filter_battle": "Battle",
+  "funnel_filter_organization": "Organisation",
+  "funnel_filter_signal": "Signal",
+  "funnel_filter_all": "Tous",
+  "funnel_filter_in_battle": "Essai en cours dans une Battle",
+  "funnel_filter_trial_of": "Essai « {label} »",
+  "funnel_signal_overdue": "Relance en retard",
+  "funnel_signal_elapsed": "Délai dépassé",
+  "funnel_signal_no_next_step": "Sans prochaine action",
+  "funnel_no_match": "Aucun Contact En prospection ne correspond aux filtres.",
+  "funnel_clear_filters": "Effacer les filtres",
+  "funnel_empty": "Aucun Contact En prospection pour l'instant.",
+  "funnel_load_error": "Le Funnel n'a pas pu être chargé.",
+  "funnel_card_actions": "Actions de {name}"
 }

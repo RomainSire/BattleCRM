@@ -35,6 +35,7 @@ import { clearDeviceData } from './device-data.ts';
 import { OrganizationPage } from './organizations/organization-page.tsx';
 import { POSITIONING_PANELS } from './positionings/positioning-panel.tsx';
 import { PositioningsScreen } from './positionings/positionings-screen.tsx';
+import { FunnelScreen } from './funnel/funnel-screen.tsx';
 import { MoreScreen } from './screens/more-screen.tsx';
 import { Screen } from './screens/screen.tsx';
 import { configQuery, sessionQuery, type ApiClient } from './session.ts';
@@ -276,7 +277,19 @@ const organizationRoute = createRoute({
 const funnelRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/funnel',
-  component: () => <Screen title={m.funnel()} />,
+  // The Contact a gesture is open on, its record open beside the kanban, and its gesture (ST-70);
+  // anything else is dropped.
+  validateSearch: z.object({
+    contact: z.uuid().optional().catch(undefined),
+    panel: z.literal('record').optional().catch(undefined),
+    statusTo: statusToSearch,
+    stageTo: stageToSearch,
+    followUp: followUpSearch,
+    interaction: interactionSearch,
+    send: sendSearch,
+    trial: trialSearch,
+  }),
+  component: FunnelScreen,
 });
 
 const battlesRoute = createRoute({

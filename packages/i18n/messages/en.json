@@ -940,5 +940,50 @@
   "positioning_beaten": "beaten by {by} on {date}",
   "history_takeaway": "“{takeaway}”",
   "positioning_archived_after_draw": "archived after a draw with {by} on {date}",
-  "positioning_archived_not_enough_data": "archived for lack of data against {by} on {date}"
+  "positioning_archived_not_enough_data": "archived for lack of data against {by} on {date}",
+  "funnel_lane_needs_action": "Needs action",
+  "funnel_lane_waiting": "Waiting",
+  "funnel_lane_no_next_step": "No next step",
+  "funnel_stage_contacts": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Contact",
+        "countPlural=*": "{count} Contacts"
+      }
+    }
+  ],
+  "funnel_battle": "Battle: {champion} {championTrials}/{horizon} vs {challenger} {challengerTrials}/{horizon}",
+  "funnel_battle_label": "Open Battle: Champion {champion}, {championTrials} Trials of {horizon}; Challenger {challenger}, {challengerTrials} Trials of {horizon}",
+  "funnel_no_battle": "No open Battle",
+  "funnel_stage_actions": "Actions of the Stage {stage}",
+  "funnel_rename_stage": "Rename",
+  "funnel_manage_stages": "Manage Stages…",
+  "funnel_card_follow_up_overdue": "{followUp} · overdue · {days} d",
+  "funnel_card_follow_up_today": "{followUp} · today",
+  "funnel_card_follow_up_upcoming": "{followUp} · on {date}",
+  "funnel_card_trial_elapsed": "Trial “{label}” · window elapsed",
+  "funnel_card_trial_waiting": "Trial “{label}” · reply expected by {date}",
+  "funnel_card_no_positioning": "No Positioning at this Stage",
+  "funnel_drag": "Move {name}",
+  "funnel_open_record": "Open record",
+  "funnel_status_zones": "Change status",
+  "funnel_filters": "Filters",
+  "funnel_filter_search": "Name or Organization",
+  "funnel_filter_target": "Target",
+  "funnel_filter_battle": "Battle",
+  "funnel_filter_organization": "Organization",
+  "funnel_filter_signal": "Signal",
+  "funnel_filter_all": "All",
+  "funnel_filter_in_battle": "Trial in progress in a Battle",
+  "funnel_filter_trial_of": "Trial “{label}”",
+  "funnel_signal_overdue": "Overdue follow-up",
+  "funnel_signal_elapsed": "Window elapsed",
+  "funnel_signal_no_next_step": "No next step",
+  "funnel_no_match": "No Contact Prospecting matches the filters.",
+  "funnel_clear_filters": "Clear filters",
+  "funnel_empty": "No Contact Prospecting yet.",
+  "funnel_load_error": "The Funnel could not be loaded.",
+  "funnel_card_actions": "Actions for {name}"
 }

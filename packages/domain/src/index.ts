@@ -21,6 +21,14 @@ export {
   mondayOf,
   nextMondayAfter,
 } from './days.ts';
+export {
+  byUrgency,
+  contactAgenda,
+  isFollowUpDueIn,
+  type AgendaContact,
+  type AgendaRow,
+  type ContactAgenda,
+} from './agenda.ts';
 export { activityOn, followUpSignal, isFollowUpDue, type FollowUpSignal } from './follow-up.ts';
 export {
   canNoteInteraction,

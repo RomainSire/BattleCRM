@@ -578,6 +578,76 @@ function NextAction({
   );
 }
 
+/** The gestures a record opens, each kept by the address (ST-70). */
+export function useRecordGestures() {
+  return {
+    status: useStatusGesture(),
+    followUp: useFollowUpGesture(),
+    interaction: useInteractionGesture(),
+    send: useSendPositioning(),
+    trial: useTrialGesture(),
+    stage: useStageGesture(),
+  };
+}
+export type RecordGestures = ReturnType<typeof useRecordGestures>;
+
+/**
+ * The panels of the gestures open on a Contact, wherever they were opened from: its record, or its
+ * card in the Funnel (spec UX §1, one form per gesture). Out of any region: their Escape is their own.
+ */
+export function RecordGesturePanels({
+  contact,
+  summary,
+  gestures: { status, stage, followUp, interaction, send, trial },
+}: {
+  contact: SummaryContact;
+  summary: Summary;
+  gestures: RecordGestures;
+}) {
+  return (
+    <>
+      {status.gesture && (
+        <ChangeStatusPanel
+          key={`${contact.id}:${status.gesture}`}
+          contact={contact}
+          summary={summary}
+          gesture={status.gesture}
+          onClose={status.close}
+        />
+      )}
+      {stage.gesture && contact.status === 'prospecting' && (
+        <ChangeStagePanel
+          key={contact.id}
+          contact={contact}
+          summary={summary}
+          gesture={stage.gesture}
+          onClose={stage.close}
+          onChain={stage.chain}
+        />
+      )}
+      <FollowUpPanels
+        contact={contact}
+        summary={summary}
+        gesture={followUp.gesture}
+        onClose={followUp.close}
+      />
+      <InteractionPanels
+        contact={contact}
+        summary={summary}
+        gesture={interaction.gesture}
+        interaction={interaction}
+      />
+      <SendPanels contact={contact} summary={summary} send={send} />
+      <TrialPanels
+        contact={contact}
+        summary={summary}
+        gesture={trial.gesture}
+        onClose={trial.close}
+      />
+    </>
+  );
+}
+
 /**
  * The keys of the record that has the focus (spec UX §3.3): anywhere on its page, within its panel
  * only. `S` opens “Change status…”, `E` “Change stage…”, `P` Schedule or Edit the follow-up, `F`
@@ -585,11 +655,7 @@ function NextAction({
  */
 function useRecordKeys(
   contact: SummaryContact | undefined,
-  status: ReturnType<typeof useStatusGesture>,
-  followUp: ReturnType<typeof useFollowUpGesture>,
-  interaction: ReturnType<typeof useInteractionGesture>,
-  send: ReturnType<typeof useSendPositioning>,
-  stage: ReturnType<typeof useStageGesture>,
+  { status, followUp, interaction, send, stage }: RecordGestures,
   scope?: RefObject<HTMLElement | null>,
 ) {
   const onKey = (open: () => void) => (event: KeyboardEvent) => {
@@ -659,13 +725,9 @@ export function ContactPanel({
   const { summary, contact, isError } = useSummaryContact(contactId);
   const headingId = useId();
   const panelRef = useRef<HTMLElement>(null);
-  const status = useStatusGesture();
-  const followUp = useFollowUpGesture();
-  const interaction = useInteractionGesture();
-  const send = useSendPositioning();
-  const trial = useTrialGesture();
-  const stage = useStageGesture();
-  useRecordKeys(contact, status, followUp, interaction, send, stage, panelRef);
+  const gestures = useRecordGestures();
+  const { status, followUp, interaction, send, trial, stage } = gestures;
+  useRecordKeys(contact, gestures, panelRef);
   const close = (
     <Button variant="ghost" size="icon-sm" aria-label={m.close()} onPress={onClose}>
       <X />
@@ -752,44 +814,7 @@ export function ContactPanel({
         </Link>
       </section>
       {/* Out of the panel: its Escape is the gesture's own. */}
-      {status.gesture && (
-        <ChangeStatusPanel
-          key={`${contact.id}:${status.gesture}`}
-          contact={contact}
-          summary={summary}
-          gesture={status.gesture}
-          onClose={status.close}
-        />
-      )}
-      {stage.gesture && contact.status === 'prospecting' && (
-        <ChangeStagePanel
-          key={contact.id}
-          contact={contact}
-          summary={summary}
-          gesture={stage.gesture}
-          onClose={stage.close}
-          onChain={stage.chain}
-        />
-      )}
-      <FollowUpPanels
-        contact={contact}
-        summary={summary}
-        gesture={followUp.gesture}
-        onClose={followUp.close}
-      />
-      <InteractionPanels
-        contact={contact}
-        summary={summary}
-        gesture={interaction.gesture}
-        interaction={interaction}
-      />
-      <SendPanels contact={contact} summary={summary} send={send} />
-      <TrialPanels
-        contact={contact}
-        summary={summary}
-        gesture={trial.gesture}
-        onClose={trial.close}
-      />
+      <RecordGesturePanels contact={contact} summary={summary} gestures={gestures} />
     </>
   );
 }
@@ -799,13 +824,9 @@ export function ContactPage({ contactId }: { contactId: string }) {
   useLocale();
   const { summary, contact, isError } = useSummaryContact(contactId);
   const threadHeadingId = useId();
-  const status = useStatusGesture();
-  const followUp = useFollowUpGesture();
-  const interaction = useInteractionGesture();
-  const send = useSendPositioning();
-  const trial = useTrialGesture();
-  const stage = useStageGesture();
-  useRecordKeys(contact, status, followUp, interaction, send, stage);
+  const gestures = useRecordGestures();
+  const { status, followUp, interaction, send, trial, stage } = gestures;
+  useRecordKeys(contact, gestures);
   const backToContacts = (
     <Link to="/contacts" className="rounded-control underline-offset-4 focus-ring hover:underline">
       {m.contacts()}
@@ -885,44 +906,7 @@ export function ContactPage({ contactId }: { contactId: string }) {
               <Thread contactId={contactId} summary={summary} />
             </section>
           </div>
-          {status.gesture && (
-            <ChangeStatusPanel
-              key={`${contact.id}:${status.gesture}`}
-              contact={contact}
-              summary={summary}
-              gesture={status.gesture}
-              onClose={status.close}
-            />
-          )}
-          {stage.gesture && contact.status === 'prospecting' && (
-            <ChangeStagePanel
-              key={contact.id}
-              contact={contact}
-              summary={summary}
-              gesture={stage.gesture}
-              onClose={stage.close}
-              onChain={stage.chain}
-            />
-          )}
-          <FollowUpPanels
-            contact={contact}
-            summary={summary}
-            gesture={followUp.gesture}
-            onClose={followUp.close}
-          />
-          <InteractionPanels
-            contact={contact}
-            summary={summary}
-            gesture={interaction.gesture}
-            interaction={interaction}
-          />
-          <SendPanels contact={contact} summary={summary} send={send} />
-          <TrialPanels
-            contact={contact}
-            summary={summary}
-            gesture={trial.gesture}
-            onClose={trial.close}
-          />
+          <RecordGesturePanels contact={contact} summary={summary} gestures={gestures} />
         </>
       )}
     </div>

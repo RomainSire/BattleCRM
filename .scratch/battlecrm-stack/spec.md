@@ -355,7 +355,7 @@ Les numéros de section renvoient à cette spec. « Implémentation » signale u
 ## 15. À vérifier au début de l'implémentation
 
 - `pnpm version` crée bien le tag préfixé `v` dans le workspace ([Déploiement](issues/10-deploiement.md)).
-- Le kanban sur React Aria tient ST-61 et ST-62 ; sinon, repli shadcn base Base UI ([shadcn/ui face aux bibliothèques headless](issues/12-shadcn-et-bibliotheques.md)).
+- ~~Le kanban sur React Aria tient ST-61 et ST-62 ; sinon, repli shadcn base Base UI~~ : vérifié le 2026-10-23 (ticket d'implémentation 33), il les tient : une GridList par Étape (lignes en `GridListSection`, alignées en sous-grille), dépôt sur la colonne entière, glisser au clavier par la poignée annoncé par React Aria, zones d'État en `DropZone`, « Annuler » après le changement d'Étape ([shadcn/ui face aux bibliothèques headless](issues/12-shadcn-et-bibliotheques.md)).
 - ~~Oxlint propose nativement `no-restricted-properties` ; sinon, revue~~ : vérifié le 2026-10-09, il l'a ; `Date.now` et `Math.random` sont interdits par le lint ([Outillage du monorepo](issues/13-outillage-monorepo.md)).
 - `hooks.before` force bien `trustDevice: false`, prouvé par un test ([Auth : bibliothèque, sessions et client extension](issues/08-auth.md)).
 - Mémoire réelle des conteneurs après une semaine de `docker stats` ([Déploiement](issues/10-deploiement.md)).

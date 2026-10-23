@@ -100,23 +100,13 @@ export const followUpTitle = (followUp: { rank?: number | null }) =>
   followUp.rank == null ? m.follow_up_off_cadence() : m.follow_up_rank({ rank: followUp.rank });
 
 /**
- * The head of the thread (spec UX §5.3): the scheduled Follow-up as what comes next, its rank or off
- * the Cadence, with its signal and note, and Follow up… / Edit / Postpone / Cancel; or, without one, the reminder
- * that nothing comes next and “Schedule a follow-up”. Nothing for a Contact that has no Follow-ups.
+ * Postpone the scheduled Follow-up (tomorrow, +3 d, +7 d, its note kept) or Cancel it, at once with
+ * “Undo” (spec UX §5.1, §5.3): on the record, and on a card of the Funnel.
  */
-export function FollowUpHead({
-  contact,
-  summary,
-  onGesture,
-}: {
-  contact: SummaryContact;
-  summary: Summary;
-  onGesture: (gesture: FollowUpGesture) => void;
-}) {
+export function useFollowUpQuickGestures(contact: SummaryContact, summary: Summary) {
   const locale = useLocale();
   const api = useApi();
   const sendGesture = useSendGesture();
-  const headingId = useId();
   const today = todayOf(summary);
   const { name } = contact;
   const postpone = useMutation({
@@ -147,6 +137,54 @@ export function FollowUpHead({
     },
     onError: () => notify({ message: m.auth_error(), isError: true }),
   });
+  const isBusy = postpone.isPending || cancel.isPending;
+  return {
+    /** Postponed by so many days; once at a time. */
+    postpone: (days: number) => {
+      if (!isBusy) postpone.mutate(days);
+    },
+    cancel: () => cancel.mutate(),
+    isBusy,
+  };
+}
+
+/** “Postpone”, and the days it offers (spec UX §5.3). */
+export function PostponeFollowUp({ onPostpone }: { onPostpone: (days: number) => void }) {
+  return (
+    <MoreActions
+      trigger={{ text: m.follow_up_postpone(), label: m.verb_postpone_follow_up() }}
+      onAction={(key) => {
+        const days = POSTPONE_DAYS.find((candidate) => String(candidate) === key);
+        if (days !== undefined) onPostpone(days);
+      }}
+    >
+      {POSTPONE_DAYS.map((days) => (
+        <MenuItem key={days} id={String(days)}>
+          {days === 1 ? m.follow_up_tomorrow() : m.follow_up_in_days({ days })}
+        </MenuItem>
+      ))}
+    </MoreActions>
+  );
+}
+
+/**
+ * The head of the thread (spec UX §5.3): the scheduled Follow-up as what comes next, its rank or off
+ * the Cadence, with its signal and note, and Follow up… / Edit / Postpone / Cancel; or, without one, the reminder
+ * that nothing comes next and “Schedule a follow-up”. Nothing for a Contact that has no Follow-ups.
+ */
+export function FollowUpHead({
+  contact,
+  summary,
+  onGesture,
+}: {
+  contact: SummaryContact;
+  summary: Summary;
+  onGesture: (gesture: FollowUpGesture) => void;
+}) {
+  const locale = useLocale();
+  const headingId = useId();
+  const today = todayOf(summary);
+  const { postpone, cancel, isBusy } = useFollowUpQuickGestures(contact, summary);
   if (!hasFollowUps(contact.status)) return null;
   const { followUp } = contact;
   if (followUp === null) {
@@ -167,7 +205,6 @@ export function FollowUpHead({
     );
   }
   const signal = followUpSignal(followUp.dueOn, today);
-  const isBusy = postpone.isPending || cancel.isPending;
   return (
     <section
       aria-labelledby={headingId}
@@ -208,26 +245,14 @@ export function FollowUpHead({
         >
           {m.edit()}
         </Button>
-        <MoreActions
-          trigger={{ text: m.follow_up_postpone(), label: m.verb_postpone_follow_up() }}
-          onAction={(key) => {
-            const days = POSTPONE_DAYS.find((candidate) => String(candidate) === key);
-            if (days !== undefined && !isBusy) postpone.mutate(days);
-          }}
-        >
-          {POSTPONE_DAYS.map((days) => (
-            <MenuItem key={days} id={String(days)}>
-              {days === 1 ? m.follow_up_tomorrow() : m.follow_up_in_days({ days })}
-            </MenuItem>
-          ))}
-        </MoreActions>
+        <PostponeFollowUp onPostpone={postpone} />
         <Button
           variant="ghost"
           size="sm"
           className="max-md:min-h-11"
           aria-label={m.verb_cancel_follow_up()}
           isDisabled={isBusy}
-          onPress={() => cancel.mutate()}
+          onPress={cancel}
         >
           {m.cancel()}
         </Button>

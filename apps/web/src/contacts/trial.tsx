@@ -65,24 +65,36 @@ export function useTrialGesture() {
 }
 
 /**
+ * What the Response window of the Trial in progress of a Contact is read from (CONTEXT.md): its last
+ * Interaction done, or else the use that started it, and the window of its Positioning. `undefined`
+ * without one, or while the summary does not know its Positioning.
+ */
+export function trialWindowOf(contact: SummaryContact, summary: Summary) {
+  const trial = trialOf(contact);
+  const positioning = trial && positioningsOf(summary).find(({ id }) => id === trial.positioningId);
+  if (!trial || !positioning) return undefined;
+  return {
+    trial,
+    positioning,
+    lastDoneOn: contact.lastDoneInteractionOn ?? trial.startedOn,
+    responseWindowDays: positioning.responseWindowDays,
+  };
+}
+
+/**
  * Where the Trial in progress of a Contact stands (spec UX §5.3): its Positioning, its Battle and
  * Stage, its role, and its Response window, read from the last Interaction done (CONTEXT.md).
  * `undefined` without one, or while the summary does not know its Battle.
  */
 export function trialStateOf(contact: SummaryContact, summary: Summary) {
-  const trial = trialOf(contact);
-  if (trial === null) return undefined;
+  const read = trialWindowOf(contact, summary);
+  if (!read) return undefined;
+  const { trial, positioning, lastDoneOn, responseWindowDays } = read;
   const battle = battlesOf(summary).find(({ id }) => id === trial.battleId);
-  const positioning = positioningsOf(summary).find(({ id }) => id === trial.positioningId);
-  if (!battle || !positioning) return undefined;
+  if (!battle) return undefined;
   const stage = summary.stages.find(({ id }) => id === battle.stageId);
   const today = todayOf(summary);
-  const lastDoneOn = contact.lastDoneInteractionOn ?? trial.startedOn;
-  const window = {
-    followUp: contact.followUp,
-    lastDoneOn,
-    responseWindowDays: positioning.responseWindowDays,
-  };
+  const window = { followUp: contact.followUp, lastDoneOn, responseWindowDays };
   return {
     trial,
     battle,
