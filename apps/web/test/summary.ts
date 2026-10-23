@@ -54,6 +54,7 @@ export const contact = (fields: Partial<SummaryContact> = {}): SummaryContact =>
     lastInteractionOn: '2026-01-05',
     lastDoneInteractionOn: null,
     funnelEntryDays: [],
+    stageEnteredOn: null,
     statusReason: null,
     followUp: null,
     prospectingActionDays: [],

@@ -67,6 +67,7 @@ test('“Bring in…” puts a Contact of the Pool Prospecting at the Stage chos
       lastInteractionAt: '2026-01-05T23:31:00.000Z',
       lastInteractionOn: '2026-01-06',
       funnelEntryDays: ['2026-01-06'],
+      stageEnteredOn: '2026-01-06',
       statusReason: 'Back from holidays',
     },
   ]);

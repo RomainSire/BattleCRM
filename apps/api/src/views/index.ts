@@ -10,7 +10,7 @@ import type {
   SummaryStage,
 } from '@battlecrm/contract';
 import { archivedBy } from '@battlecrm/domain';
-import { and, desc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 
 import type { AppEnv } from '../app.ts';
@@ -95,6 +95,27 @@ async function summaryContacts(
     )
     .groupBy(statusChange.contactId)
     .as('entries');
+  // The latest change that put the Contact at its Stage: a change of Stage, or an entry in the Funnel,
+  // which sets the Stage it enters. Its local day is the one the Funnel table shows (spec UX §5.2).
+  const reached = tx
+    .selectDistinctOn([interaction.contactId], {
+      contactId: interaction.contactId,
+      localDate: interaction.localDate,
+    })
+    .from(interaction)
+    .leftJoin(
+      statusChange,
+      and(eq(statusChange.userId, userId), eq(statusChange.interactionId, interaction.id)),
+    )
+    .where(
+      and(
+        eq(interaction.userId, userId),
+        or(eq(interaction.kind, 'stage_changed'), eq(statusChange.toStatus, 'prospecting')),
+        ids && inArray(interaction.contactId, ids),
+      ),
+    )
+    .orderBy(interaction.contactId, desc(interaction.occurredAt), desc(interaction.id))
+    .as('stage_reached');
   // Each Prospecting action, by its local day (ST-41): the SPA counts the Activity of a day.
   const actions = tx
     .select({
@@ -184,6 +205,7 @@ async function summaryContacts(
       lastInteractionOn: latest.localDate,
       lastDoneInteractionOn: latestDone.localDate,
       funnelEntryDays: entries.days,
+      stageEnteredOn: reached.localDate,
       statusReason: current.reason,
       followUpDueOn: scheduled.dueOn,
       followUpNote: scheduled.note,
@@ -200,6 +222,7 @@ async function summaryContacts(
     .innerJoin(latest, eq(latest.contactId, contact.id))
     .leftJoin(latestDone, eq(latestDone.contactId, contact.id))
     .leftJoin(entries, eq(entries.contactId, contact.id))
+    .leftJoin(reached, eq(reached.contactId, contact.id))
     .leftJoin(current, eq(current.contactId, contact.id))
     .leftJoin(scheduled, eq(scheduled.contactId, contact.id))
     .leftJoin(actions, eq(actions.contactId, contact.id))

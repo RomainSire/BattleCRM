@@ -1,7 +1,6 @@
 import { TARGETS, type ContactStatus } from '@battlecrm/contract';
 import {
   byUrgency,
-  daysBetween,
   isFollowUpDueIn,
   funnelOf,
   normalizeName,
@@ -25,6 +24,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
+import { flushSync } from 'react-dom';
 import {
   DropZone,
   GridList,
@@ -42,19 +42,26 @@ import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { Input } from '../components/ui/input.tsx';
 import { Label } from '../components/ui/label.tsx';
 import { MenuItem, MoreActions } from '../components/ui/menu.tsx';
-import { useLocale, type Locale } from '../i18n.ts';
+import {
+  SegmentedControl,
+  SegmentedControlItem,
+  SegmentedControlItems,
+} from '../components/ui/segmented-control.tsx';
+import { useLocale } from '../i18n.ts';
 import { Screen } from '../screens/screen.tsx';
 import { useApi } from '../session.ts';
+import { useSettings, useSingleKeyShortcuts } from '../settings/use-settings.ts';
+import { isModalOpen } from '../shortcuts.ts';
 import { Kbd } from '../shell/kbd.tsx';
 import {
   openBattleAt,
+  organizationOf,
   positioningsOf,
   summaryQuery,
   todayOf,
   trialCountsOf,
   trialOf,
   type Summary,
-  type SummaryContact,
 } from '../summary.ts';
 import { useIsNarrow } from '../use-narrow.ts';
 import { useAddContact } from '../contacts/add-contact-context.ts';
@@ -64,15 +71,19 @@ import {
   RecordGesturePanels,
   useRecordGestures,
 } from '../contacts/contact-record.tsx';
-import {
-  followUpTitle,
-  PostponeFollowUp,
-  useFollowUpQuickGestures,
-} from '../contacts/follow-up.tsx';
-import { formatLocalDay } from '../contacts/format.ts';
 import { targetText } from '../contacts/organization-field.tsx';
 import { STATUS_VERB } from '../contacts/status.ts';
 import { agendaOf } from './agenda.ts';
+import { FunnelList } from './funnel-list.tsx';
+import { FunnelTable } from './funnel-table.tsx';
+import { isFunnelView, useFunnelView, type FunnelView } from './funnel-view.ts';
+import {
+  CardActions,
+  nextActionText,
+  type Card,
+  type FunnelGestureSearch,
+  type OpenGesture,
+} from './next-action.tsx';
 
 /** What a card carries while it is dragged: the id of its Contact. */
 const CONTACT_DRAG_TYPE = 'application/x-battlecrm-contact';
@@ -90,9 +101,6 @@ const STATUS_ZONES: { status: Exclude<ContactStatus, 'prospecting'>; label: () =
   { status: 'ally', label: m.circle },
   { status: 'archived', label: m.status_archived },
 ];
-
-/** A Contact Prospecting of the board, with what it has next. */
-type Card = { contact: SummaryContact; agenda: ContactAgenda };
 
 // ——— Filters (spec UX §5.2) ———
 
@@ -120,7 +128,7 @@ function hasSignal(agenda: ContactAgenda, signal: Signal) {
 }
 
 function matches({ contact, agenda }: Card, filters: Filters, summary: Summary) {
-  const organization = summary.organizations.find(({ id }) => id === contact.organizationId);
+  const organization = organizationOf(contact, summary);
   if (filters.text !== '') {
     const wanted = normalizeName(filters.text);
     const names = [contact.name, organization?.name];
@@ -259,141 +267,6 @@ function FilterBar({
 
 // ——— Cards (spec UX §5.2) ———
 
-/** What a card says comes next: its Follow-up and rank, or its Trial in progress. */
-function nextActionText(card: Card, summary: Summary, today: string, locale: Locale) {
-  const { contact, agenda } = card;
-  const followUp = contact.followUp;
-  if (agenda.row === 'no-next-step') return m.no_next_action();
-  if (agenda.reason === 'no-positioning') return m.funnel_card_no_positioning();
-  if (followUp !== null && agenda.reason !== 'trial' && agenda.reason !== 'window-elapsed') {
-    const title = followUpTitle(followUp);
-    if (agenda.reason === 'follow-up-overdue') {
-      return m.funnel_card_follow_up_overdue({
-        followUp: title,
-        days: daysBetween(followUp.dueOn, today),
-      });
-    }
-    if (agenda.reason === 'follow-up-today')
-      return m.funnel_card_follow_up_today({ followUp: title });
-    return m.funnel_card_follow_up_upcoming({
-      followUp: title,
-      date: formatLocalDay(followUp.dueOn, locale),
-    });
-  }
-  const trial = trialOf(contact);
-  const label = positioningsOf(summary).find(({ id }) => id === trial?.positioningId)?.label ?? '';
-  if (agenda.reason === 'window-elapsed') return m.funnel_card_trial_elapsed({ label });
-  return m.funnel_card_trial_waiting({ label, date: formatLocalDay(agenda.on, locale) });
-}
-
-/** How a card opens a gesture on its Contact: the gestures of the record, kept by the address (ST-70). */
-type OpenGesture = (contactId: string, search: FunnelGestureSearch) => void;
-type FunnelGestureSearch = {
-  statusTo?: 'choose' | ContactStatus;
-  stageTo?: string;
-  followUp?: 'schedule' | 'do' | 'anyway';
-  interaction?: 'note' | 'reply';
-  send?: 'positioning';
-  trial?: 'no-result';
-  panel?: 'record';
-};
-
-/**
- * The shortcuts of a card, the same as on Today so that a Contact is handled the same way everywhere
- * (spec UX §5.1, §5.2): a Follow-up due, a Trial past its window, nothing next.
- */
-function CardActions({
-  card,
-  summary,
-  open,
-}: {
-  card: Card;
-  summary: Summary;
-  open: (search: FunnelGestureSearch) => void;
-}) {
-  const { contact, agenda } = card;
-  const { postpone, cancel, isBusy } = useFollowUpQuickGestures(contact, summary);
-  const action = 'max-md:min-h-11';
-  if (isFollowUpDueIn(agenda)) {
-    return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn('font-semibold', action)}
-          onPress={() => open({ followUp: 'do' })}
-        >
-          {m.verb_follow_up()}
-        </Button>
-        <PostponeFollowUp onPostpone={postpone} />
-        <Button
-          variant="ghost"
-          size="sm"
-          className={action}
-          aria-label={m.verb_cancel_follow_up()}
-          isDisabled={isBusy}
-          onPress={cancel}
-        >
-          {m.cancel()}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className={action}
-          onPress={() => open({ interaction: 'reply' })}
-        >
-          {m.verb_reply()}
-        </Button>
-      </div>
-    );
-  }
-  if (agenda.row === 'needs-action') {
-    return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn('font-semibold', action)}
-          onPress={() => open({ trial: 'no-result' })}
-        >
-          {m.verb_no_result()}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className={action}
-          onPress={() => open({ followUp: 'anyway' })}
-        >
-          {m.verb_follow_up_anyway()}
-        </Button>
-      </div>
-    );
-  }
-  if (agenda.row === 'no-next-step') {
-    return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn('font-semibold', action)}
-          onPress={() => open({ send: 'positioning' })}
-        >
-          {m.verb_use_positioning()}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className={action}
-          onPress={() => open({ followUp: 'schedule' })}
-        >
-          {m.verb_schedule_follow_up()}
-        </Button>
-      </div>
-    );
-  }
-  return null;
-}
-
 /** The menu `⋯` of a card (spec UX §5.2). */
 const CARD_MENU: { id: string; label: () => string; search: FunnelGestureSearch }[] = [
   { id: 'stage', label: m.verb_change_stage, search: { stageTo: 'choose' } },
@@ -417,7 +290,7 @@ function ContactCard({
 }) {
   const locale = useLocale();
   const { contact, agenda } = card;
-  const organization = summary.organizations.find(({ id }) => id === contact.organizationId);
+  const organization = organizationOf(contact, summary);
   const open = (search: FunnelGestureSearch) => onOpen(contact.id, search);
   return (
     <GridListItem
@@ -758,6 +631,35 @@ function Board({
   );
 }
 
+/** Kanban or table, also by `V` (spec UX §3.3, §5.2). */
+function ViewSwitch({
+  view,
+  onChange,
+}: {
+  view: FunnelView;
+  onChange: (view: FunnelView) => void;
+}) {
+  const { singleKeyShortcuts } = useSettings();
+  return (
+    <SegmentedControl
+      data-funnel-view
+      value={view}
+      onChange={(value) => {
+        if (isFunnelView(value)) onChange(value);
+      }}
+    >
+      <Label>
+        {m.funnel_view()}
+        {singleKeyShortcuts && <Kbd>V</Kbd>}
+      </Label>
+      <SegmentedControlItems>
+        <SegmentedControlItem value="kanban">{m.funnel_view_kanban()}</SegmentedControlItem>
+        <SegmentedControlItem value="table">{m.funnel_view_table()}</SegmentedControlItem>
+      </SegmentedControlItems>
+    </SegmentedControl>
+  );
+}
+
 /** The Contacts Prospecting, with what they have next, by urgency, then by name. */
 function cardsOf(summary: Summary, today: string): Card[] {
   return summary.contacts
@@ -785,6 +687,19 @@ export function FunnelScreen() {
   const gestures = useRecordGestures();
   const [filters, setFilters] = useState(NO_FILTERS);
   const typed = useDeferredValue(filters.text);
+  const [view, setView] = useFunnelView();
+  useSingleKeyShortcuts({
+    v: (event) => {
+      if (isModalOpen() || isNarrow) return;
+      event.preventDefault();
+      const wasInView = document.activeElement?.closest('[data-funnel-view-content]') != null;
+      flushSync(() => setView(view === 'table' ? 'kanban' : 'table'));
+      // The focus was in the view that went: it goes into the one that comes, not back to the page.
+      if (wasInView) {
+        document.querySelector<HTMLElement>('[data-funnel-view-content] [role="grid"]')?.focus();
+      }
+    },
+  });
   // The record opened takes the focus once (ST-66).
   const focusHeading = useCallback((heading: HTMLHeadingElement | null) => heading?.focus(), []);
 
@@ -822,7 +737,10 @@ export function FunnelScreen() {
   const isFiltered = Object.values(filters).some((value) => value !== '');
   return (
     <Screen title={m.funnel()}>
-      <FilterBar filters={filters} onChange={setFilters} summary={summary} />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <FilterBar filters={filters} onChange={setFilters} summary={summary} />
+        {!isNarrow && <ViewSwitch view={view} onChange={setView} />}
+      </div>
       {all.length === 0 && (
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-muted-foreground">{m.funnel_empty()}</p>
@@ -848,7 +766,15 @@ export function FunnelScreen() {
           panel === 'record' && contact && 'md:grid-cols-[minmax(0,1fr)_22rem]',
         )}
       >
-        <Board cards={shown} summary={summary} today={today} onOpen={onOpen} />
+        <div data-funnel-view-content className="min-w-0">
+          {isNarrow ? (
+            <FunnelList cards={shown} summary={summary} today={today} onOpen={onOpen} />
+          ) : view === 'table' ? (
+            <FunnelTable cards={shown} summary={summary} today={today} onOpen={onOpen} />
+          ) : (
+            <Board cards={shown} summary={summary} today={today} onOpen={onOpen} />
+          )}
+        </div>
         {panel === 'record' && contactId && !isNarrow && (
           <div className="sticky top-4">
             <ContactPanel

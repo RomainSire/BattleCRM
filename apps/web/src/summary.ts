@@ -158,6 +158,17 @@ export function trialOf(contact: SummaryContact): SummaryContact['trial'] {
   return trial ?? null;
 }
 
+/** The Organization of a Contact, if it has one. */
+export const organizationOf = (contact: SummaryContact, summary: Summary) =>
+  summary.organizations.find(({ id }) => id === contact.organizationId);
+
+/** The local day a Contact reached its Stage, `null` at none or while the summary does not say. */
+export function stageEnteredOnOf(contact: SummaryContact): string | null {
+  // Fallback: a summary kept on the device by a version from before this day carries none.
+  const day: string | null | undefined = contact.stageEnteredOn;
+  return day ?? null;
+}
+
 /** Frozen from its first Trial (CONTEXT.md, Positioning). */
 export const isFrozen = ({ trialCount }: SummaryPositioning) => trialCount > 0;
 

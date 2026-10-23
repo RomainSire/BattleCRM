@@ -159,6 +159,11 @@ export const summaryContact = z.strictObject({
   lastDoneInteractionOn: z.iso.date().nullable(),
   /** The local days of its Funnel entries, the earliest first. */
   funnelEntryDays: z.array(z.iso.date()),
+  /**
+   * The local day it reached its Stage, by an entry in the Funnel or a change of Stage; `null` at no
+   * Stage. Added after the first release: a summary kept on a device may lack it.
+   */
+  stageEnteredOn: z.iso.date().nullable(),
   /** The reason of the change that put it in its Status, if the User gave one. */
   statusReason: z.string().nullable(),
   /** Its scheduled Follow-up, if it has one: its rank in the Cadence, or none off the Cadence. */

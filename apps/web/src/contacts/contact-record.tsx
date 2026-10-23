@@ -23,6 +23,7 @@ import { useLocale, type Locale } from '../i18n.ts';
 import { useApi } from '../session.ts';
 import { isModalOpen, useShortcuts } from '../shortcuts.ts';
 import {
+  organizationOf,
   positioningsOf,
   summaryQuery,
   todayOf,
@@ -67,9 +68,6 @@ function useSummaryContact(contactId: string) {
   const contact = summary?.contacts.find(({ id }) => id === contactId);
   return { summary, contact, isError };
 }
-
-const organizationOf = (contact: SummaryContact, summary: Summary) =>
-  summary.organizations.find(({ id }) => id === contact.organizationId);
 
 /** The Target of a Contact as the User reads it. */
 const targetLabel = (contact: SummaryContact, summary: Summary) =>

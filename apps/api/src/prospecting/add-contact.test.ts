@@ -62,6 +62,7 @@ test('adding a Contact puts it in the Pool and answers with its row of the summa
         // Adding it is no exchange with it.
         lastDoneInteractionOn: null,
         funnelEntryDays: [],
+        stageEnteredOn: null,
         statusReason: null,
         followUp: null,
         prospectingActionDays: [],

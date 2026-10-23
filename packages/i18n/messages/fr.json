@@ -976,5 +976,19 @@
   "funnel_clear_filters": "Effacer les filtres",
   "funnel_empty": "Aucun Contact En prospection pour l'instant.",
   "funnel_load_error": "Le Funnel n'a pas pu être chargé.",
-  "funnel_card_actions": "Actions de {name}"
+  "funnel_card_actions": "Actions de {name}",
+  "funnel_view": "Vue",
+  "funnel_view_kanban": "Kanban",
+  "funnel_view_table": "Table",
+  "funnel_table": "Contacts En prospection",
+  "funnel_column_contact": "Contact",
+  "funnel_column_trial": "Essai en cours",
+  "funnel_column_follow_up": "Prochaine Relance",
+  "funnel_column_stage_entered": "Entrée dans l'Étape",
+  "funnel_sort_by_urgency": "Trier par urgence",
+  "funnel_stage_of": "Étape de {name} : {stage}",
+  "funnel_no_trial": "Aucun Essai en cours",
+  "funnel_no_follow_up": "Aucune Relance planifiée",
+  "funnel_stage_entered_unknown": "Date inconnue",
+  "funnel_trial": "Essai « {label} »"
 }

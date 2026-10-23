@@ -76,6 +76,33 @@ test('a Contact Prospecting changes Stage: an Interaction neither outbound nor i
   expect(await stageChangesOf(harness, user, paul.id)).toEqual([]);
 });
 
+test('the summary carries the day a Contact entered its Stage: its Funnel entry, then each change of Stage; “Undo” brings the previous day back', async () => {
+  const { harness, user, stages, paul } = await atOutreach();
+  const [outreach = '', agency = ''] = stages;
+  const { contact: anne } = await addContact(harness, user, 'Anne');
+  expect(paul.stageEnteredOn).toBe('2026-01-05');
+  // In the Pool, never entered: at no Stage.
+  expect(anne.stageEnteredOn).toBeNull();
+
+  harness.clock.advance('P2D');
+  const { contact: moved, undoToken } = await changeStage(harness, user, paul.id, {
+    stageId: agency,
+  });
+  expect(moved.stageEnteredOn).toBe('2026-01-07');
+  await undo(harness, user, undoToken);
+  const back = (await summaryOf(harness, user)).contacts.find(({ id }) => id === paul.id);
+  expect(back?.stageEnteredOn).toBe('2026-01-05');
+
+  // Back to the Pool and in again, at the same Stage: from the new entry.
+  await changeStatus(harness, user, paul.id, { status: 'pool' });
+  harness.clock.advance('P3D');
+  const { contact: again } = await changeStatus(harness, user, paul.id, {
+    status: 'prospecting',
+    stageId: outreach,
+  });
+  expect(again.stageEnteredOn).toBe('2026-01-10');
+});
+
 test('reordering the Funnel afterwards does not change the way a past change of Stage reads', async () => {
   const { harness, user, stages, paul } = await atOutreach();
   const [outreach = '', agency = '', client = ''] = stages;

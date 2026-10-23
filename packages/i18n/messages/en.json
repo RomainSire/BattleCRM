@@ -985,5 +985,19 @@
   "funnel_clear_filters": "Clear filters",
   "funnel_empty": "No Contact Prospecting yet.",
   "funnel_load_error": "The Funnel could not be loaded.",
-  "funnel_card_actions": "Actions for {name}"
+  "funnel_card_actions": "Actions for {name}",
+  "funnel_view": "View",
+  "funnel_view_kanban": "Kanban",
+  "funnel_view_table": "Table",
+  "funnel_table": "Contacts Prospecting",
+  "funnel_column_contact": "Contact",
+  "funnel_column_trial": "Trial in progress",
+  "funnel_column_follow_up": "Next follow-up",
+  "funnel_column_stage_entered": "Entered the Stage",
+  "funnel_sort_by_urgency": "Sort by urgency",
+  "funnel_stage_of": "Stage of {name}: {stage}",
+  "funnel_no_trial": "No Trial in progress",
+  "funnel_no_follow_up": "No follow-up scheduled",
+  "funnel_stage_entered_unknown": "Unknown date",
+  "funnel_trial": "Trial “{label}”"
 }
