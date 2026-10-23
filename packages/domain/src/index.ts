@@ -29,6 +29,13 @@ export {
   type AgendaRow,
   type ContactAgenda,
 } from './agenda.ts';
+export {
+  allySignal,
+  CHECK_IN_SOON_DAYS,
+  nextCheckInOn,
+  type AllyContact,
+  type AllySignal,
+} from './ally.ts';
 export { activityOn, followUpSignal, isFollowUpDue, type FollowUpSignal } from './follow-up.ts';
 export {
   canNoteInteraction,

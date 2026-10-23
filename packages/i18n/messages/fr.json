@@ -1065,5 +1065,44 @@
   "settings_stage_archived": "Étape « {stage} » archivée",
   "settings_stage_restored": "Étape « {stage} » restaurée",
   "settings_stage_deleted": "Étape « {stage} » supprimée",
-  "settings_funnel_changed_elsewhere": "Le Funnel a changé sur un autre appareil : il vient d'être relu."
+  "settings_funnel_changed_elsewhere": "Le Funnel a changé sur un autre appareil : il vient d'être relu.",
+  "verb_check_in": "Prendre des nouvelles…",
+  "check_in_title": "Prendre des nouvelles de {name}",
+  "check_in_channel": "Canal",
+  "check_in_channel_meeting": "Rencontre",
+  "check_in_channel_other": "Autre",
+  "check_in_follow_up": "Relance à venir",
+  "check_in_keep_follow_up": "Garder la Relance du {date}",
+  "check_in_cancel_follow_up": "L'annuler",
+  "check_in_recap": "Jours sans contact remis à 0 · prochaines nouvelles d'ici le {date}",
+  "check_in_recap_since": "Jours sans contact comptés depuis le {since} · prochaines nouvelles d'ici le {date}",
+  "check_in_validate": "Noter les nouvelles",
+  "check_in_toast": "Nouvelles de {name} notées · prochaines d'ici le {date}",
+  "thread_check_in": "Nouvelles · {channel}",
+  "next_action_ally": "Allié · {days} j sans contact",
+  "circle_tier_time_to_check_in": "À relancer",
+  "circle_tier_soon": "Bientôt",
+  "circle_tier_up_to_date": "À jour",
+  "circle_follow_up": "Relance {date}",
+  "circle_follow_up_due": "Relance due depuis {date}",
+  "circle_no_interaction_done": "aucune Interaction faite",
+  "circle_last_interaction": "dernière Interaction le {date}",
+  "circle_days_since_contact": "{days} j sans contact",
+  "circle_count_of_goal": "{count} Alliés sur {goal} visés",
+  "circle_pick_contact": "Contact",
+  "circle_pick_no_match": "Aucun Contact ne correspond.",
+  "circle_quick_add_ally": "Ajouter « {name} » en Allié",
+  "circle_load_error": "Impossible de charger le Cercle. Réessaie dans un instant.",
+  "circle_empty": "Ton Cercle est vide. Ajoute les ingénieurs d'affaires avec qui tu veux garder le contact, même pendant une mission.",
+  "circle_empty_from_record": "Tu peux aussi le faire depuis la fiche d'un Contact.",
+  "circle_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Allié",
+        "countPlural=*": "{count} Alliés"
+      }
+    }
+  ]
 }

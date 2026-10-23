@@ -179,7 +179,7 @@ export function ContactsScreen() {
       <div className="flex flex-col items-center gap-2 py-8 text-center">
         <p className="font-medium">{m.contacts_empty_title()}</p>
         <p className="text-muted-foreground">{m.contacts_empty_body()}</p>
-        <Button className="mt-2" aria-keyshortcuts="N" onPress={addContact}>
+        <Button className="mt-2" aria-keyshortcuts="N" onPress={() => addContact()}>
           {m.add_contact()}
           <Kbd>N</Kbd>
         </Button>

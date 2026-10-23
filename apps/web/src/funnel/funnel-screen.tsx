@@ -750,7 +750,7 @@ export function FunnelScreen() {
       {all.length === 0 && (
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-muted-foreground">{m.funnel_empty()}</p>
-          <Button aria-keyshortcuts="N" onPress={addContact}>
+          <Button aria-keyshortcuts="N" onPress={() => addContact()}>
             {m.add_contact()}
             <Kbd>N</Kbd>
           </Button>

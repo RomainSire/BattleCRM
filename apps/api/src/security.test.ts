@@ -306,6 +306,14 @@ const CROSS_ACCESS: Record<
       body: { kind: 'call', occurredOn: '2026-01-05' },
     };
   },
+  'POST /api/contacts/:id/check-in': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice, 'Inès Moreau', { status: 'ally' });
+    return {
+      id: contact.id,
+      state: () => getJson(harness, alice, '/api/summary'),
+      body: { channel: 'phone', occurredOn: '2026-01-05' },
+    };
+  },
   'POST /api/contacts/:id/record-reply': async (harness, alice) => {
     const { contact } = await addContact(harness, alice);
     return {

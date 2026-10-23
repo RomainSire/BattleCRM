@@ -350,7 +350,12 @@ test('an Ally shows its Follow-up first; leaving its Status says the Follow-up i
   await desktop();
   await renderApp(`/contacts/${ines().id}`, followUpApi());
   const next = page.getByRole('region', { name: 'Prochaine action' });
-  await expect.element(next).toHaveTextContent(`Allié · Relance le ${shown(addDays(today(), 5))}`);
+  // Its Days since contact, then its Follow-up, which comes before the Rhythm: up to date.
+  await expect
+    .element(next)
+    .toHaveTextContent(
+      new RegExp(`Allié · \\d+ j sans contact · Relance le ${shown(addDays(today(), 5))}À jour`),
+    );
   // To come: not the action of the moment, but under `⋯`.
   await expect.element(next.getByRole('button', { name: 'Relancer…' })).not.toBeInTheDocument();
   await next.getByRole('button', { name: "Plus d'actions" }).click();

@@ -30,6 +30,7 @@ import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { summaryQuery, type Summary, type SummaryContact } from '../summary.ts';
+import type { QuickAddStart } from './add-contact-context.ts';
 import { contactLabel, DuplicateNote, LinkedInTaken } from './duplicate-notes.tsx';
 import {
   NO_ORGANIZATION,
@@ -48,9 +49,12 @@ import { prospectingStageOf, STATUS_LABEL } from './status.ts';
 export function QuickAdd({
   isOpen,
   onOpenChange,
+  start,
 }: {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  /** A name already typed and a Status already chosen, from the page Circle (spec UX §5.11). */
+  start?: QuickAddStart | undefined;
 }) {
   useLocale();
   return (
@@ -62,7 +66,7 @@ export function QuickAdd({
       <DialogHeader>
         <DialogTitle>{m.add_contact()}</DialogTitle>
       </DialogHeader>
-      <QuickAddForm onDone={() => onOpenChange(false)} />
+      <QuickAddForm onDone={() => onOpenChange(false)} start={start} />
     </Dialog>
   );
 }
@@ -70,7 +74,13 @@ export function QuickAdd({
 /** A field of the Contact sent only when filled. */
 const filled = (text: string) => text.trim() || undefined;
 
-function QuickAddForm({ onDone }: { onDone: () => void }) {
+function QuickAddForm({
+  onDone,
+  start,
+}: {
+  onDone: () => void;
+  start?: QuickAddStart | undefined;
+}) {
   const api = useApi();
   const sendGesture = useSendGesture();
   const navigate = useNavigate();
@@ -85,10 +95,10 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
   const organizations = summary?.organizations ?? [];
   const contacts = summary?.contacts ?? [];
   const funnel = funnelOf(stages);
-  const [name, setName] = useState('');
+  const [name, setName] = useState(start?.name ?? '');
   const [organizationDraft, setOrganizationDraft] = useState<OrganizationDraft>(NO_ORGANIZATION);
   const [linkedinUrl, setLinkedinUrl] = useState('');
-  const [status, setStatus] = useState<AddableContactStatus>('pool');
+  const [status, setStatus] = useState<AddableContactStatus>(start?.status ?? 'pool');
   // None chosen yet: the first Stage not archived, as the API would take it.
   const [chosenStageId, setChosenStageId] = useState<string>();
   const stageId = chosenStageId ?? funnel[0]?.id;

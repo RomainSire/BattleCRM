@@ -56,6 +56,7 @@ import {
   StageMoveField,
 } from './change-stage.tsx';
 import { StageField, statusChangedMessage, statusRecap } from './change-status.tsx';
+import { CheckInPanel } from './check-in.tsx';
 import { contactRecordQuery } from './contact-record-query.ts';
 import {
   doneDayDraft,
@@ -666,7 +667,20 @@ export function InteractionPanels({
       />
     );
   }
-  // None for an Ally, from an address kept from before: a Check-in comes with the Circle (ticket 36).
+  if (gesture === 'check-in') {
+    // An Ally only, the address kept from before it left the Circle aside.
+    if (contact.status !== 'ally') return null;
+    return (
+      <CheckInPanel
+        key={contact.id}
+        contact={contact}
+        summary={summary}
+        onClose={interaction.close}
+        onScheduleFollowUp={() => interaction.chain('schedule')}
+      />
+    );
+  }
+  // None for an Ally: a free outbound Interaction with one is a Check-in (CONTEXT.md).
   if (gesture !== 'note' || !canNoteInteraction(contact.status)) return null;
   return (
     <NoteInteractionPanel

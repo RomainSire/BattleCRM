@@ -1074,5 +1074,44 @@
   "settings_stage_archived": "Stage “{stage}” archived",
   "settings_stage_restored": "Stage “{stage}” restored",
   "settings_stage_deleted": "Stage “{stage}” deleted",
-  "settings_funnel_changed_elsewhere": "The Funnel changed on another device: it was just read again."
+  "settings_funnel_changed_elsewhere": "The Funnel changed on another device: it was just read again.",
+  "verb_check_in": "Check in…",
+  "check_in_title": "Check in with {name}",
+  "check_in_channel": "Channel",
+  "check_in_channel_meeting": "Meeting",
+  "check_in_channel_other": "Other",
+  "check_in_follow_up": "Upcoming follow-up",
+  "check_in_keep_follow_up": "Keep the follow-up of {date}",
+  "check_in_cancel_follow_up": "Cancel it",
+  "check_in_recap": "Days since contact back to 0 · next check-in by {date}",
+  "check_in_recap_since": "Days since contact counted from {since} · next check-in by {date}",
+  "check_in_validate": "Save the check-in",
+  "check_in_toast": "Check-in with {name} saved · next by {date}",
+  "thread_check_in": "Check-in · {channel}",
+  "next_action_ally": "Ally · {days} d since contact",
+  "circle_tier_time_to_check_in": "Time to check in",
+  "circle_tier_soon": "Check in soon",
+  "circle_tier_up_to_date": "Up to date",
+  "circle_follow_up": "Follow-up {date}",
+  "circle_follow_up_due": "Follow-up due since {date}",
+  "circle_no_interaction_done": "no Interaction done yet",
+  "circle_last_interaction": "last Interaction on {date}",
+  "circle_days_since_contact": "{days} d since contact",
+  "circle_count_of_goal": "{count} Allies of the {goal} aimed for",
+  "circle_pick_contact": "Contact",
+  "circle_pick_no_match": "No Contact matches.",
+  "circle_quick_add_ally": "Add “{name}” as an Ally",
+  "circle_load_error": "The Circle could not be loaded. Try again in a moment.",
+  "circle_empty": "Your Circle is empty. Add the account managers you want to stay in touch with, even during a mission.",
+  "circle_empty_from_record": "You can also do it from a Contact's record.",
+  "circle_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Ally",
+        "countPlural=*": "{count} Allies"
+      }
+    }
+  ]
 }

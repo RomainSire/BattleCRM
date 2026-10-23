@@ -7,7 +7,6 @@ import {
   type SettledTrialOutcome,
 } from '@battlecrm/contract';
 import {
-  addDays,
   funnelEntriesInWeek,
   funnelOf,
   stageToEnter,
@@ -41,6 +40,7 @@ import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { settingsOf } from '../settings/use-settings.ts';
 import { todayOf, type Summary, type SummaryContact } from '../summary.ts';
+import { nextCheckInOf } from '../circle/ally-signal.ts';
 import { formatLocalDay } from './format.ts';
 import { otherStatuses, STATUS_ACTION, type StatusGesture } from './status.ts';
 import {
@@ -183,7 +183,10 @@ export function ChangeStatusPanel({
   });
 
   /** The summary of what the change does (spec UX §1, §6.11). */
-  const recap = target === undefined ? [] : statusRecap(target, summary, locale);
+  const recap =
+    target === undefined
+      ? []
+      : statusRecap(target, summary, locale, contact.lastDoneInteractionOn ?? undefined);
   if (trial && trialOutcome) recap.unshift(trialRecap(trialOutcome, trial, undefined, locale));
   if (target === 'ally' && contact.status === 'prospecting' && lastStage) {
     recap.push(m.change_status_keeps_stage({ stage: lastStage.name }));
@@ -378,7 +381,7 @@ export function StageField({
 /**
  * What entering the Funnel or the Circle counts (spec UX §6.11): the Funnel entry of this week against
  * its goal, the Circle against its size goal and the next check-in, a Rhythm after the last Interaction
- * done (today unless said otherwise). Nothing for the other Statuses.
+ * done (today unless said otherwise), today at the earliest. Nothing for the other Statuses.
  */
 export function statusRecap(
   to: ContactStatus,
@@ -402,7 +405,7 @@ export function statusRecap(
   const count = circleCountAfter(summary);
   const goal = settings.circleSizeGoal;
   const days = settings.checkInRhythmDays;
-  const date = formatLocalDay(addDays(lastDoneOn ?? today, days), locale);
+  const date = formatLocalDay(nextCheckInOf(summary, lastDoneOn ?? today, today), locale);
   return [
     goal === null
       ? m.change_status_circle_recap_no_goal({ count, date, days })

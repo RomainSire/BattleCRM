@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Outlet } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
 
-import { AddContactContext } from '../contacts/add-contact-context.ts';
+import { AddContactContext, type QuickAddStart } from '../contacts/add-contact-context.ts';
 import { QuickAdd } from '../contacts/quick-add.tsx';
 import { changeLocale, useLocale, type Locale } from '../i18n.ts';
 import { useApi } from '../session.ts';
@@ -21,13 +21,17 @@ export function AppShell() {
   const { data: summary } = useQuery(summaryQuery(api));
   useUserLanguage(settingsOf(summary).locale);
   const [isAdding, setAdding] = useState(false);
-  const openQuickAdd = useCallback(() => setAdding(true), []);
+  const [start, setStart] = useState<QuickAddStart>();
+  const openQuickAdd = useCallback((opening?: QuickAddStart) => {
+    setStart(opening);
+    setAdding(true);
+  }, []);
   useSingleKeyShortcuts({
     n: (event) => {
       if (isModalOpen()) return;
       // Or the letter would be typed into the field that takes the focus.
       event.preventDefault();
-      setAdding(true);
+      openQuickAdd();
     },
   });
   return (
@@ -41,13 +45,13 @@ export function AppShell() {
       </a>
       <div className="flex min-h-dvh flex-col md:flex-row">
         <MobileHeader />
-        <Sidebar onAdd={openQuickAdd} />
+        <Sidebar onAdd={() => openQuickAdd()} />
         <main id="main" tabIndex={-1} className="min-w-0 flex-1 pb-20 outline-none md:pb-0">
           <Outlet />
         </main>
         <TabBar />
       </div>
-      <QuickAdd isOpen={isAdding} onOpenChange={setAdding} />
+      <QuickAdd isOpen={isAdding} onOpenChange={setAdding} start={start} />
       <UndoToasts />
     </AddContactContext>
   );

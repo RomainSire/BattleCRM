@@ -254,7 +254,11 @@ test('an Ally: no Note an Interaction (a Check-in instead), no choice of Status;
     .element(page.getByRole('button', { name: 'Noter une Interaction' }))
     .not.toBeInTheDocument();
   await userEvent.keyboard('i');
-  expect(router.state.location.search).toEqual({});
+  expect(router.state.location.search).toEqual({ interaction: 'check-in' });
+  await expect
+    .element(page.getByRole('dialog', { name: 'Prendre des nouvelles de Inès Moreau' }))
+    .toBeVisible();
+  await userEvent.keyboard('{Escape}');
 
   await page.getByRole('button', { name: "Plus d'actions" }).click();
   await page.getByRole('menuitem', { name: 'A répondu…' }).click();

@@ -22,6 +22,7 @@ import { CancellingRecovery, RecoveryCancelledScreen } from './auth/two-factor-r
 import { AuthError, InvalidLinkScreen, VerifyingEmail } from './auth/verify-email-screen.tsx';
 import { BATTLE_PANELS } from './battles/open-battle-panel.tsx';
 import { BattlesScreen } from './battles/battles-screen.tsx';
+import { CircleScreen } from './circle/circle-screen.tsx';
 import { ContactPage } from './contacts/contact-record.tsx';
 import { ContactsScreen } from './contacts/contacts-screen.tsx';
 import {
@@ -208,12 +209,6 @@ const todayRoute = createRoute({
   component: () => <Screen title={m.today()} />,
 });
 
-const circleRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: '/circle',
-  component: () => <Screen title={m.circle()} />,
-});
-
 /** The change of Status open on a record (spec UX §6.11), kept by the address (ST-70). */
 const statusToSearch = z.enum(STATUS_GESTURES).optional().catch(undefined);
 /** The change of Stage open on a record (spec UX §6.6), to a Stage or to choose, kept by the address (ST-70). */
@@ -229,6 +224,24 @@ const interactionSearch = z.enum(INTERACTION_GESTURES).optional().catch(undefine
 const sendSearch = z.enum(SEND_GESTURES).optional().catch(undefined);
 /** The gesture on the Trial in progress open on a record (spec UX §6.7), kept by the address (ST-70). */
 const trialSearch = z.enum(TRIAL_GESTURES).optional().catch(undefined);
+
+const circleRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/circle',
+  // The Ally a gesture is open on, its record open beside the tiers, and its gesture (ST-70);
+  // anything else is dropped.
+  validateSearch: z.object({
+    contact: z.uuid().optional().catch(undefined),
+    panel: z.literal('record').optional().catch(undefined),
+    statusTo: statusToSearch,
+    stageTo: stageToSearch,
+    followUp: followUpSearch,
+    interaction: interactionSearch,
+    send: sendSearch,
+    trial: trialSearch,
+  }),
+  component: CircleScreen,
+});
 
 const contactsRoute = createRoute({
   getParentRoute: () => appRoute,

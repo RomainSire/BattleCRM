@@ -281,6 +281,13 @@
       "when": 1792755921530,
       "tag": "0039_stage_gestures",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1792761715129,
+      "tag": "0040_check_in",
+      "breakpoints": true
     }
   ]
 }

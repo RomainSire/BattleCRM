@@ -4,6 +4,8 @@ import {
   NOTED_INTERACTION_KINDS,
   TARGETS,
   TRIAL_OUTCOMES,
+  type Channel,
+  type CheckInChannel,
 } from '@battlecrm/contract';
 import { sql } from 'drizzle-orm';
 import {
@@ -108,12 +110,19 @@ export const INTERACTION_KINDS = [
   ...NOTED_INTERACTION_KINDS,
   'reply',
   'positioning_used',
+  'check_in',
 ] as const;
 /** The kinds that are Prospecting actions, what the Activity counts (CONTEXT.md). */
 export const PROSPECTING_ACTION_KINDS = [
   'follow_up',
   'positioning_used',
+  'check_in',
 ] as const satisfies readonly (typeof INTERACTION_KINDS)[number][];
+/** What the channel of an Interaction holds: the Channel of a reply, or how a Check-in was done. */
+const INTERACTION_CHANNELS = [...CHANNELS, 'meeting', 'other'] as const satisfies readonly (
+  Channel | CheckInChannel
+)[];
+
 /** Adding a Contact, like a change of Stage or of Status, is neither outbound nor inbound. */
 export const INTERACTION_DIRECTIONS = ['outbound', 'inbound', 'none'] as const;
 
@@ -132,8 +141,8 @@ export const interaction = pgTable(
     recordedAt: instant('recorded_at').notNull(),
     /** What the User wrote of it, if anything: a done Follow-up keeps the note it had. */
     note: text(),
-    /** The Channel a reply came by; none for any other kind. */
-    channel: text({ enum: CHANNELS }),
+    /** The Channel a reply came by, or how a Check-in was done; none for any other kind. */
+    channel: text({ enum: INTERACTION_CHANNELS }),
     /** The Positioning a use sent, which can then no longer be deleted; none for any other kind. */
     positioningId: uuid('positioning_id'),
   },
@@ -151,10 +160,11 @@ export const interaction = pgTable(
     ),
     index('interaction_contact_idx').on(table.userId, table.contactId, table.occurredAt),
     check('interaction_note_check', sql`${table.note} <> ''`),
-    check('interaction_channel_check', sql`${table.channel} in (${quoted(CHANNELS)})`),
+    check('interaction_channel_check', sql`${table.channel} in (${quoted(INTERACTION_CHANNELS)})`),
+    // A reply comes by a Channel, never in a meeting; a Check-in is done some way.
     check(
-      'interaction_reply_channel_check',
-      sql`(${table.kind} = 'reply') = (${table.channel} is not null)`,
+      'interaction_channel_kind_check',
+      sql`(${table.kind} in ('reply', 'check_in')) = (${table.channel} is not null) and (${table.kind} <> 'reply' or ${table.channel} in (${quoted(CHANNELS)}))`,
     ),
     foreignKey({
       name: 'interaction_positioning_fk',
@@ -492,4 +502,5 @@ export const CONTACT_GESTURE_KINDS = [
   'positioning_used',
   'trial_settled',
   'trial_outcome_changed',
+  'checked_in',
 ] as const;

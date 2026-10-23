@@ -17,6 +17,7 @@ import {
   useFollowUpQuickGestures,
 } from '../contacts/follow-up.tsx';
 import { formatLocalDay } from '../contacts/format.ts';
+import type { InteractionGesture } from '../contacts/status.ts';
 
 /** A Contact Prospecting of the Funnel, with what it has next. */
 export type Card = { contact: SummaryContact; agenda: ContactAgenda };
@@ -82,7 +83,7 @@ export type FunnelGestureSearch = {
   statusTo?: 'choose' | ContactStatus;
   stageTo?: string;
   followUp?: 'schedule' | 'do' | 'anyway';
-  interaction?: 'note' | 'reply';
+  interaction?: InteractionGesture;
   send?: 'positioning';
   trial?: 'no-result';
   panel?: 'record';

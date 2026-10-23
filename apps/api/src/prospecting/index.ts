@@ -8,6 +8,7 @@ import {
   CONTACT_NOTE_MAX_LENGTH,
   CONTACT_PHONE_MAX_LENGTH,
   CHANNELS,
+  CHECK_IN_CHANNELS,
   CONTACT_STATUSES,
   FOLLOW_UP_NOTE_MAX_LENGTH,
   INTERACTION_NOTE_MAX_LENGTH,
@@ -252,6 +253,17 @@ const noteInteractionRequest = z.object({
   kind: z.enum(NOTED_INTERACTION_KINDS),
   occurredOn: z.iso.date(),
   note: interactionNote,
+});
+
+/**
+ * Check in… (spec UX §6.14): how it was done, the local day, today or earlier (ST-36), its note; the
+ * Follow-up to come kept unless it is canceled.
+ */
+const checkInRequest = z.object({
+  channel: z.enum(CHECK_IN_CHANNELS),
+  occurredOn: z.iso.date(),
+  note: interactionNote,
+  cancelFollowUp: z.boolean().optional(),
 });
 
 /**
@@ -875,6 +887,57 @@ const noteInteraction: Gesture<
   },
 };
 
+/** What “Check in…” retains: the Interaction it recorded, the Follow-up it canceled. */
+const checkedIn = z.object({ interactionId: z.uuid(), canceledFollowUpId: z.uuid().optional() });
+
+/**
+ * Check in… (spec UX §6.14): an outbound Interaction with an Ally, off any Positioning and any
+ * Follow-up, a Prospecting action (CONTEXT.md, Check-in). It never consumes the Follow-up: it stays,
+ * unless the User cancels it.
+ */
+const checkIn: Gesture<
+  'checked_in',
+  ContactPlace,
+  z.infer<typeof checkInRequest>,
+  z.infer<typeof checkedIn>,
+  'not_ally' | 'future_day' | 'no_follow_up'
+> = {
+  kind: 'checked_in',
+  subject: contactSubject,
+  async refuse({ subject }) {
+    return subject.status === 'ally' ? undefined : refusal('not_ally');
+  },
+  async write({ tx, userId, subjectId: contactId, input, now }) {
+    const { channel, occurredOn, note = null, cancelFollowUp: cancels = false } = input;
+    const day = await dayEntered(tx, userId, occurredOn, now);
+    if ('error' in day) return day;
+    const canceled = cancels ? await scheduledFollowUp(tx, userId, contactId) : undefined;
+    if (cancels && !canceled) return refusal('no_follow_up');
+    if (canceled) await setFollowUpStatus(tx, userId, canceled.id, 'canceled');
+    const interactionId = await recordInteraction(tx, {
+      userId,
+      contactId,
+      kind: 'check_in',
+      direction: 'outbound',
+      ...day,
+      note,
+      channel,
+    });
+    return {
+      retained: { interactionId, canceledFollowUpId: canceled?.id },
+      touched: touchedContact(contactId),
+    };
+  },
+  retained: checkedIn,
+  async inverse(tx, { userId, subjectId: contactId, retained }) {
+    await removeInteraction(tx, userId, retained.interactionId);
+    if (retained.canceledFollowUpId !== undefined) {
+      await setFollowUpStatus(tx, userId, retained.canceledFollowUpId, 'scheduled');
+    }
+    return touchedContact(contactId);
+  },
+};
+
 /**
  * What “Replied…” retains: the reply, the Follow-up it canceled or took off the Cadence (with its
  * rank), the change of Status it made.
@@ -1387,6 +1450,9 @@ export function createProspecting<Changes>({
     .post('/contacts/:id/note-interaction', requireUser, jsonBody(noteInteractionRequest), (c) =>
       perform(c, noteInteraction, c.req.valid('json')),
     )
+    .post('/contacts/:id/check-in', requireUser, jsonBody(checkInRequest), (c) =>
+      perform(c, checkIn, c.req.valid('json')),
+    )
     .post('/contacts/:id/record-reply', requireUser, jsonBody(recordReplyRequest), (c) =>
       perform(c, recordReply, c.req.valid('json')),
     )
@@ -1442,6 +1508,7 @@ export function createProspecting<Changes>({
     cancelFollowUp,
     recordFollowUp,
     noteInteraction,
+    checkIn,
     recordReply,
     usePositioning,
     settleTrialGesture,

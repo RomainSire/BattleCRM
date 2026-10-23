@@ -15,12 +15,15 @@ import { useId, useRef, useState, type ReactNode, type Ref, type RefObject } fro
 import { flushSync } from 'react-dom';
 import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 
-import { CHANNEL_LABEL } from '../channel.ts';
+import { CHANNEL_LABEL, CHECK_IN_CHANNEL_LABEL } from '../channel.ts';
+import { allySignalOf, TIER_LABEL } from '../circle/ally-signal.ts';
+import { RhythmGauge } from '../circle/rhythm-gauge.tsx';
 import { Button } from '../components/ui/button.tsx';
 import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { MenuItem, MoreActions } from '../components/ui/menu.tsx';
 import { useLocale, type Locale } from '../i18n.ts';
 import { useApi } from '../session.ts';
+import { settingsOf } from '../settings/use-settings.ts';
 import { isModalOpen, useShortcuts } from '../shortcuts.ts';
 import {
   organizationOf,
@@ -93,6 +96,9 @@ const DONE_LABEL: Partial<Record<ThreadEntry['kind'], () => string>> = {
   other: m.thread_other,
 };
 
+/** The Channel of a reply, or how a Check-in was done. */
+const INTERACTION_CHANNEL_LABEL = { ...CHANNEL_LABEL, ...CHECK_IN_CHANNEL_LABEL };
+
 /**
  * What an entry of the thread says: the Interactions done, with their note, a reply with its Channel;
  * the additions and the changes of Status, discreetly.
@@ -103,7 +109,10 @@ function threadEntryLabel(
 ) {
   let done = DONE_LABEL[kind]?.();
   if (kind === 'reply' && channel !== null) {
-    done = m.thread_reply({ channel: CHANNEL_LABEL[channel]() });
+    done = m.thread_reply({ channel: INTERACTION_CHANNEL_LABEL[channel]() });
+  }
+  if (kind === 'check_in' && channel !== null) {
+    done = m.thread_check_in({ channel: INTERACTION_CHANNEL_LABEL[channel]() });
   }
   if (kind === 'positioning_used') {
     done = m.thread_positioning_used({ label: positioningLabel(summary, positioningId) });
@@ -393,11 +402,13 @@ function nextActionText(contact: SummaryContact, summary: Summary, locale: Local
       const trial = trialStateOf(contact, summary);
       return trial ? trialText(trial, locale) : m.no_next_action();
     }
-    // Its Days since contact come with the Circle (ticket 36); a Follow-up comes first.
-    case 'ally':
-      return followUp
-        ? `${STATUS_LABEL.ally()} · ${followUpText(followUp.dueOn, todayOf(summary), locale)}`
-        : STATUS_LABEL.ally();
+    // Its Days since contact, and its Follow-up, which comes before the Rhythm (spec UX §5.3).
+    case 'ally': {
+      const today = todayOf(summary);
+      const { daysSinceContact: days } = allySignalOf(contact, summary, today);
+      const ally = m.next_action_ally({ days });
+      return followUp ? `${ally} · ${followUpText(followUp.dueOn, today, locale)}` : ally;
+    }
     default:
       return STATUS_LABEL.archived();
   }
@@ -462,12 +473,27 @@ function NextAction({
   const sendsFirst = isProspecting && contact.followUp === null && trial === undefined;
   // Waiting, a reply is what may come next (spec UX §5.3).
   const repliesFirst = isProspecting && !isDue && !isElapsed && !sendsFirst;
+  // An Ally: Follow up… when its Follow-up is due, Check in… otherwise (spec UX §5.3).
+  const isAlly = contact.status === 'ally';
+  const ally = isAlly ? allySignalOf(contact, summary, todayOf(summary)) : undefined;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2 rounded-card border p-3">
       <Heading id={headingId} className="text-xs font-semibold text-muted-foreground uppercase">
         {m.next_action()}
       </Heading>
       <p>{nextActionText(contact, summary, locale)}</p>
+      {ally && (
+        <div className="flex items-center gap-2">
+          <RhythmGauge
+            signal={ally}
+            rhythmDays={settingsOf(summary).checkInRhythmDays}
+            className="max-w-48"
+          />
+          <span className={cn('text-xs', ally.signal !== 'none' && 'font-medium')}>
+            {TIER_LABEL[ally.signal]()}
+          </span>
+        </div>
+      )}
       {contact.status === 'archived' && (
         <>
           {contact.statusReason && <p>{m.next_action_reason({ reason: contact.statusReason })}</p>}
@@ -504,6 +530,17 @@ function NextAction({
               {m.verb_follow_up_anyway()}
             </Button>
           </>
+        )}
+        {isAlly && (
+          // In full unless the Follow-up due comes first; then beside it, where “Note” would be.
+          <Button
+            variant={isDue ? 'outline' : 'default'}
+            className="max-md:min-h-11"
+            size={isDue && level === 3 ? 'sm' : 'default'}
+            onPress={() => onInteraction('check-in')}
+          >
+            {m.verb_check_in()}
+          </Button>
         )}
         {repliesFirst && (
           <Button className="max-md:min-h-11" onPress={() => onInteraction('reply')}>
@@ -649,10 +686,11 @@ export function RecordGesturePanels({
 /**
  * The keys of the record that has the focus (spec UX §3.3): anywhere on its page, within its panel
  * only. `S` opens “Change status…”, `E` “Change stage…”, `P` Schedule or Edit the follow-up, `F`
- * Follow up…, `I` Note an Interaction, `U` Use a Positioning.
+ * Follow up…, `I` Note an Interaction (Check in… on an Ally), `U` Use a Positioning.
  */
 function useRecordKeys(
   contact: SummaryContact | undefined,
+  summary: Summary | undefined,
   { status, followUp, interaction, send, stage }: RecordGestures,
   scope?: RefObject<HTMLElement | null>,
 ) {
@@ -672,11 +710,16 @@ function useRecordKeys(
     p: onKey(() => {
       if (contact && hasFollowUps(contact.status)) followUp.open('schedule');
     }),
+    // On an Ally, the full action of the moment: Follow up… when it is due, Check in… otherwise.
     f: onKey(() => {
-      if (contact?.followUp) followUp.open('do');
+      if (!contact || !summary) return;
+      const isDue = contact.followUp && isFollowUpDue(contact.followUp.dueOn, todayOf(summary));
+      if (contact.status === 'ally' && !isDue) interaction.open('check-in');
+      else if (contact.followUp) followUp.open('do');
     }),
     i: onKey(() => {
-      if (contact && canNoteInteraction(contact.status)) interaction.open('note');
+      if (contact?.status === 'ally') interaction.open('check-in');
+      else if (contact && canNoteInteraction(contact.status)) interaction.open('note');
     }),
     u: onKey(() => send.open('positioning')),
   });
@@ -725,7 +768,7 @@ export function ContactPanel({
   const panelRef = useRef<HTMLElement>(null);
   const gestures = useRecordGestures();
   const { status, followUp, interaction, send, trial, stage } = gestures;
-  useRecordKeys(contact, gestures, panelRef);
+  useRecordKeys(contact, summary, gestures, panelRef);
   const close = (
     <Button variant="ghost" size="icon-sm" aria-label={m.close()} onPress={onClose}>
       <X />
@@ -824,7 +867,7 @@ export function ContactPage({ contactId }: { contactId: string }) {
   const threadHeadingId = useId();
   const gestures = useRecordGestures();
   const { status, followUp, interaction, send, trial, stage } = gestures;
-  useRecordKeys(contact, gestures);
+  useRecordKeys(contact, summary, gestures);
   const backToContacts = (
     <Link to="/contacts" className="rounded-control underline-offset-4 focus-ring hover:underline">
       {m.contacts()}

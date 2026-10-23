@@ -135,8 +135,8 @@ _EN_: Check-in rhythm; signals Check in soon, Time to check in (avoid: cadence, 
 _Avoid_: Cadence (réservé à la Cadence de relance), fréquence
 
 **Prise de nouvelles**:
-Une Interaction sortante faite auprès d'un Allié, hors Positionnement et hors Relance : un message, un appel, un café. Elle ne crée aucun Essai et n'entre dans aucune Battle.
-_EN_: Check-in (avoid: touchpoint, ping, follow-up)
+Une Interaction sortante faite auprès d'un Allié, hors Positionnement et hors Relance : un message, un appel, un café. Elle passe par un Canal (e-mail, LinkedIn, téléphone), ou se fait en rencontre ou autrement. Elle ne crée aucun Essai et n'entre dans aucune Battle, et ne consomme jamais la Relance planifiée de l'Allié.
+_EN_: Check-in; by meeting, other (avoid: touchpoint, ping, follow-up)
 _Avoid_: Relance (réservé à la Relance), suivi
 
 **Taille visée du Cercle**:

@@ -48,6 +48,13 @@ export const FOLLOW_UP_NOTE_MAX_LENGTH = 2000;
 export const CHANNELS = ['email', 'linkedin', 'phone', 'mail'] as const;
 export type Channel = (typeof CHANNELS)[number];
 
+/**
+ * How a Check-in was done (spec UX §6.14): by a Channel but the mail, or by meeting, or otherwise
+ * (CONTEXT.md, Check-in).
+ */
+export const CHECK_IN_CHANNELS = ['email', 'linkedin', 'phone', 'meeting', 'other'] as const;
+export type CheckInChannel = (typeof CHECK_IN_CHANNELS)[number];
+
 /** What “Note an Interaction” records (spec UX §6.4): an outbound Interaction off any Positioning. */
 export const NOTED_INTERACTION_KINDS = ['call', 'meeting', 'message', 'other'] as const;
 export type NotedInteractionKind = (typeof NOTED_INTERACTION_KINDS)[number];

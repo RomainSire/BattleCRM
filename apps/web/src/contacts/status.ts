@@ -58,8 +58,11 @@ export type FollowUpGesture = (typeof FOLLOW_UP_GESTURES)[number];
 export const SEND_GESTURES = ['positioning', 'new-positioning'] as const;
 export type SendGesture = (typeof SEND_GESTURES)[number];
 
-/** A gesture that records an Interaction the User opens: Note an Interaction, or Replied… (spec UX §6.2, §6.4). */
-export const INTERACTION_GESTURES = ['note', 'reply'] as const;
+/**
+ * A gesture that records an Interaction the User opens: Note an Interaction, Replied…, or Check in…
+ * with an Ally (spec UX §6.2, §6.4, §6.14).
+ */
+export const INTERACTION_GESTURES = ['note', 'reply', 'check-in'] as const;
 export type InteractionGesture = (typeof INTERACTION_GESTURES)[number];
 
 /** A gesture on the Trial in progress the User opens: No result… (spec UX §6.7). */
