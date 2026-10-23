@@ -308,6 +308,8 @@ test('dragged by its handle with the keyboard, a Stage is dropped between two ot
   await expect.element(handle).toBeVisible();
   handle.element().focus();
   await userEvent.keyboard('{Enter}');
+  // The drag starts on the next frame, focus moving to a drop target: arrows sent before are lost.
+  await expect.element(handle).not.toHaveFocus();
   await userEvent.keyboard('{ArrowUp}');
   await userEvent.keyboard('{ArrowUp}');
   await userEvent.keyboard('{Enter}');
