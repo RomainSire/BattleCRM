@@ -77,6 +77,7 @@ test('adding a Contact puts it in the Pool and answers with its row of the summa
     removedPositioningIds: [],
     battles: [],
     removedBattleIds: [],
+    stages: null,
   });
   expect((await summaryOf(harness, user)).contacts).toEqual(changes.contacts);
 });
@@ -185,6 +186,7 @@ test('“Undo” takes the addition back: neither the Contact nor its Interactio
       removedPositioningIds: [],
       battles: [],
       removedBattleIds: [],
+      stages: null,
     },
   });
   expect((await summaryOf(harness, user)).contacts).toEqual([kept.contact]);

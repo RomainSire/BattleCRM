@@ -24,6 +24,7 @@ import {
   positioningOf,
   stageIdsOf,
 } from '../test/factories/positioning.ts';
+import { stageGesture } from '../test/factories/stage.ts';
 import { makeUser } from '../test/factories/user.ts';
 import { postFile, postJson } from '../test/http.ts';
 import { withUser } from './db/index.ts';
@@ -489,6 +490,29 @@ const CROSS_ACCESS: Record<
     const { attachment } = await attachFile(harness, alice, positioning.id);
     return { id: attachment.id, state: () => getJson(harness, alice, '/api/summary') };
   },
+  'POST /api/stages/:id/edit': async (harness, alice) => ({
+    id: (await stageIdsOf(harness, alice))[0] ?? '',
+    state: () => getJson(harness, alice, '/api/summary'),
+    body: { name: 'Premier contact' },
+  }),
+  'POST /api/stages/:id/move': async (harness, alice) => ({
+    id: (await stageIdsOf(harness, alice))[0] ?? '',
+    state: () => getJson(harness, alice, '/api/summary'),
+    body: { afterId: null },
+  }),
+  'POST /api/stages/:id/archive': async (harness, alice) => ({
+    id: (await stageIdsOf(harness, alice))[0] ?? '',
+    state: () => getJson(harness, alice, '/api/summary'),
+  }),
+  'POST /api/stages/:id/restore': async (harness, alice) => {
+    const [stageId = ''] = await stageIdsOf(harness, alice);
+    await stageGesture(harness, alice, `/api/stages/${stageId}/archive`);
+    return { id: stageId, state: () => getJson(harness, alice, '/api/summary') };
+  },
+  'POST /api/stages/:id/delete': async (harness, alice) => ({
+    id: (await stageIdsOf(harness, alice))[0] ?? '',
+    state: () => getJson(harness, alice, '/api/summary'),
+  }),
   'POST /api/sessions/:id/revoke': async (harness, alice) => {
     const state = () => getJson(harness, alice, '/api/sessions');
     const { sessions } = z

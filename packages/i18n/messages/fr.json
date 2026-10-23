@@ -990,5 +990,80 @@
   "funnel_no_trial": "Aucun Essai en cours",
   "funnel_no_follow_up": "Aucune Relance planifiée",
   "funnel_stage_entered_unknown": "Date inconnue",
-  "funnel_trial": "Essai « {label} »"
+  "funnel_trial": "Essai « {label} »",
+  "settings_funnel": "Funnel",
+  "settings_funnel_intro": "Le Funnel ne se modifie qu'ici. Réordonner ne déplace aucun Contact ; l'historique garde l'ordre d'alors.",
+  "settings_funnel_stages": "Étapes du Funnel",
+  "settings_stage_drag": "Déplacer {stage}",
+  "settings_stage_name": "Nom de l'Étape {position}",
+  "settings_stage_aim": "But de {stage}",
+  "settings_stage_aim_placeholder": "Aucun But",
+  "settings_stage_name_required": "Une Étape a besoin d'un nom.",
+  "settings_stage_prospecting": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} En prospection",
+        "countPlural=*": "{count} En prospection"
+      }
+    }
+  ],
+  "settings_stage_positionings": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Positionnement",
+        "countPlural=*": "{count} Positionnements"
+      }
+    }
+  ],
+  "settings_stage_open_battle": "Battle ouverte",
+  "settings_stage_insert_after": "Insérer une Étape après {stage}",
+  "settings_stage_add": "Ajouter une Étape",
+  "settings_stage_new_name": "Nouvelle Étape",
+  "settings_stage_archive": "Archiver…",
+  "settings_stage_delete": "Supprimer",
+  "settings_stage_delete_label": "Supprimer {stage}",
+  "settings_stage_archive_label": "Archiver {stage}…",
+  "settings_stage_has_contacts": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Contact En prospection s'y trouve : change-le d'Étape ou d'État d'abord.",
+        "countPlural=*": "{count} Contacts En prospection s'y trouvent : change-les d'Étape ou d'État d'abord."
+      }
+    }
+  ],
+  "settings_stage_has_contacts_link": "Voir le Funnel",
+  "settings_stage_battle_open": "Sa Battle est ouverte : clôture-la d'abord.",
+  "settings_stage_battle_open_link": "Voir la Battle",
+  "settings_stage_last": "Le Funnel garde toujours au moins une Étape.",
+  "settings_stage_archive_title": "Archiver « {stage} » ?",
+  "settings_stage_archive_leaves": "Elle sort du Funnel : le kanban n'a plus sa colonne, aucun Contact n'y entre plus.",
+  "settings_stage_archive_keepers": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Contact d'un autre État la garde comme dernière Étape atteinte.",
+        "countPlural=*": "{count} Contacts d'un autre État la gardent comme dernière Étape atteinte."
+      }
+    }
+  ],
+  "settings_stage_archive_kept": "Ses Positionnements, ses Battles et son Historique des Champions restent consultables.",
+  "settings_stage_archive_restore": "Tu pourras la restaurer à sa place, sous « Étapes archivées ».",
+  "settings_stage_archive_confirm": "Archiver",
+  "settings_archived_stages": "Étapes archivées ({count})",
+  "settings_stage_restore": "Restaurer",
+  "settings_stage_restore_label": "Restaurer {stage}",
+  "settings_stage_added": "Étape « {stage} » ajoutée",
+  "settings_stage_saved": "Étape « {stage} » enregistrée",
+  "settings_stage_moved": "Étape « {stage} » déplacée",
+  "settings_stage_archived": "Étape « {stage} » archivée",
+  "settings_stage_restored": "Étape « {stage} » restaurée",
+  "settings_stage_deleted": "Étape « {stage} » supprimée",
+  "settings_funnel_changed_elsewhere": "Le Funnel a changé sur un autre appareil : il vient d'être relu."
 }

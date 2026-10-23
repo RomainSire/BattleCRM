@@ -326,7 +326,12 @@ const insightsRoute = createRoute({
 const settingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/settings',
-  component: SettingsScreen,
+  // The Stage whose name takes the focus, “Rename” from the kanban (spec UX §5.2); anything else is dropped.
+  validateSearch: z.object({ stage: z.uuid().optional().catch(undefined) }),
+  component: function SettingsPage() {
+    const { stage } = settingsRoute.useSearch();
+    return <SettingsScreen stageId={stage} />;
+  },
 });
 
 // The link sent to a new address (spec UX §5.9). It opens no session: without one, signing in comes first

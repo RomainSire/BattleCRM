@@ -28,6 +28,7 @@ import {
   setArchivedAt,
   stageToOpenBattleAt,
   type PositioningBattles,
+  type StageBattles,
 } from '../funnel/index.ts';
 import {
   createCircuit,
@@ -180,6 +181,26 @@ export const positioningBattles: PositioningBattles = {
     if (!any) return undefined;
     if ((await championAt(tx, userId, any.stageId)) === positioningId) return 'champion';
     return battles.some(({ open }) => open) ? 'in_open_battle' : 'in_battle';
+  },
+};
+
+/** The Battles of a Stage, as Settings read them to archive or delete it (ST-32). */
+export const stageBattles: StageBattles = {
+  async any(tx, userId, stageId) {
+    const [found] = await tx
+      .select({ id: battle.id })
+      .from(battle)
+      .where(and(eq(battle.userId, userId), eq(battle.stageId, stageId)))
+      .limit(1);
+    return found !== undefined;
+  },
+  async open(tx, userId, stageId) {
+    const [found] = await tx
+      .select({ id: battle.id })
+      .from(battle)
+      .where(and(eq(battle.userId, userId), eq(battle.stageId, stageId), isNull(battle.closedAt)))
+      .limit(1);
+    return found !== undefined;
   },
 };
 

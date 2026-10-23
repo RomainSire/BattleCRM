@@ -7,6 +7,7 @@ import { useIsNarrow } from '../use-narrow.ts';
 import { ChangeEmail } from './change-email.tsx';
 import { ChangePassword } from './change-password.tsx';
 import { ConnectedDevices } from './connected-devices.tsx';
+import { FunnelSettings } from './funnel-settings.tsx';
 import {
   CelebrateSetting,
   LanguageSetting,
@@ -18,8 +19,9 @@ import { TwoFactor } from './two-factor.tsx';
 
 const cardClass = 'rounded-card border p-4';
 
-/** The sections, each reachable by its anchor; the Funnel joins them with its ticket (35). */
+/** The sections, each reachable by its anchor. */
 const SECTIONS = [
+  { id: 'funnel', title: m.settings_funnel },
   { id: 'prospecting', title: m.settings_prospecting },
   { id: 'preferences', title: m.settings_preferences },
   { id: 'account', title: m.settings_account },
@@ -42,8 +44,9 @@ function Section({ id, children }: { id: SectionId; children: ReactNode }) {
 /**
  * Settings (spec UX §5.8): a column of anchors, then a section each, saved field by field. On a
  * narrow width, only the simple ones: language, theme, celebration, Account (spec UX §3.2).
+ * `stageId` names the Stage whose name takes the focus, “Rename” from the kanban.
  */
-export function SettingsScreen() {
+export function SettingsScreen({ stageId }: { stageId?: string | undefined }) {
   useLocale();
   const isNarrow = useIsNarrow();
   return (
@@ -76,6 +79,11 @@ export function SettingsScreen() {
             </Section>
           ) : (
             <>
+              <Section id="funnel">
+                <div className={cardClass}>
+                  <FunnelSettings focusStageId={stageId} />
+                </div>
+              </Section>
               <Section id="prospecting">
                 <div className={cardClass}>
                   <ProspectingSettings />

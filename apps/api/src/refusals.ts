@@ -47,6 +47,8 @@ export const REFUSAL_STATUS = {
   not_in_battle: 409,
   expired: 409,
   superseded: 409,
+  served: 409,
+  last_stage: 409,
 } as const;
 
 /** Every code a request may be refused with. */

@@ -11,14 +11,14 @@ import type { Logger } from 'pino';
 
 import { failureReason, type Alert } from './alert.ts';
 import { createAuth, type Hibp } from './auth/index.ts';
-import { createBattles, positioningBattles } from './battles/index.ts';
+import { createBattles, positioningBattles, stageBattles } from './battles/index.ts';
 import { CLIENT_ERROR_MAX_BYTES, clientErrorReport } from './client-errors.ts';
 import { resolveClientIp } from './client-ip.ts';
 import type { Clock } from './clock.ts';
 import type { Config } from './config.ts';
 import { isDatabaseReady } from './db/index.ts';
 import { createEmailSender, type EmailTransport } from './email/index.ts';
-import { createPositionings, initializeFunnel } from './funnel/index.ts';
+import { createPositionings, createStages, initializeFunnel } from './funnel/index.ts';
 import { createGestures } from './gestures/index.ts';
 import type { InFlight } from './in-flight.ts';
 import { jsonBody } from './json-body.ts';
@@ -28,6 +28,7 @@ import {
   createProspecting,
   organizationMembers,
   positioningUses,
+  stageContacts,
 } from './prospecting/index.ts';
 import type { Random } from './random.ts';
 import { createSettings, initializeSettings } from './settings/index.ts';
@@ -94,11 +95,23 @@ export function createApp({
     changesOf: summaryChanges,
     assignments: battleAssignments,
   });
+  const stages = createStages({
+    clock,
+    requireUser,
+    changesOf: summaryChanges,
+    contacts: stageContacts,
+    battles: stageBattles,
+  });
   // Each module brings the inverse of its own gestures (ADR 0011).
   const gestures = createGestures({
     clock,
     requireUser,
-    gestures: [...prospecting.gestures, ...positionings.gestures, ...battles.gestures],
+    gestures: [
+      ...prospecting.gestures,
+      ...positionings.gestures,
+      ...battles.gestures,
+      ...stages.gestures,
+    ],
     changesOf: summaryChanges,
   });
   const organizations = createOrganizations({
@@ -150,6 +163,7 @@ export function createApp({
     .route('/', auth.routes)
     .route('/', prospecting.routes)
     .route('/', positionings.routes)
+    .route('/', stages.routes)
     .route('/', battles.routes)
     .route('/', organizations.routes)
     .route('/', gestures.routes)

@@ -63,13 +63,14 @@ export const contact = (fields: Partial<SummaryContact> = {}): SummaryContact =>
     ...fields,
   } satisfies SummaryContact);
 
-/** A Stage of the Funnel, not archived, without an aim. */
+/** A Stage of the Funnel, not archived, without an aim, that never served. */
 export const stage = (fields: Partial<SummaryStage> = {}): SummaryStage =>
   summaryStage.parse({
     id: nextId(),
     name: 'Approche',
     aim: null,
     archived: false,
+    served: false,
     ...fields,
   } satisfies SummaryStage);
 
@@ -176,5 +177,6 @@ export const changes = (fields: Partial<SummaryChanges> = {}): SummaryChanges =>
     removedPositioningIds: [],
     battles: [],
     removedBattleIds: [],
+    stages: null,
     ...fields,
   } satisfies SummaryChanges);

@@ -40,6 +40,8 @@ export type Touched = {
   removedPositioningIds: string[];
   battleIds: string[];
   removedBattleIds: string[];
+  /** Whether it changed the Funnel: its Stages, their order. */
+  stages: boolean;
 };
 
 /** The rows a gesture touched, every kind it names nothing of left empty. */
@@ -52,6 +54,7 @@ export const touched = (rows: Partial<Touched>): Touched => ({
   removedPositioningIds: [],
   battleIds: [],
   removedBattleIds: [],
+  stages: false,
   ...rows,
 });
 
@@ -113,7 +116,7 @@ type SubjectRecord = {
 };
 
 /**
- * What gestures act on, one at a time (ADR 0011): a Contact, a Positioning, a Battle. A new one comes
+ * What gestures act on, one at a time (ADR 0011): a Contact, a Positioning, a Battle, a Stage. A new one comes
  * with its column in `gesture` and its own loader, never a branch of the circuit.
  */
 export type GestureSubject<Row> = SubjectRecord & {

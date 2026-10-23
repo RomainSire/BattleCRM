@@ -34,6 +34,10 @@ export const CONTACT_PHONE_MAX_LENGTH = 40;
 export const CONTACT_LINKEDIN_URL_MAX_LENGTH = 500;
 export const CONTACT_NOTE_MAX_LENGTH = 5000;
 
+/** What Settings accept for a Stage (spec UX §5.8): a name, and an optional Aim. */
+export const STAGE_NAME_MAX_LENGTH = 100;
+export const STAGE_AIM_MAX_LENGTH = 200;
+
 /** The reason of a change of Status, optional (CONTEXT.md, Status). */
 export const STATUS_REASON_MAX_LENGTH = 500;
 
@@ -194,6 +198,12 @@ export const summaryStage = z.strictObject({
   name: z.string(),
   aim: z.string().nullable(),
   archived: z.boolean(),
+  /**
+   * Whether it ever served: a Contact passed there, or it bears a Positioning or a Battle. Then it is
+   * archived, never deleted (CONTEXT.md, Stage). Added after the first release: a summary kept on a
+   * device may lack it.
+   */
+  served: z.boolean(),
 });
 export type SummaryStage = z.infer<typeof summaryStage>;
 
@@ -325,6 +335,11 @@ export const summaryChanges = z.strictObject({
   removedPositioningIds: z.array(z.uuid()),
   battles: z.array(summaryBattle),
   removedBattleIds: z.array(z.uuid()),
+  /**
+   * Every Stage, in the order of the Funnel, when the gesture changed the Funnel; `null` otherwise.
+   * Added after the first release: an answer from a version from before lacks it.
+   */
+  stages: z.array(summaryStage).nullable(),
 });
 export type SummaryChanges = z.infer<typeof summaryChanges>;
 

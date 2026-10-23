@@ -65,7 +65,7 @@ _Avoid_: Pipeline, tunnel
 
 **Étape**:
 Un palier du Funnel (par ex. « premier contact », « CV envoyé », « entretien »). Son identité ne dépend pas de son nom : la renommer s'applique partout, historique compris. Elle peut porter un But. Une Étape qui a servi (un Contact y est passé, ou elle porte un Positionnement ou une Battle) n'est jamais supprimée, elle est **archivée** : elle sort du Funnel, mais ses Positionnements, ses Battles et son Historique des Champions restent consultables, et elle peut être restaurée telle quelle, à sa place d'avant (juste après l'Étape qui la précédait, si celle-ci est encore dans le Funnel, sinon en fin de Funnel). On ne peut archiver une Étape ni pendant qu'elle a une Battle ouverte, ni tant qu'un Contact En prospection s'y trouve ; un Contact d'un autre État garde une Étape archivée comme dernière Étape atteinte.
-_EN_: Stage; archived Stage (avoid: step, phase, status)
+_EN_: Stage; archived Stage; a Stage that served (avoid: step, phase, status)
 _Avoid_: Stage, phase, statut
 
 **Étapes types**:

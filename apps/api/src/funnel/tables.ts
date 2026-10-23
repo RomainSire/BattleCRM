@@ -36,6 +36,11 @@ export const stage = pgTable(
     position: integer().notNull(),
     /** Out of the Funnel since then; restored, it is in again. */
     archivedAt: timestamp('archived_at', { withTimezone: true }),
+    /**
+     * Archived, the Stage that preceded it in the Funnel, `null` when it was the first: restored, it
+     * comes back right after it (CONTEXT.md, Stage). No foreign key: that one may be deleted since.
+     */
+    precededById: uuid('preceded_by_id'),
   },
   (table) => [
     unique('stage_user_id_id_unique').on(table.userId, table.id),
@@ -157,6 +162,16 @@ export const positioningAttachment = pgTable(
     index('positioning_attachment_positioning_idx').on(table.userId, table.positioningId),
   ],
 );
+
+/** The gestures of Settings on the Funnel (spec UX §5.8) “Undo” can take back (ADR 0011): each touches one Stage. */
+export const STAGE_GESTURE_KINDS = [
+  'stage_created',
+  'stage_edited',
+  'stage_moved',
+  'stage_archived',
+  'stage_restored',
+  'stage_deleted',
+] as const;
 
 /**
  * The gestures of the Positioning workshop (spec UX §5.6) “Undo” can take back (ADR 0011): each

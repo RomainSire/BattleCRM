@@ -258,7 +258,9 @@ const createPositioning = (
     const [found] = await tx
       .select({ id: stage.id })
       .from(stage)
-      .where(and(eq(stage.userId, userId), eq(stage.id, stageId), isNull(stage.archivedAt)));
+      .where(and(eq(stage.userId, userId), eq(stage.id, stageId), isNull(stage.archivedAt)))
+      // Shared until written: archiving or deleting the Stage then waits, and sees it (ST-32).
+      .for('share');
     if (!found) return refusal('unknown_stage');
     if (derivedFromId !== undefined) {
       // A copy stays at the Stage of its original, and takes its attachments.
@@ -469,10 +471,17 @@ const deletePositioning = (
   },
   retained: positioningDeleted,
   /**
-   * The Positioning comes back as it was, and its copies name it again; unless its own original was
-   * deleted since.
+   * The Positioning comes back as it was, and its copies name it again; unless its own original or
+   * its Stage was deleted since.
    */
   async inverse(tx, { userId, retained: { positioning: deleted, copyIds, attachmentIds } }) {
+    // Its Stage, which it alone made serve, may be deleted since.
+    const [itsStage] = await tx
+      .select({ id: stage.id })
+      .from(stage)
+      .where(and(eq(stage.userId, userId), eq(stage.id, deleted.stageId)))
+      .for('share');
+    if (!itsStage) return 'superseded';
     if (deleted.derivedFromId !== null) {
       const [original] = await tx
         .select({ id: positioning.id })

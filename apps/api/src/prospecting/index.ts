@@ -29,7 +29,7 @@ import {
   stageToEnter,
   statusChangeCancelsFollowUp,
 } from '@battlecrm/domain';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, or } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
@@ -37,7 +37,12 @@ import type { AppEnv } from '../app.ts';
 import type { RequireUser } from '../auth/index.ts';
 import type { Clock } from '../clock.ts';
 import { violates, withUser, type Transaction } from '../db/index.ts';
-import { positioningToUse, stageOrder, type PositioningUses } from '../funnel/index.ts';
+import {
+  positioningToUse,
+  stageOrder,
+  type PositioningUses,
+  type StageContacts,
+} from '../funnel/index.ts';
 import type { BattleAssignments } from '../battles/index.ts';
 import {
   createCircuit,
@@ -83,7 +88,7 @@ import {
   takeBackStageChange,
   writeStageChange,
 } from './stage-changes.ts';
-import { contact, followUp, interaction, statusChange } from './tables.ts';
+import { contact, followUp, interaction, stageChange, statusChange } from './tables.ts';
 import {
   anyAssignmentIn,
   anyTrialWith,
@@ -325,6 +330,49 @@ export const positioningUses: PositioningUses = {
     return use !== undefined;
   },
   inTrial: anyTrialWith,
+};
+
+/** The Contacts of a Stage, as Settings read them to archive or delete it (ST-32). */
+export const stageContacts: StageContacts = {
+  async passed(tx, userId, stageId) {
+    const [at] = await tx
+      .select({ id: contact.id })
+      .from(contact)
+      .where(and(eq(contact.userId, userId), eq(contact.stageId, stageId)))
+      .limit(1);
+    if (at) return true;
+    const [entered] = await tx
+      .select({ id: statusChange.id })
+      .from(statusChange)
+      .where(and(eq(statusChange.userId, userId), eq(statusChange.stageId, stageId)))
+      .limit(1);
+    if (entered) return true;
+    const [moved] = await tx
+      .select({ id: stageChange.id })
+      .from(stageChange)
+      .where(
+        and(
+          eq(stageChange.userId, userId),
+          or(eq(stageChange.fromStageId, stageId), eq(stageChange.toStageId, stageId)),
+        ),
+      )
+      .limit(1);
+    return moved !== undefined;
+  },
+  async prospecting(tx, userId, stageId) {
+    const [at] = await tx
+      .select({ id: contact.id })
+      .from(contact)
+      .where(
+        and(
+          eq(contact.userId, userId),
+          eq(contact.stageId, stageId),
+          eq(contact.status, 'prospecting'),
+        ),
+      )
+      .limit(1);
+    return at !== undefined;
+  },
 };
 
 /** What a Battle did with its Contacts: for “Undo” of its opening (ADR 0011), and for its closing. */

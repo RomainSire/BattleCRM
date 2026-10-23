@@ -383,7 +383,13 @@ function StageHeader({
         <MoreActions
           className="size-6"
           label={m.funnel_stage_actions({ stage: stage.name })}
-          onAction={() => void navigate({ to: '/settings', hash: 'funnel' })}
+          onAction={(key: Key) =>
+            void navigate({
+              to: '/settings',
+              search: key === 'rename' ? { stage: stage.id } : {},
+              hash: 'funnel',
+            })
+          }
         >
           <MenuItem id="rename">{m.funnel_rename_stage()}</MenuItem>
           <MenuItem id="manage">{m.funnel_manage_stages()}</MenuItem>

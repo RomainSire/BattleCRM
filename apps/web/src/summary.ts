@@ -4,6 +4,7 @@ import type {
   SummaryChanges,
   SummaryContact,
   SummaryPositioning,
+  SummaryStage,
 } from '@battlecrm/contract';
 import {
   evaluateWinRule,
@@ -27,6 +28,7 @@ export type {
   SummaryOrganization,
   SummaryPositioning,
   SummarySettings,
+  SummaryStage,
 } from '@battlecrm/contract';
 
 export const SUMMARY_KEY = ['summary'];
@@ -169,6 +171,21 @@ export function stageEnteredOnOf(contact: SummaryContact): string | null {
   return day ?? null;
 }
 
+/**
+ * Whether a Stage served (CONTEXT.md, Stage): the API says so, and what the summary holds since does
+ * too (a Contact, a Positioning or a Battle there). Then it is archived, never deleted.
+ */
+export function hasServed(summary: Summary, stage: SummaryStage): boolean {
+  // Fallback: a summary kept on the device by a version from before this flag carries none.
+  const served: boolean | undefined = stage.served;
+  return (
+    (served ?? true) ||
+    summary.contacts.some(({ stageId }) => stageId === stage.id) ||
+    positioningsOf(summary).some(({ stageId }) => stageId === stage.id) ||
+    battlesOf(summary).some(({ stageId }) => stageId === stage.id)
+  );
+}
+
 /** Frozen from its first Trial (CONTEXT.md, Positioning). */
 export const isFrozen = ({ trialCount }: SummaryPositioning) => trialCount > 0;
 
@@ -221,11 +238,15 @@ export async function applySummaryChanges(
     ...(answeredRemovals ?? []),
     ...changedBattles.map(({ id }) => id),
   ]);
+  // The whole Funnel, when the gesture changed it. Fallback: an answer from a version from before
+  // carries none.
+  const answeredStages: SummaryStage[] | null | undefined = changes.stages;
   queryClient.setQueryData<Summary>(
     SUMMARY_KEY,
     (summary) =>
       summary && {
         ...summary,
+        stages: answeredStages ?? summary.stages,
         contacts: [
           ...changes.contacts,
           ...summary.contacts.filter((contact) => !replacedContacts.has(contact.id)),

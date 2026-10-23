@@ -3,18 +3,17 @@ import type { Locale } from '@battlecrm/i18n/runtime';
 import { and, asc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 
 import type { Transaction } from '../db/index.ts';
+import { FUNNEL_ORDER } from './stages.ts';
 import { positioning, stage } from './tables.ts';
 
 // Read by `views`, which never writes them.
 export { positioning, positioningAttachment, stage } from './tables.ts';
+export { createStages, FUNNEL_ORDER, type StageBattles, type StageContacts } from './stages.ts';
 export {
   createPositionings,
   type PositioningBattles,
   type PositioningUses,
 } from './positionings.ts';
-
-/** The order of the Funnel, for every read of its Stages. */
-export const FUNNEL_ORDER = [asc(stage.position), asc(stage.id)];
 
 /** The Standard stages (spec UX §5.8), in their order: each a name and its Aim. */
 const STANDARD_STAGES = [
@@ -43,12 +42,19 @@ export async function initializeFunnel(
   );
 }
 
-/** The Stages of the Funnel of a User, archived ones left out, in their order (spec stack §5.2). */
-export function stageOrder(tx: Transaction, userId: string) {
+/**
+ * The Stages of the Funnel of a User, archived ones left out, in their order (spec stack §5.2), their
+ * rows shared until the transaction ends: archiving or reordering one then waits, and sees the
+ * Contact that entered it (ST-32).
+ */
+export async function stageOrder(tx: Transaction, userId: string) {
+  const inFunnel = and(eq(stage.userId, userId), isNull(stage.archivedAt));
+  // Shared in the order of their ids, as the gestures on the Funnel lock them: never crossed.
+  await tx.select({ id: stage.id }).from(stage).where(inFunnel).orderBy(asc(stage.id)).for('share');
   return tx
     .select({ id: stage.id, name: stage.name })
     .from(stage)
-    .where(and(eq(stage.userId, userId), isNull(stage.archivedAt)))
+    .where(inFunnel)
     .orderBy(...FUNNEL_ORDER);
 }
 

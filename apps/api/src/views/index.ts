@@ -271,9 +271,12 @@ async function summaryContacts(
   );
 }
 
-/** Every Stage of the User, archived ones too: a Contact may keep one as the last it reached. In the order of the Funnel. */
-const summaryStages = (tx: Transaction, userId: string): Promise<SummaryStage[]> =>
-  tx
+/**
+ * Every Stage of the User, archived ones too: a Contact may keep one as the last it reached. In the
+ * order of the Funnel, each with whether it served (CONTEXT.md, Stage).
+ */
+async function summaryStages(tx: Transaction, userId: string): Promise<SummaryStage[]> {
+  const stages = await tx
     .select({
       id: stage.id,
       name: stage.name,
@@ -283,6 +286,17 @@ const summaryStages = (tx: Transaction, userId: string): Promise<SummaryStage[]>
     .from(stage)
     .where(eq(stage.userId, userId))
     .orderBy(...FUNNEL_ORDER);
+  // A Contact is or was there, it bears a Positioning or a Battle.
+  const served = await tx.execute<{ stage_id: string }>(sql`
+    select ${contact.stageId} as stage_id from ${contact} where ${eq(contact.userId, userId)}
+    union select ${statusChange.stageId} from ${statusChange} where ${eq(statusChange.userId, userId)}
+    union select ${stageChange.fromStageId} from ${stageChange} where ${eq(stageChange.userId, userId)}
+    union select ${stageChange.toStageId} from ${stageChange} where ${eq(stageChange.userId, userId)}
+    union select ${positioning.stageId} from ${positioning} where ${eq(positioning.userId, userId)}
+    union select ${battle.stageId} from ${battle} where ${eq(battle.userId, userId)}`);
+  const servedIds = new Set(served.rows.map(({ stage_id }) => stage_id));
+  return stages.map((row) => ({ ...row, served: servedIds.has(row.id) }));
+}
 
 /**
  * Every Positioning of the User, archived ones too, or the ones a gesture touched; the earliest first
@@ -606,6 +620,7 @@ export async function summaryChanges(
     removedPositioningIds: touched.removedPositioningIds,
     battles: await summaryBattles(tx, userId, touched.battleIds),
     removedBattleIds: touched.removedBattleIds,
+    stages: touched.stages ? await summaryStages(tx, userId) : null,
   };
 }
 

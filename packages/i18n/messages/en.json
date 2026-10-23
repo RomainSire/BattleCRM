@@ -999,5 +999,80 @@
   "funnel_no_trial": "No Trial in progress",
   "funnel_no_follow_up": "No follow-up scheduled",
   "funnel_stage_entered_unknown": "Unknown date",
-  "funnel_trial": "Trial “{label}”"
+  "funnel_trial": "Trial “{label}”",
+  "settings_funnel": "Funnel",
+  "settings_funnel_intro": "The Funnel is edited here only. Reordering moves no Contact; the history keeps the order of the time.",
+  "settings_funnel_stages": "Stages of the Funnel",
+  "settings_stage_drag": "Move {stage}",
+  "settings_stage_name": "Name of Stage {position}",
+  "settings_stage_aim": "Aim of {stage}",
+  "settings_stage_aim_placeholder": "No Aim",
+  "settings_stage_name_required": "A Stage needs a name.",
+  "settings_stage_prospecting": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Prospecting",
+        "countPlural=*": "{count} Prospecting"
+      }
+    }
+  ],
+  "settings_stage_positionings": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Positioning",
+        "countPlural=*": "{count} Positionings"
+      }
+    }
+  ],
+  "settings_stage_open_battle": "Open Battle",
+  "settings_stage_insert_after": "Insert a Stage after {stage}",
+  "settings_stage_add": "Add a Stage",
+  "settings_stage_new_name": "New Stage",
+  "settings_stage_archive": "Archive…",
+  "settings_stage_delete": "Delete",
+  "settings_stage_delete_label": "Delete {stage}",
+  "settings_stage_archive_label": "Archive {stage}…",
+  "settings_stage_has_contacts": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Contact Prospecting is there: change its Stage or Status first.",
+        "countPlural=*": "{count} Contacts Prospecting are there: change their Stage or Status first."
+      }
+    }
+  ],
+  "settings_stage_has_contacts_link": "See the Funnel",
+  "settings_stage_battle_open": "Its Battle is open: close it first.",
+  "settings_stage_battle_open_link": "See the Battle",
+  "settings_stage_last": "The Funnel always keeps at least one Stage.",
+  "settings_stage_archive_title": "Archive “{stage}”?",
+  "settings_stage_archive_leaves": "It leaves the Funnel: the kanban loses its column, no Contact enters it anymore.",
+  "settings_stage_archive_keepers": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Contact in another Status keeps it as the last Stage reached.",
+        "countPlural=*": "{count} Contacts in another Status keep it as the last Stage reached."
+      }
+    }
+  ],
+  "settings_stage_archive_kept": "Its Positionings, Battles and Champion history stay available.",
+  "settings_stage_archive_restore": "You can restore it to its place, under “Archived Stages”.",
+  "settings_stage_archive_confirm": "Archive",
+  "settings_archived_stages": "Archived Stages ({count})",
+  "settings_stage_restore": "Restore",
+  "settings_stage_restore_label": "Restore {stage}",
+  "settings_stage_added": "Stage “{stage}” added",
+  "settings_stage_saved": "Stage “{stage}” saved",
+  "settings_stage_moved": "Stage “{stage}” moved",
+  "settings_stage_archived": "Stage “{stage}” archived",
+  "settings_stage_restored": "Stage “{stage}” restored",
+  "settings_stage_deleted": "Stage “{stage}” deleted",
+  "settings_funnel_changed_elsewhere": "The Funnel changed on another device: it was just read again."
 }
