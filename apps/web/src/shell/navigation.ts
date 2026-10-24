@@ -23,6 +23,9 @@ export type NavigationEntry = {
   alsoCurrentOn?: Path[];
 };
 
+/** An amber counter on an entry: its number, and what it counts. */
+export type NavigationCount = { value: number; label: string };
+
 const today: NavigationEntry = { to: '/today', label: m.today, icon: Sun };
 const circle: NavigationEntry = { to: '/circle', label: m.circle, icon: Star };
 const contacts: NavigationEntry = {

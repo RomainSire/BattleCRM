@@ -7,12 +7,13 @@ import { Button } from '../components/ui/button.tsx';
 import { useApi } from '../session.ts';
 import { hasConclusiveBattle, summaryQuery } from '../summary.ts';
 import { useSettings } from '../settings/use-settings.ts';
+import { useTodayCount } from '../today/today-count.ts';
 import { Account } from './account.tsx';
 import { Kbd } from './kbd.tsx';
 import { Brand } from './logo.tsx';
 import { NavLink } from './nav-link.tsx';
 import { experimentation, prospecting, settings } from './navigation.ts';
-import type { NavigationEntry } from './navigation.ts';
+import type { NavigationCount, NavigationEntry } from './navigation.ts';
 
 // The palette and shortcuts help plug into these buttons with their ticket (41).
 
@@ -21,6 +22,7 @@ export function Sidebar({ onAdd }: { onAdd: () => void }) {
   // A key that does nothing is not shown (spec UX §3.3).
   const { singleKeyShortcuts } = useSettings();
   const dots = useDots();
+  const counts = { '/today': useTodayCount() };
   return (
     <nav
       aria-label={m.main_menu()}
@@ -52,7 +54,7 @@ export function Sidebar({ onAdd }: { onAdd: () => void }) {
         </span>
         {singleKeyShortcuts && <Kbd>N</Kbd>}
       </Button>
-      <NavGroup label={m.prospecting()} entries={prospecting} />
+      <NavGroup label={m.prospecting()} entries={prospecting} counts={counts} />
       <NavGroup label={m.experimentation()} entries={experimentation} dots={dots} />
       <div className="mt-auto flex flex-col gap-0.5 border-t pt-2">
         <NavLink entry={settings} className="h-8 px-2" />
@@ -83,10 +85,12 @@ function NavGroup({
   label,
   entries,
   dots = {},
+  counts = {},
 }: {
   label: string;
   entries: NavigationEntry[];
   dots?: Partial<Record<NavigationEntry['to'], string>>;
+  counts?: Partial<Record<NavigationEntry['to'], NavigationCount | undefined>>;
 }) {
   const labelId = useId();
   return (
@@ -100,7 +104,12 @@ function NavGroup({
       <ul aria-labelledby={labelId} className="flex flex-col gap-0.5">
         {entries.map((entry) => (
           <li key={entry.to}>
-            <NavLink entry={entry} className="h-8 px-2" dot={dots[entry.to]} />
+            <NavLink
+              entry={entry}
+              className="h-8 px-2"
+              dot={dots[entry.to]}
+              count={counts[entry.to]}
+            />
           </li>
         ))}
       </ul>

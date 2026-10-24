@@ -2,20 +2,23 @@ import { useMatchRoute } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { Link } from 'react-aria-components';
 
-import type { NavigationEntry } from './navigation.ts';
+import type { NavigationCount, NavigationEntry } from './navigation.ts';
 
 /**
  * A navigation entry, marked as the current page while its screen (or a page below it) is shown.
- * `dot`, when given, is the label of a teal dot after it (spec UX §3.1: “Battle conclusive”).
+ * `dot`, when given, is the label of a teal dot after it (spec UX §3.1: “Battle conclusive”); `count`,
+ * an amber counter that shows its number alone, what it counts in its tooltip and label (spec UX §3.1).
  */
 export function NavLink({
   entry,
   className,
   dot,
+  count,
 }: {
   entry: NavigationEntry;
   className?: string;
   dot?: string | undefined;
+  count?: NavigationCount | undefined;
 }) {
   const matchRoute = useMatchRoute();
   const isCurrent = [entry.to, ...(entry.alsoCurrentOn ?? [])].some(
@@ -41,6 +44,19 @@ export function NavLink({
             className="ml-auto size-2 shrink-0 rounded-full bg-accent"
           />
           <span className="sr-only"> · {dot}</span>
+        </>
+      )}
+      {count !== undefined && (
+        <>
+          <span
+            aria-hidden
+            data-nav-count
+            title={count.label}
+            className="ml-auto rounded-full border border-overdue px-1.5 text-xs leading-4 font-semibold text-overdue tabular-nums"
+          >
+            {count.value}
+          </span>
+          <span className="sr-only"> · {count.label}</span>
         </>
       )}
     </Link>

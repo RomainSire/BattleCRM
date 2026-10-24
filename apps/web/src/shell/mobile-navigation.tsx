@@ -4,6 +4,7 @@ import { Search } from 'lucide-react';
 import { Button } from '../components/ui/button.tsx';
 import { Brand } from './logo.tsx';
 import { NavLink } from './nav-link.tsx';
+import { useTodayCount } from '../today/today-count.ts';
 import { tabs } from './navigation.ts';
 
 /** The narrow-width header: the brand and the magnifier, which opens the palette (spec UX §3.2, ticket 41). */
@@ -20,6 +21,7 @@ export function MobileHeader() {
 
 /** The narrow-width bottom tabs: Today, Contacts, Funnel, More (spec UX §3.2). */
 export function TabBar() {
+  const todayCount = useTodayCount();
   return (
     <nav
       aria-label={m.main_menu()}
@@ -30,6 +32,7 @@ export function TabBar() {
           <li key={entry.to}>
             <NavLink
               entry={entry}
+              count={entry.to === '/today' ? todayCount : undefined}
               className="min-h-14 flex-col justify-center gap-0.5 rounded-none text-xs data-current:bg-transparent data-current:text-accent-text"
             />
           </li>

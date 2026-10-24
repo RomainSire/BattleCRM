@@ -43,6 +43,7 @@ import { configQuery, sessionQuery, type ApiClient } from './session.ts';
 import { ChangingEmail, InvalidEmailLinkScreen } from './settings/change-email-link.tsx';
 import { SettingsScreen } from './settings/settings-screen.tsx';
 import { AppShell } from './shell/app-shell.tsx';
+import { TodayScreen } from './today/today-screen.tsx';
 
 type RouterContext = { queryClient: QueryClient; api: ApiClient };
 
@@ -203,12 +204,6 @@ const indexRoute = createRoute({
   },
 });
 
-const todayRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: '/today',
-  component: () => <Screen title={m.today()} />,
-});
-
 /** The change of Status open on a record (spec UX §6.11), kept by the address (ST-70). */
 const statusToSearch = z.enum(STATUS_GESTURES).optional().catch(undefined);
 /** The change of Stage open on a record (spec UX §6.6), to a Stage or to choose, kept by the address (ST-70). */
@@ -224,6 +219,24 @@ const interactionSearch = z.enum(INTERACTION_GESTURES).optional().catch(undefine
 const sendSearch = z.enum(SEND_GESTURES).optional().catch(undefined);
 /** The gesture on the Trial in progress open on a record (spec UX §6.7), kept by the address (ST-70). */
 const trialSearch = z.enum(TRIAL_GESTURES).optional().catch(undefined);
+
+const todayRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/today',
+  // The Contact a gesture is open on, its record open beside the list, and its gesture (ST-70);
+  // anything else is dropped.
+  validateSearch: z.object({
+    contact: z.uuid().optional().catch(undefined),
+    panel: z.literal('record').optional().catch(undefined),
+    statusTo: statusToSearch,
+    stageTo: stageToSearch,
+    followUp: followUpSearch,
+    interaction: interactionSearch,
+    send: sendSearch,
+    trial: trialSearch,
+  }),
+  component: TodayScreen,
+});
 
 const circleRoute = createRoute({
   getParentRoute: () => appRoute,

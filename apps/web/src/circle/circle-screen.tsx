@@ -28,6 +28,7 @@ import { formatLocalDay, formatWeekDay } from '../contacts/format.ts';
 import { targetText } from '../contacts/organization-field.tsx';
 import type { FunnelGestureSearch } from '../funnel/next-action.tsx';
 import { useLocale, type Locale } from '../i18n.ts';
+import { ROW_LINK_CLASS } from '../screens/row-link.ts';
 import { Screen } from '../screens/screen.tsx';
 import { useApi } from '../session.ts';
 import { settingsOf } from '../settings/use-settings.ts';
@@ -71,13 +72,6 @@ function tiersOf(summary: Summary, today: string): Record<Tier, Ally[]> {
     none: allies.filter(({ signal }) => signal.signal === 'none'),
   };
 }
-
-/**
- * The name of an Ally, a link stretched over its row (one tab stop, its focus ring around the row),
- * as the rows of Battles have it.
- */
-const ROW_LINK_CLASS =
-  "self-start font-medium underline-offset-4 outline-none group-hover:underline after:absolute after:inset-0 after:rounded-card after:content-[''] focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent-text max-md:py-3";
 
 /** The scheduled Follow-up of an Ally, which comes before the Rhythm: “⏰ Follow-up Wed, Oct 14”. */
 function followUpLine(contact: SummaryContact, signal: AllySignal, locale: Locale) {

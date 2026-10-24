@@ -1104,5 +1104,38 @@
         "countPlural=*": "{count} Alliés"
       }
     }
+  ],
+  "today_load_error": "Aujourd'hui n'a pas pu être chargé.",
+  "today_follow_ups_and_allies": "Relances et Alliés à relancer",
+  "today_window_elapsed": "Essais délai dépassé",
+  "today_ally_rhythm_past": "Rythme dépassé ({late} j) · {days} j sans contact",
+  "today_circle": "Cercle {count}/{goal}",
+  "today_circle_label": "Cercle : {count} Alliés sur {goal} visés",
+  "today_circle_count": "Cercle · {allies}",
+  "today_upcoming": "À venir",
+  "today_upcoming_none": "Aucune Relance demain.",
+  "today_upcoming_follow_up": "{followUp} demain",
+  "today_nothing": "Rien à traiter aujourd'hui.",
+  "today_first_day": "Aucun Contact pour l'instant.",
+  "today_first_day_stages": "Ton Funnel commence avec ces Étapes, modifiables dans les Réglages :",
+  "today_badge_needs_action": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} à traiter",
+        "countPlural=*": "{count} à traiter"
+      }
+    }
+  ],
+  "today_badge_allies": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Allié à relancer",
+        "countPlural=*": "{count} Alliés à relancer"
+      }
+    }
   ]
 }

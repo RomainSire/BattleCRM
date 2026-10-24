@@ -1113,5 +1113,38 @@
         "countPlural=*": "{count} Allies"
       }
     }
+  ],
+  "today_load_error": "Today could not be loaded.",
+  "today_follow_ups_and_allies": "Follow-ups and Allies to check in with",
+  "today_window_elapsed": "Trials: window elapsed",
+  "today_ally_rhythm_past": "Check-in rhythm passed ({late} d) · {days} d since contact",
+  "today_circle": "Circle {count}/{goal}",
+  "today_circle_label": "Circle: {count} Allies of the {goal} aimed for",
+  "today_circle_count": "Circle · {allies}",
+  "today_upcoming": "Upcoming",
+  "today_upcoming_none": "No Follow-up tomorrow.",
+  "today_upcoming_follow_up": "{followUp} tomorrow",
+  "today_nothing": "Nothing needs action today.",
+  "today_first_day": "No Contact yet.",
+  "today_first_day_stages": "Your Funnel starts with these Stages, which you can change in Settings:",
+  "today_badge_needs_action": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} needs action",
+        "countPlural=*": "{count} need action"
+      }
+    }
+  ],
+  "today_badge_allies": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Ally to check in with",
+        "countPlural=*": "{count} Allies to check in with"
+      }
+    }
   ]
 }
