@@ -1,6 +1,7 @@
+import * as fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 
-import { byUrgency, contactAgenda, type AgendaContact } from './agenda.ts';
+import { byUrgency, contactAgenda, hasNoNextStep, type AgendaContact } from './agenda.ts';
 
 const TODAY = '2026-10-23';
 
@@ -97,4 +98,27 @@ describe('byUrgency', () => {
       { row: 'waiting', reason: 'no-positioning' },
     ]);
   });
+});
+
+test('No next step reads the same from its facts alone as from the whole agenda', () => {
+  fc.assert(
+    fc.property(
+      fc.boolean(),
+      fc.boolean(),
+      fc.boolean(),
+      (hasFollowUp, hasTrial, stageHasPositioning) => {
+        const agenda = contactAgenda(
+          {
+            followUp: hasFollowUp ? { dueOn: '2026-01-09' } : null,
+            trialWindow: hasTrial ? { lastDoneOn: '2026-01-05', responseWindowDays: 14 } : null,
+            stageHasPositioning,
+          },
+          '2026-01-06',
+        );
+        expect(
+          hasNoNextStep({ hasFollowUp, hasTrialInProgress: hasTrial, stageHasPositioning }),
+        ).toBe(agenda.row === 'no-next-step');
+      },
+    ),
+  );
 });

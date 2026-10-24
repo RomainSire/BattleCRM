@@ -24,10 +24,12 @@ export {
 export {
   byUrgency,
   contactAgenda,
+  hasNoNextStep,
   isFollowUpDueIn,
   type AgendaContact,
   type AgendaRow,
   type ContactAgenda,
+  type NextStepFacts,
 } from './agenda.ts';
 export {
   allySignal,
@@ -52,6 +54,7 @@ export {
   shiftedFollowUpOn,
 } from './positioning.ts';
 export { chooseAssignment, type AssignmentCandidate } from './assignment.ts';
+export { pickAtRandom } from './pick.ts';
 export { isWindowElapsed, responseWindowEndsOn, type TrialWindow } from './trial.ts';
 export {
   BATTLE_MINIMUM_FINISHED,

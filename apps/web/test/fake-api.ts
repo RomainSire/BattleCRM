@@ -8,6 +8,9 @@ const defaults: Record<string, Handler> = {
   'GET /api/config': () => Response.json({ signupsOpen: true }),
   'GET /api/account/two-factor': () => Response.json({ enabled: false }),
   'GET /api/summary': () => Response.json(summary()),
+  // Today picked nothing: its day is never read by the SPA.
+  'GET /api/today/picks': () =>
+    Response.json({ day: '2026-01-05', entries: [], noNextStep: [], postponedBattleIds: [] }),
 };
 
 /** No session on this device. */

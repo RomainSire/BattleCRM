@@ -14,7 +14,7 @@ import {
   stage,
   summary,
 } from '../../test/summary.ts';
-import type { SummaryContact, SummarySettings } from '../summary.ts';
+import type { SummaryBattle, SummaryContact, SummarySettings } from '../summary.ts';
 
 const desktop = () => page.viewport(1400, 900);
 
@@ -111,11 +111,25 @@ const everyone = () => [claire(), ines(), tom(), lea(), paul(), marc(), sara(), 
 
 type Routes = Parameters<typeof fakeApi>[0];
 
+/** What Today picked for the day: none unless said otherwise. */
+const picks = (fields: {
+  entries?: string[];
+  noNextStep?: string[];
+  postponedBattleIds?: string[];
+}) =>
+  Response.json({ day: today(), entries: [], noNextStep: [], postponedBattleIds: [], ...fields });
+
 function todayApi({
   contacts = everyone(),
   settings = {},
+  battles = [BATTLE],
   routes: extra = {},
-}: { contacts?: SummaryContact[]; settings?: Partial<SummarySettings>; routes?: Routes } = {}) {
+}: {
+  contacts?: SummaryContact[];
+  settings?: Partial<SummarySettings>;
+  battles?: SummaryBattle[];
+  routes?: Routes;
+} = {}) {
   const routes: Routes = {
     'GET /api/summary': () =>
       Response.json(
@@ -126,7 +140,7 @@ function todayApi({
           stages: [OUTREACH],
           organizations: [CAPGEMINI],
           positionings: [CV, CALL],
-          battles: [BATTLE],
+          battles,
         }),
       ),
   };
@@ -327,6 +341,231 @@ test.each(['light', 'dark'] as const)(
     await desktop();
     await renderApp('/today', todayApi());
     await expect.element(section(/^Essais délai dépassé/)).toBeVisible();
+    await expect
+      .poll(() => document.documentElement.classList.contains('dark'))
+      .toBe(scheme === 'dark');
+    await expectNoAxeViolations();
+  },
+);
+
+/** Zoé: in the Pool, back from Approche, at Capgemini. */
+const zoe = () =>
+  contact({
+    id: '01990000-0000-7000-8000-00000000000b',
+    name: 'Zoé Garnier',
+    organizationId: CAPGEMINI.id,
+    stageId: OUTREACH.id,
+    funnelEntryDays: ['2025-11-03'],
+  });
+/** Yann: in the Pool, never entered. */
+const yann = () => contact({ id: '01990000-0000-7000-8000-00000000000c', name: 'Yann Morel' });
+/** Two Funnel entries this week, one last week. */
+const enteredThisWeek = () => [
+  { ...claire(), funnelEntryDays: [addDays(today(), -14), today()] },
+  { ...lea(), funnelEntryDays: [today()] },
+];
+/** An Entry goal in effect this week, and chosen for the next ones. */
+const goal = (value: number | null) => ({ inEffect: value, chosen: value });
+const banner = () => page.getByRole('region', { name: /^Entrées/ });
+
+test('the Entries banner: the entries of the week against the Entry goal, and Contacts of the Pool picked for the day', async () => {
+  await desktop();
+  const { router } = await renderApp(
+    '/today',
+    todayApi({
+      contacts: [...enteredThisWeek(), hugo(), zoe(), yann()],
+      routes: { 'GET /api/today/picks': () => picks({ entries: [zoe().id, hugo().id] }) },
+    }),
+  );
+
+  await expect.element(banner()).toHaveTextContent('Entrées cette semaine 2/5');
+  // The picks are read apart from the summary.
+  await expect.element(banner()).toHaveTextContent('Hugo Blanc');
+  expect(
+    banner()
+      .getByRole('listitem')
+      .elements()
+      .map((row) => row.textContent),
+  ).toEqual([expect.stringContaining('Zoé Garnier'), expect.stringContaining('Hugo Blanc')]);
+  const [zoeRow, hugoRow] = banner().getByRole('listitem').all();
+  await expect.element(zoeRow!).toHaveTextContent('Capgemini · dernière Étape : Approche');
+  await expect.element(hugoRow!).toHaveTextContent('Sans Organisation · jamais entré');
+  // Yann was not picked today.
+  await expect.element(banner()).not.toHaveTextContent('Yann Morel');
+
+  await zoeRow!.getByRole('button', { name: 'Faire entrer…' }).click();
+  expect(router.state.location.search).toEqual({ contact: zoe().id, statusTo: 'prospecting' });
+  await expect.element(page.getByRole('dialog', { name: /Zoé Garnier/ })).toBeVisible();
+});
+
+test('the Entry goal reached shows in the success colour', async () => {
+  await desktop();
+  await renderApp(
+    '/today',
+    todayApi({ contacts: [...enteredThisWeek(), hugo()], settings: { entryGoal: goal(2) } }),
+  );
+  const count = banner().getByText('2/2');
+  await expect.element(count).toBeVisible();
+  expect(count.element().closest('.text-success')).not.toBeNull();
+});
+
+test('past the Entry goal, “3/2”', async () => {
+  await desktop();
+  await renderApp(
+    '/today',
+    todayApi({
+      contacts: [...enteredThisWeek(), { ...hugo(), funnelEntryDays: [today()] }],
+      settings: { entryGoal: goal(2) },
+    }),
+  );
+  await expect.element(banner()).toHaveTextContent('Entrées cette semaine 3/2');
+});
+
+test('without an Entry goal, the count alone, without colour', async () => {
+  await desktop();
+  await renderApp(
+    '/today',
+    todayApi({ contacts: [...enteredThisWeek(), hugo()], settings: { entryGoal: goal(null) } }),
+  );
+  await expect.element(banner()).toHaveTextContent('Entrées 2 cette semaine');
+  expect(banner().element().querySelector('.text-success')).toBeNull();
+});
+
+test('a Contact picked that enters the Funnel leaves the banner, and the one picked to replace it shows', async () => {
+  await desktop();
+  const entered = { ...hugo(), status: 'prospecting' as const, stageId: OUTREACH.id };
+  let pickedEntries = [hugo().id, zoe().id];
+  const api = todayApi({
+    contacts: [hugo(), zoe(), yann()],
+    routes: {
+      'GET /api/today/picks': () => picks({ entries: pickedEntries }),
+      [`POST /api/contacts/${hugo().id}/change-status`]: () => {
+        pickedEntries = [zoe().id, yann().id];
+        return Response.json({
+          changes: changes({ contacts: [entered] }),
+          undoToken: '01990000-0000-7000-8000-00000000000a',
+        });
+      },
+    },
+  });
+  await renderApp('/today', api);
+  await banner().getByRole('button', { name: 'Faire entrer…' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Faire entrer Hugo Blanc' });
+  await dialog.getByRole('combobox', { name: 'Étape' }).selectOptions(OUTREACH.id);
+  await dialog.getByRole('button', { name: 'Faire entrer' }).click();
+
+  await expect.element(banner()).toHaveTextContent('Yann Morel');
+  await expect.element(banner()).not.toHaveTextContent('Hugo Blanc');
+  expect(api.sent('GET /api/today/picks').length).toBeGreaterThanOrEqual(2);
+});
+
+test('an empty Pool: the banner keeps its count, with Add a Contact in place of the picks', async () => {
+  await desktop();
+  await renderApp('/today', todayApi({ contacts: enteredThisWeek() }));
+  await expect.element(banner()).toHaveTextContent('Entrées cette semaine 2/5');
+  await banner()
+    .getByRole('button', { name: /^Ajouter un Contact/ })
+    .click();
+  await expect.element(page.getByRole('dialog', { name: 'Ajouter un Contact' })).toBeVisible();
+});
+
+test('the Contacts with No next step picked for the day, a handled one gone without replacement; nothing planned still shows them', async () => {
+  await desktop();
+  const ugo = prospecting({ id: '01990000-0000-7000-8000-00000000000d', name: 'Ugo Vidal' });
+  const { router } = await renderApp(
+    '/today',
+    todayApi({
+      contacts: [marc(), ugo, nina(), sara()],
+      // Nina was picked, then got a Follow-up.
+      routes: {
+        'GET /api/today/picks': () => picks({ noNextStep: [ugo.id, nina().id, marc().id] }),
+      },
+    }),
+  );
+
+  await expect.element(page.getByText("Rien à traiter aujourd'hui.")).toBeVisible();
+  const list = section(/^Sans prochaine action/);
+  await expect.element(list).toBeVisible();
+  expect(rowsOf(/^Sans prochaine action/)).toEqual([
+    expect.stringContaining('Ugo Vidal'),
+    expect.stringContaining('Marc Roy'),
+  ]);
+  await list
+    .getByRole('listitem')
+    .first()
+    .getByRole('button', { name: 'Utiliser un Positionnement' })
+    .click();
+  expect(router.state.location.search).toEqual({ contact: ugo.id, send: 'positioning' });
+  await userEvent.keyboard('{Escape}');
+  await expect
+    .element(
+      list.getByRole('listitem').first().getByRole('button', { name: 'Planifier une Relance' }),
+    )
+    .toBeVisible();
+});
+
+const side = (successes: number, noResults: number, inProgress = 0) => ({
+  successes,
+  noResults,
+  inProgress,
+});
+/** Approche: Appel leads CV Rust 5/20 to 2/20: conclusive. */
+const CONCLUSIVE = { ...BATTLE, trials: { champion: side(2, 18, 1), challenger: side(5, 15, 1) } };
+
+test('a conclusive Battle beside the list: Close… opens its closing, Later hides it until tomorrow', async () => {
+  await desktop();
+  let postponedBattleIds: string[] = [];
+  const api = todayApi({
+    contacts: [marc()],
+    battles: [CONCLUSIVE],
+    routes: {
+      'GET /api/today/picks': () => picks({ postponedBattleIds }),
+      [`POST /api/today/battles/${BATTLE.id}/later`]: () => {
+        postponedBattleIds = [BATTLE.id];
+        return new Response(null, { status: 204 });
+      },
+    },
+  });
+  const { router } = await renderApp('/today', api);
+
+  const conclusive = section(/^Battles concluantes/);
+  await expect.element(conclusive).toHaveTextContent('Approche');
+  await expect.element(conclusive).toHaveTextContent('La Battle est concluante.');
+  await conclusive.getByRole('button', { name: 'Clôturer…' }).click();
+  expect(router.state.location.search).toEqual({ battle: BATTLE.id });
+  await expect
+    .element(page.getByRole('dialog', { name: 'Clôturer la Battle · Approche' }))
+    .toBeVisible();
+  await userEvent.keyboard('{Escape}');
+  await expect.poll(() => router.state.location.search).toEqual({});
+
+  await conclusive.getByRole('button', { name: 'Plus tard' }).click();
+  await expect
+    .element(page.getByRole('region', { name: /^Battles concluantes/ }))
+    .not.toBeInTheDocument();
+  expect(api.sent(`POST /api/today/battles/${BATTLE.id}/later`)).toHaveLength(1);
+});
+
+test.each(['light', 'dark'] as const)(
+  'axe finds nothing on the picks of the day and the conclusive Battles, in the %s theme',
+  async (scheme) => {
+    await commands.emulateColorScheme(scheme);
+    await desktop();
+    await renderApp(
+      '/today',
+      todayApi({
+        contacts: [...enteredThisWeek(), hugo(), zoe(), marc()],
+        settings: { entryGoal: goal(2) },
+        battles: [CONCLUSIVE],
+        routes: {
+          'GET /api/today/picks': () =>
+            picks({ entries: [hugo().id, zoe().id], noNextStep: [marc().id] }),
+        },
+      }),
+    );
+    await expect.element(section(/^Battles concluantes/)).toBeVisible();
+    await expect.element(section(/^Sans prochaine action/)).toBeVisible();
+    await expect.element(banner()).toHaveTextContent('Hugo Blanc');
     await expect
       .poll(() => document.documentElement.classList.contains('dark'))
       .toBe(scheme === 'dark');

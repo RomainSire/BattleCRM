@@ -223,8 +223,8 @@ const trialSearch = z.enum(TRIAL_GESTURES).optional().catch(undefined);
 const todayRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/today',
-  // The Contact a gesture is open on, its record open beside the list, and its gesture (ST-70);
-  // anything else is dropped.
+  // The Contact a gesture is open on, its record open beside the list, and its gesture; the Battle
+  // whose closing is open (ST-70); anything else is dropped.
   validateSearch: z.object({
     contact: z.uuid().optional().catch(undefined),
     panel: z.literal('record').optional().catch(undefined),
@@ -234,6 +234,8 @@ const todayRoute = createRoute({
     interaction: interactionSearch,
     send: sendSearch,
     trial: trialSearch,
+    /** The conclusive Battle whose closing is open (spec UX §6.9). */
+    battle: z.uuid().optional().catch(undefined),
   }),
   component: TodayScreen,
 });

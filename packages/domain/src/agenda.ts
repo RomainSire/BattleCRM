@@ -57,6 +57,20 @@ export function contactAgenda(contact: AgendaContact, today: string): ContactAge
     : { row: 'waiting', reason: 'no-positioning' };
 }
 
+/** What tells a Contact Prospecting with No next step, as the API selects them without the details. */
+export type NextStepFacts = {
+  hasFollowUp: boolean;
+  hasTrialInProgress: boolean;
+  stageHasPositioning: boolean;
+};
+
+/**
+ * Whether a Contact Prospecting has No next step (CONTEXT.md): neither a Follow-up scheduled nor a
+ * Trial in progress, at a Stage that has a Positioning; the same as `contactAgenda` reads.
+ */
+export const hasNoNextStep = (facts: NextStepFacts): boolean =>
+  !facts.hasFollowUp && !facts.hasTrialInProgress && facts.stageHasPositioning;
+
 /** The rank of each kind of next action, the most urgent first (spec UX §5.2). */
 const URGENCY = [
   'follow-up-overdue',

@@ -31,8 +31,10 @@ import {
   statusChange,
   trial,
 } from '../prospecting/index.ts';
+import type { Random } from '../random.ts';
 import { idOf } from '../route-id.ts';
-import { settingsOf, timeZoneAt } from '../settings/index.ts';
+import { localDateOf, settingsOf, timeZoneAt } from '../settings/index.ts';
+import { dailyPicksOf, postponeBattle } from './daily-picks.ts';
 
 /**
  * The Contacts of the working summary (ADR 0012), the latest Interaction first: all of them, or the
@@ -624,8 +626,19 @@ export async function summaryChanges(
   };
 }
 
-/** The reads, one per view (spec stack §5.2): this module reads the tables of the others and writes none of them. */
-export function createViews({ clock, requireUser }: { clock: Clock; requireUser: RequireUser }) {
+/**
+ * The reads, one per view (spec stack §5.2): this module reads the tables of the others and writes
+ * none of them, only its own, what Today picked for the day (`daily_pick`, `battle_postponement`).
+ */
+export function createViews({
+  clock,
+  random,
+  requireUser,
+}: {
+  clock: Clock;
+  random: Random;
+  requireUser: RequireUser;
+}) {
   const routes = new Hono<AppEnv>()
     // The whole working summary, in one read, as the contract describes it (ADR 0012).
     .get('/summary', requireUser, async (c) => {
@@ -663,6 +676,27 @@ export function createViews({ clock, requireUser }: { clock: Clock; requireUser:
         battleId !== null && (await withUser(userId, (tx) => battleTrials(tx, userId, battleId)));
       if (!trials) return c.json({ error: 'not_found' as const }, 404);
       return c.json({ trials }, 200);
+    })
+    // What Today picked for the day, the same on every device all day long (spec UX §5.1, ST-47).
+    .get('/today/picks', requireUser, async (c) => {
+      const { userId } = c.var;
+      const picks = await withUser(userId, async (tx) =>
+        dailyPicksOf(tx, userId, await localDateOf(tx, userId, clock.now()), random),
+      );
+      return c.json(picks, 200);
+    })
+    // “Later” on a conclusive Battle: hidden from Today until the next day, on every device.
+    .post('/today/battles/:id/later', requireUser, async (c) => {
+      const { userId } = c.var;
+      const battleId = idOf(c.req.param('id'));
+      // Another User's Battle, an unknown or closed one and an id that is none answer alike.
+      const postponed =
+        battleId !== null &&
+        (await withUser(userId, async (tx) =>
+          postponeBattle(tx, userId, battleId, await localDateOf(tx, userId, clock.now())),
+        ));
+      if (!postponed) return c.json({ error: 'not_found' as const }, 404);
+      return c.body(null, 204);
     });
   return { routes };
 }

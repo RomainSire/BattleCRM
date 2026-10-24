@@ -288,6 +288,20 @@
       "when": 1792761715129,
       "tag": "0040_check_in",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1792853781306,
+      "tag": "0041_daily_picks",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1792853782242,
+      "tag": "0042_daily_picks_access",
+      "breakpoints": true
     }
   ]
 }

@@ -1,9 +1,11 @@
 import { funnelOf } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { cn } from 'cn';
-import { useCallback, useId, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react';
+
+import { CloseBattlePanel } from '../battles/close-battle-panel.tsx';
 
 import { Button } from '../components/ui/button.tsx';
 import { ErrorMessage } from '../components/ui/error-message.tsx';
@@ -18,12 +20,12 @@ import { followUpTitle } from '../contacts/follow-up.tsx';
 import {
   CardActions,
   followUpText,
+  type Card,
   trialText,
   type FunnelGestureSearch,
   type OpenGesture,
 } from '../funnel/next-action.tsx';
 import { useLocale } from '../i18n.ts';
-import { ROW_LINK_CLASS } from '../screens/row-link.ts';
 import { Screen } from '../screens/screen.tsx';
 import { useApi } from '../session.ts';
 import { settingsOf } from '../settings/use-settings.ts';
@@ -33,9 +35,14 @@ import {
   summaryQuery,
   todayOf,
   type Summary,
+  type SummaryBattle,
   type SummaryContact,
 } from '../summary.ts';
 import { useIsNarrow } from '../use-narrow.ts';
+import { ConclusiveBattles, conclusiveBattlesOf } from './conclusive-battles.tsx';
+import { TodayContactLink } from './contact-link.tsx';
+import { DAILY_PICKS_KEY, dailyPicksQuery, todayPicksOf } from './daily-picks.ts';
+import { EntriesBanner } from './entries-banner.tsx';
 import { toHandleOf, type TodayRow } from './to-handle.ts';
 
 /**
@@ -76,25 +83,7 @@ function Row({
     >
       <div className="flex min-w-0 flex-col gap-0.5">
         <div className="flex items-baseline gap-2">
-          {asPage ? (
-            <Link
-              to="/contacts/$contactId"
-              params={{ contactId: contact.id }}
-              className={ROW_LINK_CLASS}
-            >
-              <ContactName contact={contact} />
-            </Link>
-          ) : (
-            <Link
-              to="/today"
-              search={{ contact: contact.id, panel: 'record' }}
-              aria-current={isOpen ? 'page' : undefined}
-              data-today-row={contact.id}
-              className={ROW_LINK_CLASS}
-            >
-              <ContactName contact={contact} />
-            </Link>
-          )}
+          <TodayContactLink contact={contact} isOpen={isOpen} asPage={asPage} />
           {/* The star of the name already says it to a screen reader. */}
           {contact.status === 'ally' && (
             <span aria-hidden="true" className="text-xs text-muted-foreground">
@@ -151,14 +140,25 @@ function CircleLink({ summary }: { summary: Summary }) {
   );
 }
 
-/** The side column (spec UX §5.1): the Circle, and what comes tomorrow. */
-function SideColumn({ summary, tomorrow }: { summary: Summary; tomorrow: SummaryContact[] }) {
+/** The side column (spec UX §5.1): the Circle, the conclusive Battles, and what comes tomorrow. */
+function SideColumn({
+  summary,
+  tomorrow,
+  battles,
+  onCloseBattle,
+}: {
+  summary: Summary;
+  tomorrow: SummaryContact[];
+  battles: SummaryBattle[];
+  onCloseBattle: (battleId: string) => void;
+}) {
   const headingId = useId();
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col rounded-card border p-3">
         <CircleLink summary={summary} />
       </div>
+      <ConclusiveBattles summary={summary} battles={battles} onClose={onCloseBattle} />
       <section aria-labelledby={headingId} className="flex flex-col gap-2 rounded-card border p-3">
         <h2 id={headingId} className="font-semibold">
           {m.today_upcoming()}
@@ -209,20 +209,39 @@ function FirstDay({ summary }: { summary: Summary }) {
 }
 
 /**
- * Today on a desktop (spec UX §5.1): the Follow-ups due and the Allies to check in with in one list,
- * the longest overdue first, then the Trials past their window, each with its actions; beside them,
- * the Circle and what comes tomorrow. The record of a Contact opens in a panel in place of the side
- * column, and a gesture opened from a row in the same panel as anywhere else, kept by the address
- * (ST-70).
+ * Today on a desktop (spec UX §5.1): the Entries banner on top; the Follow-ups due and the Allies to
+ * check in with in one list, the longest overdue first, then the Trials past their window and the
+ * Contacts with No next step picked for the day, each with its actions; beside them, the Circle, the
+ * conclusive Battles and what comes tomorrow. The record of a Contact opens in a panel in place of
+ * the side column, and a gesture opened from a row in the same panel as anywhere else, kept by the
+ * address (ST-70).
  */
 export function TodayScreen() {
   const locale = useLocale();
   const api = useApi();
   const navigate = useNavigate();
   const isNarrow = useIsNarrow();
+  const queryClient = useQueryClient();
   const { data: summary, isError } = useQuery(summaryQuery(api));
+  const picksDay = summary && todayOf(summary);
+  const picks = useQuery({
+    ...dailyPicksQuery(api, picksDay ?? ''),
+    enabled: picksDay !== undefined,
+  });
   const current = useSearch({ from: '/app/today' });
-  const { contact: contactId, panel } = current;
+  const { contact: contactId, panel, battle: closingId } = current;
+  // A Contact that enters or leaves the Pool: the picks are read again, so one that entered the
+  // Funnel is replaced (spec UX §5.1).
+  const pool = summary?.contacts
+    .filter(({ status }) => status === 'pool')
+    .map(({ id }) => id)
+    .join();
+  const poolRead = useRef(pool);
+  useEffect(() => {
+    if (poolRead.current === pool) return;
+    poolRead.current = pool;
+    void queryClient.invalidateQueries({ queryKey: DAILY_PICKS_KEY });
+  }, [pool, queryClient]);
   const gestures = useRecordGestures();
   // The record opened takes the focus once (ST-66).
   const focusHeading = useCallback((heading: HTMLHeadingElement | null) => heading?.focus(), []);
@@ -257,6 +276,11 @@ export function TodayScreen() {
   }
   const today = todayOf(summary);
   const { rows, windowElapsed, tomorrow } = toHandleOf(summary, today);
+  const { entries, noNextStep, postponedBattleIds } = todayPicksOf(summary, picks.data, today);
+  const battles = conclusiveBattlesOf(summary, postponedBattleIds);
+  const closing = battles.find(({ id }) => id === closingId);
+  const closingStage = closing && summary.stages.find(({ id }) => id === closing.stageId);
+  const closeBattleWindow = () => void navigate({ to: '/today', search: {} });
   const contact = summary.contacts.find(({ id }) => id === contactId);
   const isRecordOpen = panel === 'record' && contactId !== undefined && !isNarrow;
   const rowProps = (row: SummaryContact) => ({
@@ -302,38 +326,53 @@ export function TodayScreen() {
       </Row>
     );
   };
+  const cardRow = (card: Card, line: string) => (
+    <Row key={card.contact.id} {...rowProps(card.contact)} line={line} isLate={false}>
+      <CardActions
+        card={card}
+        summary={summary}
+        open={(search: FunnelGestureSearch) => onOpen(card.contact.id, search)}
+      />
+    </Row>
+  );
   const main =
     summary.contacts.length === 0 ? (
       <FirstDay summary={summary} />
-    ) : rows.length === 0 && windowElapsed.length === 0 ? (
-      <p className="text-muted-foreground">{m.today_nothing()}</p>
     ) : (
       <>
+        {rows.length === 0 && windowElapsed.length === 0 && (
+          <p className="text-muted-foreground">{m.today_nothing()}</p>
+        )}
         {rows.length > 0 && (
           <Section title={m.today_follow_ups_and_allies()}>{rows.map(todayRow)}</Section>
         )}
         {windowElapsed.length > 0 && (
           <Section title={m.today_window_elapsed()}>
-            {windowElapsed.map((card) => (
-              <Row
-                key={card.contact.id}
-                {...rowProps(card.contact)}
-                line={trialText(card, summary, locale) ?? ''}
-                isLate={false}
-              >
-                <CardActions
-                  card={card}
-                  summary={summary}
-                  open={(search: FunnelGestureSearch) => onOpen(card.contact.id, search)}
-                />
-              </Row>
-            ))}
+            {windowElapsed.map((card) => cardRow(card, trialText(card, summary, locale) ?? ''))}
+          </Section>
+        )}
+        {noNextStep.length > 0 && (
+          <Section title={m.today_no_next_step()}>
+            {noNextStep.map((card) => cardRow(card, m.today_no_next_step()))}
           </Section>
         )}
       </>
     );
   return (
     <Screen title={m.today()}>
+      {summary.contacts.length > 0 && (
+        <div className="mb-6">
+          <EntriesBanner
+            summary={summary}
+            today={today}
+            picked={entries}
+            isError={picks.isError}
+            openContactId={panel === 'record' ? contactId : undefined}
+            asPage={isNarrow}
+            onBringIn={(id) => onOpen(id, { statusTo: 'prospecting' })}
+          />
+        </div>
+      )}
       <div
         className={cn(
           'grid items-start gap-6',
@@ -353,12 +392,29 @@ export function TodayScreen() {
             />
           </div>
         ) : (
-          <SideColumn summary={summary} tomorrow={tomorrow} />
+          <SideColumn
+            summary={summary}
+            tomorrow={tomorrow}
+            battles={battles}
+            onCloseBattle={(battleId) =>
+              void navigate({ to: '/today', search: { battle: battleId } })
+            }
+          />
         )}
       </div>
       {/* Opened from a row, without the record: the gesture alone. */}
       {panel !== 'record' && contact && (
         <RecordGesturePanels contact={contact} summary={summary} gestures={gestures} />
+      )}
+      {closing && closingStage && (
+        <CloseBattlePanel
+          key={closing.id}
+          summary={summary}
+          stage={closingStage}
+          battle={closing}
+          onClose={closeBattleWindow}
+          onClosed={closeBattleWindow}
+        />
       )}
     </Screen>
   );

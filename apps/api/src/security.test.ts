@@ -201,11 +201,15 @@ test('a query that forgot its filter only sees the rows of its User, in every bu
     const { positioning } = await positioningOf(harness, user);
     await attachFile(harness, user, positioning.id);
     const { positioning: challenger } = await createPositioning(harness, user, positioning.stageId);
-    await openBattle(harness, user, {
+    const { battle } = await openBattle(harness, user, {
       stageId: positioning.stageId,
       championId: positioning.id,
       challengerId: challenger.id,
     });
+    // “Later” on the Battle, and a Contact of the Pool for Today to pick.
+    await postJson(harness.app, `/api/today/battles/${battle.id}/later`, {}, user.cookie);
+    await addContact(harness, user, 'Hugo');
+    await getJson(harness, user, '/api/today/picks');
     const { assignment } = await revealAssignment(harness, user, contact.id);
     if (!assignment) throw new Error('No Assignment revealed');
     await usePositioning(harness, user, contact.id, {
@@ -420,6 +424,10 @@ const CROSS_ACCESS: Record<
       state: () => getJson(harness, alice, '/api/summary'),
       body: { verdict: 'abandoned' },
     };
+  },
+  'POST /api/today/battles/:id/later': async (harness, alice) => {
+    const battle = await battleOf(harness, alice);
+    return { id: battle.id, state: () => getJson(harness, alice, '/api/today/picks') };
   },
   'POST /api/battles/:id/takeaway': async (harness, alice) => {
     const battle = await battleOf(harness, alice);

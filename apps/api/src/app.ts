@@ -120,7 +120,7 @@ export function createApp({
     members: organizationMembers,
   });
   const settings = createSettings({ clock, requireUser });
-  const views = createViews({ clock, requireUser });
+  const views = createViews({ clock, random, requireUser });
 
   app.use(async (c, next) => {
     const start = performance.now();
