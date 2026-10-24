@@ -10,6 +10,7 @@ import { useApi } from '../session.ts';
 import { settingsOf, useSingleKeyShortcuts } from '../settings/use-settings.ts';
 import { isModalOpen } from '../shortcuts.ts';
 import { summaryQuery } from '../summary.ts';
+import { Celebration } from '../today/celebration.tsx';
 import { UndoToasts } from '../undo.tsx';
 import { MobileHeader, TabBar } from './mobile-navigation.tsx';
 import { Sidebar } from './sidebar.tsx';
@@ -53,6 +54,7 @@ export function AppShell() {
       </div>
       <QuickAdd isOpen={isAdding} onOpenChange={setAdding} start={start} />
       <UndoToasts />
+      <Celebration />
     </AddContactContext>
   );
 }

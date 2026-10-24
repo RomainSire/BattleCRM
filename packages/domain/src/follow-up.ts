@@ -19,3 +19,7 @@ export const activityOn = (
 ): number =>
   contacts.flatMap(({ prospectingActionDays }) => prospectingActionDays).filter((on) => on === day)
     .length;
+
+/** Whether the Activity of a day reaches its Activity goal: never with the goal turned off (CONTEXT.md). */
+export const activityGoalReached = (activity: number, goal: number | null): boolean =>
+  goal !== null && activity >= goal;

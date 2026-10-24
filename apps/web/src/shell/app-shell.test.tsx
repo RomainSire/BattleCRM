@@ -106,11 +106,15 @@ test('the layout switches on width alone', async () => {
   await desktop();
   const { screen } = await renderApp('/');
   const sidebarSearch = screen.getByRole('button', { name: /Rechercher…/ });
-  await expect.element(screen.getByRole('link', { name: 'Indicateurs' })).toBeVisible();
+  // Today links to Insights too: the entry of the menu is the one that comes and goes.
+  const insights = screen
+    .getByRole('navigation', { name: 'Menu principal' })
+    .getByRole('link', { name: 'Indicateurs' });
+  await expect.element(insights).toBeVisible();
 
   await mobile();
   await expect.element(screen.getByRole('link', { name: 'Plus' })).toBeVisible();
-  await expect.element(screen.getByRole('link', { name: 'Indicateurs' })).not.toBeInTheDocument();
+  await expect.element(insights).not.toBeInTheDocument();
   await expect.element(sidebarSearch).toBeVisible();
 
   await desktop();
@@ -170,7 +174,11 @@ test('speaks English when the locale is English, and says so to the page', async
   );
 
   await expect.element(screen.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible();
-  await expect.element(screen.getByRole('link', { name: 'Insights' })).toBeVisible();
+  await expect
+    .element(
+      screen.getByRole('navigation', { name: 'Main menu' }).getByRole('link', { name: 'Insights' }),
+    )
+    .toBeVisible();
   expect(document.documentElement.lang).toBe('en');
 
   await setLocale('fr', { reload: false });

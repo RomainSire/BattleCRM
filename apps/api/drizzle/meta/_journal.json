@@ -302,6 +302,20 @@
       "when": 1792853782242,
       "tag": "0042_daily_picks_access",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1792855241792,
+      "tag": "0043_celebration",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1792855242772,
+      "tag": "0044_celebration_access",
+      "breakpoints": true
     }
   ]
 }

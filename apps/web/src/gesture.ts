@@ -1,7 +1,8 @@
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { notify } from './components/ui/toast.tsx';
-import { applySummaryChanges, SUMMARY_KEY, type SummaryChanges } from './summary.ts';
+import { applySummaryChanges, SUMMARY_KEY, type Summary, type SummaryChanges } from './summary.ts';
+import { celebrateIfReached, originOf } from './today/celebration.tsx';
 import { notifyGesture } from './undo.tsx';
 
 /**
@@ -28,7 +29,8 @@ export type RefusalOf<Send extends (...args: never) => Promise<GestureAnswer>> =
 
 /**
  * Sends a gesture (ADR 0011, 0012). Done, its rows go into the summary and `message`, when it says
- * something, is shown, with “Undo” when the gesture has a token. Refused, the summary is read again (this device may be behind)
+ * something, is shown, with “Undo” when the gesture has a token; the Activity goal it reached is
+ * celebrated (spec UX §2). Refused, the summary is read again (this device may be behind)
  * and the refusal is returned, for the screen to react to. Anything else throws.
  */
 export async function sendGesture<Answer extends GestureAnswer>(
@@ -36,6 +38,8 @@ export async function sendGesture<Answer extends GestureAnswer>(
   request: Promise<Answer>,
   message: (changes: SummaryChanges) => string | undefined,
 ): Promise<RefusalOf<() => Promise<Answer>> | undefined> {
+  // The control the gesture was sent with, before its panel closes: where a celebration starts.
+  const origin = originOf(document.activeElement);
   const response = await request;
   if (!response.ok && !REFUSAL_STATUSES.has(response.status)) {
     throw new Error(`A gesture failed with ${response.status}`);
@@ -48,7 +52,9 @@ export async function sendGesture<Answer extends GestureAnswer>(
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     return answer as RefusalOf<() => Promise<Answer>>;
   }
+  const before = queryClient.getQueryData<Summary>(SUMMARY_KEY);
   await applySummaryChanges(queryClient, answer.changes);
+  celebrateIfReached(before, queryClient.getQueryData<Summary>(SUMMARY_KEY), origin);
   const said = message(answer.changes);
   if (said === undefined) return undefined;
   if (answer.undoToken === undefined) notify({ message: said });

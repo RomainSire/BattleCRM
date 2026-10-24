@@ -64,6 +64,13 @@ export function timeZoneOf(summary: Summary | undefined): string {
 /** Today for the User, in its time zone: what a Follow-up is due on, the Activity and the Funnel entries counted on. */
 export const todayOf = (summary: Summary) => localDay(new Date(), timeZoneOf(summary));
 
+/** The latest local day the Activity goal was celebrated, `null` before the first (ST-44). */
+export function celebratedOnOf(summary: Summary): string | null {
+  // Fallback: a summary kept on the device by a version from before the celebration carries none.
+  const day: string | null | undefined = summary.celebratedOn;
+  return day ?? null;
+}
+
 /** The Positionings of the User, the earliest first. */
 export function positioningsOf(summary: Summary): SummaryPositioning[] {
   // Fallback: a summary kept on the device by a version from before Positionings carries none.

@@ -79,3 +79,16 @@ export const battlePostponement = pgTable(
     }).onDelete('cascade'),
   ],
 );
+
+/**
+ * The latest local day the Activity goal reached was celebrated (ST-44): once a day, on every device.
+ * One row per User, moved on to each new day celebrated; “Undo” never takes it back (ADR 0011). A goal
+ * missed is never recorded (CONTEXT.md, Activity goal).
+ */
+export const celebration = pgTable('celebration', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  /** The local day celebrated, in the time zone in effect then. */
+  localDate: date('local_date', { mode: 'string' }).notNull(),
+});

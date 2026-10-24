@@ -39,6 +39,7 @@ import {
   type SummaryContact,
 } from '../summary.ts';
 import { useIsNarrow } from '../use-narrow.ts';
+import { ActivityCard } from './activity-card.tsx';
 import { ConclusiveBattles, conclusiveBattlesOf } from './conclusive-battles.tsx';
 import { TodayContactLink } from './contact-link.tsx';
 import { DAILY_PICKS_KEY, dailyPicksQuery, todayPicksOf } from './daily-picks.ts';
@@ -140,14 +141,19 @@ function CircleLink({ summary }: { summary: Summary }) {
   );
 }
 
-/** The side column (spec UX §5.1): the Circle, the conclusive Battles, and what comes tomorrow. */
+/**
+ * The side column (spec UX §5.1): the Activity of the day, the Circle, the conclusive Battles, and
+ * what comes tomorrow.
+ */
 function SideColumn({
   summary,
+  today,
   tomorrow,
   battles,
   onCloseBattle,
 }: {
   summary: Summary;
+  today: string;
   tomorrow: SummaryContact[];
   battles: SummaryBattle[];
   onCloseBattle: (battleId: string) => void;
@@ -155,6 +161,7 @@ function SideColumn({
   const headingId = useId();
   return (
     <div className="flex flex-col gap-4">
+      <ActivityCard summary={summary} today={today} />
       <div className="flex flex-col rounded-card border p-3">
         <CircleLink summary={summary} />
       </div>
@@ -394,6 +401,7 @@ export function TodayScreen() {
         ) : (
           <SideColumn
             summary={summary}
+            today={today}
             tomorrow={tomorrow}
             battles={battles}
             onCloseBattle={(battleId) =>

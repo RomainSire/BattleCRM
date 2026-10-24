@@ -216,6 +216,8 @@ test('a query that forgot its filter only sees the rows of its User, in every bu
       positioningId: assignment.positioningId,
       occurredOn: '2026-01-05',
     });
+    // That use reached the Activity goal of the day: celebrated.
+    await postJson(harness.app, '/api/today/celebration', {}, user.cookie);
     // Its Follow-up moved during the Trial: a deviation traced on it.
     await scheduleFollowUp(harness, user, contact.id, { dueOn: '2026-01-20' });
     // Another Contact moves on to the next Stage.

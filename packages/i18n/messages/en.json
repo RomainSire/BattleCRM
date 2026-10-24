@@ -1121,6 +1121,41 @@
   "today_circle": "Circle {count}/{goal}",
   "today_circle_label": "Circle: {count} Allies of the {goal} aimed for",
   "today_circle_count": "Circle · {allies}",
+  "today_activity": "Today's activity",
+  "today_activity_count": "{count}/{goal}",
+  "today_activity_label": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} prospecting action of {goal} aimed for today",
+        "countPlural=*": "{count} prospecting actions of {goal} aimed for today"
+      }
+    }
+  ],
+  "today_activity_reached": "Goal reached",
+  "today_activity_no_goal": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} action today",
+        "countPlural=*": "{count} actions today"
+      }
+    }
+  ],
+  "today_activity_weeks": "Last {count} weeks",
+  "today_activity_day": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{day}: {count} action",
+        "countPlural=*": "{day}: {count} actions"
+      }
+    }
+  ],
+  "today_celebration": "Well done, today's goal reached! {count} / {goal}",
   "today_upcoming": "Upcoming",
   "today_upcoming_none": "No Follow-up tomorrow.",
   "today_upcoming_follow_up": "{followUp} tomorrow",

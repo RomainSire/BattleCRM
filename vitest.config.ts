@@ -9,6 +9,16 @@ const emulateColorScheme: BrowserCommand<['light' | 'dark']> = async (context, s
   await context.page.emulateMedia({ colorScheme: scheme });
 };
 
+/** Switches the operating system's “reduce motion” preference seen by the page (ST-69). */
+const emulateReducedMotion: BrowserCommand<['reduce' | 'no-preference']> = async (
+  context,
+  reducedMotion,
+) => {
+  if (context.provider.name !== 'playwright')
+    throw new Error('emulateReducedMotion needs Playwright');
+  await context.page.emulateMedia({ reducedMotion });
+};
+
 /**
  * Moves the pointer to the top left corner, where no control lies: a hover left by a previous gesture,
  * or by the previous test, would start a colour transition at any time.
@@ -56,7 +66,7 @@ export default defineConfig({
             headless: true,
             provider: playwright(),
             instances: [{ browser: 'chromium' }],
-            commands: { emulateColorScheme, parkPointer },
+            commands: { emulateColorScheme, emulateReducedMotion, parkPointer },
           },
         },
       },

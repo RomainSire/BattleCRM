@@ -156,6 +156,7 @@ export function summary(
   const timeZone = fields.timeZone ?? DEVICE_TIME_ZONE;
   return summarySchema.parse({
     timeZone,
+    celebratedOn: null,
     contacts: [],
     stages: [],
     organizations: [],

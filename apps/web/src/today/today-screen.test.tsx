@@ -123,11 +123,13 @@ function todayApi({
   contacts = everyone(),
   settings = {},
   battles = [BATTLE],
+  celebratedOn = null,
   routes: extra = {},
 }: {
   contacts?: SummaryContact[];
   settings?: Partial<SummarySettings>;
   battles?: SummaryBattle[];
+  celebratedOn?: string | null;
   routes?: Routes;
 } = {}) {
   const routes: Routes = {
@@ -141,6 +143,7 @@ function todayApi({
           organizations: [CAPGEMINI],
           positionings: [CV, CALL],
           battles,
+          celebratedOn,
         }),
       ),
   };
@@ -254,6 +257,231 @@ test('without a size goal, the Circle says its count alone', async () => {
   await desktop();
   await renderApp('/today', todayApi({ settings: { circleSizeGoal: null } }));
   await expect.element(page.getByRole('link', { name: 'Cercle · 3 Alliés' })).toBeVisible();
+});
+
+/** An Activity goal in effect today, and chosen for the next days. */
+const activityGoal = (value: number | null) => ({
+  activityGoal: { inEffect: value, chosen: value },
+});
+/** Two Prospecting actions today and one three days ago, on Claire. */
+const busyClaire = () => ({
+  ...claire(),
+  prospectingActionDays: [addDays(today(), -3), today(), today()],
+});
+const activity = () => section(/^Activité du jour/);
+
+test('beside the list: the Activity of the day against its goal, the last weeks by intensity across the column, and a link to Insights', async () => {
+  await desktop();
+  const { router } = await renderApp(
+    '/today',
+    todayApi({ contacts: [busyClaire(), lea()], settings: activityGoal(3) }),
+  );
+
+  await expect.element(activity()).toHaveTextContent('2/3');
+  await expect.element(activity()).not.toHaveTextContent('Objectif atteint');
+  // The gauge says it in words too (spec UX §7).
+  await expect
+    .element(activity().getByText("2 Actions de prospection sur 3 visées aujourd'hui"))
+    .toBeInTheDocument();
+  // Each day of the last 4 weeks, up to today, says its count: the intensity is never alone.
+  // As many weeks as the column holds, the current one last, its days to come left out.
+  const graph = activity().getByRole('list', { name: /^\d+ dernières semaines$/u });
+  const weeks = Number(/\d+/u.exec(graph.element().getAttribute('aria-label') ?? '')?.[0]);
+  expect(weeks).toBeGreaterThan(4);
+  const days = graph
+    .getByRole('listitem')
+    .elements()
+    .map((day) => day.textContent);
+  expect(days.length).toBeGreaterThan(7 * (weeks - 1));
+  expect(days.length).toBeLessThanOrEqual(7 * weeks);
+  expect(days.filter((day) => day.endsWith(' : 1 Action'))).toHaveLength(1);
+  expect(days.at(-1)).toMatch(/ : 2 Actions$/u);
+  // The weeks fill the width of the card, within a square.
+  const card = activity().element().getBoundingClientRect();
+  const drawn = graph.element().getBoundingClientRect();
+  expect(card.right - drawn.right).toBeLessThan(16);
+
+  await activity().getByRole('link', { name: 'Indicateurs' }).click();
+  await expect.poll(() => router.state.location.pathname).toBe('/insights');
+});
+
+test.each([320, 360, 390, 430])(
+  'on a phone %dpx wide, the weeks fill the card without a horizontal scroll',
+  async (width) => {
+    await page.viewport(width, 800);
+    await renderApp(
+      '/today',
+      todayApi({ contacts: [busyClaire(), lea()], settings: activityGoal(3) }),
+    );
+    const graph = activity().getByRole('list', { name: /dernières semaines$/u });
+    await expect.element(graph).toBeVisible();
+    await expect
+      .poll(() => document.documentElement.scrollWidth)
+      .toBeLessThanOrEqual(document.documentElement.clientWidth);
+    const card = activity().element().getBoundingClientRect();
+    const drawn = graph.element().getBoundingClientRect();
+    expect(drawn.right).toBeLessThanOrEqual(card.right);
+    expect(card.right - drawn.right).toBeLessThan(16);
+  },
+);
+
+test('the weeks follow the width as it shrinks: a phone turned, a window narrowed', async () => {
+  await page.viewport(700, 800);
+  await renderApp(
+    '/today',
+    todayApi({ contacts: [busyClaire(), lea()], settings: activityGoal(3) }),
+  );
+  const graph = activity().getByRole('list', { name: /dernières semaines$/u });
+  await expect.element(graph).toBeVisible();
+
+  await page.viewport(360, 800);
+
+  await expect
+    .poll(() => document.documentElement.scrollWidth)
+    .toBeLessThanOrEqual(document.documentElement.clientWidth);
+  await expect
+    .poll(
+      () =>
+        activity().element().getBoundingClientRect().right -
+        graph.element().getBoundingClientRect().right,
+    )
+    .toBeGreaterThanOrEqual(0);
+});
+
+test('the Activity goal reached: the gauge says “reached”', async () => {
+  await desktop();
+  await renderApp('/today', todayApi({ contacts: [busyClaire()], settings: activityGoal(2) }));
+  await expect.element(activity()).toHaveTextContent('2/2');
+  await expect.element(activity()).toHaveTextContent('Objectif atteint');
+});
+
+test('without an Activity goal, the count of the day alone, no gauge', async () => {
+  await desktop();
+  await renderApp('/today', todayApi({ contacts: [busyClaire()], settings: activityGoal(null) }));
+  await expect.element(activity()).toHaveTextContent("2 Actions aujourd'hui");
+  await expect.element(activity()).not.toHaveTextContent('/');
+  await expect.element(activity()).not.toHaveTextContent('Objectif');
+});
+
+/** Marc did two Prospecting actions today; Léa's Follow-up is due today. */
+const twoDoneToday = () => [{ ...marc(), prospectingActionDays: [today(), today()] }, lea()];
+const CELEBRATION_ROUTE = 'POST /api/today/celebration';
+
+/** An API where “Follow up…” on Léa is one more Prospecting action today, and the celebration answers as said. */
+function crossingApi({
+  celebrate = true,
+  settings = activityGoal(3),
+  celebratedOn = null,
+}: {
+  celebrate?: boolean;
+  settings?: Partial<SummarySettings>;
+  celebratedOn?: string | null;
+} = {}) {
+  return todayApi({
+    contacts: twoDoneToday(),
+    settings,
+    celebratedOn,
+    routes: {
+      [`POST /api/contacts/${lea().id}/follow-up`]: () =>
+        Response.json({
+          changes: changes({
+            contacts: [{ ...lea(), followUp: null, prospectingActionDays: [today()] }],
+          }),
+          undoToken: '01990000-0000-7000-8000-00000000000a',
+        }),
+      [CELEBRATION_ROUTE]: () =>
+        Response.json({ celebrate, celebratedOn: celebrate ? today() : celebratedOn }),
+      // “Undo” gives Léa back as she was.
+      'POST /api/gestures/01990000-0000-7000-8000-00000000000a/undo': () =>
+        Response.json({ changes: changes({ contacts: [lea()] }) }),
+    },
+  });
+}
+
+/** “Follow up…” on Léa, from her row on Today, done today. */
+async function followUpLea() {
+  await section(/^Relances et Alliés à relancer/)
+    .getByRole('button', { name: 'Relancer…' })
+    .click();
+  const dialog = page.getByRole('dialog', { name: 'Relancer Léa Petit' });
+  await dialog.getByRole('button', { name: 'Relancer' }).click();
+  await expect.element(page.getByText('Relance de Léa Petit notée · Activité 3/3')).toBeVisible();
+}
+
+const confetti = () => document.querySelectorAll('[data-confetti] > *').length;
+const CELEBRATION = 'Bravo, objectif du jour atteint ! 3 / 3';
+
+test('the gesture that reaches the Activity goal celebrates it once: confetti, the notification, the gauge “reached”', async () => {
+  await desktop();
+  const api = crossingApi();
+  await renderApp('/today', api);
+  await expect.element(activity()).toHaveTextContent('2/3');
+
+  await followUpLea();
+
+  await expect.element(page.getByText(CELEBRATION)).toBeVisible();
+  expect(api.sent(CELEBRATION_ROUTE)).toHaveLength(1);
+  // About forty, gone after about a second and a half (spec UX §2).
+  await expect.poll(confetti).toBe(40);
+  await expect.poll(confetti, { timeout: 3000 }).toBe(0);
+  await expect.element(activity()).toHaveTextContent('Objectif atteint');
+
+  // Undone, then done again the same day: never celebrated twice (ADR 0011).
+  await page.getByRole('button', { name: /^Annuler$/ }).click();
+  await expect.element(page.getByText('Annulé.')).toBeVisible();
+  await expect.element(activity()).toHaveTextContent('2/3');
+  await followUpLea();
+  await expect.element(activity()).toHaveTextContent('Objectif atteint');
+  expect(api.sent(CELEBRATION_ROUTE)).toHaveLength(1);
+  expect(page.getByText(CELEBRATION).elements()).toHaveLength(1);
+});
+
+test('with reduced motion, the notification without confetti', async () => {
+  await commands.emulateReducedMotion('reduce');
+  await desktop();
+  await renderApp('/today', crossingApi());
+
+  await followUpLea();
+
+  await expect.element(page.getByText(CELEBRATION)).toBeVisible();
+  expect(confetti()).toBe(0);
+});
+
+test('celebrated already today on another device: nothing, the gauge still says “reached”', async () => {
+  await desktop();
+  const api = crossingApi({ celebrate: false, celebratedOn: addDays(today(), -1) });
+  await renderApp('/today', api);
+
+  await followUpLea();
+
+  await expect.poll(() => api.sent(CELEBRATION_ROUTE)).toHaveLength(1);
+  await expect.element(activity()).toHaveTextContent('Objectif atteint');
+  await expect.element(page.getByText(CELEBRATION)).not.toBeInTheDocument();
+  expect(confetti()).toBe(0);
+});
+
+test('nothing asked when the summary says today was celebrated already', async () => {
+  await desktop();
+  const api = crossingApi({ celebratedOn: today() });
+  await renderApp('/today', api);
+
+  await followUpLea();
+
+  expect(api.sent(CELEBRATION_ROUTE)).toEqual([]);
+  await expect.element(page.getByText(CELEBRATION)).not.toBeInTheDocument();
+  expect(confetti()).toBe(0);
+});
+
+test('nothing asked with the celebration turned off (ST-53)', async () => {
+  await desktop();
+  const api = crossingApi({ settings: { ...activityGoal(3), celebrateGoal: false } });
+  await renderApp('/today', api);
+
+  await followUpLea();
+
+  expect(api.sent(CELEBRATION_ROUTE)).toEqual([]);
+  await expect.element(page.getByText(CELEBRATION)).not.toBeInTheDocument();
+  expect(confetti()).toBe(0);
 });
 
 test('each row opens its gesture in the same panel as anywhere else, and its name the record beside the list', async () => {

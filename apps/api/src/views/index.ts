@@ -34,6 +34,7 @@ import {
 import type { Random } from '../random.ts';
 import { idOf } from '../route-id.ts';
 import { localDateOf, settingsOf, timeZoneAt } from '../settings/index.ts';
+import { celebratedOnOf, recordCelebration } from './celebration.ts';
 import { dailyPicksOf, postponeBattle } from './daily-picks.ts';
 
 /**
@@ -628,7 +629,8 @@ export async function summaryChanges(
 
 /**
  * The reads, one per view (spec stack §5.2): this module reads the tables of the others and writes
- * none of them, only its own, what Today picked for the day (`daily_pick`, `battle_postponement`).
+ * none of them, only its own: what Today picked for the day (`daily_pick`, `battle_postponement`), and
+ * the latest day celebrated (`celebration`).
  */
 export function createViews({
   clock,
@@ -648,6 +650,7 @@ export function createViews({
         // What “today” is read in, on the device too.
         timeZone: await timeZoneAt(tx, userId, now),
         settings: await settingsOf(tx, userId, now),
+        celebratedOn: await celebratedOnOf(tx, userId),
         contacts: await summaryContacts(tx, userId),
         stages: await summaryStages(tx, userId),
         organizations: await summaryOrganizations(tx, userId),
@@ -684,6 +687,16 @@ export function createViews({
         dailyPicksOf(tx, userId, await localDateOf(tx, userId, clock.now()), random),
       );
       return c.json(picks, 200);
+    })
+    // A gesture of this device brought the Activity of the day to its goal: celebrated once a day,
+    // on every device (ST-44). Not a gesture: “Undo” never takes it back (ADR 0011).
+    .post('/today/celebration', requireUser, async (c) => {
+      const { userId } = c.var;
+      const now = clock.now();
+      const answer = await withUser(userId, async (tx) =>
+        recordCelebration(tx, userId, await localDateOf(tx, userId, now), now),
+      );
+      return c.json(answer, 200);
     })
     // “Later” on a conclusive Battle: hidden from Today until the next day, on every device.
     .post('/today/battles/:id/later', requireUser, async (c) => {

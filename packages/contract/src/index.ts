@@ -324,6 +324,11 @@ export const summary = z.strictObject({
   /** The time zone of the User in effect now: what its today is read in, on the device too. */
   timeZone: z.string(),
   settings: summarySettings,
+  /**
+   * The latest local day the Activity goal reached was celebrated, on any device (ST-44); `null`
+   * before the first. Never taken back by “Undo” (ADR 0011).
+   */
+  celebratedOn: z.iso.date().nullable(),
   contacts: z.array(summaryContact),
   stages: z.array(summaryStage),
   organizations: z.array(summaryOrganization),
@@ -331,6 +336,16 @@ export const summary = z.strictObject({
   battles: z.array(summaryBattle),
 });
 export type Summary = z.infer<typeof summary>;
+
+/**
+ * What `POST /api/today/celebration` answers: whether this device celebrates the Activity goal
+ * reached, the first time that day (ST-44), and the latest day celebrated.
+ */
+export const celebration = z.strictObject({
+  celebrate: z.boolean(),
+  celebratedOn: z.iso.date().nullable(),
+});
+export type Celebration = z.infer<typeof celebration>;
 
 /** The rows of the summary a gesture, or its undo, changed, and the ones it removed: what its answer carries. */
 export const summaryChanges = z.strictObject({

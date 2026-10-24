@@ -38,7 +38,13 @@ export {
   type AllyContact,
   type AllySignal,
 } from './ally.ts';
-export { activityOn, followUpSignal, isFollowUpDue, type FollowUpSignal } from './follow-up.ts';
+export {
+  activityGoalReached,
+  activityOn,
+  followUpSignal,
+  isFollowUpDue,
+  type FollowUpSignal,
+} from './follow-up.ts';
 export {
   canNoteInteraction,
   hasFollowUps,
