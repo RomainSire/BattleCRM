@@ -7,10 +7,13 @@
   outline: none;
 }
 
-/* The sticky header and bottom tabs never hide the focused element on narrow widths (spec UX §7). */
+/*
+ * The sticky header, the bottom tabs and the + button above them never hide the focused element on
+ * narrow widths (spec UX §7).
+ */
 @media (width < 48rem) {
   html {
     scroll-padding-top: 3.5rem;
-    scroll-padding-bottom: 4.5rem;
+    scroll-padding-bottom: 9rem;
   }
 }

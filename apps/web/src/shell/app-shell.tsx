@@ -12,6 +12,7 @@ import { isModalOpen } from '../shortcuts.ts';
 import { summaryQuery } from '../summary.ts';
 import { Celebration } from '../today/celebration.tsx';
 import { UndoToasts } from '../undo.tsx';
+import { FloatingAdd } from './floating-add.tsx';
 import { MobileHeader, TabBar } from './mobile-navigation.tsx';
 import { Sidebar } from './sidebar.tsx';
 
@@ -47,9 +48,11 @@ export function AppShell() {
       <div className="flex min-h-dvh flex-col md:flex-row">
         <MobileHeader />
         <Sidebar onAdd={() => openQuickAdd()} />
-        <main id="main" tabIndex={-1} className="min-w-0 flex-1 pb-20 outline-none md:pb-0">
+        {/* On a phone, room for the + button above the tabs. */}
+        <main id="main" tabIndex={-1} className="min-w-0 flex-1 pb-36 outline-none md:pb-0">
           <Outlet />
         </main>
+        <FloatingAdd onAdd={() => openQuickAdd()} />
         <TabBar />
       </div>
       <QuickAdd isOpen={isAdding} onOpenChange={setAdding} start={start} />

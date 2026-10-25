@@ -172,3 +172,54 @@ test('“Later” is refused for a Battle closed, unknown or of another User', a
   }
   expect((await picksOf(harness, user)).postponedBattleIds).toEqual([]);
 });
+
+const pass = (harness: Harness, user: { cookie: string }, contactId: string) =>
+  postJson(harness.app, `/api/today/picks/entries/${contactId}/pass`, {}, user.cookie);
+
+test('“Another one” puts a Contact picked behind one more of the Pool, on every device, then cycles', async () => {
+  const harness = testApp({}, { startsAt: '2026-01-05T09:00:00Z', chances: [0, 0, 0, 0, 0, 0, 0] });
+  const user = await makeUser(harness);
+  const [anne = '', bruno = '', chloe = '', david = ''] = await addToPool(harness, user, [
+    'Anne',
+    'Bruno',
+    'Chloé',
+    'David',
+  ]);
+
+  expect((await picksOf(harness, user)).entries).toEqual([anne, bruno, chloe]);
+  const passed = await pass(harness, user, anne);
+  expect(passed.status).toBe(200);
+  // One more of the Pool, what every device now reads.
+  expect(dailyPicks.parse(await passed.json()).entries).toEqual([bruno, chloe, david]);
+  expect((await picksOf(harness, user)).entries).toEqual([bruno, chloe, david]);
+  // A device behind passes Anne again: nothing changes.
+  const again = await pass(harness, user, anne);
+  expect(again.status).toBe(200);
+  expect(dailyPicks.parse(await again.json()).entries).toEqual([bruno, chloe, david]);
+  // The Pool has no more: the one passed first comes back, last.
+  await pass(harness, user, bruno);
+  expect((await picksOf(harness, user)).entries).toEqual([chloe, david, anne]);
+  await pass(harness, user, chloe);
+  expect((await picksOf(harness, user)).entries).toEqual([david, anne, bruno]);
+  // The next day, the picks start again.
+  harness.clock.advance('P1D');
+  expect((await picksOf(harness, user)).entries).toHaveLength(3);
+});
+
+test('“Another one” is refused for a Contact not picked today, or of another User', async () => {
+  const harness = testApp({}, { chances: [0, 0, 0] });
+  const user = await makeUser(harness);
+  const other = await makeUser(harness);
+  const [anne, , , david] = await addToPool(harness, user, ['Anne', 'Bruno', 'Chloé', 'David']);
+  await picksOf(harness, user);
+
+  const refused = [
+    await pass(harness, other, anne ?? ''),
+    await pass(harness, user, david ?? ''),
+    await pass(harness, user, 'not-an-id'),
+  ];
+  for (const response of refused) {
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: 'not_found' });
+  }
+});

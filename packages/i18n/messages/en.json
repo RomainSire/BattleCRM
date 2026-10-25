@@ -1098,8 +1098,8 @@
   "circle_last_interaction": "last Interaction on {date}",
   "circle_days_since_contact": "{days} d since contact",
   "circle_count_of_goal": "{count} Allies of the {goal} aimed for",
-  "circle_pick_contact": "Contact",
-  "circle_pick_no_match": "No Contact matches.",
+  "pick_contact": "Contact",
+  "pick_contact_no_match": "No Contact matches.",
   "circle_quick_add_ally": "Add “{name}” as an Ally",
   "circle_load_error": "The Circle could not be loaded. Try again in a moment.",
   "circle_empty": "Your Circle is empty. Add the account managers you want to stay in touch with, even during a mission.",
@@ -1173,6 +1173,30 @@
   "today_later": "Later",
   "today_later_error": "“Later” could not be saved. Try again.",
   "today_nothing": "Nothing needs action today.",
+  "today_card_follow_up": "Follow-up",
+  "today_card_ally": "Ally to check in with",
+  "today_card_window_elapsed": "Trial: window elapsed",
+  "today_card_conclusive_battle": "Conclusive Battle",
+  "today_deck_progress": "Progress of the day",
+  "today_deck_progress_value": "{done} of {total} handled",
+  "today_deck_position": "Card {index} of {count}",
+  "today_deck_previous": "Previous card",
+  "today_deck_next": "Next card",
+  "today_another": "Another one",
+  "today_another_error": "“Another one” could not be proposed. Try again.",
+  "today_day_done": "Day wrapped up.",
+  "today_day_done_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} item handled today.",
+        "countPlural=*": "{count} items handled today."
+      }
+    }
+  ],
+  "floating_add_label": "Add or note",
+  "floating_add_note_interaction": "Note an Interaction…",
   "today_first_day": "No Contact yet.",
   "today_first_day_stages": "Your Funnel starts with these Stages, which you can change in Settings:",
   "today_badge_needs_action": [

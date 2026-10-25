@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   date,
   foreignKey,
@@ -28,8 +29,8 @@ const kinds = sql.raw(DAILY_PICK_KINDS.map((kind) => `'${kind}'`).join(', '));
 
 /**
  * A Contact Today picked on a local day, the same on every device all day long: written at the first
- * read of the day, then for an entry, once a Contact picked left the Pool, by the one that replaces it.
- * Only the rows of the current day are kept.
+ * read of the day, then for an entry, once a Contact picked left the Pool or was passed with “Another
+ * one”, by the one that replaces it. Only the rows of the current day are kept.
  */
 export const dailyPick = pgTable(
   'daily_pick',
@@ -43,6 +44,8 @@ export const dailyPick = pgTable(
     contactId: uuid('contact_id').notNull(),
     /** Its place among the picks of its kind that day, in the order picked. */
     rank: integer().notNull(),
+    /** An entry passed with “Another one” (spec UX §5.1, mobile): no longer proposed, unless the Pool runs out. */
+    passed: boolean().notNull().default(false),
   },
   (table) => [
     primaryKey({ columns: [table.userId, table.localDate, table.kind, table.contactId] }),

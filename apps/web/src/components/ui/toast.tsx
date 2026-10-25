@@ -50,7 +50,7 @@ export function ToastRegion({
     <ToastRegionPrimitive
       queue={toasts}
       aria-label={m.notifications()}
-      className="fixed inset-x-4 bottom-20 z-50 flex flex-col-reverse gap-2 rounded-card focus-ring md:inset-x-auto md:right-4 md:bottom-4 md:w-96"
+      className="fixed inset-x-4 bottom-[calc(9rem+env(safe-area-inset-bottom))] z-50 flex flex-col-reverse gap-2 rounded-card focus-ring md:inset-x-auto md:right-4 md:bottom-4 md:w-96"
     >
       {({ toast }) => <Toast toast={toast} onUndo={onUndo} isUndoing={undoingKey === toast.key} />}
     </ToastRegionPrimitive>

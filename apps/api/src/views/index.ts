@@ -35,7 +35,7 @@ import type { Random } from '../random.ts';
 import { idOf } from '../route-id.ts';
 import { localDateOf, settingsOf, timeZoneAt } from '../settings/index.ts';
 import { celebratedOnOf, recordCelebration } from './celebration.ts';
-import { dailyPicksOf, postponeBattle } from './daily-picks.ts';
+import { dailyPicksOf, passEntry, postponeBattle } from './daily-picks.ts';
 
 /**
  * The Contacts of the working summary (ADR 0012), the latest Interaction first: all of them, or the
@@ -686,6 +686,21 @@ export function createViews({
       const picks = await withUser(userId, async (tx) =>
         dailyPicksOf(tx, userId, await localDateOf(tx, userId, clock.now()), random),
       );
+      return c.json(picks, 200);
+    })
+    // “Another one” on the Contact of the Pool proposed on a phone: the picks of the day without it.
+    .post('/today/picks/entries/:id/pass', requireUser, async (c) => {
+      const { userId } = c.var;
+      const contactId = idOf(c.req.param('id'));
+      // Not picked today, another User's Contact and an id that is none answer alike.
+      const picks =
+        contactId !== null &&
+        (await withUser(userId, async (tx) => {
+          const day = await localDateOf(tx, userId, clock.now());
+          if (!(await passEntry(tx, userId, contactId, day))) return null;
+          return dailyPicksOf(tx, userId, day, random);
+        }));
+      if (!picks) return c.json({ error: 'not_found' as const }, 404);
       return c.json(picks, 200);
     })
     // A gesture of this device brought the Activity of the day to its goal: celebrated once a day,

@@ -690,10 +690,8 @@ test('a Contact picked that enters the Funnel leaves the banner, and the one pic
 test('an empty Pool: the banner keeps its count, with Add a Contact in place of the picks', async () => {
   await desktop();
   await renderApp('/today', todayApi({ contacts: enteredThisWeek() }));
-  await expect.element(banner()).toHaveTextContent('Entrées cette semaine 2/5');
-  await banner()
-    .getByRole('button', { name: /^Ajouter un Contact/ })
-    .click();
+  await expect.element(page.getByText(/^Entrées cette semaine/)).toHaveTextContent('2/5');
+  await page.getByRole('button', { name: /^Ajouter un Contact/ }).click();
   await expect.element(page.getByRole('dialog', { name: 'Ajouter un Contact' })).toBeVisible();
 });
 
@@ -800,3 +798,260 @@ test.each(['light', 'dark'] as const)(
     await expectNoAxeViolations();
   },
 );
+
+const phone = () => page.viewport(390, 800);
+/** The card shown on a phone, named by what it is. */
+const card = () => page.getByRole('region', { name: /^(Entrées|Relance|Allié|Essai|Battle)/ });
+const nextCard = () => page.getByRole('button', { name: 'Carte suivante' });
+const previousCard = () => page.getByRole('button', { name: 'Carte précédente' });
+const progress = () => page.getByRole('progressbar', { name: 'Progression de la journée' });
+
+test('on a phone, one card at a time in the order of priority: Entries, Follow-ups and Allies by how long overdue, Trials past their window, conclusive Battles', async () => {
+  await phone();
+  await renderApp(
+    '/today',
+    todayApi({
+      contacts: [...everyone(), yann()],
+      battles: [CONCLUSIVE],
+      routes: { 'GET /api/today/picks': () => picks({ entries: [hugo().id, yann().id] }) },
+    }),
+  );
+
+  const seen: string[] = [];
+  await expect.element(card()).toHaveTextContent('Hugo Blanc');
+  await expect.element(progress()).toHaveAttribute('aria-valuetext', '0 traité sur 7');
+  for (let index = 0; index < 7; index += 1) {
+    const shown = card();
+    seen.push(`${shown.element().getAttribute('aria-label') ?? ''} ${shown.element().textContent}`);
+    if (index < 6) await nextCard().click();
+  }
+  expect(seen).toEqual([
+    expect.stringMatching(/Entrées cette semaine.*Hugo Blanc.*Faire entrer….*Un autre/),
+    expect.stringMatching(/Relance.*Claire Martin.*Relancer…/),
+    expect.stringMatching(/Allié à relancer.*Inès Moreau.*Prendre des nouvelles…/),
+    expect.stringMatching(/Relance.*Tom Blanc/),
+    expect.stringMatching(/Relance.*Léa Petit/),
+    expect.stringMatching(/Essai délai dépassé.*Paul Durand.*Sans suite/),
+    expect.stringMatching(/Battle concluante.*Approche.*Clôturer…/),
+  ]);
+  // No “Later” on the card of an Ally.
+  await previousCard().click();
+  await previousCard().click();
+  await previousCard().click();
+  await previousCard().click();
+  await expect.element(card()).toHaveTextContent('Inès Moreau');
+  await expect.element(card().getByRole('button', { name: 'Plus tard' })).not.toBeInTheDocument();
+  // Only one card at a time.
+  await expect.element(page.getByText('Claire Martin')).not.toBeInTheDocument();
+});
+
+test('“Another one” on the Entries card passes the Contact for the day on every device and shows the next one picked', async () => {
+  await phone();
+  const api = todayApi({
+    contacts: [marc(), hugo(), zoe(), yann()],
+    routes: {
+      'GET /api/today/picks': () => picks({ entries: [hugo().id, zoe().id] }),
+      [`POST /api/today/picks/entries/${hugo().id}/pass`]: () =>
+        picks({ entries: [zoe().id, yann().id] }),
+    },
+  });
+  await renderApp('/today', api);
+
+  await expect.element(card()).toHaveTextContent('Hugo Blanc');
+  await card().getByRole('button', { name: 'Un autre' }).click();
+  await expect.element(card()).toHaveTextContent('Zoé Garnier');
+  await expect.element(card()).toHaveTextContent('Capgemini · dernière Étape : Approche');
+  expect(api.sent(`POST /api/today/picks/entries/${hugo().id}/pass`)).toHaveLength(1);
+});
+
+test('the Entries card stays away once a Contact entered the Funnel today, and with an empty Pool', async () => {
+  await phone();
+  await renderApp(
+    '/today',
+    todayApi({
+      contacts: [{ ...lea(), funnelEntryDays: [today()] }, hugo(), yann()],
+      routes: { 'GET /api/today/picks': () => picks({ entries: [hugo().id, yann().id] }) },
+    }),
+  );
+  await expect.element(card()).toHaveTextContent('Léa Petit');
+  await expect.element(page.getByText('Hugo Blanc')).not.toBeInTheDocument();
+});
+
+test('a card handled leaves the deck, the progress moves on; the last one handled, “Day wrapped up”', async () => {
+  await phone();
+  const moved = { ...claire(), followUp: { dueOn: addDays(today(), 3), note: null, rank: 2 } };
+  await renderApp(
+    '/today',
+    todayApi({
+      contacts: [claire(), marc(), nina()],
+      routes: {
+        'GET /api/today/picks': () => picks({ noNextStep: [marc().id] }),
+        [`POST /api/contacts/${claire().id}/schedule-follow-up`]: () =>
+          Response.json({
+            changes: changes({ contacts: [moved] }),
+            undoToken: '01990000-0000-7000-8000-00000000000a',
+          }),
+      },
+    }),
+  );
+
+  await expect.element(card()).toHaveTextContent('Claire Martin');
+  await expect.element(progress()).toHaveAttribute('aria-valuetext', '0 traité sur 1');
+  // Nothing else than the card until the day is wrapped up.
+  await expect.element(section(/^Sans prochaine action/)).not.toBeInTheDocument();
+  await card().getByRole('button', { name: 'Reporter' }).click();
+  await page.getByRole('menuitem', { name: '+3 j' }).click();
+
+  await expect.element(page.getByRole('heading', { name: 'Journée bouclée.' })).toBeVisible();
+  await expect.element(page.getByText("1 élément traité aujourd'hui.")).toBeVisible();
+  await expect.element(progress()).toHaveAttribute('aria-valuetext', '1 traité sur 1');
+  // What the day still offers, and tomorrow.
+  await expect.element(section(/^Sans prochaine action/)).toHaveTextContent('Marc Roy');
+  await expect.element(section(/^À venir/)).toHaveTextContent('Nina Roux');
+  await expect.element(activity()).toBeVisible();
+});
+
+test('on a phone, the gesture that reaches the Activity goal wraps up the day: the celebration lands on it', async () => {
+  await phone();
+  await renderApp('/today', crossingApi());
+  await expect.element(card()).toHaveTextContent('Léa Petit');
+
+  await card().getByRole('button', { name: 'Relancer…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Relancer Léa Petit' });
+  await dialog.getByRole('button', { name: 'Relancer' }).click();
+
+  await expect.element(page.getByText(CELEBRATION)).toBeVisible();
+  await expect.element(page.getByRole('heading', { name: 'Journée bouclée.' })).toBeVisible();
+  await expect.element(activity()).toHaveTextContent('Objectif atteint');
+});
+
+const fab = () => page.getByRole('button', { name: 'Ajouter ou noter' });
+
+test('the floating + button: Add a Contact, or Note an Interaction… on a Contact chosen first, Check in… for an Ally', async () => {
+  await phone();
+  const { router } = await renderApp('/today', todayApi());
+
+  await fab().click();
+  await page.getByRole('menuitem', { name: 'Ajouter un Contact' }).click();
+  await expect.element(page.getByRole('dialog', { name: 'Ajouter un Contact' })).toBeVisible();
+  await userEvent.keyboard('{Escape}');
+
+  await fab().click();
+  await page.getByRole('menuitem', { name: 'Noter une Interaction…' }).click();
+  const choose = page.getByRole('dialog', { name: 'Noter une Interaction…' });
+  await choose.getByRole('combobox', { name: 'Contact' }).fill('marc');
+  await expect.element(page.getByRole('option')).toHaveAccessibleName(/Marc Roy/);
+  await userEvent.keyboard('{ArrowDown}{Enter}');
+  await expect.poll(() => router.state.location.pathname).toBe(`/contacts/${marc().id}`);
+  expect(router.state.location.search).toEqual({ interaction: 'note' });
+  await expect
+    .element(page.getByRole('dialog', { name: /^Noter une Interaction avec/ }))
+    .toBeVisible();
+  await userEvent.keyboard('{Escape}');
+
+  await fab().click();
+  await page.getByRole('menuitem', { name: 'Noter une Interaction…' }).click();
+  await page.getByRole('combobox', { name: 'Contact' }).fill('ines');
+  await expect.element(page.getByRole('option')).toHaveAccessibleName(/Inès Moreau/);
+  await userEvent.keyboard('{ArrowDown}{Enter}');
+  await expect.poll(() => router.state.location.pathname).toBe(`/contacts/${ines().id}`);
+  expect(router.state.location.search).toEqual({ interaction: 'check-in' });
+});
+
+test('no floating + button on a desktop', async () => {
+  await desktop();
+  await renderApp('/today', todayApi());
+  await expect.element(page.getByRole('heading', { name: "Aujourd'hui", level: 1 })).toBeVisible();
+  await expect.element(fab()).not.toBeInTheDocument();
+});
+
+test('on a phone, the quick actions are 44 px tall, and no focus hides under the header, the + button or the tabs', async () => {
+  await page.viewport(390, 560);
+  await renderApp(
+    '/today',
+    todayApi({
+      contacts: [...everyone(), yann()],
+      battles: [CONCLUSIVE],
+      routes: { 'GET /api/today/picks': () => picks({ entries: [hugo().id, yann().id] }) },
+    }),
+  );
+  await expect.element(card()).toHaveTextContent('Hugo Blanc');
+  for (const button of [...card().getByRole('button').all(), nextCard(), previousCard(), fab()]) {
+    expect(button.element().getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+  }
+
+  const covers = [
+    page.getByRole('banner').element(),
+    fab().element(),
+    page.getByRole('navigation', { name: 'Menu principal' }).element(),
+  ];
+  const main = page.getByRole('main').element();
+  main.querySelector<HTMLElement>('a, button')?.focus();
+  for (let step = 0; step < 40; step += 1) {
+    await userEvent.tab();
+    const focused = document.activeElement;
+    if (!(focused instanceof HTMLElement) || !main.contains(focused)) continue;
+    const box = focused.getBoundingClientRect();
+    for (const cover of covers) {
+      const over = cover.getBoundingClientRect();
+      const overlaps =
+        box.left < over.right &&
+        box.right > over.left &&
+        box.top < over.bottom &&
+        box.bottom > over.top;
+      expect(overlaps, `${focused.textContent} under ${cover.textContent}`).toBe(false);
+    }
+  }
+});
+
+test.each(['light', 'dark'] as const)(
+  'axe finds nothing on a card of Today on a phone, in the %s theme',
+  async (scheme) => {
+    await commands.emulateColorScheme(scheme);
+    await phone();
+    await renderApp(
+      '/today',
+      todayApi({
+        contacts: [...everyone(), yann()],
+        routes: { 'GET /api/today/picks': () => picks({ entries: [hugo().id, yann().id] }) },
+      }),
+    );
+    await expect.element(card()).toHaveTextContent('Hugo Blanc');
+    await expect
+      .poll(() => document.documentElement.classList.contains('dark'))
+      .toBe(scheme === 'dark');
+    await expectNoAxeViolations();
+  },
+);
+
+test.each(['light', 'dark'] as const)(
+  'axe finds nothing on the day wrapped up on a phone, in the %s theme',
+  async (scheme) => {
+    await commands.emulateColorScheme(scheme);
+    await phone();
+    // A card handled earlier on this tab.
+    sessionStorage.setItem(`battlecrm.today-deck.${today()}`, JSON.stringify(['entry']));
+    await renderApp(
+      '/today',
+      todayApi({
+        contacts: [marc(), nina()],
+        routes: { 'GET /api/today/picks': () => picks({ noNextStep: [marc().id] }) },
+      }),
+    );
+    await expect.element(page.getByRole('heading', { name: 'Journée bouclée.' })).toBeVisible();
+    await expect.element(section(/^Sans prochaine action/)).toBeVisible();
+    await expect
+      .poll(() => document.documentElement.classList.contains('dark'))
+      .toBe(scheme === 'dark');
+    await expectNoAxeViolations();
+  },
+);
+
+test('on a phone with an empty Pool, the Entries keep their count, with Add a Contact', async () => {
+  await phone();
+  await renderApp('/today', todayApi({ contacts: [...enteredThisWeek(), marc()] }));
+  await expect.element(card()).toHaveTextContent('Claire Martin');
+  await expect.element(page.getByText(/^Entrées cette semaine/)).toHaveTextContent('2/5');
+  await page.getByRole('button', { name: /^Ajouter un Contact/ }).click();
+  await expect.element(page.getByRole('dialog', { name: 'Ajouter un Contact' })).toBeVisible();
+});

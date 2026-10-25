@@ -431,6 +431,11 @@ const CROSS_ACCESS: Record<
     const battle = await battleOf(harness, alice);
     return { id: battle.id, state: () => getJson(harness, alice, '/api/today/picks') };
   },
+  'POST /api/today/picks/entries/:id/pass': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice);
+    await getJson(harness, alice, '/api/today/picks');
+    return { id: contact.id, state: () => getJson(harness, alice, '/api/today/picks') };
+  },
   'POST /api/battles/:id/takeaway': async (harness, alice) => {
     const battle = await battleOf(harness, alice);
     await closeBattle(harness, alice, battle.id, { verdict: 'abandoned', takeaway: 'Alice' });

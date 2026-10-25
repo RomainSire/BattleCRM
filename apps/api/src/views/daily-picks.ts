@@ -1,5 +1,5 @@
 import { hasNoNextStep, pickAtRandom } from '@battlecrm/domain';
-import { and, asc, eq, exists, isNull, lt, notInArray, sql } from 'drizzle-orm';
+import { and, asc, eq, exists, inArray, isNull, lt, notInArray, sql } from 'drizzle-orm';
 
 import { battle } from '../battles/index.ts';
 import type { Transaction } from '../db/index.ts';
@@ -14,7 +14,10 @@ const PICKS_PER_DAY = 3;
 /** What Today picked for a local day (spec UX §5.1, ST-47). */
 export type DailyPicks = {
   day: string;
-  /** The Contacts of the Pool proposed for a Funnel entry, still in the Pool, in the order picked. */
+  /**
+   * The Contacts of the Pool proposed for a Funnel entry, still in the Pool and not passed, in the
+   * order picked.
+   */
   entries: string[];
   /** The Contacts with No next step picked that day, in the order picked, handled ones too. */
   noNextStep: string[];
@@ -76,7 +79,12 @@ async function noNextStepContacts(tx: Transaction, userId: string): Promise<stri
 /** The picks of a kind on a day, in the order picked, with the Status of each Contact. */
 function picksOn(tx: Transaction, userId: string, day: string, kind: DailyPickKind) {
   return tx
-    .select({ contactId: dailyPick.contactId, rank: dailyPick.rank, status: contact.status })
+    .select({
+      contactId: dailyPick.contactId,
+      rank: dailyPick.rank,
+      passed: dailyPick.passed,
+      status: contact.status,
+    })
     .from(dailyPick)
     .innerJoin(contact, and(eq(contact.userId, userId), eq(contact.id, dailyPick.contactId)))
     .where(
@@ -84,6 +92,15 @@ function picksOn(tx: Transaction, userId: string, day: string, kind: DailyPickKi
     )
     .orderBy(asc(dailyPick.rank));
 }
+
+/** The pick of a Contact of a kind on a day. */
+const pickOf = (userId: string, day: string, kind: DailyPickKind, contactId: string) =>
+  and(
+    eq(dailyPick.userId, userId),
+    eq(dailyPick.localDate, day),
+    eq(dailyPick.kind, kind),
+    eq(dailyPick.contactId, contactId),
+  );
 
 /** Writes new picks of a kind after the ones of the day. */
 async function addPicks(
@@ -130,9 +147,8 @@ export async function dailyPicksOf(
   const chance = (count: number) => random.int(0, count);
 
   const entries = await picksOn(tx, userId, day, 'entry');
-  const entriesInPool = entries
-    .filter(({ status }) => status === 'pool')
-    .map(({ contactId }) => contactId);
+  const inPool = entries.filter(({ status }) => status === 'pool');
+  const entriesInPool = inPool.filter(({ passed }) => !passed).map(({ contactId }) => contactId);
   if (entriesInPool.length < PICKS_PER_DAY) {
     const pickedIds = entries.map(({ contactId }) => contactId);
     const candidates = await tx
@@ -151,8 +167,22 @@ export async function dailyPicksOf(
       PICKS_PER_DAY - entriesInPool.length,
       chance,
     );
-    await addPicks(tx, userId, day, 'entry', added, (entries.at(-1)?.rank ?? -1) + 1);
+    let nextRank = (entries.at(-1)?.rank ?? -1) + 1;
+    await addPicks(tx, userId, day, 'entry', added, nextRank);
+    nextRank += added.length;
     entriesInPool.push(...added);
+    // The Pool has no more: the ones passed come back, the first passed first, behind the others.
+    const back = inPool
+      .filter(({ passed }) => passed)
+      .slice(0, PICKS_PER_DAY - entriesInPool.length);
+    for (const { contactId } of back) {
+      await tx
+        .update(dailyPick)
+        .set({ passed: false, rank: nextRank })
+        .where(pickOf(userId, day, 'entry', contactId));
+      nextRank += 1;
+      entriesInPool.push(contactId);
+    }
   }
 
   let noNextStep = (await picksOn(tx, userId, day, 'no_next_step')).map(
@@ -176,6 +206,36 @@ export async function dailyPicksOf(
     noNextStep,
     postponedBattleIds: postponed.map(({ battleId }) => battleId),
   };
+}
+
+/**
+ * “Another one” on the Contact of the Pool proposed on a phone (spec UX §5.1): passed for the day on
+ * every device, one more of the Pool picked in its place; passed again from a device behind, the
+ * same. `false` when it was not picked that day or left the Pool.
+ */
+export async function passEntry(
+  tx: Transaction,
+  userId: string,
+  contactId: string,
+  day: string,
+): Promise<boolean> {
+  const passed = await tx
+    .update(dailyPick)
+    .set({ passed: true })
+    .where(
+      and(
+        pickOf(userId, day, 'entry', contactId),
+        inArray(
+          dailyPick.contactId,
+          tx
+            .select({ id: contact.id })
+            .from(contact)
+            .where(and(eq(contact.userId, userId), eq(contact.status, 'pool'))),
+        ),
+      ),
+    )
+    .returning({ contactId: dailyPick.contactId });
+  return passed.length > 0;
 }
 
 /**

@@ -316,6 +316,13 @@
       "when": 1792855242772,
       "tag": "0044_celebration_access",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1792956509856,
+      "tag": "0045_daily_pick_passed",
+      "breakpoints": true
     }
   ]
 }

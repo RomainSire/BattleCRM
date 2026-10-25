@@ -1,4 +1,4 @@
-import { contactsMatching, targetOf, type AllySignal } from '@battlecrm/domain';
+import { targetOf, type AllySignal } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
@@ -7,18 +7,10 @@ import { AlarmClock } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
 import { Button } from '../components/ui/button.tsx';
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from '../components/ui/combobox.tsx';
-import { Dialog, DialogHeader, DialogTitle } from '../components/ui/dialog.tsx';
 import { ErrorMessage } from '../components/ui/error-message.tsx';
-import { Label } from '../components/ui/label.tsx';
 import { useAddContact } from '../contacts/add-contact-context.ts';
 import { ContactName } from '../contacts/contact-name.tsx';
+import { PickContact } from '../contacts/pick-contact.tsx';
 import {
   ContactPanel,
   RecordGesturePanels,
@@ -215,105 +207,6 @@ function CircleCount({ count, goal }: { count: number; goal: number | null }) {
   );
 }
 
-/** The choice that adds the name typed as an Ally, when no Contact matches it. */
-const QUICK_ADD_ID = 'quick-add';
-type Choice = SummaryContact | { id: typeof QUICK_ADD_ID; name: string };
-
-/**
- * Add to Circle… from the page (spec UX §5.11): a Contact chosen in a list filtered as it is typed,
- * the Allies aside, then the window of the change of Status; without a match, the quick add of an Ally.
- */
-function PickContact({
-  summary,
-  isOpen,
-  onOpenChange,
-  onPick,
-}: {
-  summary: Summary;
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  onPick: (contactId: string) => void;
-}) {
-  const addContact = useAddContact();
-  const [typed, setTyped] = useState('');
-  const others = summary.contacts.filter(({ status }) => status !== 'ally');
-  const matching = contactsMatching(typed, others, summary.organizations);
-  const name = typed.trim();
-  // Without a match, the one choice is the quick add of an Ally with the name typed.
-  const choices: Choice[] =
-    matching.length > 0 || name === '' ? matching : [{ id: QUICK_ADD_ID, name }];
-  const close = () => {
-    setTyped('');
-    onOpenChange(false);
-  };
-  return (
-    <Dialog
-      isOpen={isOpen}
-      onOpenChange={(open) => {
-        if (!open) close();
-      }}
-      className="sm:max-w-md"
-    >
-      <DialogHeader>
-        <DialogTitle>{m.verb_add_to_circle()}</DialogTitle>
-      </DialogHeader>
-      <Combobox
-        inputValue={typed}
-        onInputChange={setTyped}
-        onSelectionChange={(key) => {
-          if (key === QUICK_ADD_ID) {
-            close();
-            addContact({ name, status: 'ally' });
-            return;
-          }
-          const chosen = others.find(({ id }) => id === key);
-          if (!chosen) return;
-          close();
-          onPick(chosen.id);
-        }}
-        items={choices}
-        allowsEmptyCollection
-        menuTrigger="focus"
-        className="flex flex-col gap-1.5"
-      >
-        <Label>{m.circle_pick_contact()}</Label>
-        {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- the window was just opened to choose a Contact: its field takes the focus. */}
-        <ComboboxInput autoFocus showTrigger={others.length > 0} className="max-md:h-11" />
-        <ComboboxContent>
-          <ComboboxList<Choice>
-            renderEmptyState={() => (
-              <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                {m.circle_pick_no_match()}
-              </p>
-            )}
-          >
-            {(contact) => {
-              if (!('status' in contact)) {
-                return (
-                  <ComboboxItem id={QUICK_ADD_ID} textValue={contact.name}>
-                    {m.circle_quick_add_ally({ name: contact.name })}
-                  </ComboboxItem>
-                );
-              }
-              const organization = organizationOf(contact, summary);
-              return (
-                <ComboboxItem id={contact.id} textValue={contact.name}>
-                  <span>
-                    {contact.name}
-                    {organization && (
-                      <span className="text-muted-foreground"> · {organization.name}</span>
-                    )}
-                  </span>
-                </ComboboxItem>
-              );
-            }}
-          </ComboboxList>
-        </ComboboxContent>
-      </Combobox>
-    </Dialog>
-  );
-}
-
 /**
  * The Circle (spec UX §5.11): its count against its size goal, “Add to Circle…”, and the Allies in
  * three tiers, Time to check in, Soon, Up to date; the record of an Ally in a panel beside them, and a
@@ -329,6 +222,7 @@ export function CircleScreen() {
   const { contact: contactId, panel } = current;
   const gestures = useRecordGestures();
   const [isPicking, setPicking] = useState(false);
+  const addContact = useAddContact();
   // The record opened takes the focus once (ST-66).
   const focusHeading = useCallback((heading: HTMLHeadingElement | null) => heading?.focus(), []);
 
@@ -428,11 +322,19 @@ export function CircleScreen() {
       {panel !== 'record' && contact && (
         <RecordGesturePanels contact={contact} summary={summary} gestures={gestures} />
       )}
+      {/* Add to Circle… from the page: a Contact chosen, the Allies aside, then the window of the
+          change of Status; without a match, the quick add of an Ally. */}
       <PickContact
         summary={summary}
+        title={m.verb_add_to_circle()}
+        contacts={summary.contacts.filter(({ status }) => status !== 'ally')}
         isOpen={isPicking}
         onOpenChange={setPicking}
-        onPick={(id) => onOpen(id, { statusTo: 'ally' })}
+        onPick={({ id }) => onOpen(id, { statusTo: 'ally' })}
+        quickAdd={{
+          label: (name) => m.circle_quick_add_ally({ name }),
+          onAdd: (name) => addContact({ name, status: 'ally' }),
+        }}
       />
     </Screen>
   );

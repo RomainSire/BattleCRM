@@ -31,7 +31,6 @@ import { useApi } from '../session.ts';
 import { settingsOf } from '../settings/use-settings.ts';
 import { Kbd } from '../shell/kbd.tsx';
 import {
-  organizationOf,
   summaryQuery,
   todayOf,
   type Summary,
@@ -40,70 +39,12 @@ import {
 } from '../summary.ts';
 import { useIsNarrow } from '../use-narrow.ts';
 import { ActivityCard } from './activity-card.tsx';
-import { ConclusiveBattles, conclusiveBattlesOf } from './conclusive-battles.tsx';
-import { TodayContactLink } from './contact-link.tsx';
+import { ConclusiveBattle, ConclusiveBattles, conclusiveBattlesOf } from './conclusive-battles.tsx';
 import { DAILY_PICKS_KEY, dailyPicksQuery, todayPicksOf } from './daily-picks.ts';
-import { EntriesBanner } from './entries-banner.tsx';
+import { EntriesBanner, EntriesCount } from './entries-banner.tsx';
 import { toHandleOf, type TodayRow } from './to-handle.ts';
-
-/**
- * A row of Today (spec UX §5.1): the name of its Contact, which opens its record, marked “Ally” for
- * an Ally; its Organization, and Stage while Prospecting; what calls for a gesture; its actions, above
- * the name stretched over the row.
- */
-function Row({
-  contact,
-  summary,
-  line,
-  isLate,
-  isOpen,
-  asPage,
-  children,
-}: {
-  contact: SummaryContact;
-  summary: Summary;
-  line: string;
-  /** The line says how overdue: amber, never the colour alone. */
-  isLate: boolean;
-  isOpen: boolean;
-  /** On a phone, the record is a page. */
-  asPage: boolean;
-  children: ReactNode;
-}) {
-  const organization = organizationOf(contact, summary);
-  const stage =
-    contact.status === 'prospecting'
-      ? summary.stages.find(({ id }) => id === contact.stageId)
-      : undefined;
-  return (
-    <li
-      className={cn(
-        'group relative grid gap-2 rounded-card border bg-background p-3 hover:bg-surface/50 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-4',
-        isOpen && 'shadow-[inset_3px_0_0_var(--accent-text)]',
-      )}
-    >
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <div className="flex items-baseline gap-2">
-          <TodayContactLink contact={contact} isOpen={isOpen} asPage={asPage} />
-          {/* The star of the name already says it to a screen reader. */}
-          {contact.status === 'ally' && (
-            <span aria-hidden="true" className="text-xs text-muted-foreground">
-              {m.status_ally()}
-            </span>
-          )}
-        </div>
-        <span className="text-xs text-muted-foreground">
-          {organization?.name ?? m.no_organization()}
-          {stage && ` · ${stage.name}`}
-        </span>
-        <span className={cn('text-xs', isLate ? 'font-medium text-overdue' : 'text-neutral-text')}>
-          {line}
-        </span>
-      </div>
-      <div className="relative flex flex-wrap gap-2 md:justify-end">{children}</div>
-    </li>
-  );
-}
+import { EntryCard, TodayDeck, type DeckItem } from './today-deck.tsx';
+import { Row } from './today-row.tsx';
 
 /** A section of the main column, its heading naming its list. */
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -216,7 +157,7 @@ function FirstDay({ summary }: { summary: Summary }) {
 }
 
 /**
- * Today on a desktop (spec UX §5.1): the Entries banner on top; the Follow-ups due and the Allies to
+ * Today (spec UX §5.1), on a phone one card at a time (`TodayDeck`). On a desktop: the Entries banner on top; the Follow-ups due and the Allies to
  * check in with in one list, the longest overdue first, then the Trials past their window and the
  * Contacts with No next step picked for the day, each with its actions; beside them, the Circle, the
  * conclusive Battles and what comes tomorrow. The record of a Contact opens in a panel in place of
@@ -250,6 +191,7 @@ export function TodayScreen() {
     void queryClient.invalidateQueries({ queryKey: DAILY_PICKS_KEY });
   }, [pool, queryClient]);
   const gestures = useRecordGestures();
+  const addContact = useAddContact();
   // The record opened takes the focus once (ST-66).
   const focusHeading = useCallback((heading: HTMLHeadingElement | null) => heading?.focus(), []);
 
@@ -296,12 +238,13 @@ export function TodayScreen() {
     isOpen: panel === 'record' && row.id === contactId,
     asPage: isNarrow,
   });
-  const todayRow = (row: TodayRow) => {
+  const todayRow = (row: TodayRow, as: 'li' | 'div' = 'li') => {
     if (row.kind === 'ally') {
       const { contact: ally, signal, daysLate } = row;
       return (
         <Row
           key={ally.id}
+          as={as}
           {...rowProps(ally)}
           line={m.today_ally_rhythm_past({ late: daysLate, days: signal.daysSinceContact })}
           isLate
@@ -321,6 +264,7 @@ export function TodayScreen() {
     return (
       <Row
         key={card.contact.id}
+        as={as}
         {...rowProps(card.contact)}
         line={card.contact.followUp ? followUpText(card.contact.followUp, today, locale) : ''}
         isLate
@@ -333,8 +277,8 @@ export function TodayScreen() {
       </Row>
     );
   };
-  const cardRow = (card: Card, line: string) => (
-    <Row key={card.contact.id} {...rowProps(card.contact)} line={line} isLate={false}>
+  const cardRow = (card: Card, line: string, as: 'li' | 'div' = 'li') => (
+    <Row key={card.contact.id} as={as} {...rowProps(card.contact)} line={line} isLate={false}>
       <CardActions
         card={card}
         summary={summary}
@@ -342,6 +286,13 @@ export function TodayScreen() {
       />
     </Row>
   );
+  const noNextStepSection = noNextStep.length > 0 && (
+    <Section title={m.today_no_next_step()}>
+      {noNextStep.map((card) => cardRow(card, m.today_no_next_step()))}
+    </Section>
+  );
+  const onCloseBattle = (battleId: string) =>
+    void navigate({ to: '/today', search: { battle: battleId } });
   const main =
     summary.contacts.length === 0 ? (
       <FirstDay summary={summary} />
@@ -351,20 +302,119 @@ export function TodayScreen() {
           <p className="text-muted-foreground">{m.today_nothing()}</p>
         )}
         {rows.length > 0 && (
-          <Section title={m.today_follow_ups_and_allies()}>{rows.map(todayRow)}</Section>
+          <Section title={m.today_follow_ups_and_allies()}>
+            {rows.map((row) => todayRow(row))}
+          </Section>
         )}
         {windowElapsed.length > 0 && (
           <Section title={m.today_window_elapsed()}>
             {windowElapsed.map((card) => cardRow(card, trialText(card, summary, locale) ?? ''))}
           </Section>
         )}
-        {noNextStep.length > 0 && (
-          <Section title={m.today_no_next_step()}>
-            {noNextStep.map((card) => cardRow(card, m.today_no_next_step()))}
-          </Section>
-        )}
+        {noNextStepSection}
       </>
     );
+  // Opened from a row or a card, without the record: the gesture alone; and the closing of a Battle.
+  const windows = (
+    <>
+      {panel !== 'record' && contact && (
+        <RecordGesturePanels contact={contact} summary={summary} gestures={gestures} />
+      )}
+      {closing && closingStage && (
+        <CloseBattlePanel
+          key={closing.id}
+          summary={summary}
+          stage={closingStage}
+          battle={closing}
+          onClose={closeBattleWindow}
+          onClosed={closeBattleWindow}
+        />
+      )}
+    </>
+  );
+  if (isNarrow && summary.contacts.length > 0) {
+    // The Entries card until a Contact entered the Funnel today (spec UX §5.1).
+    const isPoolEmpty = !summary.contacts.some(({ status }) => status === 'pool');
+    const enteredToday = summary.contacts.some(({ funnelEntryDays }) =>
+      funnelEntryDays.includes(today),
+    );
+    const items: DeckItem[] = [
+      ...(isPoolEmpty || enteredToday
+        ? []
+        : [
+            {
+              key: 'entry',
+              title: <EntriesCount summary={summary} today={today} />,
+              content: (
+                <EntryCard
+                  summary={summary}
+                  today={today}
+                  picked={entries}
+                  isError={picks.isError}
+                  onBringIn={(id) => onOpen(id, { statusTo: 'prospecting' })}
+                />
+              ),
+            },
+          ]),
+      ...rows.map((row) => ({
+        key: `${row.kind}:${row.kind === 'ally' ? row.contact.id : row.card.contact.id}`,
+        title: row.kind === 'ally' ? m.today_card_ally() : m.today_card_follow_up(),
+        content: todayRow(row, 'div'),
+      })),
+      ...windowElapsed.map((card) => ({
+        key: `trial:${card.contact.id}`,
+        title: m.today_card_window_elapsed(),
+        content: cardRow(card, trialText(card, summary, locale) ?? '', 'div'),
+      })),
+      ...battles.map((battle) => ({
+        key: `battle:${battle.id}`,
+        title: m.today_card_conclusive_battle(),
+        content: (
+          <div className="rounded-card border p-3">
+            <ConclusiveBattle summary={summary} battle={battle} onClose={onCloseBattle} />
+          </div>
+        ),
+      })),
+    ];
+    return (
+      <Screen title={m.today()}>
+        {/* Without the Entries card, the Entries keep their count (spec UX §5.1). */}
+        {(isPoolEmpty || enteredToday) && (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-semibold">
+              <EntriesCount summary={summary} today={today} />
+            </p>
+            {isPoolEmpty && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-h-11"
+                aria-keyshortcuts="N"
+                onPress={() => addContact()}
+              >
+                {m.add_contact()}
+              </Button>
+            )}
+          </div>
+        )}
+        <TodayDeck
+          today={today}
+          items={items}
+          done={noNextStepSection}
+          after={
+            <SideColumn
+              summary={summary}
+              today={today}
+              tomorrow={tomorrow}
+              battles={[]}
+              onCloseBattle={onCloseBattle}
+            />
+          }
+        />
+        {windows}
+      </Screen>
+    );
+  }
   return (
     <Screen title={m.today()}>
       {summary.contacts.length > 0 && (
@@ -404,26 +454,11 @@ export function TodayScreen() {
             today={today}
             tomorrow={tomorrow}
             battles={battles}
-            onCloseBattle={(battleId) =>
-              void navigate({ to: '/today', search: { battle: battleId } })
-            }
+            onCloseBattle={onCloseBattle}
           />
         )}
       </div>
-      {/* Opened from a row, without the record: the gesture alone. */}
-      {panel !== 'record' && contact && (
-        <RecordGesturePanels contact={contact} summary={summary} gestures={gestures} />
-      )}
-      {closing && closingStage && (
-        <CloseBattlePanel
-          key={closing.id}
-          summary={summary}
-          stage={closingStage}
-          battle={closing}
-          onClose={closeBattleWindow}
-          onClosed={closeBattleWindow}
-        />
-      )}
+      {windows}
     </Screen>
   );
 }

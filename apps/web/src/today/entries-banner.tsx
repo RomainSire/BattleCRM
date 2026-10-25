@@ -16,7 +16,7 @@ import { TodayContactLink } from './contact-link.tsx';
  * The Funnel entries of the week against the Entry goal in effect (spec UX §5.1): “2/5”, in the
  * success colour once reached, “6/5” past it, without celebration; without a goal, “3 this week”.
  */
-function EntriesCount({ summary, today }: { summary: Summary; today: string }) {
+export function EntriesCount({ summary, today }: { summary: Summary; today: string }) {
   const count = funnelEntriesInWeek(summary.contacts, today);
   const goal = settingsOf(summary).entryGoal.inEffect;
   if (goal === null) {

@@ -1089,8 +1089,8 @@
   "circle_last_interaction": "dernière Interaction le {date}",
   "circle_days_since_contact": "{days} j sans contact",
   "circle_count_of_goal": "{count} Alliés sur {goal} visés",
-  "circle_pick_contact": "Contact",
-  "circle_pick_no_match": "Aucun Contact ne correspond.",
+  "pick_contact": "Contact",
+  "pick_contact_no_match": "Aucun Contact ne correspond.",
   "circle_quick_add_ally": "Ajouter « {name} » en Allié",
   "circle_load_error": "Impossible de charger le Cercle. Réessaie dans un instant.",
   "circle_empty": "Ton Cercle est vide. Ajoute les ingénieurs d'affaires avec qui tu veux garder le contact, même pendant une mission.",
@@ -1164,6 +1164,39 @@
   "today_later": "Plus tard",
   "today_later_error": "« Plus tard » n'a pas pu être enregistré. Réessaie.",
   "today_nothing": "Rien à traiter aujourd'hui.",
+  "today_card_follow_up": "Relance",
+  "today_card_ally": "Allié à relancer",
+  "today_card_window_elapsed": "Essai délai dépassé",
+  "today_card_conclusive_battle": "Battle concluante",
+  "today_deck_progress": "Progression de la journée",
+  "today_deck_progress_value": [
+    {
+      "declarations": ["input done", "local donePlural = done: plural"],
+      "selectors": ["donePlural"],
+      "match": {
+        "donePlural=one": "{done} traité sur {total}",
+        "donePlural=*": "{done} traités sur {total}"
+      }
+    }
+  ],
+  "today_deck_position": "Carte {index} sur {count}",
+  "today_deck_previous": "Carte précédente",
+  "today_deck_next": "Carte suivante",
+  "today_another": "Un autre",
+  "today_another_error": "« Un autre » n'a pas pu être proposé. Réessaie.",
+  "today_day_done": "Journée bouclée.",
+  "today_day_done_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} élément traité aujourd'hui.",
+        "countPlural=*": "{count} éléments traités aujourd'hui."
+      }
+    }
+  ],
+  "floating_add_label": "Ajouter ou noter",
+  "floating_add_note_interaction": "Noter une Interaction…",
   "today_first_day": "Aucun Contact pour l'instant.",
   "today_first_day_stages": "Ton Funnel commence avec ces Étapes, modifiables dans les Réglages :",
   "today_badge_needs_action": [

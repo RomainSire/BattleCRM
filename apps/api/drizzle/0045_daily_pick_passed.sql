@@ -1,0 +1,1 @@
+ALTER TABLE "daily_pick" ADD COLUMN "passed" boolean DEFAULT false NOT NULL;
