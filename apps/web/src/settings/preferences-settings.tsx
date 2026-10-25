@@ -14,7 +14,7 @@ import { ToggleSetting } from './setting-fields.tsx';
 import { useChangeSettings, useSettings } from './use-settings.ts';
 
 // Each language is named in itself, whatever the current one.
-const LANGUAGE_NAMES: Record<Locale, string> = { fr: 'Français', en: 'English' };
+export const LANGUAGE_NAMES: Record<Locale, string> = { fr: 'Français', en: 'English' };
 
 const selectClass =
   'h-8 w-fit max-w-full rounded-control border border-input bg-background px-2 text-sm text-foreground focus-ring max-md:h-11';
@@ -82,9 +82,9 @@ function TimeZoneSetting() {
   );
 }
 
-const THEMES = ['system', 'light', 'dark'] as const satisfies readonly ThemePreference[];
+export const THEMES = ['system', 'light', 'dark'] as const satisfies readonly ThemePreference[];
 
-const THEME_LABELS: Record<ThemePreference, () => string> = {
+export const THEME_LABELS: Record<ThemePreference, () => string> = {
   system: m.theme_system,
   light: m.theme_light,
   dark: m.theme_dark,

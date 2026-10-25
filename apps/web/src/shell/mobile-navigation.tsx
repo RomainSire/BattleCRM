@@ -2,6 +2,7 @@ import { m } from '@battlecrm/i18n';
 import { Search } from 'lucide-react';
 
 import { Button } from '../components/ui/button.tsx';
+import { usePalette } from '../palette/palette-context.ts';
 import { Brand } from './logo.tsx';
 import { NavLink } from './nav-link.tsx';
 import { useTodayCount } from '../today/today-count.ts';
@@ -9,10 +10,17 @@ import { tabs } from './navigation.ts';
 
 /** The narrow-width header: the brand and the magnifier, which opens the palette (spec UX §3.2, ticket 41). */
 export function MobileHeader() {
+  const { openPalette } = usePalette();
   return (
     <header className="sticky top-0 z-10 flex h-12 items-center justify-between border-b bg-background pr-1 pl-4 md:hidden">
       <Brand />
-      <Button variant="ghost" size="icon" className="size-11" aria-label={m.search()}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-11"
+        aria-label={m.search()}
+        onPress={openPalette}
+      >
         <Search className="size-5" />
       </Button>
     </header>

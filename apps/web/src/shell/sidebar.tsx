@@ -4,6 +4,7 @@ import { Keyboard, Plus, Search } from 'lucide-react';
 import { useId } from 'react';
 
 import { Button } from '../components/ui/button.tsx';
+import { usePalette } from '../palette/palette-context.ts';
 import { useApi } from '../session.ts';
 import { hasConclusiveBattle, summaryQuery } from '../summary.ts';
 import { useSettings } from '../settings/use-settings.ts';
@@ -15,12 +16,11 @@ import { NavLink } from './nav-link.tsx';
 import { experimentation, prospecting, settings } from './navigation.ts';
 import type { NavigationCount, NavigationEntry } from './navigation.ts';
 
-// The palette and shortcuts help plug into these buttons with their ticket (41).
-
 /** The desktop navigation (spec UX §3.1). `onAdd` opens the quick add of a Contact. */
 export function Sidebar({ onAdd }: { onAdd: () => void }) {
   // A key that does nothing is not shown (spec UX §3.3).
   const { singleKeyShortcuts } = useSettings();
+  const { openPalette, openShortcuts } = usePalette();
   const dots = useDots();
   const counts = { '/today': useTodayCount() };
   return (
@@ -35,6 +35,7 @@ export function Sidebar({ onAdd }: { onAdd: () => void }) {
         variant="outline"
         className="justify-between font-normal text-muted-foreground"
         aria-keyshortcuts="Control+K"
+        onPress={openPalette}
       >
         <span className="flex items-center gap-2">
           <Search />
@@ -62,6 +63,7 @@ export function Sidebar({ onAdd }: { onAdd: () => void }) {
           variant="ghost"
           className="justify-between font-normal text-muted-foreground"
           {...(singleKeyShortcuts && { 'aria-keyshortcuts': 'Shift+?' })}
+          onPress={openShortcuts}
         >
           <span className="flex items-center gap-2">
             <Keyboard />

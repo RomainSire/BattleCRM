@@ -1,10 +1,8 @@
 import { m } from '@battlecrm/i18n';
 import { useId } from 'react';
 
-import { changeLocale, locales, useLocale, type Locale } from '../i18n.ts';
-
-// Each language is named in itself, whatever the current one.
-const names: Record<Locale, string> = { fr: 'Français', en: 'English' };
+import { changeLocale, locales, useLocale } from '../i18n.ts';
+import { LANGUAGE_NAMES } from '../settings/preferences-settings.tsx';
 
 /** The discreet language selector of every authentication screen (spec UX §5.9). */
 export function LanguageSelect() {
@@ -24,7 +22,7 @@ export function LanguageSelect() {
       >
         {locales.map((candidate) => (
           <option key={candidate} value={candidate} lang={candidate}>
-            {names[candidate]}
+            {LANGUAGE_NAMES[candidate]}
           </option>
         ))}
       </select>

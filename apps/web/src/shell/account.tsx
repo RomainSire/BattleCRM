@@ -17,21 +17,8 @@ export function Account({
   className?: string;
   buttonClassName?: string;
 }) {
-  const api = useApi();
-  const queryClient = useQueryClient();
-  const router = useRouter();
-  const { data: session } = useQuery(sessionQuery(api));
-  const signOut = useMutation({
-    mutationFn: async () => {
-      const response = await api.auth['sign-out'].$post();
-      if (!response.ok) throw new Error('POST /api/auth/sign-out failed');
-    },
-    onSuccess: async () => {
-      clearDeviceData(queryClient);
-      queryClient.setQueryData(sessionQuery(api).queryKey, null);
-      await router.navigate({ to: '/sign-in', replace: true });
-    },
-  });
+  const { data: session } = useQuery(sessionQuery(useApi()));
+  const signOut = useSignOut();
   return (
     <div className={cn('flex flex-col gap-0.5', className)}>
       {session && (
@@ -54,4 +41,22 @@ export function Account({
       <ErrorMessage className="px-2">{signOut.isError && m.auth_error()}</ErrorMessage>
     </div>
   );
+}
+
+/** Signs out of this device, what it kept cleared, then leads to signing in (spec UX §5.9). */
+export function useSignOut() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  return useMutation({
+    mutationFn: async () => {
+      const response = await api.auth['sign-out'].$post();
+      if (!response.ok) throw new Error('POST /api/auth/sign-out failed');
+    },
+    onSuccess: async () => {
+      clearDeviceData(queryClient);
+      queryClient.setQueryData(sessionQuery(api).queryKey, null);
+      await router.navigate({ to: '/sign-in', replace: true });
+    },
+  });
 }
