@@ -98,7 +98,8 @@ export function WinRuleGauge({
   const zone = `${Math.round((1 - threshold) * 100)}%`;
   const position = `${rule.probability * 100}%`;
   return (
-    <div className={cn('flex flex-col gap-1', !compact && 'py-1')}>
+    // Full width: every mark inside is absolute, so the gauge has no width of its own.
+    <div className={cn('flex w-full flex-col gap-1', !compact && 'py-1')}>
       {sides && (
         <div aria-hidden className="flex justify-between gap-2 text-xs font-semibold">
           <span className="truncate text-neutral-text">{sides.champion}</span>
