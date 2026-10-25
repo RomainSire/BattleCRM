@@ -99,6 +99,7 @@ function Toast({
           className="max-md:min-h-11"
           aria-keyshortcuts="Control+Z"
           isDisabled={isUndoing}
+          saves
           onPress={() => onUndo(toast)}
         >
           {m.undo()}

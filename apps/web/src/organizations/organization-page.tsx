@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from '../components/ui/dialog.tsx';
 import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
+import { OfflineNote } from '../components/ui/offline-note.tsx';
 import { Input } from '../components/ui/input.tsx';
 import { Label } from '../components/ui/label.tsx';
 import {
@@ -197,9 +198,10 @@ function Confirmation({
       </DialogHeader>
       {children}
       <ErrorMessage>{error}</ErrorMessage>
+      <OfflineNote />
       <DialogFooter>
         <DialogClose>{m.cancel()}</DialogClose>
-        <Button isDisabled={isDisabled} onPress={onConfirm}>
+        <Button isDisabled={isDisabled} saves onPress={onConfirm}>
           {confirmLabel}
         </Button>
       </DialogFooter>
@@ -248,6 +250,7 @@ function ChangeType({
           variant="outline"
           size="sm"
           isDisabled={change.isPending}
+          saves
           onPress={() => change.mutate()}
         >
           {label}

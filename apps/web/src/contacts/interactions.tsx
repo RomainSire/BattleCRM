@@ -175,7 +175,7 @@ function NoteInteractionPanel({
   // It pushes the Follow-up of the Cadence back (spec UX §6.4).
   const pushedOn =
     isDayValid && record
-      ? pushedFollowUpOn(contact.followUp, record.thread, summary, occurredOn)
+      ? pushedFollowUpOn(contact, record.thread, summary, occurredOn)
       : undefined;
   const close = () => {
     clearDraft();

@@ -6,6 +6,7 @@ import { Dialog, Heading, Modal } from 'react-aria-components';
 
 import { Button } from './button.tsx';
 import { DialogOverlay } from './dialog.tsx';
+import { OfflineNote } from './offline-note.tsx';
 
 /**
  * The panel of a gesture (spec UX §6): modal, the focus trapped then given back to what opened it,
@@ -70,11 +71,15 @@ export function GesturePanelBody({
   );
 }
 
-/** Where the gesture is validated: at the bottom of the sheet on mobile. */
+/**
+ * Where the gesture is validated: at the bottom of the sheet on mobile. Offline, it says why the
+ * gesture cannot be (ADR 0004).
+ */
 export function GesturePanelFooter({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-col-reverse gap-2 border-t bg-surface p-4 md:flex-row md:justify-end md:rounded-b-card">
-      {children}
+    <div className="flex flex-col gap-2 border-t bg-surface p-4 md:rounded-b-card">
+      <OfflineNote />
+      <div className="flex flex-col-reverse gap-2 md:flex-row md:justify-end">{children}</div>
     </div>
   );
 }

@@ -103,7 +103,7 @@ export function CardActions({
   open: (search: FunnelGestureSearch) => void;
 }) {
   const { contact, agenda } = card;
-  const { postpone, cancel, isBusy } = useFollowUpQuickGestures(contact, summary);
+  const { postpone, cancel, isDisabled } = useFollowUpQuickGestures(contact, summary);
   const action = 'max-md:min-h-11';
   if (isFollowUpDueIn(agenda)) {
     return (
@@ -116,13 +116,13 @@ export function CardActions({
         >
           {m.verb_follow_up()}
         </Button>
-        <PostponeFollowUp onPostpone={postpone} />
+        <PostponeFollowUp onPostpone={postpone} isDisabled={isDisabled} />
         <Button
           variant="ghost"
           size="sm"
           className={action}
           aria-label={m.verb_cancel_follow_up()}
-          isDisabled={isBusy}
+          isDisabled={isDisabled}
           onPress={cancel}
         >
           {m.cancel()}

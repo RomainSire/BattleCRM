@@ -49,6 +49,7 @@ export function CheckInbox({
         <Button
           variant="outline"
           isDisabled={secondsLeft > 0 || resend.isPending}
+          saves
           onPress={() => resend.mutate()}
         >
           {secondsLeft > 0 ? m.auth_resend_link_in({ seconds: secondsLeft }) : m.auth_resend_link()}

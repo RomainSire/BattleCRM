@@ -22,12 +22,14 @@ function MoreActions({
   className,
   label,
   trigger,
+  isDisabled = false,
 }: {
   onAction: (key: Key) => void;
   children: ReactNode;
   className?: string;
   label?: string;
   trigger?: { text: string; label: string };
+  isDisabled?: boolean;
 }) {
   return (
     <MenuTrigger>
@@ -36,6 +38,7 @@ function MoreActions({
           variant="outline"
           size="icon"
           aria-label={label ?? m.more_actions()}
+          isDisabled={isDisabled}
           className={cn('max-md:size-11', className)}
         >
           <Ellipsis />
@@ -45,6 +48,7 @@ function MoreActions({
           variant="outline"
           size="sm"
           aria-label={trigger.label}
+          isDisabled={isDisabled}
           className={cn('max-md:min-h-11', className)}
         >
           {trigger.text}

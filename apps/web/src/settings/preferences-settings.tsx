@@ -9,6 +9,7 @@ import {
 } from '../components/ui/segmented-control.tsx';
 import { notify } from '../components/ui/toast.tsx';
 import { locales, useLocale, type Locale } from '../i18n.ts';
+import { useIsOnline } from '../online.ts';
 import { useTheme, type ThemePreference } from '../theme/theme-provider.tsx';
 import { ToggleSetting } from './setting-fields.tsx';
 import { useChangeSettings, useSettings } from './use-settings.ts';
@@ -17,19 +18,22 @@ import { useChangeSettings, useSettings } from './use-settings.ts';
 export const LANGUAGE_NAMES: Record<Locale, string> = { fr: 'Français', en: 'English' };
 
 const selectClass =
-  'h-8 w-fit max-w-full rounded-control border border-input bg-background px-2 text-sm text-foreground focus-ring max-md:h-11';
+  'h-8 w-fit max-w-full rounded-control border border-input bg-background px-2 text-sm text-foreground focus-ring disabled:opacity-50 max-md:h-11';
 
 /** The language of the User (ST-50): the interface and the e-mails, on every device. */
 export function LanguageSetting() {
   const locale = useLocale();
   const id = useId();
   const { change } = useChangeSettings();
+  // Saved on the server: offline, it is only read (ADR 0004).
+  const isOnline = useIsOnline();
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={id}>{m.language()}</Label>
       <select
         id={id}
         value={locale}
+        disabled={!isOnline}
         onChange={(event) => {
           const chosen = locales.find((candidate) => candidate === event.target.value);
           if (chosen) change({ locale: chosen }, m.language);
@@ -59,12 +63,14 @@ function TimeZoneSetting() {
   const hintId = useId();
   const { timeZone } = useSettings();
   const { change } = useChangeSettings();
+  const isOnline = useIsOnline();
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={id}>{m.settings_time_zone()}</Label>
       <select
         id={id}
         value={timeZone.chosen}
+        disabled={!isOnline}
         aria-describedby={hintId}
         onChange={(event) => change({ timeZone: event.target.value }, m.settings_time_zone)}
         className={selectClass}

@@ -5,6 +5,7 @@ import { NumberField, Text } from 'react-aria-components';
 import { Checkbox } from '../components/ui/checkbox.tsx';
 import { Input } from '../components/ui/input.tsx';
 import { Label } from '../components/ui/label.tsx';
+import { useIsOnline } from '../online.ts';
 
 /** A value from the server that the User edits: it follows the server again once it changes there, “Undo” included. */
 export function useDraft<Value>(saved: Value) {
@@ -41,6 +42,8 @@ export function NumberSetting({
   className?: string;
 }) {
   const [draft, setDraft] = useDraft(value);
+  // Every setting is saved on the server: offline, it is only read (ADR 0004).
+  const isOnline = useIsOnline();
   return (
     <NumberField
       value={draft}
@@ -48,7 +51,7 @@ export function NumberSetting({
       maxValue={maxValue}
       step={1}
       formatOptions={{ maximumFractionDigits: 0 }}
-      isDisabled={isDisabled}
+      isDisabled={isDisabled || !isOnline}
       onChange={(committed) => {
         if (Number.isNaN(committed) || committed === draft) {
           setDraft(draft);
@@ -94,10 +97,12 @@ export function GoalSetting({
   const hintId = useId();
   const [lastCount, setLastCount] = useState(value ?? fallback);
   if (value !== null && value !== lastCount) setLastCount(value);
+  const isOnline = useIsOnline();
   return (
     <div className="flex flex-col gap-2">
       <Checkbox
         isSelected={value !== null}
+        isDisabled={!isOnline}
         onChange={(isOn) => onChange(isOn ? lastCount : null)}
         {...(hint && { 'aria-describedby': hintId })}
         className="font-medium"
@@ -139,11 +144,12 @@ export function ToggleSetting({
   onChange: (isSelected: boolean) => void;
 }) {
   const hintId = useId();
+  const isOnline = useIsOnline();
   return (
     <div className="flex flex-col gap-1">
       <Checkbox
         isSelected={isSelected}
-        isDisabled={isDisabled}
+        isDisabled={isDisabled || !isOnline}
         onChange={onChange}
         {...(hint && { 'aria-describedby': hintId })}
         className="font-medium data-disabled:opacity-50"

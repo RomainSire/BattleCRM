@@ -111,6 +111,7 @@ export function PositioningAttachments({ positioning }: { positioning: SummaryPo
                     className="max-md:size-11"
                     aria-label={m.positioning_remove_attachment({ name: attachment.name })}
                     isDisabled={remove.isPending}
+                    saves
                     onPress={() => {
                       attach.reset();
                       setTooLarge(undefined);
@@ -132,6 +133,7 @@ export function PositioningAttachments({ positioning }: { positioning: SummaryPo
                 size="sm"
                 className="max-md:min-h-11"
                 isDisabled={attach.isPending}
+                saves
               >
                 <Paperclip aria-hidden />
                 {m.positioning_attach()}

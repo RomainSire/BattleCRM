@@ -1,6 +1,8 @@
 import { Outlet } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 
+import { AppUpdateNotice } from '../app-update.tsx';
+import { OfflineNote } from '../components/ui/offline-note.tsx';
 import { useLocale } from '../i18n.ts';
 import { Brand } from '../shell/logo.tsx';
 import { LanguageSelect } from './language-select.tsx';
@@ -15,6 +17,8 @@ export function AuthLayout() {
       <header>
         <Brand />
       </header>
+      <AppUpdateNotice className="w-full max-w-sm" />
+      <OfflineNote isLive className="w-full max-w-sm" />
       <main id="main" className="w-full max-w-sm rounded-card border p-6">
         <Outlet />
       </main>

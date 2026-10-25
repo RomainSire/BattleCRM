@@ -31,6 +31,7 @@ import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.
 import { Input } from '../components/ui/input.tsx';
 import { useSendGesture } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';
+import { useIsOnline } from '../online.ts';
 import { useApi } from '../session.ts';
 import {
   hasServed,
@@ -91,9 +92,11 @@ function useStageGestures(summary: Summary) {
   const gesture = useMutation({
     mutationFn: (run: () => Promise<unknown>) => run(),
   });
+  const isOnline = useIsOnline();
   return {
     error: gesture.isError ? m.auth_error() : refused && m.settings_funnel_changed_elsewhere(),
-    isPending: gesture.isPending,
+    /** No gesture now: one is under way, or the device is offline (ADR 0004). */
+    isDisabled: gesture.isPending || !isOnline,
     /** A new Stage, named “New Stage”, at the end or right after one; then `onAdded` with its id. */
     add: (afterId: string | undefined, onAdded: (stageId: string) => void) =>
       gesture.mutate(async () => {
@@ -172,6 +175,8 @@ function InPlaceField({
 }) {
   const [draft, setDraft] = useDraft(value);
   const [isBlank, setIsBlank] = useState(false);
+  // Saved once committed: offline, it is only read (ADR 0004).
+  const isOnline = useIsOnline();
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!takesFocus) return;
@@ -204,6 +209,7 @@ function InPlaceField({
       }}
       maxLength={maxLength}
       isInvalid={isBlank}
+      isDisabled={!isOnline}
       onBlur={commit}
       onKeyDown={(event) => {
         if (event.key === 'Enter') commit();
@@ -286,7 +292,7 @@ function ArchiveConfirmation({
       <ErrorMessage>{gestures.error}</ErrorMessage>
       <DialogFooter>
         <DialogClose>{m.cancel()}</DialogClose>
-        <Button isDisabled={gestures.isPending} onPress={() => gestures.archive(stage, onClose)}>
+        <Button isDisabled={gestures.isDisabled} onPress={() => gestures.archive(stage, onClose)}>
           {m.settings_stage_archive_confirm()}
         </Button>
       </DialogFooter>
@@ -364,7 +370,7 @@ function StageRow({
             variant="outline"
             size="sm"
             aria-label={m.settings_stage_archive_label({ stage: stage.name })}
-            isDisabled={isBlocked || gestures.isPending}
+            isDisabled={isBlocked || gestures.isDisabled}
             {...(isBlocked && { 'aria-describedby': blockerId })}
             onPress={onArchive}
           >
@@ -375,7 +381,7 @@ function StageRow({
             variant="outline"
             size="sm"
             aria-label={m.settings_stage_delete_label({ stage: stage.name })}
-            isDisabled={facts.isLast || gestures.isPending}
+            isDisabled={facts.isLast || gestures.isDisabled}
             {...(facts.isLast && { 'aria-describedby': blockerId })}
             onPress={() => gestures.delete(stage)}
           >
@@ -394,7 +400,7 @@ function StageRow({
         variant="outline"
         size="icon-xs"
         aria-label={m.settings_stage_insert_after({ stage: stage.name })}
-        isDisabled={gestures.isPending}
+        isDisabled={gestures.isDisabled}
         onPress={onInsertAfter}
         className="absolute -bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-background opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
       >
@@ -433,7 +439,7 @@ function ArchivedStages({ stages, gestures }: { stages: Stage[]; gestures: Stage
                 variant="outline"
                 size="sm"
                 aria-label={m.settings_stage_restore_label({ stage: stage.name })}
-                isDisabled={gestures.isPending}
+                isDisabled={gestures.isDisabled}
                 onPress={() => gestures.restore(stage)}
               >
                 {m.settings_stage_restore()}
@@ -481,6 +487,8 @@ function FunnelEditor({
     if (stage) gestures.move(stage, afterId);
   };
 
+  // Offline, the order is only read (ADR 0004).
+  const isOnline = useIsOnline();
   const { dragAndDropHooks } = useDragAndDrop({
     getItems: (keys) =>
       [...keys].map((key) => ({ 'text/plain': funnel.find(({ id }) => id === key)?.name ?? '' })),
@@ -505,6 +513,7 @@ function FunnelEditor({
   /** `Alt+↑/↓` on a Stage moves it one place (spec UX §5.8). */
   const onKeyDownCapture = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!event.altKey || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
+    if (!isOnline) return;
     const row = event.target instanceof Element ? event.target.closest('[data-key]') : null;
     const stageId = row?.getAttribute('data-key');
     const index = stageId ? ids.indexOf(stageId) : -1;
@@ -526,7 +535,7 @@ function FunnelEditor({
         <GridList
           aria-label={m.settings_funnel_stages()}
           aria-describedby={introId}
-          dragAndDropHooks={dragAndDropHooks}
+          {...(isOnline && { dragAndDropHooks })}
           keyboardNavigationBehavior="tab"
           disallowTypeAhead
           className="flex flex-col rounded-card border outline-none data-drop-target:ring-2 data-drop-target:ring-accent-text"
@@ -550,7 +559,7 @@ function FunnelEditor({
         variant="outline"
         size="sm"
         className="w-fit"
-        isDisabled={gestures.isPending}
+        isDisabled={gestures.isDisabled}
         onPress={() => gestures.add(undefined, setFocused)}
       >
         <Plus aria-hidden />

@@ -28,6 +28,7 @@ import {
 import { Textarea } from '../components/ui/textarea.tsx';
 import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';
+import { submitIfOnline } from '../online.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { summaryQuery, type Summary, type SummaryContact } from '../summary.ts';
 import type { QuickAddStart } from './add-contact-context.ts';
@@ -170,7 +171,7 @@ function QuickAddForm({
         if (event.target instanceof HTMLTextAreaElement) return;
         event.preventDefault();
         sendsNext.current = true;
-        formRef.current?.requestSubmit();
+        submitIfOnline(formRef.current);
       }}
     >
       <Form

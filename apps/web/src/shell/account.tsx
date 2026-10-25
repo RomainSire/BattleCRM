@@ -33,6 +33,7 @@ export function Account({
           buttonClassName,
         )}
         isDisabled={signOut.isPending}
+        saves
         onPress={() => signOut.mutate()}
       >
         <LogOut />

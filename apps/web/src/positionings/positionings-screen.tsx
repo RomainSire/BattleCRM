@@ -516,6 +516,7 @@ function PositioningRecord({
                 variant="outline"
                 className="max-md:min-h-11"
                 isDisabled={act.isPending}
+                saves
                 onPress={() => act.mutate('delete')}
               >
                 {m.positioning_delete()}
@@ -527,6 +528,7 @@ function PositioningRecord({
           variant="outline"
           className="max-md:min-h-11"
           isDisabled={act.isPending || (!positioning.archived && keptFromArchive !== undefined)}
+          saves
           onPress={() => act.mutate(positioning.archived ? 'unarchive' : 'archive')}
         >
           {positioning.archived ? m.positioning_unarchive() : m.positioning_archive()}

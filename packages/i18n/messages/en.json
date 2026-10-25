@@ -1330,5 +1330,9 @@
       }
     }
   ],
-  "insights_week_entry_goal": "goal: {goal}"
+  "insights_week_entry_goal": "goal: {goal}",
+  "offline_read_only": "Offline: reading only. Actions come back with the connection.",
+  "contact_thread_offline": "The thread loads once back online.",
+  "app_update_available": "New version available.",
+  "app_update_reload": "Reload"
 }

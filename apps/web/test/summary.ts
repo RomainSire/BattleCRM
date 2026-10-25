@@ -60,6 +60,7 @@ export const contact = (fields: Partial<SummaryContact> = {}): SummaryContact =>
     prospectingActionDays: [],
     assignment: null,
     trial: null,
+    lastPositioningUse: null,
     ...fields,
   } satisfies SummaryContact);
 

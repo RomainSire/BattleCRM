@@ -13,6 +13,7 @@ import { RouterProvider } from 'react-aria-components';
 import { z } from 'zod';
 
 import { createApiClient } from './api-client.ts';
+import { appUpdate } from './app-update.tsx';
 import { AuthLayout } from './auth/auth-layout.tsx';
 import { ForgotPasswordScreen } from './auth/forgot-password-screen.tsx';
 import { ResetPasswordScreen } from './auth/reset-password-screen.tsx';
@@ -452,6 +453,8 @@ export function createAppRouter({
       queryClient.setQueryData(queryKey, null);
       void router.invalidate();
     },
+    // An API of another version: a new version of the app is out (spec stack §3).
+    onAppVersion: (version) => appUpdate.heard(version),
   });
   const router = createRouter({
     routeTree,

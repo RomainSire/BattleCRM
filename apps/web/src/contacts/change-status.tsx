@@ -36,6 +36,7 @@ import {
 } from '../components/ui/segmented-control.tsx';
 import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale, type Locale } from '../i18n.ts';
+import { submitIfOnline } from '../online.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { settingsOf } from '../settings/use-settings.ts';
@@ -206,7 +207,7 @@ export function ChangeStatusPanel({
           if (event.key !== 'Enter' || event.target instanceof HTMLButtonElement) return;
           if (event.target instanceof HTMLInputElement && event.target.type === 'text') return;
           event.preventDefault();
-          formRef.current?.requestSubmit();
+          submitIfOnline(formRef.current);
         }}
       >
         <Form

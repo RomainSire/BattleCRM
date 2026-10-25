@@ -479,6 +479,7 @@ function SendPanel({
                     <Button
                       className="max-md:min-h-11"
                       isDisabled={bringIn.isPending}
+                      saves
                       onPress={() => bringIn.mutate()}
                     >
                       {m.send_bring_in()}

@@ -21,6 +21,7 @@ import { PickContact } from '../contacts/pick-contact.tsx';
 import { otherFunnelView, setFunnelView } from '../funnel/funnel-view.ts';
 import { nextActionText } from '../funnel/next-action.tsx';
 import { locales, useLocale, type Locale } from '../i18n.ts';
+import { useIsOnline } from '../online.ts';
 import { useApi } from '../session.ts';
 import { useIsNarrow } from '../use-narrow.ts';
 import { LANGUAGE_NAMES, THEME_LABELS, THEMES } from '../settings/preferences-settings.tsx';
@@ -445,6 +446,8 @@ function useCommands(
   const locale = useLocale();
   const { change } = useChangeSettings();
   const signOut = useSignOut();
+  // The commands that save wait for the connection (ADR 0004): offline, they are not offered.
+  const isOnline = useIsOnline();
   const command = (key: string, text: string, run: () => void): Item => ({
     key: `command:${key}`,
     textValue: text,
@@ -506,7 +509,7 @@ function useCommands(
           ),
         ),
         ...locales
-          .filter((candidate) => candidate !== locale)
+          .filter((candidate) => isOnline && candidate !== locale)
           .map((candidate) =>
             command(
               `language:${candidate}`,
@@ -515,11 +518,15 @@ function useCommands(
             ),
           ),
         command('shortcuts', m.shortcuts(), onShortcuts),
-        command('sign-out', m.sign_out(), () =>
-          signOut.mutate(undefined, {
-            onError: () => notify({ message: m.auth_error(), isError: true }),
-          }),
-        ),
+        ...(isOnline
+          ? [
+              command('sign-out', m.sign_out(), () =>
+                signOut.mutate(undefined, {
+                  onError: () => notify({ message: m.auth_error(), isError: true }),
+                }),
+              ),
+            ]
+          : []),
       ],
     },
   ];

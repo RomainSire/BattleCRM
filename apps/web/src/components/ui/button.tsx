@@ -8,6 +8,8 @@ import {
   type LinkProps as LinkPrimitiveProps,
 } from 'react-aria-components';
 
+import { useIsOnline } from '../../online.ts';
+
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-control border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all focus-ring select-none active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
@@ -46,18 +48,25 @@ function Button({
   className,
   variant = 'default',
   size = 'default',
+  isDisabled,
+  saves = false,
   ...props
 }: Omit<ButtonPrimitiveProps, 'className'> &
   React.RefAttributes<HTMLButtonElement> &
   VariantProps<typeof buttonVariants> & {
     className?: string;
+    /** It saves at once, without a form: disabled offline, as a submit button is. */
+    saves?: boolean;
   }) {
+  const isOnline = useIsOnline();
   return (
     <ButtonPrimitive
       data-slot="button"
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
+      // A submit button saves: offline, nothing is saved (ADR 0004).
+      isDisabled={isDisabled === true || ((saves || props.type === 'submit') && !isOnline)}
       {...props}
     />
   );

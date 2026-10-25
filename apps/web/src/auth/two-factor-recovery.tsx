@@ -49,7 +49,7 @@ export function RecoveryRequest({
   return (
     <>
       <p>{m.auth_recovery_body()}</p>
-      <Button isDisabled={ask.isPending} onPress={() => ask.mutate()}>
+      <Button isDisabled={ask.isPending} saves onPress={() => ask.mutate()}>
         {m.auth_recovery_request()}
       </Button>
       <ErrorMessage>

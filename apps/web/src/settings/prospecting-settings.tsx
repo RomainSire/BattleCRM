@@ -158,6 +158,7 @@ function DefaultCadence() {
       <Button
         variant="outline"
         className="w-fit"
+        saves
         isDisabled={isUnchanged || isSaving}
         onPress={() => saveWithoutUndo({ defaultCadence: draft }, m.settings_cadence_saved)}
       >

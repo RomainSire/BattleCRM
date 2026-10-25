@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { notify, ToastRegion, toasts, type AppToast } from './components/ui/toast.tsx';
 import { useLocale } from './i18n.ts';
+import { useIsOnline } from './online.ts';
 import { useApi } from './session.ts';
 import { useShortcuts } from './shortcuts.ts';
 import { applySummaryChanges, SUMMARY_KEY } from './summary.ts';
@@ -30,6 +31,8 @@ export function UndoToasts() {
   useLocale();
   const api = useApi();
   const queryClient = useQueryClient();
+  // “Undo” saves too: offline, it waits for the connection (ADR 0004).
+  const isOnline = useIsOnline();
   const undo = useMutation({
     mutationFn: async (toast: Undoable) => {
       // A setting is written back as it was: nothing to apply to the summary but what it stored.
@@ -61,7 +64,7 @@ export function UndoToasts() {
   useShortcuts({
     '$mod+z': (event) => {
       const latest = toasts.visibleToasts.map(undoable).find((toast) => toast !== undefined);
-      if (!latest || undo.isPending) return;
+      if (!latest || undo.isPending || !isOnline) return;
       event.preventDefault();
       undo.mutate(latest);
     },

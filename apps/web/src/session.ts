@@ -22,6 +22,8 @@ export const sessionQuery = (api: ApiClient) =>
     },
     staleTime: Infinity,
     retry: false,
+    // Asked even offline: its failure says the API cannot tell, and the app stays readable (ADR 0004).
+    networkMode: 'always',
   });
 
 /** What the API lets a visitor do before signing in (ST-10). */
@@ -35,4 +37,6 @@ export const configQuery = (api: ApiClient) =>
     },
     staleTime: Infinity,
     retry: false,
+    // Offline, it fails at once: the screens that need it say so.
+    networkMode: 'always',
   });

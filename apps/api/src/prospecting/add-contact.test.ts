@@ -68,6 +68,7 @@ test('adding a Contact puts it in the Pool and answers with its row of the summa
         prospectingActionDays: [],
         assignment: null,
         trial: null,
+        lastPositioningUse: null,
       },
     ],
     removedContactIds: [],

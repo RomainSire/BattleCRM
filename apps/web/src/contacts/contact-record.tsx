@@ -235,8 +235,12 @@ function RecordHeader({
 function Thread({ contactId, summary }: { contactId: string; summary: Summary }) {
   const locale = useLocale();
   const api = useApi();
-  const { data: record, isError } = useQuery(contactRecordQuery(api, contactId));
+  const { data: record, isError, fetchStatus } = useQuery(contactRecordQuery(api, contactId));
   if (isError) return <ErrorMessage>{m.contact_thread_load_error()}</ErrorMessage>;
+  // Read on demand, never kept on the device: offline, it waits for the connection (ADR 0004).
+  if (!record && fetchStatus === 'paused') {
+    return <p className="text-xs text-muted-foreground">{m.contact_thread_offline()}</p>;
+  }
   if (!record) return null;
   return (
     <ol aria-label={m.contact_thread()} className="flex flex-col gap-2">

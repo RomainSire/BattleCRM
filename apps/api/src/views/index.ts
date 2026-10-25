@@ -196,6 +196,23 @@ async function summaryContacts(
       ),
     )
     .as('trial_in_progress');
+  // The last Positioning used: the Cadence its Follow-ups follow (CONTEXT.md, Follow-up cadence).
+  const lastUse = tx
+    .selectDistinctOn([interaction.contactId], {
+      contactId: interaction.contactId,
+      positioningId: interaction.positioningId,
+      sentOn: interaction.localDate,
+    })
+    .from(interaction)
+    .where(
+      and(
+        eq(interaction.userId, userId),
+        eq(interaction.kind, 'positioning_used'),
+        ids && inArray(interaction.contactId, ids),
+      ),
+    )
+    .orderBy(interaction.contactId, desc(interaction.occurredAt), desc(interaction.id))
+    .as('last_positioning_use');
   const rows = await tx
     .select({
       id: contact.id,
@@ -224,6 +241,8 @@ async function summaryContacts(
       trialPositioningId: inProgress.positioningId,
       trialStartedOn: inProgress.startedOn,
       trialOverridden: inProgress.overridden,
+      lastUsePositioningId: lastUse.positioningId,
+      lastUseSentOn: lastUse.sentOn,
     })
     .from(contact)
     .innerJoin(latest, eq(latest.contactId, contact.id))
@@ -235,6 +254,7 @@ async function summaryContacts(
     .leftJoin(actions, eq(actions.contactId, contact.id))
     .leftJoin(assignment, and(eq(assignment.userId, userId), eq(assignment.contactId, contact.id)))
     .leftJoin(inProgress, eq(inProgress.contactId, contact.id))
+    .leftJoin(lastUse, eq(lastUse.contactId, contact.id))
     .where(and(eq(contact.userId, userId), ids && inArray(contact.id, ids)))
     .orderBy(desc(latest.occurredAt), desc(contact.id));
   return rows.map(
@@ -248,6 +268,8 @@ async function summaryContacts(
       trialPositioningId,
       trialStartedOn,
       trialOverridden,
+      lastUsePositioningId,
+      lastUseSentOn,
       ...row
     }) => ({
       ...row,
@@ -274,6 +296,10 @@ async function summaryContacts(
               startedOn: trialStartedOn,
               overridden: trialOverridden,
             },
+      lastPositioningUse:
+        lastUsePositioningId === null || lastUseSentOn === null
+          ? null
+          : { positioningId: lastUsePositioningId, sentOn: lastUseSentOn },
     }),
   );
 }

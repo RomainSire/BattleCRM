@@ -33,6 +33,7 @@ import {
 import { notify } from '../components/ui/toast.tsx';
 import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale, type Locale } from '../i18n.ts';
+import { submitIfOnline, useIsOnline } from '../online.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { CopyButton } from '../settings/copy-button.tsx';
@@ -138,6 +139,8 @@ export function useFollowUpQuickGestures(contact: SummaryContact, summary: Summa
     onError: () => notify({ message: m.auth_error(), isError: true }),
   });
   const isBusy = postpone.isPending || cancel.isPending;
+  // Both save at once, without a panel: offline, they wait for the connection (ADR 0004).
+  const isOnline = useIsOnline();
   return {
     /** Postponed by so many days; once at a time. */
     postpone: (days: number) => {
@@ -145,14 +148,23 @@ export function useFollowUpQuickGestures(contact: SummaryContact, summary: Summa
     },
     cancel: () => cancel.mutate(),
     isBusy,
+    /** Postpone and Cancel are disabled: one is under way, or the device is offline. */
+    isDisabled: isBusy || !isOnline,
   };
 }
 
 /** “Postpone”, and the days it offers (spec UX §5.3). */
-export function PostponeFollowUp({ onPostpone }: { onPostpone: (days: number) => void }) {
+export function PostponeFollowUp({
+  onPostpone,
+  isDisabled = false,
+}: {
+  onPostpone: (days: number) => void;
+  isDisabled?: boolean;
+}) {
   return (
     <MoreActions
       trigger={{ text: m.follow_up_postpone(), label: m.verb_postpone_follow_up() }}
+      isDisabled={isDisabled}
       onAction={(key) => {
         const days = POSTPONE_DAYS.find((candidate) => String(candidate) === key);
         if (days !== undefined) onPostpone(days);
@@ -184,7 +196,7 @@ export function FollowUpHead({
   const locale = useLocale();
   const headingId = useId();
   const today = todayOf(summary);
-  const { postpone, cancel, isBusy } = useFollowUpQuickGestures(contact, summary);
+  const { postpone, cancel, isBusy, isDisabled } = useFollowUpQuickGestures(contact, summary);
   if (!hasFollowUps(contact.status)) return null;
   const { followUp } = contact;
   if (followUp === null) {
@@ -245,13 +257,13 @@ export function FollowUpHead({
         >
           {m.edit()}
         </Button>
-        <PostponeFollowUp onPostpone={postpone} />
+        <PostponeFollowUp onPostpone={postpone} isDisabled={isDisabled} />
         <Button
           variant="ghost"
           size="sm"
           className="max-md:min-h-11"
           aria-label={m.verb_cancel_follow_up()}
-          isDisabled={isBusy}
+          isDisabled={isDisabled}
           onPress={cancel}
         >
           {m.cancel()}
@@ -486,7 +498,7 @@ function FollowUpPanel({
   // Of the Cadence, it reads the last Positioning used (CONTEXT.md, Follow-up cadence). Fallback: a
   // summary kept on the device by a version from before ranks carries none.
   const rank = followUp?.rank ?? null;
-  const lastUse = rank !== null && record ? lastUseOf(record.thread, summary) : undefined;
+  const lastUse = rank !== null ? lastUseOf(contact, summary, record?.thread) : undefined;
   const [draft, setDraft, clearDraft] = useSessionDraft(
     `follow-up:${contact.id}`,
     { choice: 'today' as const, otherDay: '', note: followUp?.note ?? '' },
@@ -756,7 +768,7 @@ export function EnterSubmits({
         if (event.key !== 'Enter' || event.target instanceof HTMLButtonElement) return;
         if (event.target instanceof HTMLTextAreaElement) return;
         event.preventDefault();
-        formRef.current?.requestSubmit();
+        submitIfOnline(formRef.current);
       }}
     >
       {children(formRef)}

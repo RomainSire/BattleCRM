@@ -79,6 +79,7 @@ export function ConnectedDevices() {
                     className="max-md:min-h-11"
                     aria-label={m.devices_sign_out_named({ device })}
                     isDisabled={busy}
+                    saves
                     onPress={() => signOutOne.mutate(session.id)}
                   >
                     {m.devices_sign_out()}
@@ -94,6 +95,7 @@ export function ConnectedDevices() {
           variant="outline"
           className="self-start max-md:min-h-11"
           isDisabled={busy}
+          saves
           onPress={() => signOutOthers.mutate()}
         >
           {m.devices_sign_out_others()}

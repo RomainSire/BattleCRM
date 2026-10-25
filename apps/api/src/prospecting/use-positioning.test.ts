@@ -91,6 +91,8 @@ test('“Use a Positioning” records an outbound Interaction that names it, a P
     lastDoneInteractionOn: '2026-01-05',
     prospectingActionDays: ['2026-01-05'],
     followUp: { dueOn: '2026-01-08', note: null, rank: 1 },
+    // What the device copies the Follow-up messages from, offline too (ST-03).
+    lastPositioningUse: { positioningId: shortEmail.id, sentOn: '2026-01-05' },
   });
   // The Positioning is used now: no longer deletable.
   expect(changes.positionings).toEqual([{ ...shortEmail, used: true }]);

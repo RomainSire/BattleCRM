@@ -196,6 +196,12 @@ export const summaryContact = z.strictObject({
       overridden: z.boolean(),
     })
     .nullable(),
+  /**
+   * The last Positioning used on it and the local day it was sent, if one was: what the Follow-ups
+   * of its Cadence copy their message from, offline too (ST-03). Added after the first release: a
+   * summary kept on a device may lack it.
+   */
+  lastPositioningUse: z.strictObject({ positioningId: z.uuid(), sentOn: z.iso.date() }).nullable(),
 });
 export type SummaryContact = z.infer<typeof summaryContact>;
 

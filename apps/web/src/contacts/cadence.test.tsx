@@ -52,6 +52,7 @@ const claire = (rank: number): SummaryContact =>
     lastInteractionAt: '2026-01-08T09:00:00.000Z',
     lastInteractionOn: addDays(today(), -7),
     followUp: { dueOn: today(), note: null, rank },
+    lastPositioningUse: { positioningId: CV_B.id, sentOn: addDays(today(), -10) },
   });
 
 const threadOf = () => ({

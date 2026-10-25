@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Outlet } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { AppUpdateNotice } from '../app-update.tsx';
+import { OfflineNote } from '../components/ui/offline-note.tsx';
 import { AddContactContext, type QuickAddStart } from '../contacts/add-contact-context.ts';
 import { QuickAdd } from '../contacts/quick-add.tsx';
 import { changeLocale, useLocale, type Locale } from '../i18n.ts';
@@ -62,6 +64,8 @@ export function AppShell() {
           <Sidebar onAdd={() => openQuickAdd()} />
           {/* On a phone, room for the + button above the tabs. */}
           <main id="main" tabIndex={-1} className="min-w-0 flex-1 pb-36 outline-none md:pb-0">
+            <AppUpdateNotice className="border-b px-4 py-2 md:px-6" />
+            <OfflineNote isLive className="border-b px-4 py-2 md:px-6" />
             <Outlet />
           </main>
           <FloatingAdd onAdd={() => openQuickAdd()} />
