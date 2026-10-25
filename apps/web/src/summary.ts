@@ -38,6 +38,8 @@ export const contactRecordKey = (contactId: string) => ['contact-record', contac
 
 /** What the panel of a Battle reads beyond the summary, on demand: its Trials. */
 export const battleTrialsKey = (battleId: string) => ['battle-trials', battleId];
+/** Insights, of every period: read again after any gesture. */
+export const INSIGHTS_KEY = ['insights'];
 
 /** Read once for the whole app, kept on the device (device-data.ts), then updated by each gesture. */
 export const summaryQuery = (api: ApiClient) =>
@@ -219,6 +221,7 @@ export async function applySummaryChanges(
   for (const { id } of battlesChanged ?? []) {
     void queryClient.invalidateQueries({ queryKey: battleTrialsKey(id) });
   }
+  void queryClient.invalidateQueries({ queryKey: INSIGHTS_KEY });
   // A read under way started before the gesture: its answer must not overwrite these rows.
   await queryClient.cancelQueries({ queryKey: SUMMARY_KEY });
   if (queryClient.getQueryData(SUMMARY_KEY) === undefined) {

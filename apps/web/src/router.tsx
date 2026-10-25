@@ -8,7 +8,7 @@ import {
   useRouter,
 } from '@tanstack/react-router';
 import type { NavigateOptions, RouterHistory, ToOptions } from '@tanstack/react-router';
-import { m } from '@battlecrm/i18n';
+import { INSIGHTS_PERIODS } from '@battlecrm/contract';
 import { RouterProvider } from 'react-aria-components';
 import { z } from 'zod';
 
@@ -37,8 +37,8 @@ import { OrganizationPage } from './organizations/organization-page.tsx';
 import { POSITIONING_PANELS } from './positionings/positioning-panel.tsx';
 import { PositioningsScreen } from './positionings/positionings-screen.tsx';
 import { FunnelScreen } from './funnel/funnel-screen.tsx';
+import { InsightsScreen } from './insights/insights-screen.tsx';
 import { MoreScreen } from './screens/more-screen.tsx';
-import { Screen } from './screens/screen.tsx';
 import { configQuery, sessionQuery, type ApiClient } from './session.ts';
 import { ChangingEmail, InvalidEmailLinkScreen } from './settings/change-email-link.tsx';
 import { SettingsScreen } from './settings/settings-screen.tsx';
@@ -348,7 +348,23 @@ const positioningsRoute = createRoute({
 const insightsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/insights',
-  component: () => <Screen title={m.insights()} />,
+  // The period read (ST-70), 12 months unless chosen; anything else is dropped.
+  validateSearch: z.object({ period: z.enum(INSIGHTS_PERIODS).optional().catch(undefined) }),
+  component: function InsightsPage() {
+    const { period = '12m' } = insightsRoute.useSearch();
+    const navigate = insightsRoute.useNavigate();
+    return (
+      <InsightsScreen
+        period={period}
+        onPeriodChange={(chosen) =>
+          void navigate({
+            search: { period: chosen === '12m' ? undefined : chosen },
+            replace: true,
+          })
+        }
+      />
+    );
+  },
 });
 
 const settingsRoute = createRoute({

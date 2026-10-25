@@ -66,11 +66,11 @@ function Ring({ activity, goal }: { activity: number; goal: number }) {
 }
 
 /** How dark a day shows, from 0 (none) to 4 (the busiest of the weeks shown): intensity alone, no goal. */
-function levelOf(count: number, busiest: number): number {
+export function levelOf(count: number, busiest: number): number {
   return count === 0 ? 0 : Math.ceil((4 * count) / busiest);
 }
 
-const LEVEL_CLASSES = [
+export const LEVEL_CLASSES = [
   'bg-surface ring-1 ring-border ring-inset',
   'bg-accent-text/25',
   'bg-accent-text/50',

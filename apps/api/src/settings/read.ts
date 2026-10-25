@@ -16,20 +16,33 @@ import {
 } from './tables.ts';
 import { localDate } from './time-zone.ts';
 
-/** The time zone in effect at an instant. A time zone takes effect on its local day, read in the zone in effect until then. */
-export async function timeZoneAt(tx: Transaction, userId: string, at: Date): Promise<string> {
+/**
+ * Every time zone a User had, read once: what gives the time zone in effect at any instant. A time
+ * zone takes effect on its local day, read in the zone in effect until then.
+ */
+export async function timeZoneReader(
+  tx: Transaction,
+  userId: string,
+): Promise<(at: Date) => string> {
   const [first, ...changes] = await tx
     .select({ effectiveFrom: effectiveTimeZone.effectiveFrom, value: effectiveTimeZone.value })
     .from(effectiveTimeZone)
     .where(eq(effectiveTimeZone.userId, userId))
     .orderBy(asc(effectiveTimeZone.effectiveFrom));
   if (!first) throw new Error('A User has no settings');
-  let timeZone = first.value;
-  for (const change of changes) {
-    if (change.effectiveFrom > localDate(timeZone, at)) break;
-    timeZone = change.value;
-  }
-  return timeZone;
+  return (at) => {
+    let timeZone = first.value;
+    for (const change of changes) {
+      if (change.effectiveFrom > localDate(timeZone, at)) break;
+      timeZone = change.value;
+    }
+    return timeZone;
+  };
+}
+
+/** The time zone in effect at an instant. */
+export async function timeZoneAt(tx: Transaction, userId: string, at: Date): Promise<string> {
+  return (await timeZoneReader(tx, userId))(at);
 }
 
 /**
@@ -74,6 +87,35 @@ export async function goalOn(
     .limit(1);
   return inEffect ? inEffect.value : fallback;
 }
+
+/**
+ * Every goal of a table a User had, read once: what gives the goal in effect on any local day, the
+ * default before the first.
+ */
+async function goalReader(
+  tx: Transaction,
+  table: GoalTable,
+  userId: string,
+  fallback: number,
+): Promise<(day: string) => number | null> {
+  const rows = await tx
+    .select({ effectiveFrom: table.effectiveFrom, value: table.value })
+    .from(table)
+    .where(eq(table.userId, userId))
+    .orderBy(desc(table.effectiveFrom));
+  return (day) => {
+    const inEffect = rows.find(({ effectiveFrom }) => effectiveFrom <= day);
+    return inEffect ? inEffect.value : fallback;
+  };
+}
+
+/** The Activity goal each local day had (ST-42). */
+export const activityGoalReader = (tx: Transaction, userId: string) =>
+  goalReader(tx, effectiveActivityGoal, userId, DEFAULT_ACTIVITY_GOAL);
+
+/** The Entry goal each week had, from its Monday (ST-49). */
+export const entryGoalReader = (tx: Transaction, userId: string) =>
+  goalReader(tx, effectiveEntryGoal, userId, DEFAULT_ENTRY_GOAL);
 
 /** The Activity goal of a local day, `null` if turned off: the day keeps the one it had (ST-42). */
 export const activityGoalOn = (tx: Transaction, userId: string, day: string) =>

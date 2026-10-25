@@ -1261,5 +1261,74 @@
   "shortcuts_quick_add_send": "Add as Prospecting, then Use a Positioning",
   "shortcuts_single_key_off": "Single-key shortcuts are off (Settings › Preferences): only Ctrl K and Esc work.",
   "key_escape": "Esc",
-  "key_enter": "Enter"
+  "key_enter": "Enter",
+  "insights_period": "Period",
+  "insights_period_30d": "30 days",
+  "insights_period_3m": "3 months",
+  "insights_period_12m": "12 months",
+  "insights_period_all": "Since the start",
+  "insights_load_error": "Insights could not be loaded. Try again in a moment.",
+  "insights_effort": "Effort",
+  "insights_actions_week": "Prospecting actions this week",
+  "insights_actions_last_week": "{count} last week",
+  "insights_actions_period": "Actions in the period",
+  "insights_actions_per_day": "{average} a day",
+  "insights_finished_trials": "Trials finished in the period",
+  "insights_circle": "Circle size",
+  "insights_activity": "Activity",
+  "insights_activity_total": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} action over 12 months",
+        "countPlural=*": "{count} actions over 12 months"
+      }
+    }
+  ],
+  "insights_show_table": "Show as a table",
+  "insights_show_chart": "Show as a chart",
+  "insights_activity_days": "Activity by day, last 12 months",
+  "insights_day_actions": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} action",
+        "countPlural=*": "{count} actions"
+      }
+    }
+  ],
+  "insights_day_goal": "goal of the day: {goal}",
+  "insights_hint": "Hover or move with the keyboard over a day or a week for its detail.",
+  "insights_by_week": "Totals by week",
+  "insights_week_of": "Week of {monday}",
+  "insights_week_current": "in progress",
+  "insights_week": "Week of",
+  "insights_total": "Total",
+  "insights_funnel": "Funnel",
+  "insights_show_archived": "Show archived Stages",
+  "insights_stage": "Stage",
+  "insights_arrived": "Arrived",
+  "insights_pass_through": "Pass-through rate",
+  "insights_archived_stage": "{stage} (archived)",
+  "insights_no_rate": "no Pass-through rate",
+  "insights_exits": "Exits by Status and Stage",
+  "insights_exit_ally": "To Ally",
+  "insights_exit_pool": "To Pool",
+  "insights_exit_archived": "To Archived",
+  "insights_no_exit": "No Contact left Prospecting in the period.",
+  "insights_entries": "Funnel entries by week",
+  "insights_entries_average": "{average} a week on average",
+  "insights_week_entries": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} entry",
+        "countPlural=*": "{count} entries"
+      }
+    }
+  ],
+  "insights_week_entry_goal": "goal: {goal}"
 }

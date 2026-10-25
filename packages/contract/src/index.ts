@@ -347,6 +347,51 @@ export const celebration = z.strictObject({
 });
 export type Celebration = z.infer<typeof celebration>;
 
+/** The periods Insights read (spec UX §5.7): 30 days, 3 months, 12 months, since the start. */
+export const INSIGHTS_PERIODS = ['30d', '3m', '12m', 'all'] as const;
+export type InsightsPeriod = (typeof INSIGHTS_PERIODS)[number];
+
+/**
+ * What `GET /api/insights?period=` answers (spec UX §5.7), read on demand, never kept on the device:
+ * each count by the local day it was written down on, each goal as it was in effect then (ADR 0003).
+ */
+export const insights = z.strictObject({
+  /** The local days the period covers, today last. */
+  period: z.strictObject({ from: z.iso.date(), to: z.iso.date() }),
+  /** The Prospecting actions and Trials of the User (spec UX §5.7, figures at the top). */
+  prospecting: z.strictObject({
+    /** Prospecting actions of this week, from Monday, and of the week before. */
+    actionsThisWeek: z.int(),
+    actionsLastWeek: z.int(),
+    actionsInPeriod: z.int(),
+    /** Trials settled in the period, Success or No result. */
+    finishedTrials: z.int(),
+  }),
+  /** Every local day of the last 12 months, today last, its Activity and the Activity goal it had. */
+  activity: z.array(
+    z.strictObject({ day: z.iso.date(), count: z.int(), goal: z.int().nullable() }),
+  ),
+  funnel: z.strictObject({
+    /**
+     * Every Stage, archived ones too, in the order of the Funnel: the Contacts that arrived there in
+     * the period, and how many of them then reached a Stage further on; `null` for an archived one,
+     * which has no Pass-through rate.
+     */
+    stages: z.array(
+      z.strictObject({ stageId: z.uuid(), arrived: z.int(), passed: z.int().nullable() }),
+    ),
+    /** The Contacts that left Prospecting in the period, by the Stage they left it from. */
+    exits: z.array(
+      z.strictObject({ stageId: z.uuid(), ally: z.int(), pool: z.int(), archived: z.int() }),
+    ),
+    /** The Funnel entries of each week of the period, from its Monday, and the Entry goal it had. */
+    entryWeeks: z.array(
+      z.strictObject({ monday: z.iso.date(), count: z.int(), goal: z.int().nullable() }),
+    ),
+  }),
+});
+export type Insights = z.infer<typeof insights>;
+
 /** The rows of the summary a gesture, or its undo, changed, and the ones it removed: what its answer carries. */
 export const summaryChanges = z.strictObject({
   contacts: z.array(summaryContact),

@@ -1261,5 +1261,74 @@
   "shortcuts_quick_add_send": "Ajouter En prospection, puis Utiliser un Positionnement",
   "shortcuts_single_key_off": "Les raccourcis à une touche sont désactivés (Réglages › Préférences) : seuls Ctrl K et Échap restent actifs.",
   "key_escape": "Échap",
-  "key_enter": "Entrée"
+  "key_enter": "Entrée",
+  "insights_period": "Période",
+  "insights_period_30d": "30 jours",
+  "insights_period_3m": "3 mois",
+  "insights_period_12m": "12 mois",
+  "insights_period_all": "Depuis le début",
+  "insights_load_error": "Impossible de charger les Indicateurs. Réessaie dans un instant.",
+  "insights_effort": "Effort",
+  "insights_actions_week": "Actions de prospection cette semaine",
+  "insights_actions_last_week": "{count} la semaine dernière",
+  "insights_actions_period": "Actions sur la période",
+  "insights_actions_per_day": "{average} par jour",
+  "insights_finished_trials": "Essais terminés sur la période",
+  "insights_circle": "Taille du Cercle",
+  "insights_activity": "Activité",
+  "insights_activity_total": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} action sur 12 mois",
+        "countPlural=*": "{count} actions sur 12 mois"
+      }
+    }
+  ],
+  "insights_show_table": "Voir en tableau",
+  "insights_show_chart": "Voir en graphe",
+  "insights_activity_days": "Activité par jour, 12 derniers mois",
+  "insights_day_actions": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Action",
+        "countPlural=*": "{count} Actions"
+      }
+    }
+  ],
+  "insights_day_goal": "objectif du jour : {goal}",
+  "insights_hint": "Survole ou parcours au clavier un jour ou une semaine pour le détail.",
+  "insights_by_week": "Totaux par semaine",
+  "insights_week_of": "Semaine du {monday}",
+  "insights_week_current": "en cours",
+  "insights_week": "Semaine du",
+  "insights_total": "Total",
+  "insights_funnel": "Funnel",
+  "insights_show_archived": "Afficher les Étapes archivées",
+  "insights_stage": "Étape",
+  "insights_arrived": "Passages",
+  "insights_pass_through": "Taux de passage",
+  "insights_archived_stage": "{stage} (archivée)",
+  "insights_no_rate": "aucun Taux de passage",
+  "insights_exits": "Sorties par État et par Étape",
+  "insights_exit_ally": "Vers Allié",
+  "insights_exit_pool": "Vers Vivier",
+  "insights_exit_archived": "Vers Archivé",
+  "insights_no_exit": "Aucun Contact n'a quitté En prospection sur la période.",
+  "insights_entries": "Entrées dans le Funnel par semaine",
+  "insights_entries_average": "{average} en moyenne par semaine",
+  "insights_week_entries": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} entrée",
+        "countPlural=*": "{count} entrées"
+      }
+    }
+  ],
+  "insights_week_entry_goal": "objectif : {goal}"
 }

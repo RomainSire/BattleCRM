@@ -1,17 +1,20 @@
-import type {
-  BattleTrial,
-  TrialOutcome,
-  Summary,
-  SummaryBattle,
-  SummaryChanges,
-  SummaryContact,
-  SummaryOrganization,
-  SummaryPositioning,
-  SummaryStage,
+import {
+  INSIGHTS_PERIODS,
+  type BattleTrial,
+  type TrialOutcome,
+  type Summary,
+  type SummaryBattle,
+  type SummaryChanges,
+  type SummaryContact,
+  type SummaryOrganization,
+  type SummaryPositioning,
+  type SummaryStage,
 } from '@battlecrm/contract';
 import { archivedBy } from '@battlecrm/domain';
 import { and, desc, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { validator } from 'hono/validator';
+import { z } from 'zod';
 
 import type { AppEnv } from '../app.ts';
 import { battle } from '../battles/index.ts';
@@ -36,6 +39,7 @@ import { idOf } from '../route-id.ts';
 import { localDateOf, settingsOf, timeZoneAt } from '../settings/index.ts';
 import { celebratedOnOf, recordCelebration } from './celebration.ts';
 import { dailyPicksOf, passEntry, postponeBattle } from './daily-picks.ts';
+import { insightsOf } from './insights.ts';
 
 /**
  * The Contacts of the working summary (ADR 0012), the latest Interaction first: all of them, or the
@@ -680,6 +684,23 @@ export function createViews({
       if (!trials) return c.json({ error: 'not_found' as const }, 404);
       return c.json({ trials }, 200);
     })
+    // Insights over a period ending today (spec UX §5.7), read on demand, never with the summary.
+    .get(
+      '/insights',
+      requireUser,
+      validator('query', (value, c) => {
+        const parsed = z.object({ period: z.enum(INSIGHTS_PERIODS) }).safeParse(value);
+        return parsed.success ? parsed.data : c.json({ error: 'invalid' as const }, 400);
+      }),
+      async (c) => {
+        const { userId } = c.var;
+        const { period } = c.req.valid('query');
+        const answer = await withUser(userId, async (tx) =>
+          insightsOf(tx, userId, period, await localDateOf(tx, userId, clock.now())),
+        );
+        return c.json(answer, 200);
+      },
+    )
     // What Today picked for the day, the same on every device all day long (spec UX §5.1, ST-47).
     .get('/today/picks', requireUser, async (c) => {
       const { userId } = c.var;

@@ -4,11 +4,23 @@
 
 **Blocked by:** 30, 20
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Agrégats calculés par le module `views`, chargés à la demande (hors résumé), filtrés par période
-- [ ] Activité : graphe journalier sur 12 mois (intensité seule, jour vide neutre, aucune marque d'Objectif), au survol ou au focus « 2 Actions · objectif du jour : 3 » (Objectif en vigueur ce jour-là), totaux hebdomadaires sans ligne d'objectif, « Voir en tableau », synthèse « 214 actions sur 12 mois »
-- [ ] Funnel : vrai tableau des passages par Étape dans l'ordre actuel, Taux de passage depuis l'historique des changements d'Étape avec l'ordre d'alors (Étapes sautées comprises, Étapes précédant l'entrée exclues), Étapes archivées sur demande sans Taux
-- [ ] Sorties par État (Allié, Vivier, Archivé) et par Étape ; Entrées par semaine avec la moyenne, survol « 6 entrées · objectif : 5 »
-- [ ] Aucun taux en tête ni taux personnel ; rien porté par la couleur seule ; axe sans erreur dans les deux thèmes
-- [ ] Tests des agrégats avec fuseau changé en cours de période
+- [x] Agrégats calculés par le module `views`, chargés à la demande (hors résumé), filtrés par période
+- [x] Activité : graphe journalier sur 12 mois (intensité seule, jour vide neutre, aucune marque d'Objectif), au survol ou au focus « 2 Actions · objectif du jour : 3 » (Objectif en vigueur ce jour-là), totaux hebdomadaires sans ligne d'objectif, « Voir en tableau », synthèse « 214 actions sur 12 mois »
+- [x] Funnel : vrai tableau des passages par Étape dans l'ordre actuel, Taux de passage depuis l'historique des changements d'Étape avec l'ordre d'alors (Étapes sautées comprises, Étapes précédant l'entrée exclues), Étapes archivées sur demande sans Taux
+- [x] Sorties par État (Allié, Vivier, Archivé) et par Étape ; Entrées par semaine avec la moyenne, survol « 6 entrées · objectif : 5 »
+- [x] Aucun taux en tête ni taux personnel ; rien porté par la couleur seule ; axe sans erreur dans les deux thèmes
+- [x] Tests des agrégats avec fuseau changé en cours de période
+
+## Comments
+
+**2026-10-25, implémentation (agent).**
+- **API** : `GET /api/insights?period=30d|3m|12m|all` dans `views` (`views/insights.ts`), hors résumé, jamais gardé sur l'appareil ; contrat `insights` dans `packages/contract`. Période : 30 jours, 3 ou 12 mois calendaires jusqu'à aujourd'hui inclus, ou depuis la première Interaction. Tout se compte au jour local écrit avec la ligne ; un Essai terminé (Succès ou Sans suite) au jour local de son règlement dans le fuseau en vigueur alors. `settings` exporte `timeZoneReader`, `activityGoalReader` et `entryGoalReader` (l'historique lu une fois, pas une requête par jour). Spec stack §5.2 mise à jour (lignes `views` et `settings`).
+- **Taux de passage** (tranché avec Romain le 2026-10-25) : pour chaque Étape, les Contacts distincts arrivés dans la période (Entrée à cette Étape, ou changement d'Étape vers elle, recul compris) ; réussi si le Contact la quitte ensuite vers une Étape plus loin dans l'ordre d'alors (positions conservées sur le changement). Un saut 1→3 est un passage réussi de l'Étape 1 ; **l'Étape 2 sautée n'est pas créditée** (lecture de CONTEXT : « Contacts arrivés à une Étape […] qu'ils aient sauté des Étapes ou non » ; l'ordre complet du Funnel d'alors n'est pas conservé). Les Étapes avant celle d'entrée ne sont pas atteintes. Une Étape archivée : passages, pas de Taux.
+- **Écran** (`insights/`) : période en commande segmentée, gardée dans l'adresse (`?period=`, 12 mois par défaut). En tête : Actions de la semaine (et la précédente), sur la période (et par jour), Essais terminés, Entrées de la semaine face à l'Objectif d'entrées et Taille du Cercle (ces deux-là lus dans le résumé, à jour après chaque geste). Activité : graphe jour par jour sur 12 mois quelle que soit la période (intensité seule, `levelOf` partagé avec Aujourd'hui), détail « 2 Actions · objectif du jour : 3 » au survol, au focus ou à la pression, un seul arrêt Tab puis flèches (haut/bas un jour, gauche/droite une semaine) ; totaux hebdomadaires en barres, semaine en cours atténuée et dite « (en cours) » ; « Voir en tableau » (une ligne par semaine, une colonne par jour). Funnel : vrai tableau (barres décoratives), Étapes archivées sur demande, sorties par État et par Étape (celles d'une Étape archivée suivent la même case), Entrées par semaine (première semaine entière) avec la moyenne des semaines finies et « 6 entrées · objectif : 5 ». Les requêtes Indicateurs sont relues après chaque geste.
+- **Tests** : `views/insights.test.ts` (Activité et Objectif de chaque jour, effort avec un Essai réglé avant un changement de fuseau en bord de période, Entrées par semaine avec changement de fuseau et d'Objectif, passages/Taux avec saut, entrée à une Étape, recul, réordonnancement et Étape archivée, filtre de période, période refusée) ; `insights/insights-screen.test.tsx` (en-tête sans taux, changement de période, survol et clavier, tableau, Funnel, sorties, Entrées, axe clair/bureau et sombre/téléphone sans défilement horizontal).
+- **À trancher** :
+  - **Cibles de 12 px** dans le graphe d'Activité (la spec §7 demande 24 × 24 px sur bureau) : 53 semaines à 24 px ne tiennent pas ; l'équivalent accessible est « Voir en tableau » (exception WCAG 2.5.8). Même choix que la carte d'Activité d'Aujourd'hui.
+  - **Recul** : un retour en arrière vers une Étape compte comme une arrivée à cette Étape (et pèse sur son Taux).
+  - **Glossaire** : « Indicateurs » est un écran, « sorties » des changements d'État : rien ajouté à CONTEXT.md. Le code dit `prospecting` plutôt qu'`effort` (évité par le glossaire) ; le titre caché de la section reste « Effort », comme la spec UX.
