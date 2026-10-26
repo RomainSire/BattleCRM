@@ -35,7 +35,12 @@ const takeUpdate = registerSW({
     if (registration === undefined) return;
     appUpdate.registered({
       lookForUpdate: () => registration.update(),
-      takeUpdate: () => takeUpdate(true),
+      // A page the service worker never had (the very first visit): the new one is active already,
+      // nothing waits to take over, and only a plain reload loads it.
+      takeUpdate: async () => {
+        if (navigator.serviceWorker.controller === null) location.reload();
+        else await takeUpdate(true);
+      },
     });
   },
 });

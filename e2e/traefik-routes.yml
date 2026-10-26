@@ -1,4 +1,5 @@
 # The two routers of docker-compose.prod.yml, without TLS: /api to the API first, the rest to nginx.
+# A third one, for the test of a new version: the cookie e2e-release=next leads to the next release.
 http:
   routers:
     api:
@@ -8,6 +9,19 @@ http:
     web:
       rule: PathPrefix(`/`)
       service: web
+    web-next:
+      rule: PathPrefix(`/`) && HeaderRegexp(`Cookie`, `(^|;\s*)e2e-release=next(;|$)`)
+      priority: 50
+      service: web-next
+      middlewares: [unconditional]
+  middlewares:
+    # Built in the same second as the current one, the next release's sw.js has the same size and date:
+    # nginx would find its ETag unchanged and answer 304 to the browser's update check.
+    unconditional:
+      headers:
+        customRequestHeaders:
+          If-None-Match: ''
+          If-Modified-Since: ''
   services:
     api:
       loadBalancer:
@@ -17,3 +31,7 @@ http:
       loadBalancer:
         servers:
           - url: http://web:8080
+    web-next:
+      loadBalancer:
+        servers:
+          - url: http://web-next:8080

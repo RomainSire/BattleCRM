@@ -29,6 +29,9 @@ services:
       - ./ops/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
       - ./ops/postgres/initdb:/docker-entrypoint-initdb.d:ro
     tmpfs: [/var/lib/postgresql]
+    # The tests create their Users through the real sign-up, with a link token they set here.
+    ports:
+      - 127.0.0.1:5433:5432
     healthcheck:
       test: [CMD, pg_isready, -U, postgres, -d, battlecrm]
       interval: 1s
@@ -47,9 +50,12 @@ services:
       APP_ORIGIN: http://localhost:8080
       BETTER_AUTH_SECRET: e2e-secret-e2e-secret-e2e-secret-e2e
       SIGNUPS_OPEN: 'true'
-      # No e-mail leaves the e2e stack: these credentials open nothing.
+      # These credentials open nothing.
       SMTP_USER: e2e@example.com
       SMTP_PASSWORD: unused
+    # No e-mail leaves the e2e stack: Gmail's SMTP is this container itself, where nothing listens.
+    extra_hosts:
+      - smtp.gmail.com:127.0.0.1
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -63,6 +69,26 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      # The version of the API: the SPA hears no new version until a test says so.
+      args:
+        VERSION: e2e
+    environment:
+      APP_HOST: localhost
+      SITE_HOST: site.localhost
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /etc/nginx/conf.d:uid=101,gid=101
+
+  # The next release of the SPA, for the test of a new version: Traefik sends it the requests that
+  # carry the cookie e2e-release=next.
+  web-next:
+    image: battlecrm-web:e2e-next
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VERSION: e2e-next
     environment:
       APP_HOST: localhost
       SITE_HOST: site.localhost
@@ -84,4 +110,6 @@ services:
       api:
         condition: service_healthy
       web:
+        condition: service_started
+      web-next:
         condition: service_started
