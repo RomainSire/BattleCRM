@@ -167,7 +167,7 @@ test('a Trial settled before stays counted in its Battle, and the reasons writte
   const { harness, user, battle } = await battleAtFirstStage();
   const paul = await contactInTrial(harness, user, 'Paul', 'https://www.linkedin.com/in/paul');
   await recordReply(harness, user, paul.id, {
-    occurredOn: '2026-01-06',
+    occurredOn: '2026-01-05',
     channel: 'email',
     note: 'Intéressé',
     trialOutcome: 'success',
@@ -177,7 +177,8 @@ test('a Trial settled before stays counted in its Battle, and the reasons writte
 
   const { changes } = deleted.parse(await (await deleteContact(harness, user, paul.id)).json());
 
-  expect(changes.battles).toEqual([]);
+  // Its Battle comes back for its list of Trials to be read again, its counts unchanged.
+  expect(changes.battles).toEqual([before]);
   expect((await summaryOf(harness, user)).battles[0]).toEqual(before);
   const rows = await rowsOf(user, paul.id);
   expect(rows.trials).toEqual([expect.objectContaining({ outcome: 'success' })]);
@@ -209,5 +210,5 @@ test('its LinkedIn profile is free again, its gestures can no longer be undone, 
   );
   expect(edit.status).toBe(404);
   const { contact: again } = await addContact(harness, user, 'Jean Dupont', { linkedinUrl: url });
-  expect(again.linkedinUrl).toBe(url);
+  expect(again.linkedinUrl).toBe('https://linkedin.com/in/jean-dupont');
 });

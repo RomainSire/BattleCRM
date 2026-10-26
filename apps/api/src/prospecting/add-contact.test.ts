@@ -108,6 +108,7 @@ test('the addition is an Interaction neither outbound nor inbound, dated by the 
         linkedinUrl: null,
         note: null,
         createdAt: now,
+        anonymizedAt: null,
       },
     ],
     interactions: [
