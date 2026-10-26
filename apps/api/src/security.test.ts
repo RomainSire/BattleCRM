@@ -282,6 +282,10 @@ const CROSS_ACCESS: Record<
       body: { status: 'archived' },
     };
   },
+  'POST /api/contacts/:id/delete': async (harness, alice) => {
+    const { contact } = await addContact(harness, alice);
+    return { id: contact.id, state: () => getJson(harness, alice, '/api/summary') };
+  },
   'POST /api/contacts/:id/schedule-follow-up': async (harness, alice) => {
     const { contact } = await addContact(harness, alice, 'Jean Dupont', { status: 'prospecting' });
     return {

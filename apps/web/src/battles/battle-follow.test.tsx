@@ -98,6 +98,7 @@ const trial = (fields: Partial<BattleTrial> & Pick<BattleTrial, 'id' | 'contactI
   outcome: 'in_progress' as const,
   target: 'consultancy' as const,
   cancelReason: null,
+  contactDeleted: false,
   ...fields,
 });
 const CLAIRE_TRIAL = trial({
@@ -128,8 +129,11 @@ const outcomeChange = z.strictObject({
 });
 
 /** An API that keeps the Trials of Qualif ESN as the server would, and takes a change back. */
-function followApi(battles: SummaryBattle[] = [OUTREACH_BATTLE, SCREENING_BATTLE, CLOSING_BATTLE]) {
-  let trials = [HUGO_TRIAL, LEA_TRIAL, CLAIRE_TRIAL];
+function followApi(
+  battles: SummaryBattle[] = [OUTREACH_BATTLE, SCREENING_BATTLE, CLOSING_BATTLE],
+  more: BattleTrial[] = [],
+) {
+  let trials = [...more, HUGO_TRIAL, LEA_TRIAL, CLAIRE_TRIAL];
   let before = trials;
   const change = (trialId: string) => (body: unknown) => {
     const { outcome, cancelReason } = outcomeChange.parse(body);
@@ -320,6 +324,24 @@ test('a Trial canceled from its Battle asks for a reason', async () => {
   expect(api.sent(changeRoute(HUGO_TRIAL.id)).map(({ body }) => body)).toEqual([
     { outcome: 'canceled', cancelReason: 'mauvais Contact' },
   ]);
+});
+
+test('the Trial of a deleted Contact stays, under “Contact deleted”, its outcome kept as it is', async () => {
+  await desktop();
+  const deleted = trial({
+    id: '01990000-0000-7000-8000-000000000054',
+    contactId: '01990000-0000-7000-8000-000000000044',
+    outcome: 'canceled',
+    cancelReason: 'Contact supprimé',
+    contactDeleted: true,
+  });
+  await renderApp(`/battles?stage=${SCREENING.id}&panel=progress`, followApi(undefined, [deleted]));
+  const panel = page.getByRole('region', { name: 'Qualif ESN' });
+  await panel.getByRole('tab', { name: 'Essais' }).click();
+
+  const row = panel.getByRole('row').filter({ hasText: 'Contact supprimé' }).first();
+  await expect.element(row).toHaveTextContent('Annulé');
+  await expect.element(row.getByRole('button')).not.toBeInTheDocument();
 });
 
 test('By Target counts successes on finished Trials, for information only', async () => {

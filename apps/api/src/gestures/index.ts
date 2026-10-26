@@ -42,6 +42,8 @@ export type Touched = {
   removedBattleIds: string[];
   /** Whether it changed the Funnel: its Stages, their order. */
   stages: boolean;
+  /** Whether it deleted a Contact, whose days still count (ADR 0006). */
+  deletedContacts: boolean;
 };
 
 /** The rows a gesture touched, every kind it names nothing of left empty. */
@@ -55,6 +57,7 @@ export const touched = (rows: Partial<Touched>): Touched => ({
   battleIds: [],
   removedBattleIds: [],
   stages: false,
+  deletedContacts: false,
   ...rows,
 });
 
@@ -71,6 +74,13 @@ export type ChangesOf<Changes> = (
  */
 export const lockSubject = (tx: Transaction, subjectId: string) =>
   tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${subjectId}, 0))`);
+
+/**
+ * Forgets every gesture on a Contact, which can then no longer be undone: what they kept of it goes
+ * with them (ADR 0006).
+ */
+export const forgetGesturesOn = (tx: Transaction, userId: string, contactId: string) =>
+  tx.delete(gesture).where(and(eq(gesture.userId, userId), eq(gesture.contactId, contactId)));
 
 /**
  * Remembers a gesture in its own transaction, and returns the token that undoes it.

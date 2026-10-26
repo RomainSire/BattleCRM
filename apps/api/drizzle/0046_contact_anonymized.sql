@@ -1,0 +1,4 @@
+ALTER TABLE "contact" ALTER COLUMN "name" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "contact" ADD COLUMN "anonymized_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "contact" ADD CONSTRAINT "contact_name_required_check" CHECK ("contact"."name" is not null or "contact"."anonymized_at" is not null);--> statement-breakpoint
+ALTER TABLE "contact" ADD CONSTRAINT "contact_anonymized_check" CHECK ("contact"."anonymized_at" is null or num_nonnulls("contact"."name", "contact"."job_title", "contact"."email", "contact"."phone", "contact"."linkedin_url", "contact"."note", "contact"."organization_id") = 0);

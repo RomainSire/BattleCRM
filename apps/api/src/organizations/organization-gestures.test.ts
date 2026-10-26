@@ -67,6 +67,7 @@ test('renaming keeps the name as written and normalizes it for the unique index'
     battles: [],
     removedBattleIds: [],
     stages: null,
+    deletedContactDays: null,
   });
   expect(await organizationsOf(user)).toEqual([
     { name: 'Capgemini Engineering', normalizedName: 'capgeminiengineering' },
@@ -199,6 +200,7 @@ test('an Organization is deleted only once no Contact belongs to it', async () =
     battles: [],
     removedBattleIds: [],
     stages: null,
+    deletedContactDays: null,
   });
   expect((await summaryOf(harness, user)).organizations).toEqual([]);
 });

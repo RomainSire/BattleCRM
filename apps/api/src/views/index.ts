@@ -1,6 +1,7 @@
 import {
   INSIGHTS_PERIODS,
   type BattleTrial,
+  type DeletedContactDays,
   type TrialOutcome,
   type Summary,
   type SummaryBattle,
@@ -216,7 +217,8 @@ async function summaryContacts(
   const rows = await tx
     .select({
       id: contact.id,
-      name: contact.name,
+      // Never null: a deleted Contact is left out.
+      name: sql<string>`${contact.name}`,
       status: contact.status,
       stageId: contact.stageId,
       // What the search and the duplicate checks read without a round trip (ST-63, ST-64); not the note.
@@ -255,7 +257,14 @@ async function summaryContacts(
     .leftJoin(assignment, and(eq(assignment.userId, userId), eq(assignment.contactId, contact.id)))
     .leftJoin(inProgress, eq(inProgress.contactId, contact.id))
     .leftJoin(lastUse, eq(lastUse.contactId, contact.id))
-    .where(and(eq(contact.userId, userId), ids && inArray(contact.id, ids)))
+    // A deleted Contact is out of Contacts, the Funnel and the palette (ADR 0006).
+    .where(
+      and(
+        eq(contact.userId, userId),
+        isNull(contact.anonymizedAt),
+        ids && inArray(contact.id, ids),
+      ),
+    )
     .orderBy(desc(latest.occurredAt), desc(contact.id));
   return rows.map(
     ({
@@ -544,12 +553,15 @@ async function battleTrials(
       outcome: trial.outcome,
       target: trial.target,
       cancelReason: trial.cancelReason,
+      // Shown under “Contact deleted”, its name gone (ADR 0006).
+      contactDeleted: isNotNull(contact.anonymizedAt).mapWith(Boolean),
     })
     .from(trial)
     .innerJoin(
       interaction,
       and(eq(interaction.userId, userId), eq(interaction.id, trial.interactionId)),
     )
+    .innerJoin(contact, and(eq(contact.userId, userId), eq(contact.id, trial.contactId)))
     .where(and(eq(trial.userId, userId), eq(trial.battleId, battleId)))
     .orderBy(desc(interaction.occurredAt), desc(trial.id));
 }
@@ -579,8 +591,15 @@ async function contactRecord(tx: Transaction, userId: string, contactId: string)
   const [found] = await tx
     .select({ note: contact.note })
     .from(contact)
-    .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+    .where(
+      and(eq(contact.userId, userId), eq(contact.id, contactId), isNull(contact.anonymizedAt)),
+    );
   if (!found) return undefined;
+  // What its deletion would leave in the Battles (spec UX §6.13).
+  const [trials] = await tx
+    .select({ count: sql<number>`count(*)::int` })
+    .from(trial)
+    .where(and(eq(trial.userId, userId), eq(trial.contactId, contactId)));
   const thread = await tx
     .select({
       id: interaction.id,
@@ -613,6 +632,7 @@ async function contactRecord(tx: Transaction, userId: string, contactId: string)
     .orderBy(desc(interaction.occurredAt), desc(interaction.id));
   return {
     note: found.note,
+    trialCount: trials?.count ?? 0,
     thread: thread.map(
       ({
         fromStatus,
@@ -638,6 +658,40 @@ async function contactRecord(tx: Transaction, userId: string, contactId: string)
   };
 }
 
+/**
+ * The days the deleted Contacts still count on (ADR 0006), all together: each Funnel entry and each
+ * Prospecting action, as `summaryContacts` gives them for a Contact.
+ */
+async function deletedContactDays(tx: Transaction, userId: string): Promise<DeletedContactDays> {
+  const deleted = and(
+    eq(contact.userId, userId),
+    eq(contact.id, interaction.contactId),
+    isNotNull(contact.anonymizedAt),
+  );
+  const entries = await tx
+    .select({ day: sql<string>`${interaction.localDate}::text` })
+    .from(statusChange)
+    .innerJoin(
+      interaction,
+      and(eq(interaction.userId, userId), eq(interaction.id, statusChange.interactionId)),
+    )
+    .innerJoin(contact, deleted)
+    .where(and(eq(statusChange.userId, userId), eq(statusChange.toStatus, 'prospecting')))
+    .orderBy(interaction.localDate);
+  const actions = await tx
+    .select({ day: sql<string>`${interaction.localDate}::text` })
+    .from(interaction)
+    .innerJoin(contact, deleted)
+    .where(
+      and(eq(interaction.userId, userId), inArray(interaction.kind, [...PROSPECTING_ACTION_KINDS])),
+    )
+    .orderBy(interaction.localDate);
+  return {
+    funnelEntryDays: entries.map(({ day }) => day),
+    prospectingActionDays: actions.map(({ day }) => day),
+  };
+}
+
 /** What the answer of a gesture carries: the rows of the summary it changed, and the ones it removed. */
 export async function summaryChanges(
   tx: Transaction,
@@ -654,6 +708,7 @@ export async function summaryChanges(
     battles: await summaryBattles(tx, userId, touched.battleIds),
     removedBattleIds: touched.removedBattleIds,
     stages: touched.stages ? await summaryStages(tx, userId) : null,
+    deletedContactDays: touched.deletedContacts ? await deletedContactDays(tx, userId) : null,
   };
 }
 
@@ -686,6 +741,7 @@ export function createViews({
         organizations: await summaryOrganizations(tx, userId),
         positionings: await summaryPositionings(tx, userId),
         battles: await summaryBattles(tx, userId),
+        deletedContactDays: await deletedContactDays(tx, userId),
       }));
       return c.json(summary, 200);
     })

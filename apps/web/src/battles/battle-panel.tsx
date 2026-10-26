@@ -335,6 +335,13 @@ function refusalText(refused: ChangeRefusal) {
   return m.battle_trial_behind();
 }
 
+/** Whether the Contact of a Trial was deleted (ADR 0006): shown under “Contact deleted”. */
+function isContactDeleted(row: BattleTrial) {
+  // Fallback: an answer from a version from before deletion carries no flag.
+  const deleted: boolean | undefined = row.contactDeleted;
+  return deleted ?? false;
+}
+
 /**
  * Trials (spec UX §5.5): Contact, Positioning, day and outcome, changed in place while the Battle is
  * open, with its Success criterion recalled; canceling asks for the reason.
@@ -354,8 +361,10 @@ function TrialsTab({
   const { data: trials, isError } = useQuery(battleTrialsQuery(api, battle.id));
   const [refusal, setRefusal] = useState<string>();
   const [canceling, setCanceling] = useState<BattleTrial>();
-  const nameOf = (contactId: string) =>
-    summary.contacts.find(({ id }) => id === contactId)?.name ?? '…';
+  const nameOf = (row: BattleTrial) =>
+    isContactDeleted(row)
+      ? m.contact_deleted()
+      : (summary.contacts.find(({ id }) => id === row.contactId)?.name ?? '…');
   const sideOf = (positioningId: string) =>
     positioningId === battle.championId ? sides.champion : sides.challenger;
 
@@ -368,7 +377,7 @@ function TrialsTab({
       }),
       () =>
         m.battle_outcome_changed_toast({
-          contact: nameOf(row.contactId),
+          contact: nameOf(row),
           outcome: OUTCOME_LABEL[outcome](),
         }),
     );
@@ -401,7 +410,7 @@ function TrialsTab({
             </thead>
             <tbody className="divide-y border-t">
               {trials.map((row) => {
-                const name = nameOf(row.contactId);
+                const name = nameOf(row);
                 const outcome = OUTCOME_LABEL[row.outcome]();
                 return (
                   <tr
@@ -414,7 +423,8 @@ function TrialsTab({
                       {formatLocalDay(row.startedOn, locale)}
                     </td>
                     <td className="py-1.5">
-                      {battle.open ? (
+                      {/* A deleted Contact's Trial is kept as it is (ADR 0006). */}
+                      {battle.open && !isContactDeleted(row) ? (
                         <MoreActions
                           trigger={{
                             text: outcome,
@@ -452,7 +462,7 @@ function TrialsTab({
       )}
       {canceling && (
         <CancelTrialPanel
-          contact={nameOf(canceling.contactId)}
+          contact={nameOf(canceling)}
           error={refusal}
           onCancel={async (reason) => {
             // Refused, the panel stays open with what was typed, and says why.

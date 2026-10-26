@@ -8,7 +8,7 @@ import {
   targetOf,
 } from '@battlecrm/domain';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { X } from 'lucide-react';
 import { useId, useRef, useState, type ReactNode, type Ref, type RefObject } from 'react';
@@ -38,6 +38,7 @@ import { ChangeStagePanel, useStageGesture } from './change-stage.tsx';
 import { ChangeStatusPanel, useStatusGesture } from './change-status.tsx';
 import { ContactName } from './contact-name.tsx';
 import { contactRecordQuery, type ThreadEntry } from './contact-record-query.ts';
+import { DeleteContactDialog } from './delete-contact.tsx';
 import { EditCoordinates } from './edit-coordinates.tsx';
 import { FollowUpHead, FollowUpPanels, useFollowUpGesture } from './follow-up.tsx';
 import { formatLocalDay } from './format.ts';
@@ -430,6 +431,7 @@ const interactionOfKey = (key: unknown): InteractionGesture | undefined =>
   Object.entries(INTERACTION_MENU).find(([candidate]) => candidate === key)?.[1];
 const SEND_MENU_KEY = 'send:positioning';
 const STAGE_MENU_KEY = 'stage:choose';
+const DELETE_MENU_KEY = 'contact:delete';
 
 /**
  * The block Next action (spec UX §5.3): what the Status of the Contact calls for, its full button, and
@@ -447,12 +449,14 @@ function NextAction({
   onSend,
   onTrial,
   onStage,
+  onDelete,
 }: {
   contact: SummaryContact;
   summary: Summary;
   level: 2 | 3;
   showsVerbs: boolean;
   onStage: () => void;
+  onDelete: () => void;
   onGesture: (gesture: StatusGesture) => void;
   onFollowUp: (gesture: FollowUpGesture) => void;
   onInteraction: (gesture: InteractionGesture) => void;
@@ -592,6 +596,7 @@ function NextAction({
             if (interaction) onInteraction(interaction);
             if (key === SEND_MENU_KEY) onSend('positioning');
             if (key === STAGE_MENU_KEY) onStage();
+            if (key === DELETE_MENU_KEY) onDelete();
           }}
         >
           {!sendsFirst && <MenuItem id={SEND_MENU_KEY}>{m.verb_use_positioning()}</MenuItem>}
@@ -611,6 +616,8 @@ function NextAction({
             </MenuItem>
           ))}
           <MenuItem id="choose">{m.verb_change_status()}</MenuItem>
+          {/* Last, under `⋯` of the record only (spec UX §5.3, §6.13). */}
+          <MenuItem id={DELETE_MENU_KEY}>{m.verb_delete_contact()}</MenuItem>
         </MoreActions>
       </div>
     </section>
@@ -772,6 +779,7 @@ export function ContactPanel({
   const panelRef = useRef<HTMLElement>(null);
   const gestures = useRecordGestures();
   const { status, followUp, interaction, send, trial, stage } = gestures;
+  const [isDeleting, setIsDeleting] = useState(false);
   useRecordKeys(contact, summary, gestures, panelRef);
   const close = (
     <Button variant="ghost" size="icon-sm" aria-label={m.close()} onPress={onClose}>
@@ -826,6 +834,7 @@ export function ContactPanel({
           onSend={send.open}
           onTrial={trial.open}
           onStage={() => stage.open('choose')}
+          onDelete={() => setIsDeleting(true)}
         />
         <Tabs>
           <TabList aria-label={contact.name} className="flex gap-1 border-b pb-2">
@@ -860,6 +869,17 @@ export function ContactPanel({
       </section>
       {/* Out of the panel: its Escape is the gesture's own. */}
       <RecordGesturePanels contact={contact} summary={summary} gestures={gestures} />
+      {isDeleting && (
+        <DeleteContactDialog
+          contact={contact}
+          onClose={() => setIsDeleting(false)}
+          onArchive={() => {
+            setIsDeleting(false);
+            status.open('archived');
+          }}
+          onDeleted={onClose}
+        />
+      )}
     </>
   );
 }
@@ -871,6 +891,8 @@ export function ContactPage({ contactId }: { contactId: string }) {
   const threadHeadingId = useId();
   const gestures = useRecordGestures();
   const { status, followUp, interaction, send, trial, stage } = gestures;
+  const [isDeleting, setIsDeleting] = useState(false);
+  const navigate = useNavigate();
   useRecordKeys(contact, summary, gestures);
   const backToContacts = (
     <Link to="/contacts" className="rounded-control underline-offset-4 focus-ring hover:underline">
@@ -922,6 +944,7 @@ export function ContactPage({ contactId }: { contactId: string }) {
             onSend={send.open}
             onTrial={trial.open}
             onStage={() => stage.open('choose')}
+            onDelete={() => setIsDeleting(true)}
           />
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
             {/* Stacked on mobile, the Trial in progress and the Coordinates come first (spec UX §5.3). */}
@@ -952,6 +975,17 @@ export function ContactPage({ contactId }: { contactId: string }) {
             </section>
           </div>
           <RecordGesturePanels contact={contact} summary={summary} gestures={gestures} />
+          {isDeleting && (
+            <DeleteContactDialog
+              contact={contact}
+              onClose={() => setIsDeleting(false)}
+              onArchive={() => {
+                setIsDeleting(false);
+                status.open('archived');
+              }}
+              onDeleted={() => void navigate({ to: '/contacts', replace: true })}
+            />
+          )}
         </>
       )}
     </div>

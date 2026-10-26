@@ -53,8 +53,8 @@ export const contact = pgTable(
   {
     id: id(),
     userId: userId(),
-    /** The only field a Contact must have. */
-    name: text().notNull(),
+    /** The only field a Contact must have; none once it is deleted. */
+    name: text(),
     status: text({ enum: CONTACT_STATUSES }).notNull(),
     /**
      * The Stage it is at, Prospecting; in any other Status, the last one it reached, if it ever
@@ -71,6 +71,11 @@ export const contact = pgTable(
     /** The lasting context of the Contact, apart from the notes of its Interactions. */
     note: text(),
     createdAt: instant('created_at').notNull(),
+    /**
+     * When it was deleted (ADR 0006): anonymized in place, everything that identifies it erased, its
+     * Trials and Interactions kept under “Contact deleted”.
+     */
+    anonymizedAt: instant('anonymized_at'),
   },
   (table) => [
     unique('contact_user_id_id_unique').on(table.userId, table.id),
@@ -89,6 +94,15 @@ export const contact = pgTable(
     index('contact_organization_idx').on(table.userId, table.organizationId),
     check('contact_status_check', sql`${table.status} in (${quoted(CONTACT_STATUSES)})`),
     check('contact_name_check', sql`${table.name} <> ''`),
+    check(
+      'contact_name_required_check',
+      sql`${table.name} is not null or ${table.anonymizedAt} is not null`,
+    ),
+    // Deleted, nothing that identifies it is left (ADR 0006).
+    check(
+      'contact_anonymized_check',
+      sql`${table.anonymizedAt} is null or num_nonnulls(${table.name}, ${table.jobTitle}, ${table.email}, ${table.phone}, ${table.linkedinUrl}, ${table.note}, ${table.organizationId}) = 0`,
+    ),
     check('contact_job_title_check', sql`${table.jobTitle} <> ''`),
     check('contact_email_check', sql`${table.email} <> ''`),
     check('contact_phone_check', sql`${table.phone} <> ''`),

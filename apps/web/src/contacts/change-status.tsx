@@ -40,7 +40,7 @@ import { submitIfOnline } from '../online.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { settingsOf } from '../settings/use-settings.ts';
-import { todayOf, type Summary, type SummaryContact } from '../summary.ts';
+import { countedContacts, todayOf, type Summary, type SummaryContact } from '../summary.ts';
 import { nextCheckInOf } from '../circle/ally-signal.ts';
 import { formatLocalDay } from './format.ts';
 import { otherStatuses, STATUS_ACTION, type StatusGesture } from './status.ts';
@@ -394,7 +394,7 @@ export function statusRecap(
   // The Entry goal of this week, whatever the User chose for the next ones; either may be off.
   const settings = settingsOf(summary);
   if (to === 'prospecting') {
-    const count = funnelEntriesInWeek(summary.contacts, today) + 1;
+    const count = funnelEntriesInWeek(countedContacts(summary), today) + 1;
     const goal = settings.entryGoal.inEffect;
     return [
       goal === null
@@ -429,7 +429,7 @@ export function statusChangedMessage(
   switch (to) {
     case 'prospecting': {
       const stage = summary.stages.find(({ id }) => id === changed.stageId)?.name ?? '';
-      const count = funnelEntriesInWeek(summary.contacts, todayOf(summary)) + 1;
+      const count = funnelEntriesInWeek(countedContacts(summary), todayOf(summary)) + 1;
       const goal = settings.entryGoal.inEffect;
       return goal === null
         ? m.status_changed_prospecting_no_goal({ name, stage, count })

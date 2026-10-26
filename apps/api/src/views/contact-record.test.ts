@@ -16,6 +16,8 @@ const recordOf = (harness: Harness, user: { cookie: string }, contactId: string)
 /** What the record of a Contact reads beyond the summary: its note and its thread. */
 const contactRecord = z.strictObject({
   note: z.string().nullable(),
+  /** Its Trials, which its deletion would leave in the Battles. */
+  trialCount: z.int(),
   thread: z.array(
     z.strictObject({
       id: z.uuid(),
@@ -57,6 +59,7 @@ test('the record of a Contact carries its note and its thread: the addition open
   expect(response.status).toBe(200);
   expect(contactRecord.parse(await response.json())).toEqual({
     note: 'Rencontré au meetup Rust',
+    trialCount: 0,
     thread: [
       {
         id: expect.any(String),

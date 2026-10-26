@@ -31,6 +31,7 @@ import { useApi } from '../session.ts';
 import { settingsOf } from '../settings/use-settings.ts';
 import { Kbd } from '../shell/kbd.tsx';
 import {
+  countedContacts,
   summaryQuery,
   todayOf,
   type Summary,
@@ -335,7 +336,7 @@ export function TodayScreen() {
   if (isNarrow && summary.contacts.length > 0) {
     // The Entries card until a Contact entered the Funnel today (spec UX §5.1).
     const isPoolEmpty = !summary.contacts.some(({ status }) => status === 'pool');
-    const enteredToday = summary.contacts.some(({ funnelEntryDays }) =>
+    const enteredToday = countedContacts(summary).some(({ funnelEntryDays }) =>
       funnelEntryDays.includes(today),
     );
     const items: DeckItem[] = [

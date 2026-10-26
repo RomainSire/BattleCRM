@@ -303,6 +303,25 @@
   "organization_delete_body": "Aucun Contact n'en fait partie.",
   "organization_delete_confirm": "Supprimer",
   "organization_deleted": "Organisation supprimée : {organization}",
+  "verb_delete_contact": "Supprimer le Contact…",
+  "contact_delete_title": "Supprimer {name} ?",
+  "contact_delete_body": "Ses coordonnées et ses notes sont effacées définitivement.",
+  "contact_delete_trials": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Son Essai reste dans les Battles, sans son nom.",
+        "countPlural=*": "Ses {count} Essais restent dans les Battles, sans son nom."
+      }
+    }
+  ],
+  "contact_delete_archive_hint": "Pour seulement arrêter la prospection, archive-le plutôt.",
+  "contact_delete_archive": "Archiver à la place",
+  "contact_delete_confirm": "Supprimer",
+  "contact_deleted_toast": "Contact supprimé : {name}",
+  "contact_deleted": "Contact supprimé",
+  "trial_cancel_reason_contact_deleted": "Contact supprimé",
   "organization_changed_elsewhere": "Cette Organisation a changé sur un autre appareil : vérifie puis recommence.",
   "organization_merge_choose": "Choisis l'Organisation avec laquelle fusionner.",
   "organization_name_required": "Saisis un nom.",

@@ -26,7 +26,7 @@ import { useLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { settingsOf } from '../settings/use-settings.ts';
-import { todayOf, type Summary, type SummaryContact } from '../summary.ts';
+import { countedContacts, todayOf, type Summary, type SummaryContact } from '../summary.ts';
 import {
   activityRecap,
   doneDayDraft,
@@ -106,7 +106,7 @@ export function CheckInPanel({
   const keptOn = upcoming && !cancelsFollowUp ? upcoming.dueOn : undefined;
   const nextOn = formatLocalDay(nextCheckInOf(summary, lastDoneOn, today, keptOn), locale);
   const activityGoal = settingsOf(summary).activityGoal.inEffect;
-  const count = activityOn(summary.contacts, today) + 1;
+  const count = activityOn(countedContacts(summary), today) + 1;
   const close = () => {
     clearDraft();
     onClose();

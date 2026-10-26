@@ -7,7 +7,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { notify } from '../components/ui/toast.tsx';
 import { useApi } from '../session.ts';
 import { settingsOf } from '../settings/use-settings.ts';
-import { celebratedOnOf, SUMMARY_KEY, todayOf, type Summary } from '../summary.ts';
+import { countedContacts, celebratedOnOf, SUMMARY_KEY, todayOf, type Summary } from '../summary.ts';
 
 // The celebration of the Activity goal reached (spec UX §2, ST-44): once a day, on every device, at
 // the gesture of this device that brings the Activity of the day to its goal.
@@ -44,9 +44,9 @@ export function celebrateIfReached(
   const { activityGoal, celebrateGoal } = settingsOf(after);
   const goal = activityGoal.inEffect;
   if (goal === null || !celebrateGoal || celebratedOnOf(after) === today) return;
-  const activity = activityOn(after.contacts, today);
+  const activity = activityOn(countedContacts(after), today);
   const crossed =
-    !activityGoalReached(activityOn(before.contacts, today), goal) &&
+    !activityGoalReached(activityOn(countedContacts(before), today), goal) &&
     activityGoalReached(activity, goal);
   if (!crossed) return;
   for (const listener of crossings) listener({ origin, activity, goal });

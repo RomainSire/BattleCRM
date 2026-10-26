@@ -15,7 +15,7 @@ import { useLocale, type Locale } from '../i18n.ts';
 import { Screen } from '../screens/screen.tsx';
 import { useApi, type ApiClient } from '../session.ts';
 import { settingsOf } from '../settings/use-settings.ts';
-import { INSIGHTS_KEY, summaryQuery, todayOf, type Summary } from '../summary.ts';
+import { countedContacts, INSIGHTS_KEY, summaryQuery, todayOf, type Summary } from '../summary.ts';
 import { ActivitySection } from './activity-section.tsx';
 import { FunnelSection } from './funnel-section.tsx';
 
@@ -73,7 +73,7 @@ function TopFigures({
     maximumFractionDigits: 1,
   });
   const perDay = prospecting.actionsInPeriod / (daysBetween(period.from, period.to) + 1);
-  const entries = funnelEntriesInWeek(summary.contacts, todayOf(summary));
+  const entries = funnelEntriesInWeek(countedContacts(summary), todayOf(summary));
   const entryGoal = settings.entryGoal.inEffect;
   const allies = summary.contacts.filter(({ status }) => status === 'ally').length;
   const circleGoal = settings.circleSizeGoal;

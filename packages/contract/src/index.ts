@@ -301,6 +301,8 @@ export const battleTrial = z.strictObject({
   /** The Target of the Contact when it started. */
   target: z.enum(TARGETS),
   cancelReason: z.string().nullable(),
+  /** Its Contact was deleted (ADR 0006): shown under “Contact deleted”. */
+  contactDeleted: z.boolean(),
 });
 export type BattleTrial = z.infer<typeof battleTrial>;
 
@@ -326,6 +328,17 @@ export const summarySettings = z.strictObject({
 export type SummarySettings = z.infer<typeof summarySettings>;
 
 /** The whole working summary, as `GET /api/summary` answers it. */
+/**
+ * The days the deleted Contacts still count on (ADR 0006), all of them together and nothing that
+ * identifies one: their Funnel entries and their Prospecting actions, so that the Entries of a week
+ * and the Activity of a day do not change after the fact.
+ */
+export const deletedContactDays = z.strictObject({
+  funnelEntryDays: z.array(z.iso.date()),
+  prospectingActionDays: z.array(z.iso.date()),
+});
+export type DeletedContactDays = z.infer<typeof deletedContactDays>;
+
 export const summary = z.strictObject({
   /** The time zone of the User in effect now: what its today is read in, on the device too. */
   timeZone: z.string(),
@@ -340,6 +353,7 @@ export const summary = z.strictObject({
   organizations: z.array(summaryOrganization),
   positionings: z.array(summaryPositioning),
   battles: z.array(summaryBattle),
+  deletedContactDays,
 });
 export type Summary = z.infer<typeof summary>;
 
@@ -413,6 +427,11 @@ export const summaryChanges = z.strictObject({
    * Added after the first release: an answer from a version from before lacks it.
    */
   stages: z.array(summaryStage).nullable(),
+  /**
+   * The days of the deleted Contacts, when the gesture deleted one; `null` otherwise. Added after
+   * the first release: an answer from a version from before lacks it.
+   */
+  deletedContactDays: deletedContactDays.nullable(),
 });
 export type SummaryChanges = z.infer<typeof summaryChanges>;
 

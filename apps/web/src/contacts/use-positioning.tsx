@@ -43,6 +43,7 @@ import { useSessionDraft } from '../session-draft.ts';
 import { CopyButton } from '../settings/copy-button.tsx';
 import { settingsOf } from '../settings/use-settings.ts';
 import {
+  countedContacts,
   applySummaryChanges,
   attachmentsOf,
   championAt,
@@ -315,7 +316,7 @@ function SendPanel({
     !hasFirst ||
     (/^\d{4}-\d{2}-\d{2}$/u.test(draft.followUpOn) && draft.followUpOn >= today);
   const activityGoal = settingsOf(summary).activityGoal.inEffect;
-  const count = activityOn(summary.contacts, today) + 1;
+  const count = activityOn(countedContacts(summary), today) + 1;
   const close = () => {
     clearDraft();
     onClose();

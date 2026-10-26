@@ -303,6 +303,25 @@
   "organization_delete_body": "No Contact belongs to it.",
   "organization_delete_confirm": "Delete",
   "organization_deleted": "Organization deleted: {organization}",
+  "verb_delete_contact": "Delete the Contact…",
+  "contact_delete_title": "Delete {name}?",
+  "contact_delete_body": "Their details and notes are erased for good.",
+  "contact_delete_trials": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Their Trial stays in the Battles, without their name.",
+        "countPlural=*": "Their {count} Trials stay in the Battles, without their name."
+      }
+    }
+  ],
+  "contact_delete_archive_hint": "To only stop prospecting, archive them instead.",
+  "contact_delete_archive": "Archive instead",
+  "contact_delete_confirm": "Delete",
+  "contact_deleted_toast": "Contact deleted: {name}",
+  "contact_deleted": "Contact deleted",
+  "trial_cancel_reason_contact_deleted": "Contact deleted",
   "organization_changed_elsewhere": "This Organization changed on another device: check, then try again.",
   "organization_merge_choose": "Choose the Organization to merge with.",
   "organization_name_required": "Enter a name.",

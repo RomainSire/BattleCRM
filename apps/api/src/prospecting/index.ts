@@ -30,7 +30,7 @@ import {
   stageToEnter,
   statusChangeCancelsFollowUp,
 } from '@battlecrm/domain';
-import { and, eq, or } from 'drizzle-orm';
+import { and, eq, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
@@ -65,7 +65,8 @@ import type { Random } from '../random.ts';
 import { answerRefusal, refusal } from '../refusals.ts';
 import { idOf } from '../route-id.ts';
 import { localDateOf } from '../settings/index.ts';
-import { contactSubject, type ContactPlace } from './contact-subject.ts';
+import { contactSubject, presentContact, type ContactPlace } from './contact-subject.ts';
+import { anonymizeContact } from './delete-contact.ts';
 import {
   cancelFollowUp,
   followUpPushed,
@@ -570,7 +571,8 @@ const addContact: Creation<
 
 /** The columns an edit writes, read before it for the inverse. */
 const coordinateColumns = {
-  name: contact.name,
+  // Never null: a deleted Contact is never edited.
+  name: sql<string>`${contact.name}`,
   organizationId: contact.organizationId,
   jobTitle: contact.jobTitle,
   email: contact.email,
@@ -597,7 +599,7 @@ const contactCoordinates: GestureSubject<z.infer<typeof editedCoordinates>> = {
     const [found] = await tx
       .select(coordinateColumns)
       .from(contact)
-      .where(and(eq(contact.userId, userId), eq(contact.id, contactId)));
+      .where(presentContact(userId, contactId));
     return found;
   },
 };
@@ -1465,6 +1467,24 @@ export function createProspecting<Changes>({
     .post('/trials/:id/change-outcome', requireUser, jsonBody(changeTrialOutcomeRequest), (c) =>
       perform(c, changeOutcome, c.req.valid('json')),
     )
+    // Delete the Contact… (spec UX §6.13, ADR 0006): anonymized, confirmed before instead of undone.
+    .post('/contacts/:id/delete', requireUser, async (c) => {
+      const { userId } = c.var;
+      const contactId = idOf(c.req.param('id'));
+      // Another User's Contact, an unknown or deleted one and an id that is none answer alike.
+      if (contactId === null) return answerRefusal(c, refusal('not_found'));
+      const now = clock.now();
+      const outcome = await withUser(userId, async (tx) => {
+        // One at a time with the gestures on the Contact, and their “Undo”.
+        await lockSubject(tx, contactId);
+        if (!(await contactSubject.load(tx, userId, contactId))) return refusal('not_found');
+        return {
+          changes: await changesOf(tx, userId, await anonymizeContact(tx, userId, contactId, now)),
+        };
+      });
+      if ('error' in outcome) return answerRefusal(c, outcome);
+      return c.json(outcome, 200);
+    })
     // Reveal the Assignment (spec UX §6.1): opening “Send to” at a Stage with an open Battle. Not a
     // gesture: nothing takes it back, it stays reserved (ADR 0002).
     .post('/contacts/:id/reveal-assignment', requireUser, async (c) => {

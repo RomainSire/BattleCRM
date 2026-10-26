@@ -38,7 +38,14 @@ import { useApi, type ApiClient } from '../session.ts';
 import { useSessionDraft } from '../session-draft.ts';
 import { CopyButton } from '../settings/copy-button.tsx';
 import { settingsOf } from '../settings/use-settings.ts';
-import { attachmentsOf, todayOf, trialOf, type Summary, type SummaryContact } from '../summary.ts';
+import {
+  countedContacts,
+  attachmentsOf,
+  todayOf,
+  trialOf,
+  type Summary,
+  type SummaryContact,
+} from '../summary.ts';
 import { AttachmentLinks } from './attachment-links.tsx';
 import { lastOutboundOn, lastUseOf } from './cadence.ts';
 import { contactRecordQuery } from './contact-record-query.ts';
@@ -506,7 +513,7 @@ function FollowUpPanel({
   );
   const { day: occurredOn, isValid: isDayValid } = doneDayOf(draft, today);
   const activityGoal = settingsOf(summary).activityGoal.inEffect;
-  const count = activityOn(summary.contacts, today) + 1;
+  const count = activityOn(countedContacts(summary), today) + 1;
   const close = () => {
     clearDraft();
     onClose();

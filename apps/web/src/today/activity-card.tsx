@@ -8,7 +8,7 @@ import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { formatWeekDay } from '../contacts/format.ts';
 import { useLocale, type Locale } from '../i18n.ts';
 import { settingsOf } from '../settings/use-settings.ts';
-import type { Summary } from '../summary.ts';
+import { countedContacts, type Summary } from '../summary.ts';
 import { useHalo } from './celebration.tsx';
 
 /** The weeks the graph shows at least, the current one last (spec UX §5.1): more when the width holds them. */
@@ -89,7 +89,7 @@ function Weeks({ summary, today, locale }: { summary: Summary; today: string; lo
   const { ref, weeks, size } = useWeeksThatFit();
   const first = addDays(mondayOf(today), -7 * (weeks - 1));
   const days = Array.from({ length: 7 * weeks }, (_, index) => addDays(first, index));
-  const counts = new Map(days.map((day) => [day, activityOn(summary.contacts, day)]));
+  const counts = new Map(days.map((day) => [day, activityOn(countedContacts(summary), day)]));
   const busiest = Math.max(1, ...counts.values());
   const narrow = new Intl.DateTimeFormat(locale, { weekday: 'narrow', timeZone: 'UTC' });
   const weekdays = days.slice(0, 7).map((day) => narrow.format(new Date(`${day}T00:00:00Z`)));
@@ -146,7 +146,7 @@ export function ActivityCard({ summary, today }: { summary: Summary; today: stri
   const celebrating = useHalo();
   const locale = useLocale();
   const headingId = useId();
-  const activity = activityOn(summary.contacts, today);
+  const activity = activityOn(countedContacts(summary), today);
   const goal = settingsOf(summary).activityGoal.inEffect;
   return (
     <section

@@ -41,6 +41,7 @@ const battleTrials = z.object({
       outcome: z.enum(['in_progress', 'success', 'no_result', 'canceled']),
       target: z.enum(['consultancy', 'end_client', 'unknown']),
       cancelReason: z.string().nullable(),
+      contactDeleted: z.boolean(),
     }),
   ),
 });
@@ -119,6 +120,7 @@ test('the Trials of a Battle are read on demand, the latest first, with their Co
       outcome: 'in_progress',
       target: 'unknown',
       cancelReason: null,
+      contactDeleted: false,
     }),
     expect.objectContaining({ contactId: claire.id, positioningId: cvA.id }),
   ]);

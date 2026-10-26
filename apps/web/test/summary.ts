@@ -163,6 +163,7 @@ export function summary(
     organizations: [],
     positionings: [],
     battles: [],
+    deletedContactDays: { funnelEntryDays: [], prospectingActionDays: [] },
     ...fields,
     settings: settings(fields.settings, timeZone),
   } satisfies Summary);
@@ -180,5 +181,6 @@ export const changes = (fields: Partial<SummaryChanges> = {}): SummaryChanges =>
     battles: [],
     removedBattleIds: [],
     stages: null,
+    deletedContactDays: null,
     ...fields,
   } satisfies SummaryChanges);

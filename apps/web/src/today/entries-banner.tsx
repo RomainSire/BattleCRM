@@ -9,7 +9,7 @@ import { useAddContact } from '../contacts/add-contact-context.ts';
 import { STATUS_VERB } from '../contacts/status.ts';
 import { settingsOf } from '../settings/use-settings.ts';
 import { Kbd } from '../shell/kbd.tsx';
-import { organizationOf, type Summary, type SummaryContact } from '../summary.ts';
+import { countedContacts, organizationOf, type Summary, type SummaryContact } from '../summary.ts';
 import { TodayContactLink } from './contact-link.tsx';
 
 /**
@@ -17,7 +17,7 @@ import { TodayContactLink } from './contact-link.tsx';
  * success colour once reached, “6/5” past it, without celebration; without a goal, “3 this week”.
  */
 export function EntriesCount({ summary, today }: { summary: Summary; today: string }) {
-  const count = funnelEntriesInWeek(summary.contacts, today);
+  const count = funnelEntriesInWeek(countedContacts(summary), today);
   const goal = settingsOf(summary).entryGoal.inEffect;
   if (goal === null) {
     return (

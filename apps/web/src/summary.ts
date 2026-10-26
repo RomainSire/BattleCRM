@@ -195,6 +195,18 @@ export function hasServed(summary: Summary, stage: SummaryStage): boolean {
   );
 }
 
+/**
+ * What the Activity of a day and the Entries of a week are counted on: every Contact, and the days the
+ * deleted ones still count on (ADR 0006), which no longer change.
+ */
+export function countedContacts(
+  summary: Pick<Summary, 'contacts' | 'deletedContactDays'>,
+): readonly Pick<SummaryContact, 'funnelEntryDays' | 'prospectingActionDays'>[] {
+  // Fallback: a summary kept on the device by a version from before deletion carries none.
+  const deleted: Summary['deletedContactDays'] | undefined = summary.deletedContactDays;
+  return deleted ? [...summary.contacts, deleted] : summary.contacts;
+}
+
 /** Frozen from its first Trial (CONTEXT.md, Positioning). */
 export const isFrozen = ({ trialCount }: SummaryPositioning) => trialCount > 0;
 
@@ -207,7 +219,8 @@ export function attachmentsOf(positioning: SummaryPositioning): SummaryPositioni
 
 /**
  * Puts the rows a gesture answered with into the summary, instead of reading it all again; the
- * records of the Contacts it changed, beyond the summary, are read again when shown.
+ * records of the Contacts it changed, beyond the summary, are read again when shown, the ones of
+ * the Contacts it removed forgotten.
  */
 export async function applySummaryChanges(
   queryClient: QueryClient,
@@ -215,6 +228,10 @@ export async function applySummaryChanges(
 ): Promise<void> {
   for (const { id } of changes.contacts) {
     void queryClient.invalidateQueries({ queryKey: contactRecordKey(id) });
+  }
+  // A deleted Contact leaves nothing of its record on the device (ADR 0006).
+  for (const id of changes.removedContactIds) {
+    queryClient.removeQueries({ queryKey: contactRecordKey(id) });
   }
   // Fallback: an answer from a version from before Battles carries none.
   const battlesChanged: SummaryBattle[] | undefined = changes.battles;
@@ -251,12 +268,16 @@ export async function applySummaryChanges(
   // The whole Funnel, when the gesture changed it. Fallback: an answer from a version from before
   // carries none.
   const answeredStages: SummaryStage[] | null | undefined = changes.stages;
+  // The days of the deleted Contacts, when the gesture deleted one. Fallback: likewise.
+  const answeredDeleted: Summary['deletedContactDays'] | null | undefined =
+    changes.deletedContactDays;
   queryClient.setQueryData<Summary>(
     SUMMARY_KEY,
     (summary) =>
       summary && {
         ...summary,
         stages: answeredStages ?? summary.stages,
+        deletedContactDays: answeredDeleted ?? summary.deletedContactDays,
         contacts: [
           ...changes.contacts,
           ...summary.contacts.filter((contact) => !replacedContacts.has(contact.id)),
