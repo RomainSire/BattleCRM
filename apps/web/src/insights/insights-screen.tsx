@@ -137,7 +137,7 @@ function TopFigures({
   );
 }
 
-/** The Insights screen (spec UX §5.7): the period, the effort, the Activity, the Funnel. */
+/** The Insights screen (spec UX §5.7): the period, the effort, the Funnel, the Activity. */
 export function InsightsScreen({
   period,
   onPeriodChange,
@@ -171,8 +171,8 @@ export function InsightsScreen({
       {summary && insights && (
         <>
           <TopFigures insights={insights} summary={summary} locale={locale} />
-          <ActivitySection activity={insights.activity} locale={locale} />
           <FunnelSection funnel={insights.funnel} summary={summary} locale={locale} />
+          <ActivitySection activity={insights.activity} locale={locale} />
         </>
       )}
     </Screen>
