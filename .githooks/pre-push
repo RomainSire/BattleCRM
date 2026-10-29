@@ -1,0 +1,4 @@
+#!/bin/sh
+# The full check before anything leaves this machine (needs the dev Postgres up).
+# Skip it once with `git push --no-verify`.
+exec pnpm check

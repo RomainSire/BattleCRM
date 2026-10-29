@@ -9,3 +9,4 @@ export {
 } from './database.ts';
 export { violates } from './constraints.ts';
 export { runMigrations } from './migrations.ts';
+export { assertPostgresReachable } from './reachable.ts';

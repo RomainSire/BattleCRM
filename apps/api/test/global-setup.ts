@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Client, type QueryResult, type QueryResultRow } from 'pg';
 import type { TestProject } from 'vitest/node';
 
-import { runMigrations } from '../src/db/index.ts';
+import { assertPostgresReachable, runMigrations } from '../src/db/index.ts';
 import { appUrl, ownerUrl, superuserUrl } from './postgres.ts';
 
 declare module 'vitest' {
@@ -17,6 +17,7 @@ export default async function setup(project: TestProject): Promise<() => Promise
   const database = `battlecrm_test_${randomUUID().replaceAll('-', '')}`;
   const drop = () =>
     run(superuserUrl('postgres'), `drop database if exists ${database} with (force)`);
+  await assertPostgresReachable(superuserUrl('postgres'));
   await run(superuserUrl('postgres'), `create database ${database} owner battlecrm_owner`);
   try {
     await runMigrations(ownerUrl(database), new URL('../drizzle', import.meta.url).pathname);
