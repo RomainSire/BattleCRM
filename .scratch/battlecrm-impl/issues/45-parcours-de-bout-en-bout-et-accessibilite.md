@@ -4,11 +4,11 @@
 
 **Blocked by:** 04, 11, 41, 43
 
-**Status:** ready-for-human
+**Status:** resolved
 
 - [x] Parcours e2e : 2FA ; Contact → Battle → Interaction → Annuler ; kanban à la souris et au clavier ; hors ligne ; changement de `X-App-Version` ; Aujourd'hui
 - [x] axe bloquant sur chaque écran, dans les deux thèmes (complète ce que chaque ticket a posé)
-- [ ] `docs/a11y-checklist.md` : lecteur d'écran, zoom 400 % (reflow, kanban et tableaux qui défilent), focus jamais masqué, cibles ; passée une fois sur chaque écran, écarts corrigés ou consignés dans la spec UX §1 avec leur motif
+- [x] `docs/a11y-checklist.md` : lecteur d'écran, zoom 400 % (reflow, kanban et tableaux qui défilent), focus jamais masqué, cibles ; passée une fois sur chaque écran, écarts corrigés ou consignés dans la spec UX §1 avec leur motif
 
 ## Comments
 
@@ -23,3 +23,4 @@
 - **Limites de Playwright sous Firefox** : une page chargée hors ligne n'entend pas `online` (le retour en ligne reste aux tests de composant), et le thème système émulé se perd à la navigation (réappliqué après chaque `goto`). En local, `forgetRateLimits` vide les compteurs par adresse avant le parcours 2FA : tous les tests viennent de l'adresse de Traefik.
 - **Hors ticket, constaté** : 3 tests de l'API échouent sur `main` (`add-contact.test.ts`, `delete-contact.test.ts`). Ils viennent du ticket 44, dont les tests n'avaient pas tourné.
 
+**2026-10-29, clôture.** L'écoute au lecteur d'écran (Orca ou NVDA) est abandonnée, sur décision de Romain : il n'a pas de lecteur d'écran et l'enjeu est faible pour une app à un seul Utilisateur. Le reste de la liste est passé, et les vérifications manuelles de Romain n'ont relevé aucun écart. La 3ᵉ case est cochée avec cette réserve, notée dans `docs/a11y-checklist.md`. Les 3 tests de l'API en échec signalés ci-dessus ont été corrigés par `219125b`. Fin de l'implémentation.
