@@ -1,0 +1,9 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  // Node scripts, one of which runs a function in the browser through Playwright: DOM types too.
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["*.ts"]
+}

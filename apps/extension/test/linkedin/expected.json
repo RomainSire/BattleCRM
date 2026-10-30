@@ -1,0 +1,48 @@
+{
+  "profile-contract-type.html": {
+    "url": "https://www.linkedin.com/in/camille-durand/overlay/contact-info/",
+    "name": "Camille Durand",
+    "jobTitle": "Chargé d'affaires",
+    "organizationName": "Altémis Conseil",
+    "email": "camille.durand@exemple.fr",
+    "phone": null
+  },
+  "profile-accented-slug.html": {
+    "url": "https://www.linkedin.com/in/ga%C3%ABtan-lef%C3%A8vre-b7c41e2d/",
+    "name": "Gaëtan Lefèvre",
+    "jobTitle": "Gérant",
+    "organizationName": "VOLTÉO",
+    "email": null,
+    "phone": null
+  },
+  "profile-accented-slug-contact-info.html": {
+    "url": "https://www.linkedin.com/in/ga%C3%ABtan-lef%C3%A8vre-b7c41e2d/overlay/contact-info/",
+    "name": "Gaëtan Lefèvre",
+    "jobTitle": "Gérant",
+    "organizationName": "VOLTÉO",
+    "email": "gaetan.lefevre@exemple.fr",
+    "phone": "0611223344"
+  },
+  "profile-no-experience.html": {
+    "url": "https://www.linkedin.com/in/in%C3%A8s-l-c83e9a51f/",
+    "name": "Inès L.",
+    "jobTitle": "Élève ingénieure",
+    "organizationName": null,
+    "email": null,
+    "phone": null
+  },
+  "profile-out-of-network.html": {
+    "url": "https://www.linkedin.com/in/julien-moreau-482915307/",
+    "name": "Julien Moreau",
+    "jobTitle": "Ingénieur technico-commercial",
+    "organizationName": "ingeo5",
+    "email": null,
+    "phone": null
+  },
+  "search-people.html": {
+    "url": "https://www.linkedin.com/search/results/people/?keywords=ing%C3%A9nieur%20d%27affaires"
+  },
+  "search-people-page-2.html": {
+    "url": "https://www.linkedin.com/search/results/people/?keywords=ing%C3%A9nieur%20d%27affaires&page=2"
+  }
+}

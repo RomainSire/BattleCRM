@@ -17,7 +17,7 @@ Une **spec de l'extension Firefox** (`.scratch/battlecrm-extension/spec.md`, sur
   - Fonctions : présence et ajout sur un profil, pastille de présence sur la recherche, connexion et déconnexion, réglages minimaux, « Ouvrir sa fiche » vers l'app.
   - Présence vérifiée par un **endpoint de lecture dédié**, léger et par lots, plutôt que par le chargement du résumé complet (ADR 0012).
   - Le formulaire d'ajout **part de l'ajout rapide de la SPA** (spec UX §6 : Vivier par défaut, En prospection à une Étape, ou Allié ; Organisation filtrée ou créée avec son type). La seule nouveauté est le pré-remplissage par scraping.
-  - Les pages LinkedIn enregistrées vont dans **`.private/linkedin/`** (git-ignoré, pas d'anonymisation) : elles ne sortent jamais de là.
+  - Les pages LinkedIn enregistrées vont dans **`.private/linkedin/`** (git-ignoré, pas d'anonymisation) : elles ne sortent jamais de là ; seules leurs copies anonymisées par script vont dans git ([Fixtures de test du scraping](issues/10-fixtures-de-test-du-scraping.md)).
 - **Règle de Romain** : rien d'obligatoire à la main (vérifications, recettes), mais on suggère de le faire.
 - Skills : `grilling` + `domain-modeling` par défaut, `prototype` et `research` pour les tickets de ces types. Vocabulaire strict de `CONTEXT.md` (Contact, jamais « prospect »).
 
@@ -34,6 +34,8 @@ Une **spec de l'extension Firefox** (`.scratch/battlecrm-extension/spec.md`, sur
 - [Formulaire d'ajout depuis LinkedIn](issues/07-formulaire-d-ajout.md) : l'ajout rapide de la SPA, tous champs visibles, URL LinkedIn affichée et désactivée ; Organisation reprise si même nom normalisé, sinon nouvelle avec type obligatoire ; Vivier par défaut, pas de `Ctrl Entrée` ; Contacts du même nom signalés sans bloquer ; « Relire la page » ; brouillon perdu au changement de profil ; après l'ajout, carte du Contact et « Annuler ».
 - [Contrat d'API : présence et ajout](issues/08-contrat-presence-et-ajout.md) : deux lectures dans `views`, `POST /contacts/presence` (lots de 50, id et État) et `GET /contacts/linkedin-profile` (la carte, ou Contacts du même nom, Organisations et Étapes pour le formulaire) ; URL normalisées par le serveur ; Archivé trouvé, anonymisé jamais ; dernier échange fait sur la carte ; ajout et « Annuler » par les endpoints existants, sans changement ; `bearer` en première exigence de la spec, pas en ticket.
 - [Quand LinkedIn change son DOM](issues/09-quand-linkedin-change-son-dom.md) : une seule lecture, pas de cascade ; page illisible = pas de nom sur un profil, aucun résultat sur une recherche (champs vides sinon silencieux) ; la présence vient de l'URL, donc carte et badge restent justes ; formulaire vide avec une alerte non bloquante, message dans la sidebar pour la recherche, rien dans la page ; `console.warn` et une recette de quatre points suggérée, jamais obligatoire, rien vers l'API.
+
+- [Fixtures de test du scraping](issues/10-fixtures-de-test-du-scraping.md) : les 7 copies de l'inspecteur, anonymisées par liste blanche (textes, liens, identifiants remplacés, garde-fou qui échoue sur toute fuite) par `apps/extension/scripts/anonymize-linkedin.ts`, dans `apps/extension/test/linkedin/` avec `expected.json` ; configuration réelle dans `.private/` ; cas limites par modification du DOM dans le test ; lecture sur un `Document` ; plus de jeu local sur les vraies pages.
 
 ## Pas encore spécifié
 

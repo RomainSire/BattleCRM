@@ -10,3 +10,5 @@ packages/i18n/src/paraglide/
 # Managed by inlang itself, except its settings.
 packages/i18n/project.inlang/*
 !packages/i18n/project.inlang/settings.json
+# Anonymised LinkedIn pages, written by apps/extension/scripts/anonymize-linkedin.ts.
+apps/extension/test/linkedin/*.html
