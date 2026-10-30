@@ -26,6 +26,7 @@ Une **spec de l'extension Firefox** (`.scratch/battlecrm-extension/spec.md`, sur
 
 - [Surfaces d'interface d'une extension Firefox MV3](issues/01-surfaces-ui-firefox-mv3.md) : seule la sidebar reste ouverte pendant le copier-coller, mais elle n'a pas de badge et s'ouvre seulement par un geste ; le popup se ferme au clic dans la page ; la fenêtre détachée passe derrière ; tout appel d'API passe par le background ; seule la host permission LinkedIn est nécessaire.
 - [Outillage d'une extension Firefox MV3 en 2026](issues/02-stack-extension-firefox.md) : WXT 0.21 (seul outil vivant) construit avec Vite 8 et TS 7 ; background en event page ; DOM natif pour une pastille injectée (React + Tailwind en Shadow DOM : 72 kB et React Aria expérimental) ; scraping testable en Vitest mode navigateur dans Firefox, bout en bout seulement par Puppeteer et fragile ; signature `unlisted`, version jamais réutilisée et sans suffixe.
+- [Enregistrer des pages LinkedIn de référence](issues/03-enregistrer-pages-linkedin.md) : 4 profils, la fenêtre « Coordonnées » et 2 pages de recherche sont dans `.private/linkedin/` ; seules les copies du DOM depuis l'inspecteur font référence (les enregistrements Firefox n'ont ni Expérience, ni Formation, ni Coordonnées) ; les résultats de recherche portent leur lien `/in/<slug>`.
 
 ## Pas encore spécifié
 
