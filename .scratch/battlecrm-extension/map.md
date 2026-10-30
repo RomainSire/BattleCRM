@@ -18,6 +18,7 @@ Une **spec de l'extension Firefox** (`.scratch/battlecrm-extension/spec.md`, sur
   - Présence vérifiée par un **endpoint de lecture dédié**, léger et par lots, plutôt que par le chargement du résumé complet (ADR 0012).
   - Le formulaire d'ajout **part de l'ajout rapide de la SPA** (spec UX §6 : Vivier par défaut, En prospection à une Étape, ou Allié ; Organisation filtrée ou créée avec son type). La seule nouveauté est le pré-remplissage par scraping.
   - Les pages LinkedIn enregistrées vont dans **`.private/linkedin/`** (git-ignoré, pas d'anonymisation) : elles ne sortent jamais de là.
+- **Règle de Romain** : rien d'obligatoire à la main (vérifications, recettes), mais on suggère de le faire.
 - Skills : `grilling` + `domain-modeling` par défaut, `prototype` et `research` pour les tickets de ces types. Vocabulaire strict de `CONTEXT.md` (Contact, jamais « prospect »).
 
 ## Decisions so far
@@ -32,13 +33,11 @@ Une **spec de l'extension Firefox** (`.scratch/battlecrm-extension/spec.md`, sur
 - [Où vit l'interface et ce qu'elle montre](issues/06-surfaces-et-gestes.md) : sidebar ouverte et fermée par l'icône ; présence par le badge de l'icône et un élément juste après le nom ; carte complète d'un Contact existant avec « Ouvrir sa fiche » ; sur la recherche, pastille logo et État en ligne après le nom, qui ouvre la fiche ; connexion mot de passe puis code dans la sidebar. Les six points de Firefox sont vérifiés ; Firefox refuse d'ouvrir la sidebar depuis la page, donc l'élément ne fait qu'informer.
 - [Formulaire d'ajout depuis LinkedIn](issues/07-formulaire-d-ajout.md) : l'ajout rapide de la SPA, tous champs visibles, URL LinkedIn affichée et désactivée ; Organisation reprise si même nom normalisé, sinon nouvelle avec type obligatoire ; Vivier par défaut, pas de `Ctrl Entrée` ; Contacts du même nom signalés sans bloquer ; « Relire la page » ; brouillon perdu au changement de profil ; après l'ajout, carte du Contact et « Annuler ».
 - [Contrat d'API : présence et ajout](issues/08-contrat-presence-et-ajout.md) : deux lectures dans `views`, `POST /contacts/presence` (lots de 50, id et État) et `GET /contacts/linkedin-profile` (la carte, ou Contacts du même nom, Organisations et Étapes pour le formulaire) ; URL normalisées par le serveur ; Archivé trouvé, anonymisé jamais ; dernier échange fait sur la carte ; ajout et « Annuler » par les endpoints existants, sans changement ; `bearer` en première exigence de la spec, pas en ticket.
+- [Quand LinkedIn change son DOM](issues/09-quand-linkedin-change-son-dom.md) : une seule lecture, pas de cascade ; page illisible = pas de nom sur un profil, aucun résultat sur une recherche (champs vides sinon silencieux) ; la présence vient de l'URL, donc carte et badge restent justes ; formulaire vide avec une alerte non bloquante, message dans la sidebar pour la recherche, rien dans la page ; `console.warn` et une recette de quatre points suggérée, jamais obligatoire, rien vers l'API.
 
 ## Pas encore spécifié
 
-- **Tests sans fixtures dans le repo** : les pages réelles restent dans `.private/`, donc ni la CI ni `pnpm check` ne les voient. Il faudra des fixtures synthétiques minimales (structure seule) dérivées des vraies, ou des tests de scraping seulement locaux. Les fixtures doivent reproduire ce qu'utilise la lecture (clés `componentkey` avec le slug, ligne « - aujourd’hui », `role="listitem"`). Elles tournent dans l'instance Firefox du projet Vitest `extension` (décision « Stack de l'extension »).
-- **Quand LinkedIn change son DOM** : comment on s'en aperçoit (erreur visible, champ vide, alerte) et ce que voit l'Utilisateur quand le scraping ou la pastille échouent. Le prototype l'a montré : le nom lu au mauvais endroit est passé inaperçu jusqu'à l'essai sur le vrai LinkedIn. Option soulevée par Romain : un bouton « Lire la page (IA) » qui envoie le HTML à un modèle avec une clé d'API ; à peser (coût, clé, données de tiers envoyées à un fournisseur, latence) contre une lecture par repères de contenu (titre de la page, texte « aujourd’hui », liens `/company/` et `mailto:`) plutôt que par clés.
-- **Livraison** : intégrer la signature AMO à la livraison par tag (ADR 0013), avec les secrets, le numéro de version partagé avec l'app et la montée de `MIN_EXTENSION_VERSION`. AMO refuse à jamais une version déjà envoyée et tout suffixe (`-rc.1`) : comment cela s'accorde-t-il avec les versions de l'app ? Mises à jour automatiques par `update_url` ; et où l'Utilisateur récupère le `.xpi` (page Réglages ? lien de release ?).
-- **Rédiger la spec** (`spec.md` et ses `ST-xx`) une fois les décisions prises.
+Rien : le reste du chemin est en tickets (2026-10-30).
 
 ## Hors périmètre
 
@@ -47,3 +46,4 @@ Une **spec de l'extension Firefox** (`.scratch/battlecrm-extension/spec.md`, sur
 - Modifier un Contact depuis l'extension : « Ouvrir sa fiche » renvoie vers l'app.
 - Gestes du Funnel depuis LinkedIn (utiliser un Positionnement, noter une Interaction, Prendre des nouvelles…) : futur chantier.
 - Plusieurs instances (URL saisie à la connexion).
+- « Lire la page (IA) » (HTML envoyé à un modèle) : données de tiers chez un fournisseur, clé d'API, coût et latence, pour un formulaire qui se remplit déjà à la main ([Quand LinkedIn change son DOM](issues/09-quand-linkedin-change-son-dom.md)).
