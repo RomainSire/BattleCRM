@@ -1,5 +1,6 @@
 import { funnelOf } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { cn } from 'cn';
@@ -7,8 +8,6 @@ import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react';
 
 import { CloseBattlePanel } from '../battles/close-battle-panel.tsx';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useAddContact } from '../contacts/add-contact-context.ts';
 import { ContactName } from '../contacts/contact-name.tsx';
 import {

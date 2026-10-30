@@ -1,11 +1,11 @@
 import { setLocale } from '@battlecrm/i18n/runtime';
+import { toasts } from '@battlecrm/ui';
 import { del } from 'idb-keyval';
 import { beforeEach, vi } from 'vitest';
 import { commands } from 'vitest/browser';
 import { cleanup } from 'vitest-browser-react/pure';
 
 import { appUpdate } from '../src/app-update.tsx';
-import { toasts } from '../src/components/ui/toast.tsx';
 import { DEVICE_DATA_KEY } from '../src/device-data.ts';
 
 import '../src/index.css';

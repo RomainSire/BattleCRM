@@ -1,9 +1,9 @@
 import { m } from '@battlecrm/i18n';
+import { Button } from '@battlecrm/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Keyboard, Plus, Search } from 'lucide-react';
 import { useId } from 'react';
 
-import { Button } from '../components/ui/button.tsx';
 import { usePalette } from '../palette/palette-context.ts';
 import { useApi } from '../session.ts';
 import { hasConclusiveBattle, summaryQuery } from '../summary.ts';

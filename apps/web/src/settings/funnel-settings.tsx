@@ -1,6 +1,18 @@
 import { STAGE_AIM_MAX_LENGTH, STAGE_NAME_MAX_LENGTH } from '@battlecrm/contract';
 import { funnelOf } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import {
+  Button,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Dialog,
+  ErrorMessage,
+  FieldErrorMessage,
+  Input,
+} from '@battlecrm/ui';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
@@ -18,17 +30,6 @@ import {
   useDragAndDrop,
 } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import {
-  DialogClose,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Dialog,
-} from '../components/ui/dialog.tsx';
-import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
-import { Input } from '../components/ui/input.tsx';
 import { useSendGesture } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';
 import { useIsOnline } from '../online.ts';

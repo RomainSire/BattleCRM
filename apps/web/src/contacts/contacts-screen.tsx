@@ -1,20 +1,20 @@
 import type { ContactStatus } from '@battlecrm/contract';
 import { contactsMatching } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import {
+  Button,
+  ErrorMessage,
+  Input,
+  SegmentedControl,
+  SegmentedControlItem,
+  SegmentedControlItems,
+} from '@battlecrm/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Navigate, useNavigate, useSearch } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { useDeferredValue, useRef, useState } from 'react';
 import { SearchField } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
-import { Input } from '../components/ui/input.tsx';
-import {
-  SegmentedControl,
-  SegmentedControlItem,
-  SegmentedControlItems,
-} from '../components/ui/segmented-control.tsx';
 import { useLocale } from '../i18n.ts';
 import { Screen } from '../screens/screen.tsx';
 import { useApi } from '../session.ts';

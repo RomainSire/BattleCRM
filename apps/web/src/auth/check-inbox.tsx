@@ -1,9 +1,9 @@
 import { SIGNUP_RESEND_DELAY_SECONDS } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
+import { Button } from '@battlecrm/ui';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
-import { Button } from '../components/ui/button.tsx';
 import { useApi } from '../session.ts';
 import { AuthScreen } from './auth-layout.tsx';
 

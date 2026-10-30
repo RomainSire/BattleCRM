@@ -1,21 +1,19 @@
 import { ORGANIZATION_TYPES, type OrganizationType } from '@battlecrm/contract';
 import { normalizeName, organizationsMatching, type Target } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
-
 import {
   Combobox,
   ComboboxContent,
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
-} from '../components/ui/combobox.tsx';
-import { FieldErrorMessage } from '../components/ui/error-message.tsx';
-import { Label } from '../components/ui/label.tsx';
-import {
+  FieldErrorMessage,
+  Label,
   SegmentedControl,
   SegmentedControlItem,
   SegmentedControlItems,
-} from '../components/ui/segmented-control.tsx';
+} from '@battlecrm/ui';
+
 import type { SummaryOrganization } from '../summary.ts';
 
 /** The type of an Organization as the User reads it. */

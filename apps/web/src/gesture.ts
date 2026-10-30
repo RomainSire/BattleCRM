@@ -1,6 +1,6 @@
+import { notify } from '@battlecrm/ui';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 
-import { notify } from './components/ui/toast.tsx';
 import { applySummaryChanges, SUMMARY_KEY, type Summary, type SummaryChanges } from './summary.ts';
 import { celebrateIfReached, originOf } from './today/celebration.tsx';
 import { notifyGesture } from './undo.tsx';

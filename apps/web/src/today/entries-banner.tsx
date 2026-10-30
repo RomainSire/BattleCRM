@@ -1,10 +1,9 @@
 import { funnelEntriesInWeek } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { cn } from 'cn';
 import { useId } from 'react';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useAddContact } from '../contacts/add-contact-context.ts';
 import { STATUS_VERB } from '../contacts/status.ts';
 import { settingsOf } from '../settings/use-settings.ts';

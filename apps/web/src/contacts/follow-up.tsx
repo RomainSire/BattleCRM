@@ -8,6 +8,19 @@ import {
   personalized,
 } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import {
+  Button,
+  ErrorMessage,
+  FieldErrorMessage,
+  Input,
+  Label,
+  MenuItem,
+  MoreActions,
+  SegmentedControl,
+  SegmentedControlItem,
+  SegmentedControlItems,
+  notify,
+} from '@battlecrm/ui';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useId, useRef } from 'react';
@@ -15,22 +28,11 @@ import { Form, TextField } from 'react-aria-components';
 import { z } from 'zod';
 
 import { CHANNEL_LABEL } from '../channel.ts';
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
 import {
   GesturePanel,
   GesturePanelBody,
   GesturePanelFooter,
 } from '../components/ui/gesture-panel.tsx';
-import { Input } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
-import { MenuItem, MoreActions } from '../components/ui/menu.tsx';
-import {
-  SegmentedControl,
-  SegmentedControlItem,
-  SegmentedControlItems,
-} from '../components/ui/segmented-control.tsx';
-import { notify } from '../components/ui/toast.tsx';
 import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale, type Locale } from '../i18n.ts';
 import { submitIfOnline, useIsOnline } from '../online.ts';

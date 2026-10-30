@@ -1,9 +1,8 @@
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useLocale } from '../i18n.ts';
 import { useApi } from '../session.ts';
 import { authLinkClass, AuthScreen } from './auth-layout.tsx';

@@ -6,9 +6,9 @@ import {
   type ContactAgenda,
 } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import { Button } from '@battlecrm/ui';
 import { cn } from 'cn';
 
-import { Button } from '../components/ui/button.tsx';
 import type { Locale } from '../i18n.ts';
 import { positioningsOf, trialOf, type Summary, type SummaryContact } from '../summary.ts';
 import {

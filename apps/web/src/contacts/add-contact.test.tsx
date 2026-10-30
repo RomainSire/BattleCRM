@@ -1,3 +1,4 @@
+import { notify } from '@battlecrm/ui';
 import { get } from 'idb-keyval';
 import { afterEach, expect, test, vi } from 'vitest';
 import { commands, page, userEvent } from 'vitest/browser';
@@ -6,7 +7,6 @@ import { expectNoAxeViolations } from '../../test/axe.ts';
 import { fakeApi } from '../../test/fake-api.ts';
 import { renderApp } from '../../test/render-app.tsx';
 import { changes, contact, stage, summary } from '../../test/summary.ts';
-import { notify } from '../components/ui/toast.tsx';
 import { DEVICE_DATA_KEY } from '../device-data.ts';
 import type { SummaryContact } from '../summary.ts';
 

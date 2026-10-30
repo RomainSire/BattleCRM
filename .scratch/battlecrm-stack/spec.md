@@ -43,6 +43,7 @@ extension Firefox (plus tard) ─► /api/* en jeton bearer
 | `packages/contract` | schémas Zod écrits à la main, types de l'API |
 | `packages/theme` | jetons Tailwind partagés par web et site |
 | `packages/i18n` | un seul projet Paraglide : app, landing, e-mails |
+| `packages/ui` | primitives d'interface partagées par la SPA et l'extension (spec extension §9) |
 
 - **TypeScript 7** (`tsc -b` : le binaire de TS 7 stable s'appelle `tsc`, `tsgo` était celui de la préversion), `tsconfig.base.json` racine ; `apps/site` reste en TS 6 pour `astro check` jusqu'à son portage. Options : `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `noPropertyAccessFromIndexSignature`, `verbatimModuleSyntax`, `erasableSyntaxOnly` (ni `enum` ni `namespace`).
 - **Lint** : Oxlint en mode typé, règles natives seules. **Format** : Prettier + `prettier-plugin-tailwindcss`.

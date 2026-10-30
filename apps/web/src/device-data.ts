@@ -1,8 +1,8 @@
+import { toasts } from '@battlecrm/ui';
 import type { QueryClient } from '@tanstack/react-query';
 import type { PersistQueryClientOptions } from '@tanstack/react-query-persist-client';
 import { del, get, set } from 'idb-keyval';
 
-import { toasts } from './components/ui/toast.tsx';
 import { SUMMARY_KEY } from './summary.ts';
 
 /** Where IndexedDB keeps the working summary: the only copy of a User's data on a device (ST-04). */

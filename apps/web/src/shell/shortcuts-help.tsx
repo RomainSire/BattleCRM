@@ -1,7 +1,7 @@
 import { m } from '@battlecrm/i18n';
+import { Dialog, DialogHeader, DialogTitle } from '@battlecrm/ui';
 import { Fragment, useId, type ReactNode } from 'react';
 
-import { Dialog, DialogHeader, DialogTitle } from '../components/ui/dialog.tsx';
 import { useSettings } from '../settings/use-settings.ts';
 import { GO_TO_KEYS } from './go-to.tsx';
 import { experimentation, prospecting, settings } from './navigation.ts';

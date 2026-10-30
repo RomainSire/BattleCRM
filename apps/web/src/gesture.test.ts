@@ -1,9 +1,9 @@
+import { toasts } from '@battlecrm/ui';
 import { QueryClient } from '@tanstack/react-query';
 import { afterEach, expect, test } from 'vitest';
 
 import { changes, contact, organization, summary } from '../test/summary.ts';
 import { createApiClient } from './api-client.ts';
-import { toasts } from './components/ui/toast.tsx';
 import { sendGesture } from './gesture.ts';
 import { SUMMARY_KEY, type Summary } from './summary.ts';
 

@@ -1,37 +1,34 @@
 import { ORGANIZATION_NAME_MAX_LENGTH, type OrganizationType } from '@battlecrm/contract';
 import { normalizeName, organizationsMatching } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
-import { cn } from 'cn';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { Form, TextField } from 'react-aria-components';
-
-import { Button } from '../components/ui/button.tsx';
 import {
+  Button,
   Combobox,
   ComboboxContent,
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
-} from '../components/ui/combobox.tsx';
-import {
   Dialog,
   DialogClose,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../components/ui/dialog.tsx';
-import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
-import { OfflineNote } from '../components/ui/offline-note.tsx';
-import { Input } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
-import {
+  ErrorMessage,
+  FieldErrorMessage,
+  Input,
+  Label,
   SegmentedControl,
   SegmentedControlItem,
   SegmentedControlItems,
-} from '../components/ui/segmented-control.tsx';
+} from '@battlecrm/ui';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { cn } from 'cn';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Form, TextField } from 'react-aria-components';
+
+import { OfflineNote } from '../components/ui/offline-note.tsx';
 import { ContactName } from '../contacts/contact-name.tsx';
 import { ORGANIZATION_TYPE_LABEL } from '../contacts/organization-field.tsx';
 import { prospectingStageOf, STATUS_LABEL } from '../contacts/status.ts';

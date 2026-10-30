@@ -1,3 +1,4 @@
+import { use } from 'react';
 import type * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from 'cn';
@@ -8,7 +9,7 @@ import {
   type LinkProps as LinkPrimitiveProps,
 } from 'react-aria-components';
 
-import { useIsOnline } from '../../online.ts';
+import { OnlineContext } from './online.ts';
 
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-control border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all focus-ring select-none active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -58,7 +59,7 @@ function Button({
     /** It saves at once, without a form: disabled offline, as a submit button is. */
     saves?: boolean;
   }) {
-  const isOnline = useIsOnline();
+  const isOnline = use(OnlineContext);
   return (
     <ButtonPrimitive
       data-slot="button"

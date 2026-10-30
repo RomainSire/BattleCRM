@@ -1,9 +1,6 @@
 import { m } from '@battlecrm/i18n';
+import { FieldErrorMessage, Input, Label } from '@battlecrm/ui';
 import { TextField } from 'react-aria-components';
-
-import { FieldErrorMessage } from '../components/ui/error-message.tsx';
-import { Input } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
 
 /** The address of an account, as every authentication screen asks for it. */
 export function EmailField({

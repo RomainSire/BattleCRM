@@ -1,9 +1,9 @@
 import type { Insights } from '@battlecrm/contract';
 import { addDays, mondayOf } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import { Button } from '@battlecrm/ui';
 import { useId, useState } from 'react';
 
-import { Button } from '../components/ui/button.tsx';
 import { formatLocalDay } from '../contacts/format.ts';
 import type { Locale } from '../i18n.ts';
 import { Caption, DayGrid, formatChartDay, WeekBars } from './charts.tsx';

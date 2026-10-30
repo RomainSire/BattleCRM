@@ -1,19 +1,16 @@
 import { TAKEAWAY_MAX_LENGTH } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage, Label, Textarea } from '@battlecrm/ui';
 import { cn } from 'cn';
 import { ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import { Form, TextField } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import {
   GesturePanel,
   GesturePanelBody,
   GesturePanelFooter,
 } from '../components/ui/gesture-panel.tsx';
-import { Label } from '../components/ui/label.tsx';
-import { Textarea } from '../components/ui/textarea.tsx';
 import { formatLocalDay } from '../contacts/format.ts';
 import { useSendGesture } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';

@@ -1,10 +1,9 @@
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { STATUS_VERB } from '../contacts/status.ts';
 import { useApi } from '../session.ts';
 import { organizationOf, type Summary, type SummaryContact } from '../summary.ts';

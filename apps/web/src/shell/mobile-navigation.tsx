@@ -1,7 +1,7 @@
 import { m } from '@battlecrm/i18n';
+import { Button } from '@battlecrm/ui';
 import { Search } from 'lucide-react';
 
-import { Button } from '../components/ui/button.tsx';
 import { usePalette } from '../palette/palette-context.ts';
 import { Brand } from './logo.tsx';
 import { NavLink } from './nav-link.tsx';

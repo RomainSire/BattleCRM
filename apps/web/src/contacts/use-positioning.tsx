@@ -13,6 +13,15 @@ import {
   stageToEnter,
 } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import {
+  Button,
+  ErrorMessage,
+  Input,
+  Label,
+  SegmentedControl,
+  SegmentedControlItem,
+  SegmentedControlItems,
+} from '@battlecrm/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useId } from 'react';
@@ -20,20 +29,11 @@ import { Form, TextField } from 'react-aria-components';
 import { z } from 'zod';
 
 import { CHANNEL_LABEL } from '../channel.ts';
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import {
   GesturePanel,
   GesturePanelBody,
   GesturePanelFooter,
 } from '../components/ui/gesture-panel.tsx';
-import { Input } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
-import {
-  SegmentedControl,
-  SegmentedControlItem,
-  SegmentedControlItems,
-} from '../components/ui/segmented-control.tsx';
 import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';
 import { ALL_TARGETS, TARGET_OPTION } from '../battles/open-battle-panel.tsx';

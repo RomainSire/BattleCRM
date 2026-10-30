@@ -1,20 +1,16 @@
 import { TAKEAWAY_MAX_LENGTH, type Verdict } from '@battlecrm/contract';
 import { judgeVerdict, proposedVerdict, type WinRule } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import { Button, Checkbox, ErrorMessage, FieldErrorMessage, Label, Textarea } from '@battlecrm/ui';
 import { cn } from 'cn';
 import { useState } from 'react';
 import { Form, Radio, RadioGroup, Text, TextField } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { Checkbox } from '../components/ui/checkbox.tsx';
-import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
 import {
   GesturePanel,
   GesturePanelBody,
   GesturePanelFooter,
 } from '../components/ui/gesture-panel.tsx';
-import { Label } from '../components/ui/label.tsx';
-import { Textarea } from '../components/ui/textarea.tsx';
 import { useSendGesture } from '../gesture.ts';
 import { useApi } from '../session.ts';
 import { trialCountsOf, winRuleOf, type Summary, type SummaryBattle } from '../summary.ts';

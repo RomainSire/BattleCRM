@@ -1,11 +1,10 @@
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { LogOut } from 'lucide-react';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { clearDeviceData } from '../device-data.ts';
 import { sessionQuery, useApi } from '../session.ts';
 

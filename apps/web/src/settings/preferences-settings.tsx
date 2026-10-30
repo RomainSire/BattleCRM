@@ -1,13 +1,13 @@
 import { m } from '@battlecrm/i18n';
-import { useId } from 'react';
-
-import { Label } from '../components/ui/label.tsx';
 import {
+  Label,
   SegmentedControl,
   SegmentedControlItem,
   SegmentedControlItems,
-} from '../components/ui/segmented-control.tsx';
-import { notify } from '../components/ui/toast.tsx';
+  notify,
+} from '@battlecrm/ui';
+import { useId } from 'react';
+
 import { locales, useLocale, type Locale } from '../i18n.ts';
 import { useIsOnline } from '../online.ts';
 import { useTheme, type ThemePreference } from '../theme/theme-provider.tsx';

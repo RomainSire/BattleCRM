@@ -1,9 +1,6 @@
 import { m } from '@battlecrm/i18n';
+import { FieldErrorMessage, Input, Label } from '@battlecrm/ui';
 import { Text, TextField } from 'react-aria-components';
-
-import { FieldErrorMessage } from '../components/ui/error-message.tsx';
-import { Input } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
 
 /** What the authenticator app shows; anything else typed in a code field is a backup code. */
 export const isTotpCode = (code: string) => /^\d{6}$/.test(code.replaceAll(/\s/g, ''));

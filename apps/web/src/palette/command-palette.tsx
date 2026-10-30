@@ -1,4 +1,5 @@
 import { m } from '@battlecrm/i18n';
+import { notify, Dialog, DialogTitle } from '@battlecrm/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Search } from 'lucide-react';
@@ -13,8 +14,6 @@ import {
   TextField,
 } from 'react-aria-components';
 
-import { notify } from '../components/ui/toast.tsx';
-import { Dialog, DialogTitle } from '../components/ui/dialog.tsx';
 import { useAddContact } from '../contacts/add-contact-context.ts';
 import { ContactName } from '../contacts/contact-name.tsx';
 import { PickContact } from '../contacts/pick-contact.tsx';

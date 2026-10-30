@@ -1,16 +1,18 @@
 import { contactsMatching } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
-import { useState } from 'react';
-
 import {
   Combobox,
   ComboboxContent,
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
-} from '../components/ui/combobox.tsx';
-import { Dialog, DialogHeader, DialogTitle } from '../components/ui/dialog.tsx';
-import { Label } from '../components/ui/label.tsx';
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  Label,
+} from '@battlecrm/ui';
+import { useState } from 'react';
+
 import { organizationOf, type Summary, type SummaryContact } from '../summary.ts';
 
 /** The choice that adds the name typed, when no Contact matches it. */

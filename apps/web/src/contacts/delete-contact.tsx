@@ -1,16 +1,16 @@
 import { m } from '@battlecrm/i18n';
-import { useMutation, useQuery } from '@tanstack/react-query';
-
-import { Button } from '../components/ui/button.tsx';
 import {
+  Button,
   Dialog,
   DialogClose,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../components/ui/dialog.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
+  ErrorMessage,
+} from '@battlecrm/ui';
+import { useMutation, useQuery } from '@tanstack/react-query';
+
 import { OfflineNote } from '../components/ui/offline-note.tsx';
 import { useSendGesture } from '../gesture.ts';
 import { useApi } from '../session.ts';

@@ -11,6 +11,17 @@ import {
   type Target,
 } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import {
+  Button,
+  ErrorMessage,
+  Input,
+  Label,
+  MenuItem,
+  MoreActions,
+  SegmentedControl,
+  SegmentedControlItem,
+  SegmentedControlItems,
+} from '@battlecrm/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { cn } from 'cn';
@@ -37,16 +48,6 @@ import {
   type Key,
 } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
-import { Input } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
-import { MenuItem, MoreActions } from '../components/ui/menu.tsx';
-import {
-  SegmentedControl,
-  SegmentedControlItem,
-  SegmentedControlItems,
-} from '../components/ui/segmented-control.tsx';
 import { useLocale } from '../i18n.ts';
 import { Screen } from '../screens/screen.tsx';
 import { useApi } from '../session.ts';

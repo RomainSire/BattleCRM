@@ -1,9 +1,9 @@
 import { m } from '@battlecrm/i18n';
+import { Button } from '@battlecrm/ui';
 import { cn } from 'cn';
 import { RefreshCw } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 
-import { Button } from './components/ui/button.tsx';
 import { useLocale } from './i18n.ts';
 
 /** The version of this build: what the `X-App-Version` of the API is compared with. */

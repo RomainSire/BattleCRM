@@ -7,6 +7,7 @@ import {
   isPoolOrArchived,
   targetOf,
 } from '@battlecrm/domain';
+import { Button, ErrorMessage, MenuItem, MoreActions } from '@battlecrm/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { cn } from 'cn';
@@ -18,9 +19,6 @@ import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 import { CHANNEL_LABEL, CHECK_IN_CHANNEL_LABEL } from '../channel.ts';
 import { allySignalOf, TIER_LABEL } from '../circle/ally-signal.ts';
 import { RhythmGauge } from '../circle/rhythm-gauge.tsx';
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
-import { MenuItem, MoreActions } from '../components/ui/menu.tsx';
 import { useLocale, type Locale } from '../i18n.ts';
 import { useApi } from '../session.ts';
 import { settingsOf } from '../settings/use-settings.ts';

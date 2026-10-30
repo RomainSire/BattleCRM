@@ -1,0 +1,13 @@
+/*
+ * The styles of the shared components. Import after `tailwindcss` and `@battlecrm/theme/theme.css`:
+ * Tailwind then generates the classes written in this package.
+ */
+
+@import 'tw-animate-css';
+
+@source './';
+
+/* Inside an input group, the group draws the focus ring, not its control. Unlayered, so it wins. */
+[data-slot='input-group'] [data-slot='input-group-control'] {
+  outline: none;
+}

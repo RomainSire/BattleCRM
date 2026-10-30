@@ -10,22 +10,27 @@ import {
 } from '@battlecrm/contract';
 import { findDuplicates, funnelOf, normalizeLinkedInUrl } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import {
+  Button,
+  Dialog,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  ErrorMessage,
+  FieldErrorMessage,
+  Input,
+  invalidInputClass,
+  Label,
+  SegmentedControl,
+  SegmentedControlItem,
+  SegmentedControlItems,
+  Textarea,
+} from '@battlecrm/ui';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useDeferredValue, useId, useRef, useState } from 'react';
 import { Form, TextField } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { Dialog, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog.tsx';
-import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
-import { Input, invalidInputClass } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
-import {
-  SegmentedControl,
-  SegmentedControlItem,
-  SegmentedControlItems,
-} from '../components/ui/segmented-control.tsx';
-import { Textarea } from '../components/ui/textarea.tsx';
 import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';
 import { submitIfOnline } from '../online.ts';

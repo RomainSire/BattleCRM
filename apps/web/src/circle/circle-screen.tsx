@@ -1,13 +1,12 @@
 import { targetOf, type AllySignal } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { AlarmClock } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useAddContact } from '../contacts/add-contact-context.ts';
 import { ContactName } from '../contacts/contact-name.tsx';
 import { PickContact } from '../contacts/pick-contact.tsx';

@@ -13,6 +13,17 @@ import {
   statusChangeCancelsFollowUp,
 } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import {
+  Button,
+  ErrorMessage,
+  FieldErrorMessage,
+  Input,
+  invalidInputClass,
+  Label,
+  SegmentedControl,
+  SegmentedControlItem,
+  SegmentedControlItems,
+} from '@battlecrm/ui';
 import { useMutation } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { useNavigate, useSearch } from '@tanstack/react-router';
@@ -20,20 +31,11 @@ import { useId, useRef, useState } from 'react';
 import { Form, TextField } from 'react-aria-components';
 import { z } from 'zod';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
 import {
   GesturePanel,
   GesturePanelBody,
   GesturePanelFooter,
 } from '../components/ui/gesture-panel.tsx';
-import { Input, invalidInputClass } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
-import {
-  SegmentedControl,
-  SegmentedControlItem,
-  SegmentedControlItems,
-} from '../components/ui/segmented-control.tsx';
 import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale, type Locale } from '../i18n.ts';
 import { submitIfOnline } from '../online.ts';

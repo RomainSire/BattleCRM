@@ -1,5 +1,6 @@
 import { finishedTrials } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { cn } from 'cn';
@@ -7,8 +8,6 @@ import { ChevronRight } from 'lucide-react';
 import { useId, useRef } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { formatLocalDay } from '../contacts/format.ts';
 import { useLocale } from '../i18n.ts';
 import { Screen } from '../screens/screen.tsx';

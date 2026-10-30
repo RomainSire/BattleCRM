@@ -1,11 +1,10 @@
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 
 import { CloseButton, sidesOf } from '../battles/battle-panel.tsx';
 import { WinRuleGauge, winRuleSentence } from '../battles/win-rule.tsx';
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useApi } from '../session.ts';
 import { battlesOf, winRuleOf, type Summary, type SummaryBattle } from '../summary.ts';
 import { DAILY_PICKS_KEY } from './daily-picks.ts';

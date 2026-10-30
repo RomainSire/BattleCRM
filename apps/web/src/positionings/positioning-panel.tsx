@@ -7,27 +7,28 @@ import {
   SETTING_DAYS_MAX,
 } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
+import {
+  Button,
+  ErrorMessage,
+  FieldErrorMessage,
+  Input,
+  Label,
+  SegmentedControl,
+  SegmentedControlItem,
+  SegmentedControlItems,
+  Textarea,
+} from '@battlecrm/ui';
 import { useMutation } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
 import { Form, NumberField, TextField } from 'react-aria-components';
 import { z } from 'zod';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
 import {
   GesturePanel,
   GesturePanelBody,
   GesturePanelFooter,
 } from '../components/ui/gesture-panel.tsx';
-import { Input } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
-import {
-  SegmentedControl,
-  SegmentedControlItem,
-  SegmentedControlItems,
-} from '../components/ui/segmented-control.tsx';
-import { Textarea } from '../components/ui/textarea.tsx';
 import { CHANNEL_LABEL } from '../channel.ts';
 import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';

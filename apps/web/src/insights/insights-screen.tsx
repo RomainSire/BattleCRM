@@ -1,16 +1,16 @@
 import { INSIGHTS_PERIODS, type Insights, type InsightsPeriod } from '@battlecrm/contract';
 import { daysBetween, funnelEntriesInWeek } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import {
+  ErrorMessage,
+  SegmentedControl,
+  SegmentedControlItem,
+  SegmentedControlItems,
+} from '@battlecrm/ui';
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { useId, type ReactNode } from 'react';
 
-import { ErrorMessage } from '../components/ui/error-message.tsx';
-import {
-  SegmentedControl,
-  SegmentedControlItem,
-  SegmentedControlItems,
-} from '../components/ui/segmented-control.tsx';
 import { useLocale, type Locale } from '../i18n.ts';
 import { Screen } from '../screens/screen.tsx';
 import { useApi, type ApiClient } from '../session.ts';

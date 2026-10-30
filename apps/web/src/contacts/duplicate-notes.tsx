@@ -1,11 +1,10 @@
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { useNavigate } from '@tanstack/react-router';
 import { InfoIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Text } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import type { Summary, SummaryContact } from '../summary.ts';
 
 /** A Contact as the checks name it: “Jean Dupont · Capgemini”. */

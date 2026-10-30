@@ -1,11 +1,10 @@
 import { m } from '@battlecrm/i18n';
+import { Button, DialogOverlay } from '@battlecrm/ui';
 import { cn } from 'cn';
 import { XIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Dialog, Heading, Modal } from 'react-aria-components';
 
-import { Button } from './button.tsx';
-import { DialogOverlay } from './dialog.tsx';
 import { OfflineNote } from './offline-note.tsx';
 
 /**

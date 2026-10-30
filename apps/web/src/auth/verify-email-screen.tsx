@@ -1,7 +1,7 @@
 import { m } from '@battlecrm/i18n';
+import { ErrorMessage } from '@battlecrm/ui';
 import { Link } from 'react-aria-components';
 
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useLocale } from '../i18n.ts';
 import { authLinkClass, AuthScreen } from './auth-layout.tsx';
 

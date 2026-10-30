@@ -1,7 +1,7 @@
 import { m } from '@battlecrm/i18n';
+import { notify, ToastRegion, toasts, type AppToast } from '@battlecrm/ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { notify, ToastRegion, toasts, type AppToast } from './components/ui/toast.tsx';
 import { useLocale } from './i18n.ts';
 import { useIsOnline } from './online.ts';
 import { useApi } from './session.ts';

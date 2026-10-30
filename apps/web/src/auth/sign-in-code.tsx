@@ -1,10 +1,9 @@
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Form } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useApi } from '../session.ts';
 import { CodeField, isTotpCode } from './code-field.tsx';
 import { RecoveryRequest } from './two-factor-recovery.tsx';

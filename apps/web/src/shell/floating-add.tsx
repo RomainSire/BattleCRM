@@ -1,12 +1,11 @@
 import { m } from '@battlecrm/i18n';
+import { Button, MenuItem } from '@battlecrm/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Menu, MenuTrigger, Popover } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { MenuItem } from '../components/ui/menu.tsx';
 import { PickContact } from '../contacts/pick-contact.tsx';
 import { useApi } from '../session.ts';
 import { summaryQuery } from '../summary.ts';

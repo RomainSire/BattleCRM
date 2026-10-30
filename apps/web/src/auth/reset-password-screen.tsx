@@ -1,11 +1,10 @@
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Form, Link } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { clearDeviceData } from '../device-data.ts';
 import { useLocale } from '../i18n.ts';
 import { sessionQuery, useApi } from '../session.ts';

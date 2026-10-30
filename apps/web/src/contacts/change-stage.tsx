@@ -1,27 +1,27 @@
 import { REPLY_TRIAL_OUTCOMES } from '@battlecrm/contract';
 import { funnelOf, isInFunnel, nextStageOf, stageMove } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import {
+  Button,
+  Checkbox,
+  ErrorMessage,
+  invalidInputClass,
+  Label,
+  SegmentedControl,
+  SegmentedControlItem,
+  SegmentedControlItems,
+} from '@battlecrm/ui';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useId, useState } from 'react';
 import { Form } from 'react-aria-components';
 import { z } from 'zod';
 
-import { Button } from '../components/ui/button.tsx';
-import { Checkbox } from '../components/ui/checkbox.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import {
   GesturePanel,
   GesturePanelBody,
   GesturePanelFooter,
 } from '../components/ui/gesture-panel.tsx';
-import { invalidInputClass } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
-import {
-  SegmentedControl,
-  SegmentedControlItem,
-  SegmentedControlItems,
-} from '../components/ui/segmented-control.tsx';
 import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale, type Locale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';

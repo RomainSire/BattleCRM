@@ -4,7 +4,7 @@ Rules a review checks on a diff. Rules a tool can check live in the tools instea
 
 ## Errors shown to the User
 
-Every error shown to the User goes through `ErrorMessage` or `FieldErrorMessage` (`apps/web/src/components/ui/error-message.tsx`): the Error colour and an icon, the faulty field outlined. Red means an error and nothing else, never an outcome (spec UX §2).
+Every error shown to the User goes through `ErrorMessage` or `FieldErrorMessage` (`packages/ui/src/error-message.tsx`): the Error colour and an icon, the faulty field outlined. Red means an error and nothing else, never an outcome (spec UX §2).
 
 ## Migrations and endpoints
 

@@ -8,10 +8,10 @@ import {
 } from '@battlecrm/contract';
 import { localDay, nextMondayAfter } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import { Button } from '@battlecrm/ui';
 import { Plus, X } from 'lucide-react';
 import { useId } from 'react';
 
-import { Button } from '../components/ui/button.tsx';
 import { useLocale, type Locale } from '../i18n.ts';
 import { CelebrateSetting } from './preferences-settings.tsx';
 import { GoalSetting, NumberSetting, useDraft } from './setting-fields.tsx';

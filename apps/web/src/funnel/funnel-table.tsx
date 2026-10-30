@@ -1,20 +1,21 @@
 import { funnelOf, isFollowUpDue, targetOf } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
-import { cn } from 'cn';
-import { ArrowDown, ArrowUp } from 'lucide-react';
-import { useState } from 'react';
-import type { SortDescriptor } from 'react-aria-components';
-
-import { Button } from '../components/ui/button.tsx';
-import { MenuItem, MoreActions } from '../components/ui/menu.tsx';
 import {
+  Button,
+  MenuItem,
+  MoreActions,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from '../components/ui/table.tsx';
+} from '@battlecrm/ui';
+import { cn } from 'cn';
+import { ArrowDown, ArrowUp } from 'lucide-react';
+import { useState } from 'react';
+import type { SortDescriptor } from 'react-aria-components';
+
 import { useLocale } from '../i18n.ts';
 import {
   organizationOf,

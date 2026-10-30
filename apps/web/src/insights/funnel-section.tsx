@@ -1,9 +1,9 @@
 import type { Insights } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
+import { Checkbox } from '@battlecrm/ui';
 import { cn } from 'cn';
 import { useId, useState } from 'react';
 
-import { Checkbox } from '../components/ui/checkbox.tsx';
 import { formatLocalDay } from '../contacts/format.ts';
 import type { Locale } from '../i18n.ts';
 import type { Summary } from '../summary.ts';

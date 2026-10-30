@@ -1,4 +1,5 @@
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, Navigate, useNavigate, useSearch } from '@tanstack/react-router';
 import { cn } from 'cn';
@@ -6,8 +7,6 @@ import { Lock, Paperclip, Plus } from 'lucide-react';
 import { useId, useState } from 'react';
 
 import { RolePill } from '../battles/role-pill.tsx';
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { CHANNEL_LABEL } from '../channel.ts';
 import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { formatLocalDay } from '../contacts/format.ts';

@@ -8,15 +8,19 @@ import {
 } from '@battlecrm/contract';
 import { findDuplicates, normalizeLinkedInUrl, type Target } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import {
+  Button,
+  ErrorMessage,
+  FieldErrorMessage,
+  Input,
+  invalidInputClass,
+  Label,
+  Textarea,
+} from '@battlecrm/ui';
 import { useMutation } from '@tanstack/react-query';
 import { useDeferredValue, useId, useState } from 'react';
 import { Form, TextField } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
-import { Input, invalidInputClass } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
-import { Textarea } from '../components/ui/textarea.tsx';
 import { useSendGesture } from '../gesture.ts';
 import { useApi } from '../session.ts';
 import { type Summary, type SummaryContact } from '../summary.ts';

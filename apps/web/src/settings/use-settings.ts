@@ -9,11 +9,11 @@ import {
   DEFAULT_SINGLE_KEY_SHORTCUTS,
 } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
+import { notify } from '@battlecrm/ui';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { InferRequestType } from 'hono/client';
 import type { KeybindingsMap } from 'tinykeys';
 
-import { notify } from '../components/ui/toast.tsx';
 import { changeLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { useShortcuts } from '../shortcuts.ts';

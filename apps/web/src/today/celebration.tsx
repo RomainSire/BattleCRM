@@ -1,10 +1,10 @@
 import { celebration as celebrationAnswer } from '@battlecrm/contract';
 import { activityGoalReached, activityOn } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import { notify } from '@battlecrm/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useSyncExternalStore } from 'react';
 
-import { notify } from '../components/ui/toast.tsx';
 import { useApi } from '../session.ts';
 import { settingsOf } from '../settings/use-settings.ts';
 import { countedContacts, celebratedOnOf, SUMMARY_KEY, todayOf, type Summary } from '../summary.ts';

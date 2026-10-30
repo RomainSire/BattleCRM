@@ -1,11 +1,10 @@
 import { m } from '@battlecrm/i18n';
 import { getLocale } from '@battlecrm/i18n/runtime';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Form, Link } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useLocale } from '../i18n.ts';
 import { configQuery, useApi } from '../session.ts';
 import { authLinkClass, AuthScreen } from './auth-layout.tsx';

@@ -10,22 +10,26 @@ import {
 } from '@battlecrm/contract';
 import { finishedTrials, startedTrials, type TrialCounts } from '@battlecrm/domain';
 import { m } from '@battlecrm/i18n';
+import {
+  Button,
+  ErrorMessage,
+  FieldErrorMessage,
+  Input,
+  Label,
+  MenuItem,
+  MoreActions,
+} from '@battlecrm/ui';
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { X } from 'lucide-react';
 import { useId, useState, type ReactNode, type Ref } from 'react';
 import { Form, Tab, TabList, TabPanel, Tabs, TextField } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage, FieldErrorMessage } from '../components/ui/error-message.tsx';
 import {
   GesturePanel,
   GesturePanelBody,
   GesturePanelFooter,
 } from '../components/ui/gesture-panel.tsx';
-import { Input } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
-import { MenuItem, MoreActions } from '../components/ui/menu.tsx';
 import { formatLocalDay } from '../contacts/format.ts';
 import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';

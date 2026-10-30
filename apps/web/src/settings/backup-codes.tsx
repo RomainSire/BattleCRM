@@ -1,8 +1,7 @@
 import { m } from '@battlecrm/i18n';
+import { Button, buttonVariants, Checkbox } from '@battlecrm/ui';
 import { useId, useState } from 'react';
 
-import { Button, buttonVariants } from '../components/ui/button.tsx';
-import { Checkbox } from '../components/ui/checkbox.tsx';
 import { CopyButton } from './copy-button.tsx';
 
 /**

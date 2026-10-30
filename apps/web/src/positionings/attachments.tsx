@@ -1,12 +1,11 @@
 import { ATTACHMENT_MAX_BYTES } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { useMutation } from '@tanstack/react-query';
 import { Paperclip, X } from 'lucide-react';
 import { useState } from 'react';
 import { FileTrigger } from 'react-aria-components';
 
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 import { useSendGesture, type RefusalOf } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';

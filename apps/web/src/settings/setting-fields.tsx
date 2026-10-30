@@ -1,10 +1,8 @@
+import { Checkbox, Input, Label } from '@battlecrm/ui';
 import { cn } from 'cn';
 import { useId, useState, type ReactNode } from 'react';
 import { NumberField, Text } from 'react-aria-components';
 
-import { Checkbox } from '../components/ui/checkbox.tsx';
-import { Input } from '../components/ui/input.tsx';
-import { Label } from '../components/ui/label.tsx';
 import { useIsOnline } from '../online.ts';
 
 /** A value from the server that the User edits: it follows the server again once it changes there, “Undo” included. */

@@ -8,6 +8,7 @@
     { "path": "e2e" },
     { "path": "packages/contract" },
     { "path": "packages/domain" },
-    { "path": "packages/i18n" }
+    { "path": "packages/i18n" },
+    { "path": "packages/ui" }
   ]
 }

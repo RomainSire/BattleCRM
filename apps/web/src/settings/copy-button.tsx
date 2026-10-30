@@ -1,8 +1,6 @@
 import { m } from '@battlecrm/i18n';
+import { Button, ErrorMessage } from '@battlecrm/ui';
 import { useState } from 'react';
-
-import { Button } from '../components/ui/button.tsx';
-import { ErrorMessage } from '../components/ui/error-message.tsx';
 
 /** Copies a text to the clipboard (ST-60) and says so; works offline, the text being already here. */
 export function CopyButton({ text, label = m.copy() }: { text: string; label?: string }) {
