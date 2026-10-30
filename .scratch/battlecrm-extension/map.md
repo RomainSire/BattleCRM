@@ -38,9 +38,11 @@ Une **spec de l'extension Firefox** (`.scratch/battlecrm-extension/spec.md`, sur
 - [Fixtures de test du scraping](issues/10-fixtures-de-test-du-scraping.md) : les 7 copies de l'inspecteur, anonymisées par liste blanche (textes, liens, identifiants remplacés, garde-fou qui échoue sur toute fuite) par `apps/extension/scripts/anonymize-linkedin.ts`, dans `apps/extension/test/linkedin/` avec `expected.json` ; configuration réelle dans `.private/` ; cas limites par modification du DOM dans le test ; lecture sur un `Document` ; plus de jeu local sur les vraies pages.
 - [Livraison de l'extension](issues/11-livraison-de-l-extension.md) : une version signée (AMO non listé) à chaque tag, au numéro de l'app ; job `extension` avant `images`, dont l'échec bloque la livraison, qui réutilise le fichier déjà signé sur AMO à la relance ; `.xpi` et `updates.json` dans l'image `web` sous `/extension/` ; origine par `vars.APP_ORIGIN` ; installation depuis Réglages › Préférences ; `MIN_EXTENSION_VERSION` montée à la main avec une étape « contract » ; recette suggérée dans `install.md`.
 
+- [Rédiger la spec de l'extension](issues/12-rediger-la-spec.md) : [spec.md](spec.md) écrite, exigences ST-90 à ST-125, découpage en 10 tickets d'implémentation ; neuf arbitrages à relire (§13), dont le tutoiement partout, la déconnexion dans le pied de la sidebar et aucun réglage ; aucun terme nouveau au glossaire.
+
 ## Pas encore spécifié
 
-Rien : le reste du chemin est en tickets (2026-10-30).
+Rien : la destination est atteinte, la spec est prête à découper (2026-10-30).
 
 ## Hors périmètre
 
