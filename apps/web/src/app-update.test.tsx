@@ -1,9 +1,11 @@
+import type { QueryClient } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
 
 import { fakeApi } from '../test/fake-api.ts';
 import { renderApp } from '../test/render-app.tsx';
 import { summary } from '../test/summary.ts';
 import { APP_VERSION, appUpdate } from './app-update.tsx';
+import { SUMMARY_KEY } from './summary.ts';
 
 // A new version is offered, never forced (spec stack §3).
 
@@ -22,6 +24,14 @@ const apiOf = (version: string) =>
   fakeApi({
     'GET /api/summary': () => Response.json(summary(), { headers: { 'X-App-Version': version } }),
   });
+
+/**
+ * Waits until the summary is read, hence its `X-App-Version` heard. Not the heading: Today shows it
+ * while the summary is still on its way.
+ */
+async function summaryRead(queryClient: QueryClient) {
+  await expect.poll(() => queryClient.getQueryData(SUMMARY_KEY)).toBeDefined();
+}
 
 test('an API of another version makes the app look for it once, then offer to reload, which it never does by itself', async () => {
   const worker = registeredWorker();
@@ -42,16 +52,16 @@ test('an API of another version makes the app look for it once, then offer to re
 test('an API of this very version looks for nothing and offers nothing', async () => {
   const worker = registeredWorker();
 
-  const { screen } = await renderApp('/today', apiOf(APP_VERSION));
+  const { screen, queryClient } = await renderApp('/today', apiOf(APP_VERSION));
 
-  await expect.element(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Aujourd'hui");
+  await summaryRead(queryClient);
   expect(worker.lookForUpdate).not.toHaveBeenCalled();
   expect(screen.getByText('Nouvelle version disponible.').elements()).toEqual([]);
 });
 
 test('a version heard before the service worker is registered is looked for once it is', async () => {
-  const { screen } = await renderApp('/today', apiOf('9.9.9'));
-  await expect.element(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Aujourd'hui");
+  const { queryClient } = await renderApp('/today', apiOf('9.9.9'));
+  await summaryRead(queryClient);
 
   const worker = registeredWorker();
 

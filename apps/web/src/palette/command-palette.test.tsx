@@ -76,6 +76,21 @@ const openPalette = async (screen: Awaited<ReturnType<typeof renderApp>>['screen
   return palette;
 };
 
+/**
+ * Waits until the field points at a choice that is there. Once something is typed, React Aria moves
+ * `aria-activedescendant` only 500 ms later, for screen readers: until then it may name a choice the
+ * list just dropped, which axe would rightly report.
+ */
+const activeChoiceShown = async (palette: ReturnType<typeof page.getByRole>) => {
+  const field = palette.getByRole('searchbox').element();
+  await expect
+    .poll(() => {
+      const id = field.getAttribute('aria-activedescendant');
+      return id === null || document.getElementById(id) !== null;
+    })
+    .toBe(true);
+};
+
 test('a Contact first: → shows its actions by its Status, ⌫ goes back, Enter opens one', async () => {
   await desktop();
   const { screen, router } = await renderApp('/today', withContacts(julie(), ines(), marc()));
@@ -317,6 +332,7 @@ test.each(['light', 'dark'] as const)(
     await userEvent.keyboard('jul');
     await userEvent.keyboard('{ArrowDown}{ArrowRight}');
     await expect.element(palette.getByRole('option').first()).toHaveTextContent('Ouvrir la fiche');
+    await activeChoiceShown(palette);
     await expectNoAxeViolations();
 
     await userEvent.keyboard('{Escape}');
