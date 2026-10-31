@@ -1,18 +1,14 @@
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
-import {
-  FieldErrorMessage,
-  InputGroup,
-  InputGroupButton,
-  InputGroupInput,
-  Label,
-  Tooltip,
-  TooltipTrigger,
-} from '@battlecrm/ui';
 import { cn } from 'cn';
 import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { Text, TextField } from 'react-aria-components';
+
+import { FieldErrorMessage } from './error-message.tsx';
+import { InputGroup, InputGroupButton, InputGroupInput } from './input-group.tsx';
+import { Label } from './label.tsx';
+import { Tooltip, TooltipTrigger } from './tooltip.tsx';
 
 /**
  * A password, with its “Show” button inside the field: an eye, named by its label and its tooltip

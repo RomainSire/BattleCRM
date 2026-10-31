@@ -7,7 +7,9 @@ packages:
 catalog:
   '@inlang/paraglide-js': ^2.25.4
   '@playwright/test': ^1.63.0
+  '@tailwindcss/vite': ^4.3.3
   '@types/node': ^24.19.1
+  '@vitejs/plugin-react': ^6.1.1
   '@vitest/browser-playwright': ^4.1.11
   hono: ^4.13.12
   oxlint: ^1.86.0
@@ -15,8 +17,11 @@ catalog:
   playwright: ^1.63.0
   prettier: ^3.9.9
   prettier-plugin-tailwindcss: ^0.8.1
+  tailwindcss: ^4.3.3
   typescript: ^7.0.2
+  vite: ^8.3.2
   vitest: ^4.1.11
+  web-ext: ^10.8.0
   zod: ^4.6.5
 
 # A release must be 7 days old before pnpm installs it (minutes).

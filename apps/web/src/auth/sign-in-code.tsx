@@ -1,11 +1,11 @@
+import { isTotpCode } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
-import { Button, ErrorMessage } from '@battlecrm/ui';
+import { Button, CodeField, ErrorMessage } from '@battlecrm/ui';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Form } from 'react-aria-components';
 
 import { useApi } from '../session.ts';
-import { CodeField, isTotpCode } from './code-field.tsx';
 import { RecoveryRequest } from './two-factor-recovery.tsx';
 
 type Outcome =

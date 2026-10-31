@@ -1,12 +1,10 @@
 import { m } from '@battlecrm/i18n';
-import { Button, ErrorMessage } from '@battlecrm/ui';
+import { Button, CodeField, ErrorMessage, PasswordField } from '@battlecrm/ui';
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { useId, useState } from 'react';
 import { Form } from 'react-aria-components';
 
-import { CodeField } from '../auth/code-field.tsx';
-import { PasswordField } from '../auth/password-field.tsx';
 import { useLocale } from '../i18n.ts';
 import { useApi, type ApiClient } from '../session.ts';
 import { BackupCodes } from './backup-codes.tsx';

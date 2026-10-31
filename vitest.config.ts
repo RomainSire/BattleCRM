@@ -70,6 +70,30 @@ export default defineConfig({
           },
         },
       },
+      {
+        // React and Tailwind, as WXT builds the sidebar; never `WxtVitest()`, broken in browser mode.
+        extends: 'apps/extension/vite.config.ts',
+        test: {
+          name: 'extension',
+          root: 'apps/extension',
+          setupFiles: ['test/setup.ts'],
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright(),
+            instances: [
+              // The sidebar, against a fake background at the level of `send()`, and the background itself.
+              {
+                browser: 'chromium',
+                include: ['src/sidebar/**/*.test.{ts,tsx}', 'src/background/**/*.test.ts'],
+              },
+              // What the content scripts read on LinkedIn, in the browser they run in (spec extension §10).
+              { browser: 'firefox', include: ['src/linkedin/**/*.test.ts'] },
+            ],
+            commands: { emulateColorScheme, parkPointer },
+          },
+        },
+      },
     ],
   },
 });

@@ -4,6 +4,8 @@ import { VERDICTS } from '@battlecrm/domain';
 import { locales } from '@battlecrm/i18n/runtime';
 import { z } from 'zod';
 
+export { isTotpCode } from './second-factor.ts';
+
 /** A password is judged on its length, nothing else (spec stack §7). */
 export const PASSWORD_MIN_LENGTH = 15;
 export const PASSWORD_MAX_LENGTH = 128;

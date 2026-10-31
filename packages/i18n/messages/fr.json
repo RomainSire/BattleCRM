@@ -1354,5 +1354,13 @@
   "offline_read_only": "Hors ligne : consultation seulement. Les actions reviennent avec la connexion.",
   "contact_thread_offline": "Le fil se charge avec la connexion.",
   "app_update_available": "Nouvelle version disponible.",
-  "app_update_reload": "Recharger"
+  "app_update_reload": "Recharger",
+  "extension_outdated_title": "Extension à mettre à jour",
+  "extension_outdated_body": "Firefox la met à jour tout seul. Pour ne pas attendre : about:addons › Rechercher des mises à jour.",
+  "extension_outdated_settings": "Réglages › Préférences de BattleCRM",
+  "extension_session_expired": "Ta session a expiré",
+  "extension_unreachable": "BattleCRM ne répond pas",
+  "extension_retry": "Réessayer",
+  "extension_elsewhere": "Ouvre un profil LinkedIn pour voir ou ajouter un Contact.",
+  "extension_signed_in_as": "Connecté : {email}"
 }

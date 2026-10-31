@@ -1,9 +1,9 @@
 import { m } from '@battlecrm/i18n';
-import { FieldErrorMessage, Input, Label } from '@battlecrm/ui';
 import { Text, TextField } from 'react-aria-components';
 
-/** What the authenticator app shows; anything else typed in a code field is a backup code. */
-export const isTotpCode = (code: string) => /^\d{6}$/.test(code.replaceAll(/\s/g, ''));
+import { FieldErrorMessage } from './error-message.tsx';
+import { Input } from './input.tsx';
+import { Label } from './label.tsx';
 
 /**
  * A code of the second factor (spec UX §5.9): six digits of the authenticator app or, unless

@@ -1,5 +1,5 @@
 import { m } from '@battlecrm/i18n';
-import { Button, ErrorMessage, invalidInputClass } from '@battlecrm/ui';
+import { Button, EmailField, ErrorMessage, PasswordField, invalidInputClass } from '@battlecrm/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -9,8 +9,6 @@ import { clearDeviceData } from '../device-data.ts';
 import { useLocale } from '../i18n.ts';
 import { configQuery, sessionQuery, useApi } from '../session.ts';
 import { authLinkClass, AuthScreen } from './auth-layout.tsx';
-import { EmailField } from './email-field.tsx';
-import { PasswordField } from './password-field.tsx';
 import { SignInCode } from './sign-in-code.tsx';
 
 const route = getRouteApi('/auth/sign-in');

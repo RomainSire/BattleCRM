@@ -1,11 +1,9 @@
 import { m } from '@battlecrm/i18n';
-import { Button, ErrorMessage } from '@battlecrm/ui';
+import { Button, EmailField, ErrorMessage, PasswordField } from '@battlecrm/ui';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { Form } from 'react-aria-components';
 
-import { EmailField } from '../auth/email-field.tsx';
-import { PasswordField } from '../auth/password-field.tsx';
 import { useLocale } from '../i18n.ts';
 import { sessionQuery, useApi } from '../session.ts';
 

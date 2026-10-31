@@ -3,8 +3,10 @@
 
 export * from './button.tsx';
 export * from './checkbox.tsx';
+export * from './code-field.tsx';
 export * from './combobox.tsx';
 export * from './dialog.tsx';
+export * from './email-field.tsx';
 export * from './error-message.tsx';
 export * from './field.tsx';
 export * from './input-group.tsx';
@@ -12,6 +14,7 @@ export * from './input.tsx';
 export * from './label.tsx';
 export * from './menu.tsx';
 export * from './online.ts';
+export * from './password-field.tsx';
 export * from './segmented-control.tsx';
 export * from './separator.tsx';
 export * from './table.tsx';

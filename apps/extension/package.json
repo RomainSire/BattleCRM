@@ -1,0 +1,35 @@
+{
+  "name": "@battlecrm/extension",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "wxt prepare",
+    "dev": "wxt -b firefox",
+    "build": "wxt build -b firefox"
+  },
+  "dependencies": {
+    "@battlecrm/contract": "workspace:*",
+    "@battlecrm/i18n": "workspace:*",
+    "@battlecrm/theme": "workspace:*",
+    "@battlecrm/ui": "workspace:*",
+    "@tanstack/react-query": "^5.104.1",
+    "hono": "catalog:",
+    "react": "^19.3.0",
+    "react-aria-components": "^1.21.1",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@battlecrm/api": "workspace:*",
+    "@tailwindcss/vite": "catalog:",
+    "@types/firefox-webext-browser": "^143.0.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "catalog:",
+    "axe-core": "^4.13.0",
+    "tailwindcss": "catalog:",
+    "vite": "catalog:",
+    "vitest-browser-react": "^2.3.0",
+    "web-ext": "catalog:",
+    "wxt": "0.21.4"
+  }
+}

@@ -1,5 +1,5 @@
 import { m } from '@battlecrm/i18n';
-import { Button, ErrorMessage } from '@battlecrm/ui';
+import { Button, EmailField, ErrorMessage } from '@battlecrm/ui';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Form, Link } from 'react-aria-components';
@@ -7,7 +7,6 @@ import { Form, Link } from 'react-aria-components';
 import { useLocale } from '../i18n.ts';
 import { useApi } from '../session.ts';
 import { authLinkClass, AuthScreen } from './auth-layout.tsx';
-import { EmailField } from './email-field.tsx';
 
 /**
  * “Forgot your password?” (spec UX §5.9): the answer is the same whether the address has an account
