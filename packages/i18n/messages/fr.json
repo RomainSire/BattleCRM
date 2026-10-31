@@ -62,6 +62,7 @@
   "email_new_device_intro": "Ton compte vient d'être ouvert depuis un appareil qui ne s'y était jamais connecté :",
   "email_new_device_not_me": "Si c'était toi, tu n'as rien à faire. Sinon, choisis un nouveau mot de passe : tous tes appareils seront déconnectés.",
   "device_unknown_browser": "Navigateur inconnu",
+  "device_firefox_extension": "Extension Firefox",
   "device_unknown_os": "Système inconnu",
   "settings_account": "Compte",
   "devices_title": "Appareils connectés",

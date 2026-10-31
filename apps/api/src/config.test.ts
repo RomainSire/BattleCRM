@@ -19,7 +19,7 @@ describe('loadConfig', () => {
       databaseUrl: env.DATABASE_URL,
       appVersion: '1.2.3',
       appOrigin: 'https://app.battlecrm.example',
-      trustedOrigins: ['https://app.battlecrm.example'],
+      trustedOrigins: ['https://app.battlecrm.example', 'moz-extension://'],
       signupsOpen: false,
       smtp: { user: 'sender@example.com', password: 'app-password', fromName: 'BattleCRM' },
       port: 3000,
@@ -42,7 +42,7 @@ describe('loadConfig', () => {
   test('keeps only the origin of APP_ORIGIN', () => {
     expect(
       loadConfig({ ...env, APP_ORIGIN: 'https://app.battlecrm.example/' }).trustedOrigins,
-    ).toEqual(['https://app.battlecrm.example']);
+    ).toEqual(['https://app.battlecrm.example', 'moz-extension://']);
   });
 
   test('reads TRUSTED_PROXIES as a list of subnets, and refuses an invalid one', () => {

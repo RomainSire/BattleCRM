@@ -6,6 +6,7 @@ import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
 
 import { testApp } from '../test/app.ts';
+import { extensionRequest, extensionTokenOf } from '../test/extension.ts';
 import { closeBattle, openBattle } from '../test/factories/battle.ts';
 import {
   addContact,
@@ -549,37 +550,56 @@ const CROSS_ACCESS: Record<
   },
 };
 
-test('the id of another User answers 404 and changes nothing, on every route that takes one', async () => {
-  // The Assignments of the Trials to settle and to change, one chance each.
-  const harness = testApp({}, { chances: [0, 0] });
-  const routes = [
-    ...new Set(
-      harness.app.routes
-        .filter((route) => route.method !== 'ALL' && route.path.includes(':'))
-        .map((route) => `${route.method} ${route.path}`),
-    ),
-  ].toSorted();
-  expect(routes).toEqual(Object.keys(CROSS_ACCESS).toSorted());
+/**
+ * A request of Bob, by either of the two ways a session travels (ST-90): the SPA's cookie, or the token
+ * the Firefox extension sends as Bearer. Both must meet the same refusals.
+ */
+const MODES = {
+  cookie:
+    async (harness: Harness, bob: User) => (path: string, method: string, body?: object | File) => {
+      if (method === 'GET') return harness.app.request(path, { headers: { Cookie: bob.cookie } });
+      if (body instanceof File) return postFile(harness.app, path, body, bob.cookie);
+      return postJson(harness.app, path, body ?? {}, bob.cookie);
+    },
+  bearer: async (harness: Harness, bob: User) => {
+    const token = await extensionTokenOf(harness, bob);
+    return (path: string, method: string, body?: object | File) =>
+      extensionRequest(harness.app, path, {
+        token,
+        ...(method === 'GET' ? {} : { body: body ?? {} }),
+      });
+  },
+};
 
-  for (const route of routes) {
-    const alice = await makeUser(harness);
-    const bob = await makeUser(harness);
-    const { id, state, body = {} } = await CROSS_ACCESS[route]!(harness, alice);
-    const before = await state();
-    const [method, path = ''] = route.split(' ');
-    const named = path.replace(/:\w+/, id);
+test.each(['cookie', 'bearer'] as const)(
+  'the id of another User answers 404 and changes nothing, on every route that takes one (%s)',
+  async (mode) => {
+    // The Assignments of the Trials to settle and to change, one chance each.
+    const harness = testApp({}, { chances: [0, 0] });
+    const routes = [
+      ...new Set(
+        harness.app.routes
+          .filter((route) => route.method !== 'ALL' && route.path.includes(':'))
+          .map((route) => `${route.method} ${route.path}`),
+      ),
+    ].toSorted();
+    expect(routes).toEqual(Object.keys(CROSS_ACCESS).toSorted());
 
-    let response;
-    if (method === 'GET') {
-      response = await harness.app.request(named, { headers: { Cookie: bob.cookie } });
-    } else if (body instanceof File) {
-      response = await postFile(harness.app, named, body, bob.cookie);
-    } else {
-      response = await postJson(harness.app, named, body, bob.cookie);
+    for (const route of routes) {
+      const alice = await makeUser(harness);
+      const bob = await makeUser(harness);
+      const { id, state, body = {} } = await CROSS_ACCESS[route]!(harness, alice);
+      const before = await state();
+      const [method, path = ''] = route.split(' ');
+      const named = path.replace(/:\w+/, id);
+      const asBob = await MODES[mode](harness, bob);
+
+      const response = await asBob(named, method ?? 'GET', body);
+
+      expect(response.status, `on ${route}`).toBe(404);
+      expect(await state(), `on ${route}`).toEqual(before);
     }
-
-    expect(response.status, `on ${route}`).toBe(404);
-    expect(await state(), `on ${route}`).toEqual(before);
-  }
-  // Two Users and a gesture or two per route: it grows with the routes (13 s on CI in October 2026).
-}, 60_000);
+    // Two Users and a gesture or two per route: it grows with the routes (13 s on CI in October 2026).
+  },
+  60_000,
+);

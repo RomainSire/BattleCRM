@@ -52,6 +52,7 @@ const sessionList = z.object({
       os: z.string().nullable(),
       lastActiveAt: z.iso.datetime(),
       current: z.boolean(),
+      extension: z.boolean(),
     }),
   ),
 });

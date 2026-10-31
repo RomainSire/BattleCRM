@@ -49,6 +49,22 @@ describe('every response', () => {
     expect((await post('https://evil.example')).status).toBe(403);
     expect((await post('https://app.battlecrm.test')).status).toBe(404);
   });
+
+  // Firefox sends `Origin: moz-extension://<uuid>` on a POST of the extension, its uuid drawn per profile.
+  test('a form posted by the Firefox extension passes, whatever its uuid', async () => {
+    const { app } = testApp();
+    const post = (origin: string) =>
+      app.request('/api/nowhere', {
+        method: 'POST',
+        headers: { Origin: origin, 'Content-Type': 'multipart/form-data; boundary=x' },
+        body: '--x--',
+      });
+
+    expect((await post('moz-extension://0b8e1f3a-6c2d-4f7e-9a1b-2c3d4e5f6a7b')).status).toBe(404);
+    expect((await post('moz-extension://5f4e3d2c-1b0a-4987-8765-4321fedcba98')).status).toBe(404);
+    expect((await post('chrome-extension://abcdefghijklmnop')).status).toBe(403);
+    expect((await post('https://moz-extension.evil.example')).status).toBe(403);
+  });
 });
 
 describe('request log', () => {

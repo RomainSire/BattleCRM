@@ -58,8 +58,11 @@ export function ConnectedDevices() {
       {sessions.data && (
         <ul aria-labelledby={titleId} className="flex flex-col divide-y">
           {sessions.data.map((session) => {
+            // The Firefox extension is named for itself, not for the browser it runs in (ST-91).
             const device = [
-              session.browser ?? m.device_unknown_browser(),
+              session.extension
+                ? m.device_firefox_extension()
+                : (session.browser ?? m.device_unknown_browser()),
               session.os ?? m.device_unknown_os(),
             ].join(' · ');
             return (

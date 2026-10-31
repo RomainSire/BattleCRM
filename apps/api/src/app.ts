@@ -13,9 +13,10 @@ import { failureReason, type Alert } from './alert.ts';
 import { createAuth, type Hibp } from './auth/index.ts';
 import { createBattles, positioningBattles, stageBattles } from './battles/index.ts';
 import { CLIENT_ERROR_MAX_BYTES, clientErrorReport } from './client-errors.ts';
+import { isOutdatedClient, MIN_EXTENSION_VERSION } from './client-version.ts';
 import { resolveClientIp } from './client-ip.ts';
 import type { Clock } from './clock.ts';
-import type { Config } from './config.ts';
+import { isTrustedOrigin, type Config } from './config.ts';
 import { isDatabaseReady } from './db/index.ts';
 import { createEmailSender, type EmailTransport } from './email/index.ts';
 import { createPositionings, createStages, initializeFunnel } from './funnel/index.ts';
@@ -143,7 +144,14 @@ export function createApp({
     );
   });
   app.use(secureHeaders());
-  app.use(csrf({ origin: config.trustedOrigins }));
+  // An extension too old for this API is told so before anything else (ST-92).
+  app.use(async (c, next) => {
+    if (isOutdatedClient(c.req.header('X-Client'), MIN_EXTENSION_VERSION)) {
+      return c.json({ error: 'extension_outdated' as const }, 426);
+    }
+    return next();
+  });
+  app.use(csrf({ origin: (origin) => isTrustedOrigin(origin, config.trustedOrigins) }));
   app.use(async (c, next) => {
     const remoteAddress = c.env?.incoming?.socket.remoteAddress;
     c.set(

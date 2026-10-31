@@ -17,6 +17,7 @@ const laptop = {
   browser: 'Firefox',
   os: 'Linux',
   lastActiveAt: '2026-10-12T08:00:00.000Z',
+  extension: false,
   current: true,
 };
 const phone = {
@@ -24,6 +25,7 @@ const phone = {
   browser: 'Safari',
   os: 'iOS',
   lastActiveAt: '2026-10-10T12:00:00.000Z',
+  extension: false,
   current: false,
 };
 const unnamed = {
@@ -31,11 +33,21 @@ const unnamed = {
   browser: null,
   os: null,
   lastActiveAt: '2026-09-28T12:00:00.000Z',
+  extension: false,
+  current: false,
+};
+/** The session the Firefox extension opened: named by the extension, not by its browser (ST-91). */
+const extension = {
+  id: '0199d3a0-0000-7000-8000-000000000004',
+  browser: 'Firefox',
+  os: 'Linux',
+  lastActiveAt: '2026-10-11T09:00:00.000Z',
+  extension: true,
   current: false,
 };
 
 /** An API that knows these sessions, and forgets the ones the SPA ends. */
-function withSessions(...initial: (typeof laptop | typeof unnamed)[]) {
+function withSessions(...initial: (typeof laptop | typeof unnamed | typeof extension)[]) {
   let sessions = initial;
   return fakeApi({
     // The User speaks the language of this device: the summary keeps it.
@@ -80,6 +92,16 @@ describe('connected devices, in the Account section of Settings', () => {
     await expect.element(second).toHaveTextContent('Dernière activité : 10 oct. 2026');
     await expect.element(third).toHaveTextContent('Navigateur inconnu · Système inconnu');
     await expect.element(third).toHaveTextContent('Dernière activité : 28 sept. 2026');
+  });
+
+  test('the session of the Firefox extension is named so, and ends like the others', async () => {
+    const { screen } = await renderApp('/settings', withSessions(laptop, extension));
+
+    const items = devices(screen).getByRole('listitem');
+    await expect.element(items.nth(1)).toHaveTextContent('Extension Firefox · Linux');
+    await screen.getByRole('button', { name: 'Déconnecter Extension Firefox · Linux' }).click();
+
+    await expect.element(devices(screen).getByRole('listitem')).toHaveLength(1);
   });
 
   test('this device has no “Sign out” of its own: the others have one each', async () => {

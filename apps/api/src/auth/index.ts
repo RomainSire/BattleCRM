@@ -1,12 +1,14 @@
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@battlecrm/contract';
 import { locales } from '@battlecrm/i18n/runtime';
 import { Hono, type Context } from 'hono';
-import { getSignedCookie, setSignedCookie } from 'hono/cookie';
+import { setSignedCookie } from 'hono/cookie';
 import { createMiddleware } from 'hono/factory';
+import { parseSigned } from 'hono/utils/cookie';
 import type { Logger } from 'pino';
 import { z } from 'zod';
 
 import type { AppEnv } from '../app.ts';
+import { clientOf } from '../client-version.ts';
 import type { Clock } from '../clock.ts';
 import type { Config } from '../config.ts';
 import { withoutIsolation } from '../db/index.ts';
@@ -90,7 +92,8 @@ const passwordChangeRequest = z.object({
 const emailChangeRequest = z.object({ password: currentPassword, email: emailAddress });
 /** Turning the second factor on or off, and making new backup codes: sensitive too (ST-20). */
 const passwordRequest = z.object({ password: currentPassword });
-const codeRequest = z.object({ code: secondFactorCode });
+/** `challenge`: the Firefox extension sends no cookie, it brings back the one its password step was given. */
+const codeRequest = z.object({ code: secondFactorCode, challenge: z.string().max(500).optional() });
 const confirmation = z.object({ password: currentPassword, code: secondFactorCode });
 
 const PASSWORD_REFUSAL_STATUS = {
@@ -99,7 +102,8 @@ const PASSWORD_REFUSAL_STATUS = {
 } as const;
 /**
  * What Better Auth answers a sign-in with, or its second step; its session token stays out of our own
- * answer. With a second factor, the password opens nothing yet: a challenge cookie awaits the code.
+ * answer, except for the Firefox extension. With a second factor, the password opens nothing yet: a challenge
+ * cookie awaits the code.
  */
 const nativeSignIn = z.union([
   z.object({ twoFactorRedirect: z.literal(true) }),
@@ -108,6 +112,24 @@ const nativeSignIn = z.union([
 const nativeError = z.object({ code: z.string() });
 const nativeTotpUri = z.object({ totpURI: z.string() });
 const nativeBackupCodes = z.object({ backupCodes: z.array(z.string()) });
+
+/**
+ * The Firefox extension keeps no cookie: it is handed what the browser would keep, the signed value of
+ * the session cookie as its token, and the challenge cookie between the password and the code.
+ * The SPA never is: its session stays out of reach of the page's scripts.
+ */
+function extensionToken(c: Context<AppEnv>, response: Response) {
+  if (!fromExtension(c)) return {};
+  const token = response.headers.get('set-auth-token');
+  if (!token) throw new Error('Better Auth opened a session and gave no token');
+  return { token };
+}
+
+const fromExtension = (c: Context<AppEnv>) => clientOf(c.req.header('X-Client')) === 'extension';
+
+/** The `name=value` pair of a cookie among others. */
+const cookiePair = (pairs: string[], name: string) =>
+  pairs.find((pair) => pair.startsWith(`${name}=`));
 
 /** What `requireUser` leaves behind it: the User of the request and the session that proved it. */
 export type SignedInEnv = AppEnv & { Variables: { userId: string; sessionId: string } };
@@ -224,15 +246,17 @@ export function createAuth({
     c: Context<Env>,
     path: string,
     body: unknown,
-    /** Instead of every cookie of the request. */
-    cookies = c.req.header('Cookie'),
+    /** Instead of every cookie of the request, and of its bearer token. */
+    cookies?: string,
   ): Promise<Response> {
     const headers = new Headers({ 'Content-Type': 'application/json' });
-    for (const name of ['Origin', 'User-Agent']) {
+    const forwarded = ['Origin', 'User-Agent', 'X-Client'];
+    if (cookies === undefined) forwarded.push('Cookie', 'Authorization');
+    else headers.set('Cookie', cookies);
+    for (const name of forwarded) {
       const value = c.req.header(name);
       if (value !== undefined) headers.set(name, value);
     }
-    if (cookies !== undefined) headers.set('Cookie', cookies);
     if (c.var.clientIp !== undefined) headers.set('X-Forwarded-For', c.var.clientIp);
     const auth = await betterAuth();
     const response = await auth.handler(
@@ -250,16 +274,18 @@ export function createAuth({
 
   /**
    * The User whose sign-in awaits its code, told by the challenge cookie the password left, and that
-   * cookie alone, as the request sent it.
+   * cookie alone: as the request sent it, or as the extension brings it back in `challenge`.
    */
-  async function challengeOf(c: Context<AppEnv>) {
+  async function challengeOf(c: Context<AppEnv>, brought?: string) {
     const context = await betterAuthContext();
     const { name } = context.createAuthCookie(TWO_FACTOR_CHALLENGE_COOKIE);
-    const identifier = await getSignedCookie(c, context.secret, name);
-    const cookie = (c.req.header('Cookie') ?? '')
-      .split(/;\s*/)
-      .find((pair) => pair.startsWith(`${name}=`));
-    if (!identifier || cookie === undefined) return undefined;
+    const cookie =
+      brought === undefined
+        ? cookiePair((c.req.header('Cookie') ?? '').split(/;\s*/), name)
+        : `${name}=${brought}`;
+    if (cookie === undefined) return undefined;
+    const identifier = (await parseSigned(cookie, context.secret, name))[name];
+    if (!identifier) return undefined;
     // Expired or not, Better Auth says of a code: here it only names the address the attempt counts for.
     const challenge = await context.internalAdapter.findVerificationValue(identifier);
     const awaited = challenge && (await twoFactor.ownerOf(challenge.value));
@@ -270,8 +296,13 @@ export function createAuth({
    * The second step of a sign-in: a code, checked by Better Auth against the challenge of the first.
    * Counted with the failed sign-ins of the address before it is looked at (spec stack §7).
    */
-  async function secondStep(c: Context<AppEnv>, path: string, code: string) {
-    const challenge = await challengeOf(c);
+  async function secondStep(
+    c: Context<AppEnv>,
+    path: string,
+    { code, challenge: brought }: z.infer<typeof codeRequest>,
+  ) {
+    // Only the extension brings its challenge back: the SPA's stays in its httpOnly cookie.
+    const challenge = await challengeOf(c, fromExtension(c) ? brought : undefined);
     if (!challenge) return c.json({ error: 'challenge_expired' as const }, 401);
     const { awaited } = challenge;
     if (!(await loginAttempts.admit(awaited.email))) {
@@ -300,7 +331,18 @@ export function createAuth({
     await twoFactorRecovery.cancel(awaited.id);
     c.set('userId', awaited.id);
     await devices.signedIn(c, awaited);
-    return c.json({ email: awaited.email }, 200);
+    return c.json({ email: awaited.email, ...extensionToken(c, response) }, 200);
+  }
+
+  async function extensionChallenge(c: Context<AppEnv>, response: Response) {
+    if (!fromExtension(c)) return {};
+    const { name } = (await betterAuthContext()).createAuthCookie(TWO_FACTOR_CHALLENGE_COOKIE);
+    const challenge = cookiePair(
+      response.headers.getSetCookie().map((cookie) => cookie.split(';')[0] ?? ''),
+      name,
+    )?.slice(name.length + 1);
+    if (!challenge) throw new Error('Better Auth awaits a code and left no challenge');
+    return { challenge };
   }
 
   // A session ended from another device stops here at once: nothing caches it (ST-16).
@@ -354,17 +396,22 @@ export function createAuth({
       if (!response.ok) throw new Error(`Better Auth answered ${response.status} to a sign-in`);
       const answer = nativeSignIn.parse(await response.json());
       // The password was right and proves half: no session, no device, until the code (ST-18).
-      if ('twoFactorRedirect' in answer) return c.json({ twoFactorRequired: true as const }, 200);
+      if ('twoFactorRedirect' in answer) {
+        return c.json(
+          { twoFactorRequired: true as const, ...(await extensionChallenge(c, response)) },
+          200,
+        );
+      }
       const { user } = answer;
       c.set('userId', user.id);
       await devices.signedIn(c, user);
-      return c.json({ email: user.email }, 200);
+      return c.json({ email: user.email, ...extensionToken(c, response) }, 200);
     })
     .post(`/auth${VERIFY_TOTP_PATH}`, jsonBody(codeRequest), (c) =>
-      secondStep(c, VERIFY_TOTP_PATH, c.req.valid('json').code),
+      secondStep(c, VERIFY_TOTP_PATH, c.req.valid('json')),
     )
     .post(`/auth${VERIFY_BACKUP_CODE_PATH}`, jsonBody(codeRequest), (c) =>
-      secondStep(c, VERIFY_BACKUP_CODE_PATH, c.req.valid('json').code),
+      secondStep(c, VERIFY_BACKUP_CODE_PATH, c.req.valid('json')),
     )
     // The second factor is lost (ST-19): asked from the code screen, by the challenge the password left,
     // and by nothing else. It opens no session and turns nothing off before 7 days.

@@ -46,6 +46,8 @@ export const session = pgTable(
     updatedAt: instant('updated_at').notNull(),
     ipAddress: text('ip_address'),
     userAgent: text('user_agent'),
+    /** The client that opened it, from `X-Client`: `extension` for the Firefox extension, null for the SPA. */
+    client: text(),
     userId: uuid('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),

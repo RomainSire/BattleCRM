@@ -9,6 +9,8 @@ export type ConnectedDevice = {
   id: string;
   browser: string | null;
   os: string | null;
+  /** Opened by the Firefox extension: named so rather than by its browser (ST-91). */
+  extension: boolean;
   /** Known to the day: a session in use is written once a day (ST-16). */
   lastActiveAt: string;
   current: boolean;
@@ -22,16 +24,22 @@ export async function listSessions(
 ): Promise<ConnectedDevice[]> {
   const sessions = await withoutIsolation((db) =>
     db
-      .select({ id: session.id, userAgent: session.userAgent, updatedAt: session.updatedAt })
+      .select({
+        id: session.id,
+        userAgent: session.userAgent,
+        client: session.client,
+        updatedAt: session.updatedAt,
+      })
       .from(session)
       .where(and(eq(session.userId, userId), gt(session.expiresAt, now)))
       // Ids are UUID v7: the latest opened first among those used at the same time.
       .orderBy(desc(session.updatedAt), desc(session.id)),
   );
   return sessions
-    .map(({ id, userAgent, updatedAt }) => ({
+    .map(({ id, userAgent, client, updatedAt }) => ({
       id,
       ...describeUserAgent(userAgent),
+      extension: client === 'extension',
       lastActiveAt: updatedAt.toISOString(),
       current: id === currentSessionId,
     }))

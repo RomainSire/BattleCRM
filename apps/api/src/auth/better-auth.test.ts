@@ -130,6 +130,7 @@ test('sessions are opaque, read in the database every time, and slide over 90 da
     expiresIn: 90 * 24 * 60 * 60,
     updateAge: 24 * 60 * 60,
     cookieCache: { enabled: false },
+    additionalFields: { client: { type: 'string', required: false, input: false } },
   });
 });
 

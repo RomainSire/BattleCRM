@@ -2,9 +2,11 @@ import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@battlecrm/contract';
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError, createAuthMiddleware, isAPIError } from 'better-auth/api';
+import { bearer } from 'better-auth/plugins/bearer';
 import { twoFactor as twoFactorPlugin } from 'better-auth/plugins/two-factor';
 import type { Logger } from 'pino';
 
+import { clientOf } from '../client-version.ts';
 import type { Clock } from '../clock.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/index.ts';
@@ -90,12 +92,24 @@ export function betterAuthOptions(
       updateAge: DAY,
       // A revoked session stops working at once.
       cookieCache: { enabled: false },
+      additionalFields: { client: { type: 'string', required: false, input: false } },
+    },
+    databaseHooks: {
+      session: {
+        create: {
+          // The Firefox extension names itself in `X-Client`: its sessions say so in “Connected devices”.
+          before: async (opened, ctx) => ({
+            data: { ...opened, client: clientOf(ctx?.headers?.get('X-Client')) },
+          }),
+        },
+      },
     },
     // Better Auth would erase every expired row of `verification` each time it reads one, by the system
     // clock: the scheduled purge does it instead, by ours, and only for the rows it knows.
     verification: { disableCleanup: true },
-    // TOTP and 10 single-use backup codes, kept encrypted (ST-18).
-    plugins: [twoFactorPlugin()],
+    // TOTP and 10 single-use backup codes, kept encrypted (ST-18). `bearer`: the Firefox extension sends
+    // the signed value of the session cookie as `Authorization: Bearer`, the same session row (ST-90).
+    plugins: [twoFactorPlugin(), bearer({ requireSignature: true })],
     // By IP address, counted in the database: 30 sign-in attempts, and as many codes, per 15 minutes (ST-15).
     // The address is the one `index.ts` hands over, resolved from Traefik's by `client-ip.ts`.
     rateLimit: {

@@ -29,7 +29,7 @@ const apiEnv = z.object({
   /** The app role (ADR 0009): never the owner, never a superuser. */
   DATABASE_URL: z.url(),
   APP_VERSION: z.string().min(1),
-  /** The origin of the SPA; the single list of trusted origins grows with the Firefox extension (spec stack §9). */
+  /** The origin of the SPA, the first of the trusted origins. */
   APP_ORIGIN: z.url().transform((url) => new URL(url).origin),
   /** The Traefik network: the only peers whose X-Forwarded-For is believed. */
   TRUSTED_PROXIES: subnets,
@@ -55,7 +55,19 @@ const migrationEnv = z.object({
   MIGRATION_DATABASE_URL: z.url(),
 });
 
+/** A scheme alone: every origin of that scheme, as Better Auth reads such an entry. */
+const EXTENSION_ORIGINS = 'moz-extension://';
+
 export type Config = ReturnType<typeof loadConfig>;
+
+/** Whether an `Origin` is on the list, read as Better Auth reads it: a bare scheme trusts all of its origins. */
+export function isTrustedOrigin(origin: string, trustedOrigins: readonly string[]): boolean {
+  return trustedOrigins.some((trusted) =>
+    trusted.endsWith('://')
+      ? origin.startsWith(trusted) && origin.length > trusted.length
+      : origin === trusted,
+  );
+}
 type Env = Record<string, string | undefined>;
 
 export function loadConfig(env: Env) {
@@ -65,7 +77,11 @@ export function loadConfig(env: Env) {
     appVersion: parsed.APP_VERSION,
     /** Links in e-mails are built on it. */
     appOrigin: parsed.APP_ORIGIN,
-    trustedOrigins: [parsed.APP_ORIGIN],
+    /**
+     * The single list of trusted origins (spec stack §9), read by Better Auth's `trustedOrigins` and by
+     * `csrf()` alike: the SPA, and the Firefox extension under any uuid, which Firefox draws per profile.
+     */
+    trustedOrigins: [parsed.APP_ORIGIN, EXTENSION_ORIGINS],
     authSecret: parsed.BETTER_AUTH_SECRET,
     signupsOpen: parsed.SIGNUPS_OPEN,
     smtp: {
