@@ -330,6 +330,13 @@
       "when": 1793042087431,
       "tag": "0046_contact_anonymized",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1793480344837,
+      "tag": "0047_linkedin_url_renormalized",
+      "breakpoints": true
     }
   ]
 }

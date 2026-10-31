@@ -95,6 +95,25 @@ describe('normalizeLinkedInUrl: https, www, final slash and parameters aside (ST
     );
   });
 
+  test('whatever its path, a normalized address normalizes to itself (ST-93)', () => {
+    /** Any path, its `%xx` escapes, accents and marks included. */
+    const anyPath = fc
+      .array(
+        fc.oneof(
+          fc.string({ unit: 'grapheme' }),
+          fc.constantFrom('/', '%', '%20', '%25', '%2F', '%3F', '%23', '%C3%A9', 'é', 'İ'),
+        ),
+      )
+      .map((parts) => parts.join(''));
+    fc.assert(
+      fc.property(fc.constantFrom('/in/', '/company/', '/'), anyPath, (start, path) => {
+        const normalized = normalizeLinkedInUrl(`linkedin.com${start}${path}`);
+        return normalized === null || normalizeLinkedInUrl(normalized) === normalized;
+      }),
+      { numRuns: 1000 },
+    );
+  });
+
   test('two profiles stay two', () => {
     fc.assert(
       fc.property(profilePath, profilePath, (one, other) => {
@@ -116,6 +135,53 @@ describe('normalizeLinkedInUrl: https, www, final slash and parameters aside (ST
   test('a profile is the same in any case, and on the site of any country', () => {
     expect(normalizeLinkedInUrl('https://fr.linkedin.com/in/Jean-Dupont')).toBe(
       'https://linkedin.com/in/jean-dupont',
+    );
+  });
+
+  test('a profile written with its accents or encoded in %xx is the same (ST-93)', () => {
+    const accented = 'https://www.linkedin.com/in/faïza-béné/';
+    expect(normalizeLinkedInUrl('https://www.linkedin.com/in/fa%C3%AFza-b%C3%A9n%C3%A9/')).toBe(
+      normalizeLinkedInUrl(accented),
+    );
+    expect(normalizeLinkedInUrl('linkedin.com/in/FA%C3%8FZA-B%c3%a9N%C3%A9')).toBe(
+      'https://linkedin.com/in/faïza-béné',
+    );
+  });
+
+  test.each([
+    'https://www.linkedin.com/in/jean-dupont/fr/',
+    'https://www.linkedin.com/in/jean-dupont/overlay/contact-info/',
+    'https://www.linkedin.com/in/jean-dupont/details/experience/?profileUrn=x',
+    'linkedin.com/in/Jean-Dupont/recent-activity/all',
+  ])('%j is the profile itself (ST-93)', (address) => {
+    expect(normalizeLinkedInUrl(address)).toBe('https://linkedin.com/in/jean-dupont');
+  });
+
+  test.each([
+    ['linkedin.com/in/jean-dupont-100%', 'https://linkedin.com/in/jean-dupont-100%'],
+    ['linkedin.com/in/jean%zzdupont', 'https://linkedin.com/in/jean%zzdupont'],
+    ['linkedin.com/in/jean%C3', 'https://linkedin.com/in/jean%c3'],
+    ['linkedin.com/in/jean%20dupont', 'https://linkedin.com/in/jean%20dupont'],
+    ['linkedin.com/in/jean%00', 'https://linkedin.com/in/jean%00'],
+  ])(
+    '%j, a %% that encodes nothing a path may hold, is read as written (ST-93)',
+    (address, normalized) => {
+      expect(normalizeLinkedInUrl(address)).toBe(normalized);
+    },
+  );
+
+  test('a page other than a profile keeps its whole path', () => {
+    expect(normalizeLinkedInUrl('https://www.linkedin.com/company/capgemini/about/')).toBe(
+      'https://linkedin.com/company/capgemini/about',
+    );
+  });
+
+  test('an accent written as a letter and its mark is the same accent (ST-93)', () => {
+    const composed = 'linkedin.com/in/béné';
+    const decomposed = 'linkedin.com/in/béné';
+    expect(normalizeLinkedInUrl(decomposed)).toBe(normalizeLinkedInUrl(composed));
+    expect(normalizeLinkedInUrl('linkedin.com/in/be%CC%81ne%CC%81')).toBe(
+      normalizeLinkedInUrl(composed),
     );
   });
 

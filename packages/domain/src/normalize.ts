@@ -14,8 +14,9 @@ const LINKEDIN_HOST = /^(?:[a-z\d-]+\.)?linkedin\.com$/u;
 
 /**
  * A LinkedIn address, its scheme, subdomain, case, final slashes, parameters and fragment aside:
- * always `https://linkedin.com/…`, as LinkedIn reads a profile whatever its case. `null` when the
- * text is no LinkedIn address.
+ * always `https://linkedin.com/…`, as LinkedIn reads a profile whatever its case. Its `%xx` decoded and
+ * its accents in one form (NFC), a profile cut to `/in/<slug>` (ST-93). `null` when the text is no
+ * LinkedIn address.
  */
 export function normalizeLinkedInUrl(address: string): string | null {
   // Copied from the address bar or typed by hand: without a scheme, it is the web.
@@ -23,7 +24,30 @@ export function normalizeLinkedInUrl(address: string): string | null {
   if (!match) return null;
   const [, host = '', path = ''] = match;
   if (!LINKEDIN_HOST.test(host.toLowerCase())) return null;
-  return `https://linkedin.com${path.toLowerCase().replace(/\/+$/u, '')}`;
+  const page = decodePath(path).toLowerCase().normalize('NFC');
+  // A profile's sub-pages (`/fr`, `/overlay/contact-info`, `/details/…`) are the profile itself.
+  const profile = PROFILE_PATH.exec(page)?.[0];
+  return `https://linkedin.com${profile ?? page.replace(/\/+$/u, '')}`;
+}
+
+/** A profile: `/in/` and its slug. */
+const PROFILE_PATH = /^\/in\/[^/]+/u;
+
+/** A path with the `%xx` of each segment decoded, as the browser shows it. */
+const decodePath = (path: string): string => path.split('/').map(decodeSegment).join('/');
+
+/**
+ * A segment of a path, decoded. As written when one of its `%xx` encodes nothing, or encodes what a
+ * segment cannot hold as such (`/`, `?`, `#`, `%`, a space, a control character): read again, the
+ * decoded segment would be another address. The migration `0047_linkedin_url_renormalized` does the same.
+ */
+function decodeSegment(segment: string): string {
+  try {
+    const decoded = decodeURIComponent(segment);
+    return /[/?#%\s\p{Cc}]/u.test(decoded) ? segment : decoded;
+  } catch {
+    return segment;
+  }
 }
 
 /** An e-mail address, case and spaces aside. */
