@@ -203,7 +203,8 @@ jobs:
 
   release:
     needs: deploy
-    if: github.event_name == 'push'
+    # Also when ci was skipped: a skipped job upstream would skip this one otherwise.
+    if: ${{ !failure() && !cancelled() && github.event_name == 'push' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
