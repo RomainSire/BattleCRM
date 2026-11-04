@@ -47,7 +47,7 @@ export default defineConfig({
     browser_specific_settings: {
       gecko: {
         // Fixed once and for all: AMO knows the extension by it.
-        id: 'battlecrm@romainsire.com',
+        id: 'battlecrm@battlecrm.romainsire.com',
         strict_min_version: '140.0',
         // Firefox refuses to install an extension whose updates come over plain HTTP (with a misleading
         // “not compatible with application version”): the dev build, on localhost, has none.
