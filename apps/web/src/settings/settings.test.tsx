@@ -213,6 +213,20 @@ test('changing the language changes the interface and `lang` at once; “Undo”
   expect(sentSettings(api)).toEqual([{ locale: 'en' }, { locale: 'fr' }]);
 });
 
+test('Preferences offers the Firefox extension of this version, in every browser', async () => {
+  await desktop();
+  await renderApp('/settings', settingsApi());
+
+  const preferences = page.getByRole('region', { name: 'Préférences' });
+  await expect.element(preferences.getByText('Extension Firefox', { exact: true })).toBeVisible();
+  // The tests build no version: the SPA's is `dev`.
+  await expect
+    .element(preferences.getByRole('link', { name: "Installer l'extension" }))
+    .toHaveAttribute('href', '/extension/battlecrm-dev.xpi');
+  await expect.element(preferences.getByText('Pour Firefox', { exact: true })).toBeVisible();
+  await expectNoAxeViolations();
+});
+
 test('the language of the User follows it onto a device that shows another', async () => {
   await desktop();
   await renderApp('/settings', settingsApi({ locale: 'en' }));

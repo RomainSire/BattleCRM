@@ -1,5 +1,6 @@
 import { m } from '@battlecrm/i18n';
 import {
+  buttonVariants,
   Label,
   SegmentedControl,
   SegmentedControlItem,
@@ -8,6 +9,7 @@ import {
 } from '@battlecrm/ui';
 import { useId } from 'react';
 
+import { APP_VERSION } from '../app-update.tsx';
 import { locales, useLocale, type Locale } from '../i18n.ts';
 import { useIsOnline } from '../online.ts';
 import { useTheme, type ThemePreference } from '../theme/theme-provider.tsx';
@@ -148,7 +150,31 @@ export function CelebrateSetting() {
   );
 }
 
-/** Language, time zone, theme and shortcuts (spec UX §5.8). */
+/**
+ * The Firefox extension of this very version, served by the app (spec extension §11): shown in every
+ * browser, Firefox keeps it up to date afterwards.
+ */
+function ExtensionSetting() {
+  useLocale();
+  const hintId = useId();
+  return (
+    <div className="flex flex-col items-start gap-1.5">
+      <span className="text-sm font-medium">{m.device_firefox_extension()}</span>
+      <a
+        className={buttonVariants({ variant: 'outline', className: 'max-md:min-h-11' })}
+        href={`/extension/battlecrm-${APP_VERSION}.xpi`}
+        aria-describedby={hintId}
+      >
+        {m.settings_install_extension()}
+      </a>
+      <p id={hintId} className="text-sm text-muted-foreground">
+        {m.settings_extension_firefox_only()}
+      </p>
+    </div>
+  );
+}
+
+/** Language, time zone, theme, shortcuts and the Firefox extension (spec UX §5.8). */
 export function PreferencesSettings() {
   useLocale();
   const { singleKeyShortcuts } = useSettings();
@@ -168,6 +194,7 @@ export function PreferencesSettings() {
       />
       {/* No setting of its own (ST-56): the system's. */}
       <p className="text-sm text-muted-foreground">{m.settings_reduced_motion()}</p>
+      <ExtensionSetting />
     </div>
   );
 }

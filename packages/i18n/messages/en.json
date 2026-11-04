@@ -399,6 +399,8 @@
   "settings_single_key_shortcuts": "Single-key shortcuts",
   "settings_single_key_shortcuts_hint": "N, /, ?, G + letter and V. Ctrl K and Esc always work.",
   "settings_reduced_motion": "“Reduce motion” follows your system setting.",
+  "settings_install_extension": "Install the extension",
+  "settings_extension_firefox_only": "For Firefox",
   "settings_saved": "Setting saved: {setting}",
   "settings_save_failed": "Couldn't save. Try again in a moment.",
   "verb_follow_up": "Follow up…",

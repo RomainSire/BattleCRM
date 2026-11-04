@@ -22,6 +22,14 @@ server {
         include /etc/nginx/snippets/security-headers.conf;
         add_header Cache-Control "public, max-age=31536000, immutable" always;
     }
+
+    # The signed Firefox extension, and the updates.json Firefox checks every 24 hours (spec
+    # extension §11). Revalidated so that a release shows up; a missing file is a 404.
+    location /extension/ {
+        try_files $uri =404;
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+    }
 }
 
 # The landing page does not exist yet: its host answers without content.

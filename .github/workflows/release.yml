@@ -1,6 +1,7 @@
 name: release
 
-# A v* tag on main delivers (ADR 0013, spec stack §10.3): CI, images, deploy.sh over SSH, GitHub Release.
+# A v* tag on main delivers (ADR 0013, spec stack §10.3): CI, the signed Firefox extension, images,
+# deploy.sh over SSH, GitHub Release.
 # The CI is the one of the branch push on the same commit when it passed, run again otherwise.
 # Rolling back: run this workflow by hand with a tag already released; it only delivers that tag again.
 on:
@@ -70,8 +71,78 @@ jobs:
     if: needs.verify.outputs.ci != 'success'
     uses: ./.github/workflows/ci.yml
 
-  images:
+  # The Firefox extension of this version, signed by AMO, unlisted (spec extension §11). Signed at
+  # every tag, even unchanged: its failure stops the release. Delivering a tag again signs nothing,
+  # the web image of the tag holds its extension.
+  extension:
     needs: [verify, ci]
+    if: ${{ !failure() && !cancelled() && needs.verify.result == 'success' }}
+    runs-on: ubuntu-24.04
+    # AMO's approval takes up to 30 minutes.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile --filter @battlecrm/extension...
+
+      - name: Build for the app's origin
+        env:
+          APP_ORIGIN: ${{ vars.APP_ORIGIN }}
+        # Firefox only updates an extension over HTTPS: without it, the manifest has no update_url.
+        run: |
+          case "$APP_ORIGIN" in
+            https://*) ;;
+            *) echo "vars.APP_ORIGIN must be the app's origin, in https (docs/ops/install.md)" >&2; exit 1 ;;
+          esac
+          pnpm --filter @battlecrm/extension build
+
+      # A re-run finds the version already on AMO, which refuses it a second time: it downloads it.
+      - name: Signed by AMO, or downloaded when AMO already has this version
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
+          WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
+        run: |
+          version=${TAG#v}
+          manifest=apps/extension/.output/firefox-mv3/manifest.json
+          test "$(jq -r .version "$manifest")" = "$version"
+          id=$(jq -er .browser_specific_settings.gecko.id "$manifest")
+          update_url=$(jq -er .browser_specific_settings.gecko.update_url "$manifest")
+          mkdir extension
+          xpi=battlecrm-$version.xpi
+          amo=0
+          node apps/extension/scripts/amo-signed-version.ts "$id" "$version" "extension/$xpi" || amo=$?
+          if [ "$amo" -eq 2 ]; then
+            pnpm --filter @battlecrm/extension exec web-ext sign --channel unlisted \
+              --source-dir .output/firefox-mv3 --artifacts-dir "$RUNNER_TEMP/signed" \
+              --approval-timeout 1800000
+            set -- "$RUNNER_TEMP"/signed/*.xpi
+            test "$#" -eq 1
+            mv "$1" "extension/$xpi"
+          elif [ "$amo" -ne 0 ]; then
+            exit "$amo"
+          fi
+          # What Firefox checks every 24 hours, next to the file.
+          jq -n --arg id "$id" --arg version "$version" --arg link "${update_url%/updates.json}/$xpi" \
+            '{addons: {($id): {updates: [{version: $version, update_link: $link}]}}}' \
+            >extension/updates.json
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: extension
+          path: extension/
+          if-no-files-found: error
+
+  images:
+    needs: [verify, ci, extension]
     # Also when ci was skipped: the CI of the branch push passed.
     if: ${{ !failure() && !cancelled() && needs.verify.result == 'success' }}
     runs-on: ubuntu-24.04
@@ -85,6 +156,12 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/docker-hub-mirror
+
+      # Served by the web image under /extension/.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: extension
+          path: apps/web/extension/
 
       - name: Build and push the api and web images
         env:
@@ -132,7 +209,19 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: GitHub Release with the generated notes
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: extension
+          path: extension/
+
+      - name: GitHub Release with the generated notes, and the signed extension
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
+        # A re-run finds the Release already made: it only uploads the file again.
+        run: |
+          xpi=extension/battlecrm-${TAG#v}.xpi
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "$xpi"
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes "$xpi"
+          fi

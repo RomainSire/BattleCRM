@@ -43,7 +43,8 @@ export default defineConfig({
         // open offline.
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        // The API, and the Firefox extension served next to the app (spec extension §11).
+        navigateFallbackDenylist: [/^\/api\//, /^\/extension\//],
         runtimeCaching: [],
       },
     }),

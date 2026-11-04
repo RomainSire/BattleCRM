@@ -6,6 +6,8 @@ todo.md
 node_modules/
 *.local
 dist/
+# The signed Firefox extension, put there by release.yml for the web image.
+apps/web/extension/
 coverage/
 *.tsbuildinfo
 .vitest-attachments/

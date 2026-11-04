@@ -85,6 +85,7 @@ Les rôles sont créés au premier démarrage de Postgres, sur un volume vide : 
 ## 5. GitHub
 
 - Secrets du dépôt : `DEPLOY_SSH_KEY` (la clé privée), `DEPLOY_HOST`, `DEPLOY_KNOWN_HOSTS` (la sortie de `ssh-keyscan -t ed25519 <hôte>`, avec `-p <port>` si le port SSH n'est pas 22, vérifiée contre l'empreinte du VPS : `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`) et, hors du port 22, `DEPLOY_PORT`. `DEPLOY_HOST` s'écrit exactement comme dans le `ssh-keyscan`.
+- Extension Firefox (spec extension §11) : sur AMO, avec le compte de Romain, créer les clés d'API (https://addons.mozilla.org/developers/addon/api/key/). L'émetteur JWT va dans le secret `WEB_EXT_API_KEY`, le secret JWT dans `WEB_EXT_API_SECRET`. Dans Settings → Secrets and variables → Actions → Variables, poser `APP_ORIGIN` = `https://app.battlecrm.romainsire.com` (sans `/` final) : l'extension est construite pour cette origine, et Firefox y cherche ses mises à jour. Rien à créer sur AMO : la première version envoyée crée le module, non listé.
 - Les paquets `battlecrm-api` et `battlecrm-web` n'existent qu'après le premier push d'images. À la première release (2026-10-10), ils sont nés publics et le VPS les a tirés sans jeton. S'ils naissaient privés, la release échouerait au `pull` de `deploy.sh` (sans rien toucher) : les passer alors en public (Packages → Package settings → Change visibility), puis relancer la livraison : Actions → release → Run workflow, avec le même tag.
 
 ## 6. Sauvegardes et alertes (spec stack §11, §12)
@@ -112,6 +113,12 @@ pnpm version minor   # ou patch, major : commit « 0.2.0 » et tag annoté v0.2.
 git push --follow-tags
 ```
 
-Le workflow `release` refuse un tag hors de `main` ou différent de la version du `package.json`, rejoue la CI, pousse les images `0.2.0` et `sha-<court>`, lance `deploy.sh v0.2.0`, puis crée la GitHub Release.
+Si le tag change la lecture de LinkedIn par l'extension, la [recette](../../.scratch/battlecrm-extension/spec.md#12-recette-suggérée-jamais-obligatoire) sur le vrai LinkedIn est conseillée avant de le poser (jamais obligatoire).
+
+Le workflow `release` refuse un tag hors de `main` ou différent de la version du `package.json`, rejoue la CI, fait signer l'extension Firefox par AMO, pousse les images `0.2.0` et `sha-<court>`, lance `deploy.sh v0.2.0`, puis crée la GitHub Release, avec le `.xpi` signé.
+
+L'extension (`battlecrm-0.2.0.xpi`) et son `updates.json` sont dans l'image `web`, sous `/extension/` : Réglages › Préférences propose « Installer l'extension », et Firefox installé la met à jour seul (vérification toutes les 24 h). La signature attend l'approbation d'AMO, 30 min au plus ; son échec arrête la livraison, l'app en place continue. « Re-run failed jobs » ne signe pas deux fois : si AMO a déjà la version, le job la télécharge. Relivrer un tag ne signe rien. Après un retour arrière, Firefox garde l'extension la plus récente (il ne rétrograde pas), le temps de la livraison suivante.
+
+`MIN_EXTENSION_VERSION` (`apps/api/src/client-version.ts`) se monte à la main, dans la PR même d'une étape « contract » qui retire ce dont l'extension se sert : l'API répond alors `426` aux extensions plus anciennes.
 
 `deploy.sh` passe les migrations (un échec arrête tout, l'API en place continue), redémarre, attend `/api/health`, et revient tout seul au tag de `deployed_tag` si quelque chose échoue. Pour revenir en arrière à la main : Actions → release → Run workflow, avec un tag déjà livré, ou, sur le VPS, `sudo -u battlecrm-deploy /opt/docker/battlecrm/deploy.sh v0.1.0` (sous cet utilisateur, qui possède le dossier, fermé aux autres comptes). Relivrer le tag en place sert aussi à faire relire un fichier de secrets modifié. Le retour arrière ne défait que les images : chaque migration reste compatible avec la version précédente (expand/contract).

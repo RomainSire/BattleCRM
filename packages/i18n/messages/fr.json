@@ -399,6 +399,8 @@
   "settings_single_key_shortcuts": "Raccourcis à une touche",
   "settings_single_key_shortcuts_hint": "N, /, ?, G + lettre et V. Ctrl K et Échap restent actifs.",
   "settings_reduced_motion": "« Réduire les animations » suit le réglage de ton système.",
+  "settings_install_extension": "Installer l'extension",
+  "settings_extension_firefox_only": "Pour Firefox",
   "settings_saved": "Réglage enregistré : {setting}",
   "settings_save_failed": "L'enregistrement n'a pas abouti. Réessaie dans un instant.",
   "verb_follow_up": "Relancer…",

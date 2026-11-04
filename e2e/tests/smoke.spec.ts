@@ -33,7 +33,7 @@ test('the SPA opens under the production headers, without a blocked resource', a
   expect(errors).toEqual([]);
 });
 
-test('a deep link serves the SPA, a missing asset does not', async ({ request }) => {
+test('a deep link serves the SPA, a missing asset or extension does not', async ({ request }) => {
   const deepLink = await request.get('/contacts');
   expect(deepLink.status()).toBe(200);
   expect(deepLink.headers()['cache-control']).toBe('no-cache');
@@ -41,6 +41,10 @@ test('a deep link serves the SPA, a missing asset does not', async ({ request })
 
   const asset = await request.get('/assets/missing.js');
   expect(asset.status()).toBe(404);
+
+  // Only release.yml puts a signed extension in the image.
+  const extension = await request.get('/extension/updates.json');
+  expect(extension.status()).toBe(404);
 });
 
 test('the landing host answers without content until the landing exists', async ({ request }) => {
