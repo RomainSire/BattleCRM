@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, test } from 'vitest';
 import { commands, page } from 'vitest/browser';
 
 import { expectNoAxeViolations } from '../../test/axe.ts';
-import { APP_ORIGIN, fakeBackground, renderSidebar } from '../../test/render-sidebar.tsx';
+import type { ContactCard } from '../messages.ts';
+import { APP_ORIGIN, fakeBackground, fakeTab, renderSidebar } from '../../test/render-sidebar.tsx';
 
 const PASSWORD = 'correct horse battery staple';
 const ELSEWHERE = 'Ouvre un profil LinkedIn pour voir ou ajouter un Contact.';
@@ -183,6 +184,145 @@ describe('screens, in their order', () => {
   });
 });
 
+const PROFILE = 'https://www.linkedin.com/in/ga%C3%ABtan-lef%C3%A8vre-b7c41e2d/';
+/** The profile of `PROFILE`, as the sidebar asks about it: normalized. */
+const ASKED = 'https://linkedin.com/in/gaëtan-lefèvre-b7c41e2d';
+const OTHER = 'https://www.linkedin.com/in/camille-durand/';
+
+const prospecting: ContactCard = {
+  id: 'c-1',
+  name: 'Gaëtan Lefèvre',
+  status: 'prospecting',
+  stageName: 'Premier message',
+  organizationName: 'Acme',
+  jobTitle: 'Directeur technique',
+  lastDoneInteractionOn: '2026-09-12',
+};
+const ally: ContactCard = {
+  id: 'c-2',
+  name: 'Camille Durand',
+  status: 'ally',
+  stageName: null,
+  organizationName: null,
+  jobTitle: null,
+  lastDoneInteractionOn: null,
+};
+
+/** Signed in; each profile answers with its card, any other with no Contact. */
+const withCards = (cards: Record<string, ContactCard>) =>
+  fakeBackground({
+    session: () => signedIn,
+    lookup: ({ url }) => {
+      const contact = cards[url];
+      return contact ? { status: 'contact', contact } : { status: 'notContact' };
+    },
+  });
+
+const lookups = (background: ReturnType<typeof fakeBackground>) =>
+  background.messages.filter(({ type }) => type === 'lookup');
+
+describe('the card of a Contact', () => {
+  test('Prospecting: its name, its Status with its Stage, Organization, job, last exchange and its record', async () => {
+    const background = withCards({ [ASKED]: prospecting });
+    const { screen } = await renderSidebar(background, fakeTab(PROFILE));
+
+    await expect.element(screen.getByRole('heading', { name: 'Gaëtan Lefèvre' })).toBeVisible();
+    await expect.element(screen.getByText('En prospection · Premier message')).toBeVisible();
+    await expect.element(screen.getByText('Acme')).toBeVisible();
+    await expect.element(screen.getByText('Directeur technique')).toBeVisible();
+    await expect.element(screen.getByText('Dernier échange : 12 sept.')).toBeVisible();
+    const record = screen.getByRole('link', { name: 'Ouvrir sa fiche' });
+    await expect.element(record).toHaveAttribute('href', `${APP_ORIGIN}/contacts/c-1`);
+    await expect.element(record).toHaveAttribute('target', '_blank');
+    expect(lookups(background)).toEqual([{ type: 'lookup', url: ASKED }]);
+  });
+
+  test('an Ally: ★ by its name, no exchange yet, no Organization', async () => {
+    const { screen } = await renderSidebar(withCards({ [ASKED]: ally }), fakeTab(PROFILE));
+
+    await expect.element(screen.getByRole('heading', { name: 'Camille Durand' })).toBeVisible();
+    await expect.element(screen.getByText('★')).toBeVisible();
+    await expect.element(screen.getByText('Allié', { exact: true })).toBeVisible();
+    await expect.element(screen.getByText('Aucun échange')).toBeVisible();
+    await expect.element(screen.getByText('Sans Organisation')).toBeVisible();
+  });
+
+  test('an Archived Contact has its card like the others, and nothing changes from it', async () => {
+    const { screen } = await renderSidebar(
+      withCards({ [ASKED]: { ...ally, status: 'archived' } }),
+      fakeTab(PROFILE),
+    );
+
+    await expect.element(screen.getByText('Archivé', { exact: true })).toBeVisible();
+    expect(screen.getByText('★').query()).toBeNull();
+    // Only signing out: the card is read, never changed here.
+    expect(screen.getByRole('button').elements()).toHaveLength(1);
+    expect(screen.getByRole('textbox').query()).toBeNull();
+  });
+
+  test('follows the active tab: one read per profile shown, never another for the same one', async () => {
+    const background = withCards({
+      [ASKED]: prospecting,
+      'https://linkedin.com/in/camille-durand': ally,
+    });
+    const { screen, tab } = await renderSidebar(background, fakeTab(PROFILE));
+    await expect.element(screen.getByRole('heading', { name: 'Gaëtan Lefèvre' })).toBeVisible();
+
+    tab.go(OTHER);
+    await expect.element(screen.getByRole('heading', { name: 'Camille Durand' })).toBeVisible();
+    // Another page of the same profile.
+    tab.go(`${OTHER}overlay/contact-info/`);
+    tab.go('https://www.linkedin.com/feed/');
+    await expect.element(screen.getByText(ELSEWHERE)).toBeVisible();
+    tab.go(undefined);
+    await expect.element(screen.getByText(ELSEWHERE)).toBeVisible();
+
+    expect(lookups(background)).toEqual([
+      { type: 'lookup', url: ASKED },
+      { type: 'lookup', url: 'https://linkedin.com/in/camille-durand' },
+    ]);
+  });
+
+  test('an API in error: “Try again” reads the profile once more', async () => {
+    const background = fakeBackground({
+      session: () => signedIn,
+      lookup: () => ({ status: 'error' }),
+    });
+    const { screen } = await renderSidebar(background, fakeTab(PROFILE));
+
+    await expect
+      .element(screen.getByRole('heading', { name: 'BattleCRM ne répond pas' }))
+      .toBeVisible();
+    background.answer('lookup', () => ({ status: 'contact', contact: prospecting }));
+    await screen.getByRole('button', { name: 'Réessayer' }).click();
+
+    await expect.element(screen.getByRole('heading', { name: 'Gaëtan Lefèvre' })).toBeVisible();
+  });
+
+  test('a session that ended while reading: to sign in again, the address filled in', async () => {
+    let asked = 0;
+    // Signed in at first; once the read met the end of the session, the background says so.
+    const background = fakeBackground({
+      session: () => (asked++ === 0 ? signedIn : { status: 'expired', email: 'jane@example.com' }),
+      lookup: () => ({ status: 'signedOut' }),
+    });
+    const { screen } = await renderSidebar(background, fakeTab(PROFILE));
+
+    await expect.element(screen.getByText('Ta session a expiré')).toBeVisible();
+  });
+
+  test('a 426 while reading: the extension is to be updated', async () => {
+    const { screen } = await renderSidebar(
+      fakeBackground({ session: () => signedIn, lookup: () => ({ status: 'outdated' }) }),
+      fakeTab(PROFILE),
+    );
+
+    await expect
+      .element(screen.getByRole('heading', { name: 'Extension à mettre à jour' }))
+      .toBeVisible();
+  });
+});
+
 describe('theme', () => {
   test('follows the system', async () => {
     await renderSidebar();
@@ -236,6 +376,21 @@ describe('accessibility', () => {
         fakeBackground({ session: () => ({ status: 'unreachable' }) }),
       );
       return screen.getByRole('button', { name: 'Réessayer' });
+    },
+    'card of a Contact Prospecting': async () => {
+      const { screen } = await renderSidebar(withCards({ [ASKED]: prospecting }), fakeTab(PROFILE));
+      return screen.getByRole('link', { name: 'Ouvrir sa fiche' });
+    },
+    'card of a Contact Archived': async () => {
+      const { screen } = await renderSidebar(
+        withCards({ [ASKED]: { ...ally, status: 'archived' } }),
+        fakeTab(PROFILE),
+      );
+      return screen.getByText('Archivé', { exact: true });
+    },
+    'card of an Ally': async () => {
+      const { screen } = await renderSidebar(withCards({ [ASKED]: ally }), fakeTab(PROFILE));
+      return screen.getByText('Aucun échange');
     },
     elsewhere: async () => {
       const { screen } = await renderSidebar(fakeBackground({ session: () => signedIn }));

@@ -1,7 +1,7 @@
-import type { ContactStatus } from '@battlecrm/contract';
 import { m } from '@battlecrm/i18n';
 
 import type { Message, Presence } from '../messages.ts';
+import { STATUS_LABEL } from '../status.ts';
 import { profileName, profileUrlOf } from './profile.ts';
 
 // What the extension puts in a LinkedIn profile, right after the h2 of the name (spec extension §5):
@@ -10,13 +10,6 @@ import { profileName, profileUrlOf } from './profile.ts';
 
 /** Marks the element in the page, with the profile it belongs to. */
 const MARK = 'data-battlecrm-presence';
-
-const STATUS_LABEL: Record<ContactStatus, () => string> = {
-  pool: m.status_pool,
-  prospecting: m.status_prospecting,
-  ally: m.status_ally,
-  archived: m.status_archived,
-};
 
 /** The colours of the theme (packages/theme) the element needs, light and dark. */
 const COLORS = {

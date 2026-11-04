@@ -3,6 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { send } from '../../messages.ts';
+import { watchActiveTab } from '../../sidebar/active-tab.ts';
 import { browserLocale } from '../../sidebar/locale.ts';
 import { Sidebar } from '../../sidebar/sidebar.tsx';
 
@@ -18,6 +19,6 @@ if (root === null) throw new Error('index.html has no #root');
 
 createRoot(root).render(
   <StrictMode>
-    <Sidebar send={send} appOrigin={import.meta.env.APP_ORIGIN} />
+    <Sidebar send={send} appOrigin={import.meta.env.APP_ORIGIN} watchActiveTab={watchActiveTab} />
   </StrictMode>,
 );

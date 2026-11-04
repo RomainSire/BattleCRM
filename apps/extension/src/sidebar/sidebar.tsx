@@ -7,10 +7,13 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-aria-components';
 
+import { profileUrlOf } from '../linkedin/profile.ts';
 import type { Send, Session } from '../messages.ts';
+import type { WatchActiveTab } from './active-tab.ts';
+import { ContactCardView } from './contact-card.tsx';
 import { linkClass, ScreenTitle } from './layout.tsx';
 import { SendContext, useSend } from './send.tsx';
 import { SignIn } from './sign-in.tsx';
@@ -22,7 +25,15 @@ const sessionKey = ['session'];
  * The sidebar (spec extension §3): one state, no router. It asks the background through `send()`,
  * which TanStack Query calls instead of `fetch`.
  */
-export function Sidebar({ send, appOrigin }: { send: Send; appOrigin: string }) {
+export function Sidebar({
+  send,
+  appOrigin,
+  watchActiveTab,
+}: {
+  send: Send;
+  appOrigin: string;
+  watchActiveTab: WatchActiveTab;
+}) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -39,7 +50,7 @@ export function Sidebar({ send, appOrigin }: { send: Send; appOrigin: string }) 
       <SendContext value={send}>
         {/* Whether the API answers, the background says: its failure is a screen of its own. */}
         <OnlineContext value>
-          <Screens appOrigin={appOrigin} />
+          <Screens appOrigin={appOrigin} watchActiveTab={watchActiveTab} />
         </OnlineContext>
       </SendContext>
     </QueryClientProvider>
@@ -47,7 +58,13 @@ export function Sidebar({ send, appOrigin }: { send: Send; appOrigin: string }) 
 }
 
 /** The screen of the highest priority that applies (spec extension §3). */
-function Screens({ appOrigin }: { appOrigin: string }) {
+function Screens({
+  appOrigin,
+  watchActiveTab,
+}: {
+  appOrigin: string;
+  watchActiveTab: WatchActiveTab;
+}) {
   const send = useSend();
   const queryClient = useQueryClient();
   const query = useQuery({ queryKey: sessionKey, queryFn: () => send({ type: 'session' }) });
@@ -72,7 +89,9 @@ function Screens({ appOrigin }: { appOrigin: string }) {
         {session.status === 'unreachable' && (
           <Unreachable onRetry={() => void query.refetch()} isRetrying={query.isFetching} />
         )}
-        {session.status === 'signedIn' && <Elsewhere />}
+        {session.status === 'signedIn' && (
+          <ActiveTab appOrigin={appOrigin} watchActiveTab={watchActiveTab} />
+        )}
       </main>
       {session.status === 'signedIn' && (
         <footer className="flex items-center justify-between gap-2 border-t pt-3 text-sm">
@@ -87,6 +106,56 @@ function Screens({ appOrigin }: { appOrigin: string }) {
       )}
     </div>
   );
+}
+
+/**
+ * Signed in: what the active tab shows. Its profile is read when the sidebar opens and at each change
+ * of profile, never more (spec extension §3).
+ */
+function ActiveTab({
+  appOrigin,
+  watchActiveTab,
+}: {
+  appOrigin: string;
+  watchActiveTab: WatchActiveTab;
+}) {
+  // `undefined` until the tab is known; `null` off a profile.
+  const [profileUrl, setProfileUrl] = useState<string | null>();
+  useEffect(
+    () => watchActiveTab((url) => setProfileUrl(url === undefined ? null : profileUrlOf(url))),
+    [watchActiveTab],
+  );
+  if (profileUrl === undefined) return null;
+  if (profileUrl === null) return <Elsewhere />;
+  return <Profile key={profileUrl} url={profileUrl} appOrigin={appOrigin} />;
+}
+
+/** A LinkedIn profile: the card of its Contact. */
+function Profile({ url, appOrigin }: { url: string; appOrigin: string }) {
+  const send = useSend();
+  const queryClient = useQueryClient();
+  // Read again each time the profile is shown again: the Contact may have changed in the app since.
+  const lookup = useQuery({
+    queryKey: ['lookup', url],
+    queryFn: () => send({ type: 'lookup', url }),
+    gcTime: 0,
+  });
+  const status = lookup.data?.status;
+  // The session's own screens come first (spec extension §3): the background tells which.
+  useEffect(() => {
+    if (status === 'signedOut') void queryClient.invalidateQueries({ queryKey: sessionKey });
+    if (status === 'outdated')
+      queryClient.setQueryData<Session>(sessionKey, { status: 'outdated' });
+  }, [status, queryClient]);
+
+  if (lookup.isPending) return null;
+  if (lookup.isError || lookup.data.status === 'error') {
+    return <Unreachable onRetry={() => void lookup.refetch()} isRetrying={lookup.isFetching} />;
+  }
+  if (lookup.data.status === 'contact')
+    return <ContactCardView contact={lookup.data.contact} appOrigin={appOrigin} />;
+  // Not a Contact yet: the form to add one comes with issue 07.
+  return <h1 className="sr-only">BattleCRM</h1>;
 }
 
 /** 426: the API no longer serves this version. */

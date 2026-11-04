@@ -421,3 +421,65 @@ describe('presence', () => {
     expect(badges.get(TAB)).toBe('+');
   });
 });
+
+const LOOKUP = 'GET /api/contacts/linkedin-profile';
+const CARD = {
+  id: 'c-1',
+  name: 'Gaëtan Lefèvre',
+  status: 'prospecting',
+  stageName: 'Premier message',
+  organizationName: 'Acme',
+  jobTitle: 'Directeur technique',
+  lastDoneInteractionOn: '2026-09-12',
+} as const;
+
+describe('lookup', () => {
+  test('a profile that is a Contact: its card, asked once with the address of the tab', async () => {
+    const api = fakeApi({ [LOOKUP]: () => Response.json({ contact: CARD }) });
+
+    expect(await (await signedIn(api, new Map())).handle({ type: 'lookup', url: PROFILE })).toEqual(
+      { status: 'contact', contact: CARD },
+    );
+    const sent = api.last(LOOKUP);
+    expect(new URL(sent?.request.url ?? '').searchParams.get('url')).toBe(PROFILE);
+    expect(sent?.request.headers.get('Authorization')).toBe('Bearer token-1');
+  });
+
+  test('another profile: no Contact', async () => {
+    const api = fakeApi({ [LOOKUP]: () => Response.json({ contact: null }) });
+
+    expect(await (await signedIn(api, new Map())).handle({ type: 'lookup', url: PROFILE })).toEqual(
+      { status: 'notContact' },
+    );
+  });
+
+  test('off a profile: the API is not asked', async () => {
+    const api = fakeApi();
+
+    expect(
+      await (
+        await signedIn(api, new Map())
+      ).handle({ type: 'lookup', url: 'https://www.linkedin.com/feed/' }),
+    ).toEqual({ status: 'elsewhere' });
+    expect(api.last(LOOKUP)).toBeUndefined();
+  });
+
+  test('a session that ended, an API in error, a 426: each said as such', async () => {
+    const ended = fakeApi({
+      [LOOKUP]: () => Response.json({ error: 'unauthenticated' }, { status: 401 }),
+    });
+    const failing = fakeApi({ [LOOKUP]: () => new Response(null, { status: 503 }) });
+    const down = fakeApi();
+    down.down();
+
+    const lookup = { type: 'lookup', url: PROFILE } as const;
+    expect(await (await signedIn(ended, new Map())).handle(lookup)).toEqual({
+      status: 'signedOut',
+    });
+    expect(await (await signedIn(failing, new Map())).handle(lookup)).toEqual({ status: 'error' });
+    expect(await (await signedIn(down, new Map())).handle(lookup)).toEqual({ status: 'error' });
+    expect(
+      await (await signedIn(fakeApi({ [LOOKUP]: outdated }), new Map())).handle(lookup),
+    ).toEqual({ status: 'outdated' });
+  });
+});

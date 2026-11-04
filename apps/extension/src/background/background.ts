@@ -1,13 +1,15 @@
 import type { AppType } from '@battlecrm/api';
 import { isTotpCode } from '@battlecrm/contract';
-import { hc } from 'hono/client';
+import { hc, type ClientResponse } from 'hono/client';
 
 import { profileUrlOf } from '../linkedin/profile.ts';
 import type {
   AnswerTo,
   CodeOutcome,
+  Lookup,
   Message,
   Presence,
+  ProfileUnknown,
   Session,
   SignInOutcome,
 } from '../messages.ts';
@@ -154,28 +156,58 @@ export function createBackground({
     return storeSession(await response.json());
   }
 
-  /** Whether the profile at this address is a Contact: one call with its address only (§13, A3). */
-  async function presenceAt(url: string): Promise<Presence> {
-    const profileUrl = profileUrlOf(url);
-    if (profileUrl === null) return { status: 'elsewhere' };
+  /**
+   * Asks the API about the profile at this address, if it is one and the extension holds a session:
+   * `read` answers from a 200; every other answer and every failure is said here, once.
+   */
+  async function aboutProfile<Sent extends ClientResponse<unknown>, Answer>(
+    url: string,
+    call: () => Promise<Sent>,
+    read: (response: Extract<Sent, { status: 200 }>) => Promise<Answer>,
+  ): Promise<Answer | ProfileUnknown> {
+    if (profileUrlOf(url) === null) return { status: 'elsewhere' };
     const { token } = await storage.get(['token']);
     if (typeof token !== 'string') return { status: 'signedOut' };
     let response;
     try {
-      response = await api.contacts.presence.$post({ json: { linkedinUrls: [url] } });
+      response = await call();
     } catch (error) {
       if (error instanceof Outdated) return { status: 'outdated' };
       if (error instanceof TypeError) return { status: 'error' };
       throw error;
     }
-    if (response.status !== 200) {
-      // `requireUser` answers 401 before the route, whose types do not know it.
-      return (response.status as number) === 401 ? { status: 'signedOut' } : { status: 'error' };
-    }
-    const [match] = (await response.json()).matches;
-    return match === undefined
-      ? { status: 'notContact' }
-      : { status: 'contact', contactId: match.contactId, contactStatus: match.status };
+    // `requireUser` answers 401 before the route.
+    if (response.status === 401) return { status: 'signedOut' };
+    if (response.status !== 200) return { status: 'error' };
+    // A 200 is the answer of that status: TypeScript cannot narrow a generic union by it.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    return read(response as Extract<Sent, { status: 200 }>);
+  }
+
+  /** Whether the profile at this address is a Contact: one call with its address only (§13, A3). */
+  function presenceAt(url: string): Promise<Presence> {
+    return aboutProfile(
+      url,
+      () => api.contacts.presence.$post({ json: { linkedinUrls: [url] } }),
+      async (response) => {
+        const [match] = (await response.json()).matches;
+        return match === undefined
+          ? { status: 'notContact' }
+          : { status: 'contact', contactId: match.contactId, contactStatus: match.status };
+      },
+    );
+  }
+
+  /** The card of the Contact at this address, for the sidebar: one call per profile shown (§3). */
+  function lookup(url: string): Promise<Lookup> {
+    return aboutProfile(
+      url,
+      () => api.contacts['linkedin-profile'].$get({ query: { url } }),
+      async (response) => {
+        const { contact } = await response.json();
+        return contact === null ? { status: 'notContact' } : { status: 'contact', contact };
+      },
+    );
   }
 
   async function presence(url: string, tabId: number | undefined): Promise<Presence> {
@@ -188,6 +220,7 @@ export function createBackground({
 
   function dispatch(message: Message, tabId: number | undefined): Promise<AnswerTo<Message>> {
     if (message.type === 'presence') return presence(message.url, tabId);
+    if (message.type === 'lookup') return lookup(message.url);
     if (message.type === 'session') return session();
     if (message.type === 'signIn') return signIn(message);
     if (message.type === 'verifyCode') return verifyCode(message);

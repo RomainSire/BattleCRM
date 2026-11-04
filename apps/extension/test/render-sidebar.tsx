@@ -1,6 +1,7 @@
 import { render } from 'vitest-browser-react';
 
 import type { AnswerTo, Message, Send } from '../src/messages.ts';
+import type { WatchActiveTab } from '../src/sidebar/active-tab.ts';
 import { Sidebar } from '../src/sidebar/sidebar.tsx';
 
 export const APP_ORIGIN = 'https://app.battlecrm.test';
@@ -40,8 +41,31 @@ export function fakeBackground(answers: Answers = {}) {
   };
 }
 
-/** The sidebar as Firefox opens it, against a fake background. */
-export async function renderSidebar(background = fakeBackground()) {
-  const screen = await render(<Sidebar send={background.send} appOrigin={APP_ORIGIN} />);
-  return { screen, background };
+/**
+ * The active tab of the sidebar's window, played by the test: its address at first, then each one
+ * `go()` moves it to. `undefined`, an address the extension may not read (another site).
+ */
+export function fakeTab(url?: string) {
+  let current = url;
+  const listeners = new Set<(url: string | undefined) => void>();
+  const watch: WatchActiveTab = (onAddress) => {
+    listeners.add(onAddress);
+    onAddress(current);
+    return () => listeners.delete(onAddress);
+  };
+  return {
+    watch,
+    go(address: string | undefined) {
+      current = address;
+      for (const listener of listeners) listener(address);
+    },
+  };
+}
+
+/** The sidebar as Firefox opens it, against a fake background, beside a tab off LinkedIn by default. */
+export async function renderSidebar(background = fakeBackground(), tab = fakeTab()) {
+  const screen = await render(
+    <Sidebar send={background.send} appOrigin={APP_ORIGIN} watchActiveTab={tab.watch} />,
+  );
+  return { screen, background, tab };
 }

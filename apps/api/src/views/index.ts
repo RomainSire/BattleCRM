@@ -693,6 +693,57 @@ async function presenceOf(tx: Transaction, userId: string, sent: string[]) {
 }
 
 /**
+ * The card of the Contact whose LinkedIn profile is at this address (spec extension §3, §8), the names
+ * of its Organization and Stage resolved; `null` when the address is no profile, or no Contact's. An
+ * Archived Contact is found like the others; a deleted one has no address left (ADR 0006).
+ */
+async function linkedinProfileOf(tx: Transaction, userId: string, url: string) {
+  const linkedinUrl = normalizeLinkedInUrl(url);
+  if (linkedinUrl === null) return null;
+  // The latest Interaction done, outbound or inbound: the day it was added is none.
+  const lastDone = tx
+    .select({ localDate: interaction.localDate })
+    .from(interaction)
+    .where(
+      and(
+        eq(interaction.userId, userId),
+        eq(interaction.contactId, contact.id),
+        inArray(interaction.direction, ['outbound', 'inbound']),
+      ),
+    )
+    .orderBy(desc(interaction.occurredAt), desc(interaction.id))
+    .limit(1);
+  const [found] = await tx
+    .select({
+      id: contact.id,
+      // Never null: a deleted Contact is left out.
+      name: sql<string>`${contact.name}`,
+      status: contact.status,
+      // A Contact keeps the last Stage it reached: only Prospecting is it at one.
+      stageName: sql<
+        string | null
+      >`case when ${contact.status} = 'prospecting' then ${stage.name} end`,
+      organizationName: organization.name,
+      jobTitle: contact.jobTitle,
+      lastDoneInteractionOn: sql<string | null>`(${lastDone})::text`,
+    })
+    .from(contact)
+    .leftJoin(stage, and(eq(stage.userId, userId), eq(stage.id, contact.stageId)))
+    .leftJoin(
+      organization,
+      and(eq(organization.userId, userId), eq(organization.id, contact.organizationId)),
+    )
+    .where(
+      and(
+        eq(contact.userId, userId),
+        isNull(contact.anonymizedAt),
+        eq(contact.linkedinUrl, linkedinUrl),
+      ),
+    );
+  return found ?? null;
+}
+
+/**
  * The days the deleted Contacts still count on (ADR 0006), all together: each Funnel entry and each
  * Prospecting action, as `summaryContacts` gives them for a Contact.
  */
@@ -801,6 +852,22 @@ export function createViews({
         const { linkedinUrls } = c.req.valid('json');
         const matches = await withUser(userId, (tx) => presenceOf(tx, userId, linkedinUrls));
         return c.json({ matches }, 200);
+      },
+    )
+    // The Firefox extension's sidebar: the card of the Contact on a LinkedIn profile (spec extension
+    // §3, §8). The rest of the answer, to add one that is not, comes with the form.
+    .get(
+      '/contacts/linkedin-profile',
+      requireUser,
+      validator('query', (value, c) => {
+        const parsed = z.object({ url: z.string() }).safeParse(value);
+        return parsed.success ? parsed.data : c.json({ error: 'invalid' as const }, 400);
+      }),
+      async (c) => {
+        const { userId } = c.var;
+        const { url } = c.req.valid('query');
+        const found = await withUser(userId, (tx) => linkedinProfileOf(tx, userId, url));
+        return c.json({ contact: found }, 200);
       },
     )
     // The Trials of a Battle, for its panel (spec UX §5.5): Trials and By Target.

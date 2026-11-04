@@ -1365,5 +1365,7 @@
   "extension_signed_in_as": "Connecté : {email}",
   "extension_presence_of": "BattleCRM :",
   "extension_presence_add": "+ Ajouter à BattleCRM",
-  "extension_presence_sign_in": "BattleCRM : se connecter"
+  "extension_presence_sign_in": "BattleCRM : se connecter",
+  "extension_last_done_interaction": "Dernier échange : {day}",
+  "extension_no_done_interaction": "Aucun échange"
 }
