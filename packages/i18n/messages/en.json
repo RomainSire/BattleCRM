@@ -1373,5 +1373,6 @@
   "extension_added_ally": "Added to the Circle",
   "extension_same_name": "Same name: {contact}",
   "extension_read_page_again": "Read the page again",
-  "extension_unreadable_profile": "BattleCRM couldn't read this profile: LinkedIn may have changed its layout. Fill in the fields by hand."
+  "extension_unreadable_profile": "BattleCRM couldn't read this profile: LinkedIn may have changed its layout. Fill in the fields by hand.",
+  "extension_unreadable_search": "BattleCRM found no result on this page: LinkedIn may have changed its layout."
 }

@@ -1373,5 +1373,6 @@
   "extension_added_ally": "Ajouté au Cercle",
   "extension_same_name": "Même nom : {contact}",
   "extension_read_page_again": "Relire la page",
-  "extension_unreadable_profile": "BattleCRM n'a pas pu lire ce profil : LinkedIn a peut-être changé sa présentation. Remplis les champs à la main."
+  "extension_unreadable_profile": "BattleCRM n'a pas pu lire ce profil : LinkedIn a peut-être changé sa présentation. Remplis les champs à la main.",
+  "extension_unreadable_search": "BattleCRM n'a repéré aucun résultat sur cette page : LinkedIn a peut-être changé sa présentation."
 }

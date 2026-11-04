@@ -12,6 +12,13 @@ export type Message =
   /** The tab moved to this address (spec extension §2): its badge, and what the page shows after the name. */
   | { type: 'presence'; url: string }
   /**
+   * The results of a search of people read in a tab (spec extension §5, §8), by their normalized
+   * address: which ones are Contacts. Leaves the badge alone.
+   */
+  | { type: 'searchPresence'; urls: string[] }
+  /** The sidebar on a search of people: whether its tab shows results, 10 s at most (spec extension §7). */
+  | { type: 'readSearch'; url: string; tabId: number }
+  /**
    * The sidebar reads the profile of the active tab (spec extension §3): once per profile shown, and
    * at each “Read the page again” (§4), which `wait`s for LinkedIn to show the profile, 10 s at most.
    */
@@ -28,6 +35,8 @@ export type TabMessage =
    * LinkedIn shows it, `timeoutMs` at most; at once with 0.
    */
   | { type: 'readProfile'; url: string; timeoutMs: number }
+  /** Whether the page at this address shows results of a search, once it does, `timeoutMs` at most. */
+  | { type: 'readSearch'; url: string; timeoutMs: number }
   /** The Contact of the profile was added or taken back: the badge and the element follow. */
   | { type: 'refresh' };
 
@@ -97,13 +106,28 @@ export type Presence =
 /** Why the background cannot tell about the profile at an address. */
 export type ProfileUnknown =
   /** No profile at this address: no badge. */
-  | { status: 'elsewhere' }
+  { status: 'elsewhere' } | Unanswered;
+
+/** Why the API gave the background no answer to a question. */
+export type Unanswered =
   /** No session, or it ended. */
   | { status: 'signedOut' }
   /** No answer, or a 5xx. */
   | { status: 'error' }
   /** 426. */
   | { status: 'outdated' };
+
+/** A result of a search that is a Contact: its pill shows its Status, and opens its page in the app. */
+export type SearchMatch = { profileUrl: string; contactId: string; contactStatus: ContactStatus };
+
+/** Which results of a search are Contacts; the reasons the background cannot tell otherwise. */
+export type SearchPresence = { status: 'checked'; matches: SearchMatch[] } | Unanswered;
+
+/**
+ * Whether a search of people shows results the extension reads (spec extension §7): `unknown` when the
+ * tab has no content script to tell.
+ */
+export type SearchReading = 'readable' | 'unreadable' | 'unknown';
 
 /** The card of a Contact, as the sidebar shows it (spec extension §3). */
 export type ContactCard = {
@@ -156,6 +180,8 @@ type Answers = {
   verifyCode: CodeOutcome;
   signOut: null;
   presence: Presence;
+  searchPresence: SearchPresence;
+  readSearch: SearchReading;
   lookup: Lookup;
   addContact: AddOutcome;
   undo: UndoOutcome;

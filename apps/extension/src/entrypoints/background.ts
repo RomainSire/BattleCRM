@@ -33,6 +33,12 @@ export default defineBackground(() => {
           url,
           timeoutMs,
         } satisfies TabMessage),
+      readSearch: (tabId, url, timeoutMs) =>
+        browser.tabs.sendMessage(tabId, {
+          type: 'readSearch',
+          url,
+          timeoutMs,
+        } satisfies TabMessage),
       refresh: async (tabId) => {
         await browser.tabs
           .sendMessage(tabId, { type: 'refresh' } satisfies TabMessage)

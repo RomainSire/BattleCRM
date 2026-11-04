@@ -1,5 +1,5 @@
 import type { AppType } from '@battlecrm/api';
-import { isTotpCode } from '@battlecrm/contract';
+import { isTotpCode, PRESENCE_MAX_URLS } from '@battlecrm/contract';
 import { hc, type ClientResponse } from 'hono/client';
 
 import { profileUrlOf } from '../linkedin/profile.ts';
@@ -13,7 +13,11 @@ import type {
   ProfileReading,
   Presence,
   ProfileUnknown,
+  SearchMatch,
+  SearchPresence,
+  SearchReading,
   Session,
+  Unanswered,
   SignInOutcome,
   UndoOutcome,
 } from '../messages.ts';
@@ -48,6 +52,11 @@ export type Tabs = {
    * answer: a page that is still loading, or no LinkedIn page.
    */
   read(tabId: number, url: string, timeoutMs: number): Promise<ProfileReading | null>;
+  /**
+   * Whether the tab shows results of a search of people, once it does, `timeoutMs` at most. Rejects
+   * as `read` does.
+   */
+  readSearch(tabId: number, url: string, timeoutMs: number): Promise<boolean>;
   /** The Contact of its profile changed: the badge and the element after the name follow. */
   refresh(tabId: number): Promise<void>;
 };
@@ -73,7 +82,10 @@ export function createBackground({
   fetch: typeof globalThis.fetch;
   setBadge: (tabId: number, badge: Badge) => Promise<void>;
   tabs: Tabs;
-  /** How long LinkedIn has to show a profile when the sidebar reads it again: 10 s (§4). */
+  /**
+   * How long LinkedIn has to show a profile when the sidebar reads it again (§4), and results when it
+   * opens on a search (§7): 10 s.
+   */
   readTimeoutMs: number;
 }) {
   /**
@@ -181,12 +193,23 @@ export function createBackground({
    * Asks the API about the profile at this address, if it is one and the extension holds a session:
    * `read` answers from a 200; every other answer and every failure is said here, once.
    */
-  async function aboutProfile<Sent extends ClientResponse<unknown>, Answer>(
+  function aboutProfile<Sent extends ClientResponse<unknown>, Answer>(
     url: string,
     call: () => Promise<Sent>,
     read: (response: Extract<Sent, { status: 200 }>) => Promise<Answer>,
   ): Promise<Answer | ProfileUnknown> {
-    if (profileUrlOf(url) === null) return { status: 'elsewhere' };
+    if (profileUrlOf(url) === null) return Promise.resolve({ status: 'elsewhere' });
+    return withSession(call, read);
+  }
+
+  /**
+   * Asks the API, if the extension holds a session: `read` answers from a 200; every other answer and
+   * every failure is said here, once.
+   */
+  async function withSession<Sent extends ClientResponse<unknown>, Answer>(
+    call: () => Promise<Sent>,
+    read: (response: Extract<Sent, { status: 200 }>) => Promise<Answer>,
+  ): Promise<Answer | Unanswered> {
     const { token } = await storage.get(['token']);
     if (typeof token !== 'string') return { status: 'signedOut' };
     let response;
@@ -220,19 +243,39 @@ export function createBackground({
   }
 
   /**
-   * What the tab shows of the profile at this address, `timeoutMs` at most. A page that loads has no
-   * content script until it is ready: asked again until one answers, within the same wait.
+   * Which results of a search are Contacts (spec extension §8): one call per lot of 50, the most the
+   * API takes. The badge stays as the address set it.
    */
-  async function readTab(tabId: number, url: string, timeoutMs: number) {
-    const deadline = Date.now() + timeoutMs;
-    for (;;) {
-      try {
-        return await tabs.read(tabId, url, Math.max(deadline - Date.now(), 0));
-      } catch {
-        if (Date.now() >= deadline) return null;
-        await new Promise((resolve) => setTimeout(resolve, READ_RETRY_MS));
-      }
+  async function searchPresence(urls: string[]): Promise<SearchPresence> {
+    const matches: SearchMatch[] = [];
+    for (let start = 0; start < urls.length; start += PRESENCE_MAX_URLS) {
+      const lot = urls.slice(start, start + PRESENCE_MAX_URLS);
+      const answer = await withSession(
+        () => api.contacts.presence.$post({ json: { linkedinUrls: lot } }),
+        async (response) => ({
+          status: 'checked' as const,
+          matches: (await response.json()).matches.map((match): SearchMatch => ({
+            profileUrl: match.linkedinUrl,
+            contactId: match.contactId,
+            contactStatus: match.status,
+          })),
+        }),
+      );
+      if (answer.status !== 'checked') return answer;
+      matches.push(...answer.matches);
     }
+    return { status: 'checked', matches };
+  }
+
+  /** What the tab shows of the profile at this address, `timeoutMs` at most. */
+  const readTab = (tabId: number, url: string, timeoutMs: number) =>
+    askTab((left) => tabs.read(tabId, url, left), timeoutMs);
+
+  /** Whether the search in the tab shows results, once LinkedIn shows them (spec extension §7). */
+  async function readSearch(tabId: number, url: string): Promise<SearchReading> {
+    const shows = await askTab((left) => tabs.readSearch(tabId, url, left), readTimeoutMs);
+    if (shows === null) return 'unknown';
+    return shows ? 'readable' : 'unreadable';
   }
 
   /**
@@ -313,6 +356,8 @@ export function createBackground({
 
   function dispatch(message: Message, tabId: number | undefined): Promise<AnswerTo<Message>> {
     if (message.type === 'presence') return presence(message.url, tabId);
+    if (message.type === 'searchPresence') return searchPresence(message.urls);
+    if (message.type === 'readSearch') return readSearch(message.tabId, message.url);
     if (message.type === 'lookup') return lookup(message.url, message.tabId, message.wait ?? false);
     if (message.type === 'addContact') return addContact(message.contact, message.tabId);
     if (message.type === 'undo') return undo(message.undoToken, message.tabId);
@@ -338,6 +383,26 @@ export function createBackground({
       }
     },
   };
+}
+
+/**
+ * What `ask` gets from the content script of the tab, `timeoutMs` at most. A page that loads has no
+ * content script until it is ready: asked again until one answers, within the same wait; `null`
+ * once the wait is over.
+ */
+async function askTab<Answer>(
+  ask: (timeoutMs: number) => Promise<Answer>,
+  timeoutMs: number,
+): Promise<Answer | null> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      return await ask(Math.max(deadline - Date.now(), 0));
+    } catch {
+      if (Date.now() >= deadline) return null;
+      await new Promise((resolve) => setTimeout(resolve, READ_RETRY_MS));
+    }
+  }
 }
 
 /** How often a tab is asked again while its page loads. */

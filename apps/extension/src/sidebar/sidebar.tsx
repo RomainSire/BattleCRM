@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-aria-components';
 
 import { profileUrlOf } from '../linkedin/profile.ts';
+import { isSearchPage } from '../linkedin/search.ts';
 import type { NewContact, Send, Session, StageChoice, UndoOutcome } from '../messages.ts';
 import type { WatchActiveTab } from './active-tab.ts';
 import { AddContactForm, draftOf, type Draft } from './add-contact.tsx';
@@ -121,18 +122,22 @@ function ActiveTab({
   appOrigin: string;
   watchActiveTab: WatchActiveTab;
 }) {
-  // `undefined` until the tab is known; `null` off a profile.
-  const [shown, setShown] = useState<{ tabId: number; url: string } | null>();
+  // `undefined` until the tab is known; `null` off a profile and a search.
+  const [shown, setShown] = useState<{ tabId: number; url: string; search: boolean } | null>();
   useEffect(
     () =>
       watchActiveTab((tab) => {
-        const url = tab === undefined ? null : profileUrlOf(tab.url);
-        setShown(tab === undefined || url === null ? null : { tabId: tab.id, url });
+        if (tab === undefined) return setShown(null);
+        const url = profileUrlOf(tab.url);
+        if (url !== null) return setShown({ tabId: tab.id, url, search: false });
+        setShown(isSearchPage(tab.url) ? { tabId: tab.id, url: tab.url, search: true } : null);
       }),
     [watchActiveTab],
   );
   if (shown === undefined) return null;
   if (shown === null) return <Elsewhere />;
+  if (shown.search)
+    return <Search key={`${shown.tabId} ${shown.url}`} url={shown.url} tabId={shown.tabId} />;
   // Another profile, or another tab: what the form held is lost, without asking (spec extension §4).
   return (
     <Profile
@@ -309,6 +314,27 @@ function Unreachable({ onRetry, isRetrying }: { onRetry: () => void; isRetrying:
       <Button variant="outline" className="self-start" isDisabled={isRetrying} onPress={onRetry}>
         {m.extension_retry()}
       </Button>
+    </>
+  );
+}
+
+/**
+ * A search of people: what to open, as elsewhere, unless it shows no result the extension reads (spec
+ * extension §3, §7). Read once per address, when the sidebar opens and at each page of the search.
+ */
+function Search({ url, tabId }: { url: string; tabId: number }) {
+  const send = useSend();
+  const reading = useQuery({
+    queryKey: ['readSearch', tabId, url],
+    queryFn: () => send({ type: 'readSearch', url, tabId }),
+    gcTime: 0,
+  });
+  if (reading.data !== 'unreadable') return <Elsewhere />;
+  return (
+    <>
+      <h1 className="sr-only">BattleCRM</h1>
+      {/* A status, as the alert of an unreadable profile: said by a screen reader once the wait is over. */}
+      <output className="block text-muted-foreground">{m.extension_unreadable_search()}</output>
     </>
   );
 }

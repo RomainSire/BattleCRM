@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { fakeApi } from '../../test/fake-api.ts';
-import type { NewContact, ProfileReading } from '../messages.ts';
+import type { Message, NewContact, ProfileReading } from '../messages.ts';
 import { createBackground, type Badge, type Storage } from './background.ts';
 
 const APP_ORIGIN = 'https://app.battlecrm.test';
@@ -26,11 +26,14 @@ function memoryStorage(): Storage {
 type Badges = Map<number, Badge>;
 
 /**
- * The LinkedIn tabs, as their content scripts answer: what each one reads of its profile, and the
- * tabs told to show their profile again. `loading`: how many reads find no content script yet, as
- * while a page loads.
+ * The LinkedIn tabs, as their content scripts answer: what each one reads of its profile, whether
+ * each search shows results, and the tabs told to show their profile again. `loading`: how many reads
+ * find no content script yet, as while a page loads.
  */
-function fakeTabs(readings: Record<number, ProfileReading | null> = {}, { loading = 0 } = {}) {
+function fakeTabs(
+  readings: Record<number, ProfileReading | null> = {},
+  { loading = 0, results = {} }: { loading?: number; results?: Record<number, boolean> } = {},
+) {
   const read: { tabId: number; url: string; timeoutMs: number }[] = [];
   const refreshed: number[] = [];
   let unanswered = loading;
@@ -43,6 +46,12 @@ function fakeTabs(readings: Record<number, ProfileReading | null> = {}, { loadin
         if (unanswered-- > 0)
           throw new Error('Could not establish connection. Receiving end does not exist.');
         return readings[tabId] ?? null;
+      },
+      readSearch: async (tabId: number, url: string, timeoutMs: number) => {
+        read.push({ tabId, url, timeoutMs });
+        if (unanswered-- > 0)
+          throw new Error('Could not establish connection. Receiving end does not exist.');
+        return results[tabId] ?? false;
       },
       refresh: async (tabId: number) => {
         refreshed.push(tabId);
@@ -452,6 +461,137 @@ describe('presence', () => {
     await first;
 
     expect(badges.get(TAB)).toBe('+');
+  });
+});
+
+/** A result of a search, as the content script sends it: normalized. */
+const result = (n: number) => `https://linkedin.com/in/membre-${n}`;
+
+describe('searchPresence', () => {
+  test('the results that are Contacts, with their Status; the badge left alone', async () => {
+    const badges: Badges = new Map([[TAB, '']]);
+    let asked: unknown;
+    const api = fakeApi({
+      [PRESENCE]: async (request) => {
+        asked = await request.json();
+        return Response.json({
+          matches: [{ linkedinUrl: result(2), contactId: 'c-2', status: 'ally' }],
+        });
+      },
+    });
+
+    expect(
+      await (
+        await signedIn(api, badges)
+      ).handle({ type: 'searchPresence', urls: [result(1), result(2)] }, TAB),
+    ).toEqual({
+      status: 'checked',
+      matches: [{ profileUrl: result(2), contactId: 'c-2', contactStatus: 'ally' }],
+    });
+    expect(asked).toEqual({ linkedinUrls: [result(1), result(2)] });
+    expect(badges.get(TAB)).toBe('');
+  });
+
+  test('more than 50 results: asked in lots of 50, the API holding no more', async () => {
+    const lots: number[] = [];
+    const api = fakeApi({
+      [PRESENCE]: async (request) => {
+        const { linkedinUrls }: { linkedinUrls: string[] } = await request.json();
+        lots.push(linkedinUrls.length);
+        return Response.json({
+          matches: linkedinUrls
+            .filter((url) => url.endsWith('0'))
+            .map((url) => ({ linkedinUrl: url, contactId: url, status: 'pool' })),
+        });
+      },
+    });
+    const urls = Array.from({ length: 120 }, (_, n) => result(n));
+
+    const answer = await (
+      await signedIn(api, new Map())
+    ).handle({ type: 'searchPresence', urls }, TAB);
+
+    expect(lots).toEqual([50, 50, 20]);
+    expect(answer).toEqual({
+      status: 'checked',
+      matches: Array.from({ length: 12 }, (_, n) => ({
+        profileUrl: result(n * 10),
+        contactId: result(n * 10),
+        contactStatus: 'pool',
+      })),
+    });
+  });
+
+  test('no result: the API is not asked', async () => {
+    const api = fakeApi();
+
+    expect(
+      await (await signedIn(api, new Map())).handle({ type: 'searchPresence', urls: [] }, TAB),
+    ).toEqual({ status: 'checked', matches: [] });
+    expect(api.last(PRESENCE)).toBeUndefined();
+  });
+
+  test('without a session, an API in error, a 426: each said as such', async () => {
+    const message: Message = { type: 'searchPresence', urls: [result(1)] };
+    const failing = fakeApi({ [PRESENCE]: () => new Response(null, { status: 503 }) });
+    const ended = fakeApi({
+      [PRESENCE]: () => Response.json({ error: 'unauthenticated' }, { status: 401 }),
+    });
+
+    expect(await wake(failing).handle(message, TAB)).toEqual({ status: 'signedOut' });
+    expect(failing.last(PRESENCE)).toBeUndefined();
+    expect(await (await signedIn(ended, new Map())).handle(message, TAB)).toEqual({
+      status: 'signedOut',
+    });
+    expect(await (await signedIn(failing, new Map())).handle(message, TAB)).toEqual({
+      status: 'error',
+    });
+    expect(
+      await (await signedIn(fakeApi({ [PRESENCE]: outdated }), new Map())).handle(message, TAB),
+    ).toEqual({ status: 'outdated' });
+  });
+});
+
+const SEARCH = 'https://www.linkedin.com/search/results/people/?keywords=ing%C3%A9nieur';
+
+describe('readSearch', () => {
+  test('whether the tab shows results, once LinkedIn shows them: 10 s at most', async () => {
+    const shows = fakeTabs({}, { results: { [TAB]: true } });
+    const none = fakeTabs({}, { results: { [TAB]: false } });
+
+    expect(
+      await (
+        await signedIn(fakeApi(), new Map(), shows)
+      ).handle({
+        type: 'readSearch',
+        url: SEARCH,
+        tabId: TAB,
+      }),
+    ).toBe('readable');
+    expect(shows.read).toEqual([{ tabId: TAB, url: SEARCH, timeoutMs: READ_TIMEOUT_MS }]);
+    expect(
+      await (
+        await signedIn(fakeApi(), new Map(), none)
+      ).handle({
+        type: 'readSearch',
+        url: SEARCH,
+        tabId: TAB,
+      }),
+    ).toBe('unreadable');
+  });
+
+  test('a content script that never answers: nothing can be told', async () => {
+    const tabs = fakeTabs({}, { loading: Infinity });
+
+    expect(
+      await (
+        await signedIn(fakeApi(), new Map(), tabs)
+      ).handle({
+        type: 'readSearch',
+        url: SEARCH,
+        tabId: TAB,
+      }),
+    ).toBe('unknown');
   });
 });
 

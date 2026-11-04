@@ -13,6 +13,9 @@ export const PROFILES = [
   'profile-out-of-network.html',
 ] as const;
 
+/** The anonymized copies of a search of people, two pages of it (spec extension §10). */
+export const SEARCHES = ['search-people.html', 'search-people-page-2.html'] as const;
+
 /** A fresh `Document` of an anonymized page: each test may change it at will. */
 export function pageOf(fixture: string): Document {
   const source = sources[`./${fixture}`];

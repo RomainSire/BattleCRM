@@ -703,6 +703,51 @@ describe('“Read the page again” and a profile that cannot be read', () => {
   });
 });
 
+const SEARCH = 'https://www.linkedin.com/search/results/people/?keywords=ing%C3%A9nieur';
+const UNREADABLE_SEARCH =
+  "BattleCRM n'a repéré aucun résultat sur cette page : LinkedIn a peut-être changé sa présentation.";
+
+describe('a search of people', () => {
+  test('its results read: what to open, as elsewhere', async () => {
+    const background = fakeBackground({ session: () => signedIn, readSearch: () => 'readable' });
+    const { screen } = await renderSidebar(background, fakeTab(SEARCH));
+
+    await expect.element(screen.getByText(ELSEWHERE)).toBeVisible();
+    expect(background.messages).toContainEqual({ type: 'readSearch', url: SEARCH, tabId: TAB });
+  });
+
+  test('no result read: says LinkedIn may have changed its layout', async () => {
+    const { screen } = await renderSidebar(
+      fakeBackground({ session: () => signedIn, readSearch: () => 'unreadable' }),
+      fakeTab(SEARCH),
+    );
+
+    await expect.element(screen.getByText(UNREADABLE_SEARCH)).toBeVisible();
+    expect(screen.getByText(ELSEWHERE).query()).toBeNull();
+  });
+
+  test('a tab that cannot tell: what to open, as elsewhere', async () => {
+    const { screen } = await renderSidebar(
+      fakeBackground({ session: () => signedIn, readSearch: () => 'unknown' }),
+      fakeTab(SEARCH),
+    );
+
+    await expect.element(screen.getByText(ELSEWHERE)).toBeVisible();
+  });
+
+  test('the next page of the search: read again', async () => {
+    const background = fakeBackground({ session: () => signedIn, readSearch: () => 'readable' });
+    const { screen, tab } = await renderSidebar(background, fakeTab(SEARCH));
+    await expect.element(screen.getByText(ELSEWHERE)).toBeVisible();
+
+    background.answer('readSearch', () => 'unreadable');
+    tab.go(`${SEARCH}&page=2`);
+
+    await expect.element(screen.getByText(UNREADABLE_SEARCH)).toBeVisible();
+    expect(background.messages.filter(({ type }) => type === 'readSearch')).toHaveLength(2);
+  });
+});
+
 describe('Contacts of the same name', () => {
   const SAME_NAME = [
     { id: 'c-7', name: 'Gaëtan Lefèvre', organizationName: 'Capgemini' },
@@ -830,6 +875,13 @@ describe('accessibility', () => {
       const { screen } = await renderSidebar(addable(), fakeTab(PROFILE));
       await screen.getByRole('button', { name: 'Ajouter' }).click();
       return screen.getByText('Ajouté au Vivier');
+    },
+    'unreadable search': async () => {
+      const { screen } = await renderSidebar(
+        fakeBackground({ session: () => signedIn, readSearch: () => 'unreadable' }),
+        fakeTab(SEARCH),
+      );
+      return screen.getByText(UNREADABLE_SEARCH);
     },
     elsewhere: async () => {
       const { screen } = await renderSidebar(fakeBackground({ session: () => signedIn }));

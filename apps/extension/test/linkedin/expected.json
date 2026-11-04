@@ -40,9 +40,93 @@
     "phone": null
   },
   "search-people.html": {
-    "url": "https://www.linkedin.com/search/results/people/?keywords=ing%C3%A9nieur%20d%27affaires"
+    "url": "https://www.linkedin.com/search/results/people/?keywords=ing%C3%A9nieur%20d%27affaires",
+    "results": [
+      {
+        "url": "https://linkedin.com/in/membre-1",
+        "name": "Texte 15"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-4",
+        "name": "Texte 23"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-6",
+        "name": "Texte 32"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-8",
+        "name": "Texte 38"
+      },
+      {
+        "url": "https://linkedin.com/in/membré-11",
+        "name": "Texte 45"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-14",
+        "name": "Texte 52"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-17",
+        "name": "Texte 57"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-20",
+        "name": "Texte 64"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-23",
+        "name": "Texte 69"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-26",
+        "name": "Texte 76"
+      }
+    ]
   },
   "search-people-page-2.html": {
-    "url": "https://www.linkedin.com/search/results/people/?keywords=ing%C3%A9nieur%20d%27affaires&page=2"
+    "url": "https://www.linkedin.com/search/results/people/?keywords=ing%C3%A9nieur%20d%27affaires&page=2",
+    "results": [
+      {
+        "url": "https://linkedin.com/in/membre-1",
+        "name": "Texte 15"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-3",
+        "name": "Texte 24"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-6",
+        "name": "Texte 30"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-9",
+        "name": "Texte 37"
+      },
+      {
+        "url": "https://linkedin.com/in/membré-10",
+        "name": "Texte 42"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-12",
+        "name": "Texte 47"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-15",
+        "name": "Texte 52"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-17",
+        "name": "Texte 56"
+      },
+      {
+        "url": "https://linkedin.com/in/membré-20",
+        "name": "Texte 64"
+      },
+      {
+        "url": "https://linkedin.com/in/membre-23",
+        "name": "Texte 69"
+      }
+    ]
   }
 }

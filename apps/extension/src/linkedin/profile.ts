@@ -12,6 +12,7 @@ import {
   PHONE_LABEL,
   PROFILE_TITLE,
 } from './landmarks.ts';
+import { shownWithin, type PageWait } from './wait.ts';
 
 // What the extension reads on a LinkedIn profile (spec extension §6): from a `Document` and the address
 // of its tab, never `document` nor `location`. Never a wrong value: rather nothing.
@@ -61,36 +62,12 @@ export function profileName(
   return null;
 }
 
-/** How long to wait for LinkedIn to show a profile, and whether the tab moved on meanwhile. */
-export type ProfileWait = { timeoutMs: number; stale: () => boolean };
-
 /**
  * The name of the profile at this address once LinkedIn shows it, `timeoutMs` at most (spec extension
  * §5, §7); `null` past that, or as soon as `stale()` says the tab moved on.
  */
-export function profileShown(page: Document, url: string, { timeoutMs, stale }: ProfileWait) {
-  return new Promise<ReturnType<typeof profileName>>((resolve) => {
-    /** Whether the wait is over: the tab moved on, or the name shows. */
-    const check = () => {
-      if (stale()) {
-        finish(null);
-        return true;
-      }
-      const named = profileName(page, url);
-      if (named !== null) finish(named);
-      return named !== null;
-    };
-    const observer = new MutationObserver(() => void check());
-    const timer = setTimeout(() => finish(null), timeoutMs);
-    const finish = (named: ReturnType<typeof profileName>) => {
-      observer.disconnect();
-      clearTimeout(timer);
-      resolve(named);
-    };
-    if (check()) return;
-    observer.observe(page.documentElement, { childList: true, subtree: true, characterData: true });
-  });
-}
+export const profileShown = (page: Document, url: string, wait: PageWait) =>
+  shownWithin(page, () => profileName(page, url), wait);
 
 /** The text of an element as it reads, its spaces folded. */
 const textOf = (element: Element) => element.textContent.replace(/\s+/g, ' ').trim();
@@ -120,7 +97,7 @@ export function readProfile(page: Document, url: string): ProfileReading | null 
 export async function readProfileShown(
   page: Document,
   url: string,
-  wait: ProfileWait,
+  wait: PageWait,
 ): Promise<ProfileReading | null> {
   const named = await profileShown(page, url, wait);
   return named === null || wait.stale() ? null : readProfile(page, url);
