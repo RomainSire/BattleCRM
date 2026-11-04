@@ -7,12 +7,14 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-aria-components';
 
 import { profileUrlOf } from '../linkedin/profile.ts';
-import type { Send, Session } from '../messages.ts';
+import type { NewContact, Send, Session, StageChoice, UndoOutcome } from '../messages.ts';
 import type { WatchActiveTab } from './active-tab.ts';
+import { AddContactForm, draftOf, type Draft } from './add-contact.tsx';
+import { AddedLine } from './added-line.tsx';
 import { ContactCardView } from './contact-card.tsx';
 import { linkClass, ScreenTitle } from './layout.tsx';
 import { SendContext, useSend } from './send.tsx';
@@ -120,42 +122,141 @@ function ActiveTab({
   watchActiveTab: WatchActiveTab;
 }) {
   // `undefined` until the tab is known; `null` off a profile.
-  const [profileUrl, setProfileUrl] = useState<string | null>();
+  const [shown, setShown] = useState<{ tabId: number; url: string } | null>();
   useEffect(
-    () => watchActiveTab((url) => setProfileUrl(url === undefined ? null : profileUrlOf(url))),
+    () =>
+      watchActiveTab((tab) => {
+        const url = tab === undefined ? null : profileUrlOf(tab.url);
+        setShown(tab === undefined || url === null ? null : { tabId: tab.id, url });
+      }),
     [watchActiveTab],
   );
-  if (profileUrl === undefined) return null;
-  if (profileUrl === null) return <Elsewhere />;
-  return <Profile key={profileUrl} url={profileUrl} appOrigin={appOrigin} />;
+  if (shown === undefined) return null;
+  if (shown === null) return <Elsewhere />;
+  // Another profile, or another tab: what the form held is lost, without asking (spec extension §4).
+  return (
+    <Profile
+      key={`${shown.tabId} ${shown.url}`}
+      url={shown.url}
+      tabId={shown.tabId}
+      appOrigin={appOrigin}
+    />
+  );
 }
 
-/** A LinkedIn profile: the card of its Contact. */
-function Profile({ url, appOrigin }: { url: string; appOrigin: string }) {
+/** What the line after an addition says, by the Status the Contact was added in (§13, A9). */
+function addedMessage({ status, stageId }: NewContact, stages: readonly StageChoice[]) {
+  if (status === 'ally') return m.extension_added_ally();
+  if (status === 'pool') return m.extension_added_pool();
+  const stage = stages.find(({ id }) => id === stageId) ?? stages[0];
+  return m.extension_added_prospecting({ stage: stage?.name ?? '' });
+}
+
+/**
+ * A LinkedIn profile: the card of its Contact, or the form to add one. After an addition, the card,
+ * and a line to undo it, which brings the form back as it was sent (spec extension §4).
+ */
+function Profile({ url, tabId, appOrigin }: { url: string; tabId: number; appOrigin: string }) {
   const send = useSend();
   const queryClient = useQueryClient();
+  const lookupKey = ['lookup', tabId, url];
   // Read again each time the profile is shown again: the Contact may have changed in the app since.
   const lookup = useQuery({
-    queryKey: ['lookup', url],
-    queryFn: () => send({ type: 'lookup', url }),
+    queryKey: lookupKey,
+    queryFn: () => send({ type: 'lookup', url, tabId }),
     gcTime: 0,
   });
+  const readAgain = () => queryClient.refetchQueries({ queryKey: lookupKey });
+  const [draft, setDraft] = useState<Draft>();
+  const [added, setAdded] = useState<{ undoToken: string; message: string }>();
+  /** The session's own screens come first (spec extension §3): the background tells which. */
+  const followSession = useCallback(
+    (status: string | undefined) => {
+      if (status === 'signedOut') void queryClient.invalidateQueries({ queryKey: sessionKey });
+      if (status === 'outdated')
+        queryClient.setQueryData<Session>(sessionKey, { status: 'outdated' });
+    },
+    [queryClient],
+  );
+  const add = useMutation({
+    mutationFn: async ({ contact, stages }: { contact: NewContact; stages: StageChoice[] }) => {
+      const outcome = await send({ type: 'addContact', tabId, contact });
+      followSession(outcome.status);
+      if (outcome.status === 'added')
+        setAdded({ undoToken: outcome.undoToken, message: addedMessage(contact, stages) });
+      // Added, taken from another tab meanwhile, or the Funnel and the Organizations changed in the
+      // app: the profile is read again, the form waiting until then.
+      const changed =
+        outcome.status === 'added' ||
+        outcome.status === 'taken' ||
+        (outcome.status === 'refused' && outcome.error !== 'error');
+      if (changed) await readAgain();
+      return outcome;
+    },
+  });
+  const undo = useMutation({
+    mutationFn: async (undoToken: string) => {
+      const outcome = await send({ type: 'undo', tabId, undoToken });
+      followSession(outcome.status);
+      if (outcome.status === 'undone') {
+        await readAgain();
+        setAdded(undefined);
+        add.reset();
+      }
+      return outcome;
+    },
+  });
+  const endLine = useCallback(() => setAdded(undefined), []);
   const status = lookup.data?.status;
-  // The session's own screens come first (spec extension §3): the background tells which.
-  useEffect(() => {
-    if (status === 'signedOut') void queryClient.invalidateQueries({ queryKey: sessionKey });
-    if (status === 'outdated')
-      queryClient.setQueryData<Session>(sessionKey, { status: 'outdated' });
-  }, [status, queryClient]);
+  useEffect(() => followSession(status), [status, followSession]);
 
   if (lookup.isPending) return null;
   if (lookup.isError || lookup.data.status === 'error') {
     return <Unreachable onRetry={() => void lookup.refetch()} isRetrying={lookup.isFetching} />;
   }
-  if (lookup.data.status === 'contact')
-    return <ContactCardView contact={lookup.data.contact} appOrigin={appOrigin} />;
-  // Not a Contact yet: the form to add one comes with issue 07.
-  return <h1 className="sr-only">BattleCRM</h1>;
+  if (lookup.data.status === 'contact') {
+    return (
+      <>
+        {added !== undefined && (
+          <AddedLine
+            message={added.message}
+            onUndo={() => undo.mutate(added.undoToken)}
+            isUndoing={undo.isPending}
+            error={undoError(undo.isError, undo.data)}
+            onEnd={endLine}
+          />
+        )}
+        <ContactCardView contact={lookup.data.contact} appOrigin={appOrigin} />
+      </>
+    );
+  }
+  if (lookup.data.status !== 'notContact') return null;
+  const { reading, organizations, stages } = lookup.data;
+  const current = draft ?? draftOf(reading, organizations);
+  return (
+    <AddContactForm
+      linkedinUrl={url}
+      organizations={organizations}
+      stages={stages}
+      draft={current}
+      onDraft={setDraft}
+      onAdd={(contact) => {
+        // Kept as sent: “Undo” brings it back.
+        setDraft(current);
+        add.mutate({ contact, stages });
+      }}
+      isAdding={add.isPending}
+      outcome={add.data}
+      failed={add.isError}
+    />
+  );
+}
+
+/** Why “Undo” failed, as the line says it. */
+function undoError(failed: boolean, outcome: UndoOutcome | undefined) {
+  if (failed) return m.undo_failed();
+  if (outcome?.status !== 'refused') return false;
+  return outcome.error === 'error' ? m.undo_failed() : m.undo_too_late();
 }
 
 /** 426: the API no longer serves this version. */

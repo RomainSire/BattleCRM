@@ -16,7 +16,7 @@ import {
   useRecordGestures,
 } from '../contacts/contact-record.tsx';
 import { formatLocalDay, formatWeekDay } from '../contacts/format.ts';
-import { targetText } from '../contacts/organization-field.tsx';
+import { targetText } from '../contacts/target.ts';
 import type { FunnelGestureSearch } from '../funnel/next-action.tsx';
 import { useLocale, type Locale } from '../i18n.ts';
 import { ROW_LINK_CLASS } from '../screens/row-link.ts';

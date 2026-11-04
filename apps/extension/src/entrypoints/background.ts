@@ -1,7 +1,7 @@
 import { defineBackground } from '#imports';
 
 import { createBackground } from '../background/background.ts';
-import type { Message } from '../messages.ts';
+import type { Message, TabMessage } from '../messages.ts';
 
 /** Teal for a Contact, as the app's accent; grey for one to add; amber to sign in or for an error. */
 const BADGE_COLORS = { '✓': '#0f766e', '+': '#52525b', '!': '#b45309' } as const;
@@ -23,6 +23,19 @@ export default defineBackground(() => {
       await browser.action.setBadgeText({ tabId, text: badge });
       if (badge !== '')
         await browser.action.setBadgeBackgroundColor({ tabId, color: BADGE_COLORS[badge] });
+    },
+    // The content script of the tab answers; a tab without one (loaded before the extension, or off
+    // LinkedIn) reads nothing.
+    tabs: {
+      read: (tabId, url) =>
+        browser.tabs
+          .sendMessage(tabId, { type: 'readProfile', url } satisfies TabMessage)
+          .catch(() => null),
+      refresh: async (tabId) => {
+        await browser.tabs
+          .sendMessage(tabId, { type: 'refresh' } satisfies TabMessage)
+          .catch(() => undefined);
+      },
     },
   });
 

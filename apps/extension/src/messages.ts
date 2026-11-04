@@ -1,4 +1,4 @@
-import type { ContactStatus } from '@battlecrm/contract';
+import type { AddableContactStatus, ContactStatus, OrganizationType } from '@battlecrm/contract';
 
 /**
  * What the sidebar and the content scripts ask the background, the only part of the extension that
@@ -12,7 +12,49 @@ export type Message =
   /** The tab moved to this address (spec extension §2): its badge, and what the page shows after the name. */
   | { type: 'presence'; url: string }
   /** The sidebar reads the profile of the active tab (spec extension §3): once per profile shown. */
-  | { type: 'lookup'; url: string };
+  | { type: 'lookup'; url: string; tabId: number }
+  /** The form of the sidebar adds the Contact of the profile of this tab (spec extension §4). */
+  | { type: 'addContact'; tabId: number; contact: NewContact }
+  /** “Undo” of the line after an addition, on the profile of this tab. */
+  | { type: 'undo'; tabId: number; undoToken: string };
+
+/** What the background asks the content script of a LinkedIn tab (`browser.tabs.sendMessage`). */
+export type TabMessage =
+  /** What the page shows of the profile at this address, if it shows it; `null` otherwise. */
+  | { type: 'readProfile'; url: string }
+  /** The Contact of the profile was added or taken back: the badge and the element follow. */
+  | { type: 'refresh' };
+
+/** A Contact added from a LinkedIn profile: `POST /contacts` as it is (spec extension §8). */
+export type NewContact = {
+  name: string;
+  status: AddableContactStatus;
+  /** Prospecting only. */
+  stageId?: string;
+  organizationId?: string;
+  newOrganization?: { name: string; type: OrganizationType };
+  linkedinUrl: string;
+  jobTitle?: string;
+  email?: string;
+  phone?: string;
+  note?: string;
+};
+
+export type AddOutcome =
+  | { status: 'added'; undoToken: string }
+  /** Another addition took the profile meanwhile, from another tab: its card shows instead. */
+  | { status: 'taken' }
+  /** The Stage or the Organization changed in the app meanwhile; or the API failed. */
+  | { status: 'refused'; error: 'unknown_stage' | 'organization_taken' | 'error' }
+  | { status: 'signedOut' }
+  | { status: 'outdated' };
+
+export type UndoOutcome =
+  | { status: 'undone' }
+  /** Too late, or the Contact changed since; or the API failed. */
+  | { status: 'refused'; error: 'expired' | 'superseded' | 'error' }
+  | { status: 'signedOut' }
+  | { status: 'outdated' };
 
 /** What the sidebar shows first, before any page (spec extension §3). */
 export type Session =
@@ -70,9 +112,32 @@ export type ContactCard = {
   lastDoneInteractionOn: string | null;
 };
 
+/** What the extension reads on a LinkedIn profile to fill the form (spec extension §6): `null` unread. */
+export type ProfileReading = {
+  name: string;
+  jobTitle: string | null;
+  organizationName: string | null;
+  email: string | null;
+  phone: string | null;
+};
+
+/** An Organization of the User, as the form chooses one. */
+export type OrganizationChoice = { id: string; name: string; type: OrganizationType };
+
+/** A Stage of the Funnel, not archived, in its order. */
+export type StageChoice = { id: string; name: string };
+
 /** What the sidebar learns of the profile of the active tab. */
 export type Lookup =
-  { status: 'contact'; contact: ContactCard } | { status: 'notContact' } | ProfileUnknown;
+  | { status: 'contact'; contact: ContactCard }
+  /** Not a Contact yet: what the form to add one is filled with and chooses from. */
+  | {
+      status: 'notContact';
+      reading: ProfileReading | null;
+      organizations: OrganizationChoice[];
+      stages: StageChoice[];
+    }
+  | ProfileUnknown;
 
 type Answers = {
   session: Session;
@@ -81,6 +146,8 @@ type Answers = {
   signOut: null;
   presence: Presence;
   lookup: Lookup;
+  addContact: AddOutcome;
+  undo: UndoOutcome;
 };
 
 export type AnswerTo<M extends Message> = Answers[M['type']];

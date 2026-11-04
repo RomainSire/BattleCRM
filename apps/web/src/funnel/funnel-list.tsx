@@ -6,7 +6,7 @@ import { Link } from '@tanstack/react-router';
 import { useLocale } from '../i18n.ts';
 import { organizationOf, type Summary } from '../summary.ts';
 import { ContactName } from '../contacts/contact-name.tsx';
-import { targetText } from '../contacts/organization-field.tsx';
+import { targetText } from '../contacts/target.ts';
 import { CardActions, nextActionText, type Card, type OpenGesture } from './next-action.tsx';
 
 /**

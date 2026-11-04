@@ -4,14 +4,18 @@ import { hc, type ClientResponse } from 'hono/client';
 
 import { profileUrlOf } from '../linkedin/profile.ts';
 import type {
+  AddOutcome,
   AnswerTo,
   CodeOutcome,
   Lookup,
   Message,
+  NewContact,
+  ProfileReading,
   Presence,
   ProfileUnknown,
   Session,
   SignInOutcome,
+  UndoOutcome,
 } from '../messages.ts';
 
 /** The part of `browser.storage.local` the background uses: it outlives the event page. */
@@ -36,6 +40,14 @@ const BADGES: Record<Presence['status'], Badge> = {
   outdated: '!',
 };
 
+/** The LinkedIn tabs, through their content scripts: a tab without one reads nothing. */
+export type Tabs = {
+  /** What the tab shows of the profile at this address; `null` when it shows none it can read. */
+  read(tabId: number, url: string): Promise<ProfileReading | null>;
+  /** The Contact of its profile changed: the badge and the element after the name follow. */
+  refresh(tabId: number): Promise<void>;
+};
+
 /**
  * The background (spec extension §9): the only part of the extension that calls the API. Firefox
  * stops it after 30 s of quiet, so it keeps nothing in memory: the token is read from `storage` on
@@ -47,6 +59,7 @@ export function createBackground({
   storage,
   fetch,
   setBadge,
+  tabs,
 }: {
   appOrigin: string;
   /** Of the extension, sent in `X-Client`: the API answers 426 below the oldest it serves. */
@@ -54,6 +67,7 @@ export function createBackground({
   storage: Storage;
   fetch: typeof globalThis.fetch;
   setBadge: (tabId: number, badge: Badge) => Promise<void>;
+  tabs: Tabs;
 }) {
   /**
    * The latest address asked about, by tab: an answer to an earlier one leaves the badge alone. Lost
@@ -198,16 +212,63 @@ export function createBackground({
     );
   }
 
-  /** The card of the Contact at this address, for the sidebar: one call per profile shown (§3). */
-  function lookup(url: string): Promise<Lookup> {
+  /**
+   * The card of the Contact at this address, for the sidebar: one call per profile shown (§3). Not a
+   * Contact, what the form needs, and what the tab reads of the profile.
+   */
+  function lookup(url: string, tabId: number): Promise<Lookup> {
     return aboutProfile(
       url,
       () => api.contacts['linkedin-profile'].$get({ query: { url } }),
       async (response) => {
-        const { contact } = await response.json();
-        return contact === null ? { status: 'notContact' } : { status: 'contact', contact };
+        const answer = await response.json();
+        if (answer.contact !== null) return { status: 'contact', contact: answer.contact };
+        if (!('organizations' in answer)) throw new Error('The API gave no Organization to choose');
+        return {
+          status: 'notContact',
+          reading: await tabs.read(tabId, url),
+          organizations: answer.organizations,
+          stages: answer.stages,
+        };
       },
     );
+  }
+
+  /** `POST /contacts` as it is (§8); the tab then shows its Contact. */
+  async function addContact(contact: NewContact, tabId: number): Promise<AddOutcome> {
+    const response = await api.contacts.$post({ json: contact });
+    // `requireUser` answers 401 before the route, which does not type it.
+    if ((response.status as number) === 401) return { status: 'signedOut' };
+    if (response.status === 201) {
+      await tabs.refresh(tabId);
+      return { status: 'added', undoToken: (await response.json()).undoToken };
+    }
+    if (response.status !== 400 && response.status !== 409) {
+      return { status: 'refused', error: 'error' };
+    }
+    const refused = await response.json();
+    if (refused.error === 'linkedin_url_taken') {
+      await tabs.refresh(tabId);
+      return { status: 'taken' };
+    }
+    if (refused.error === 'unknown_stage' || refused.error === 'organization_taken')
+      return { status: 'refused', error: refused.error };
+    return { status: 'refused', error: 'error' };
+  }
+
+  /** “Undo” of an addition (`POST /gestures/:id/undo`); the tab then shows the profile to add again. */
+  async function undo(undoToken: string, tabId: number): Promise<UndoOutcome> {
+    const response = await api.gestures[':id'].undo.$post({ param: { id: undoToken } });
+    if ((response.status as number) === 401) return { status: 'signedOut' };
+    if (response.status === 200) {
+      await tabs.refresh(tabId);
+      return { status: 'undone' };
+    }
+    if (response.status !== 409) return { status: 'refused', error: 'error' };
+    const { error } = await response.json();
+    return error === 'expired' || error === 'superseded'
+      ? { status: 'refused', error }
+      : { status: 'refused', error: 'error' };
   }
 
   async function presence(url: string, tabId: number | undefined): Promise<Presence> {
@@ -220,7 +281,9 @@ export function createBackground({
 
   function dispatch(message: Message, tabId: number | undefined): Promise<AnswerTo<Message>> {
     if (message.type === 'presence') return presence(message.url, tabId);
-    if (message.type === 'lookup') return lookup(message.url);
+    if (message.type === 'lookup') return lookup(message.url, message.tabId);
+    if (message.type === 'addContact') return addContact(message.contact, message.tabId);
+    if (message.type === 'undo') return undo(message.undoToken, message.tabId);
     if (message.type === 'session') return session();
     if (message.type === 'signIn') return signIn(message);
     if (message.type === 'verifyCode') return verifyCode(message);

@@ -26,7 +26,7 @@ import {
 } from '../summary.ts';
 import { ContactName } from '../contacts/contact-name.tsx';
 import { formatLocalDay } from '../contacts/format.ts';
-import { targetText } from '../contacts/organization-field.tsx';
+import { targetText } from '../contacts/target.ts';
 import { followUpText, trialText, type Card, type OpenGesture } from './next-action.tsx';
 
 type ColumnId =

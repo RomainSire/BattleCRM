@@ -743,6 +743,14 @@ async function linkedinProfileOf(tx: Transaction, userId: string, url: string) {
   return found ?? null;
 }
 
+/** The Stages of the Funnel, archived ones left out, in its order: where a Contact may be added. */
+const funnelStages = (tx: Transaction, userId: string) =>
+  tx
+    .select({ id: stage.id, name: stage.name })
+    .from(stage)
+    .where(and(eq(stage.userId, userId), isNull(stage.archivedAt)))
+    .orderBy(...FUNNEL_ORDER);
+
 /**
  * The days the deleted Contacts still count on (ADR 0006), all together: each Funnel entry and each
  * Prospecting action, as `summaryContacts` gives them for a Contact.
@@ -855,7 +863,7 @@ export function createViews({
       },
     )
     // The Firefox extension's sidebar: the card of the Contact on a LinkedIn profile (spec extension
-    // §3, §8). The rest of the answer, to add one that is not, comes with the form.
+    // §3, §8), or what its form needs to add one: the extension never loads the summary (ADR 0012).
     .get(
       '/contacts/linkedin-profile',
       requireUser,
@@ -866,8 +874,16 @@ export function createViews({
       async (c) => {
         const { userId } = c.var;
         const { url } = c.req.valid('query');
-        const found = await withUser(userId, (tx) => linkedinProfileOf(tx, userId, url));
-        return c.json({ contact: found }, 200);
+        const answer = await withUser(userId, async (tx) => {
+          const card = await linkedinProfileOf(tx, userId, url);
+          if (card !== null) return { contact: card };
+          return {
+            contact: card,
+            organizations: await summaryOrganizations(tx, userId),
+            stages: await funnelStages(tx, userId),
+          };
+        });
+        return c.json(answer, 200);
       },
     )
     // The Trials of a Battle, for its panel (spec UX §5.5): Trials and By Target.

@@ -14,6 +14,7 @@ export * from './input.tsx';
 export * from './label.tsx';
 export * from './menu.tsx';
 export * from './online.ts';
+export * from './organization-field.tsx';
 export * from './password-field.tsx';
 export * from './segmented-control.tsx';
 export * from './separator.tsx';

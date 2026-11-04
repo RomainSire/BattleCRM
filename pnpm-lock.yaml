@@ -528,6 +528,9 @@ importers:
       '@battlecrm/contract':
         specifier: workspace:*
         version: link:../contract
+      '@battlecrm/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@battlecrm/i18n':
         specifier: workspace:*
         version: link:../i18n

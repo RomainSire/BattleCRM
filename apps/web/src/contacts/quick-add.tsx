@@ -21,10 +21,14 @@ import {
   Input,
   invalidInputClass,
   Label,
+  NO_ORGANIZATION,
+  OrganizationField,
+  organizationOf,
   SegmentedControl,
   SegmentedControlItem,
   SegmentedControlItems,
   Textarea,
+  type OrganizationDraft,
 } from '@battlecrm/ui';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -38,12 +42,6 @@ import { useApi, type ApiClient } from '../session.ts';
 import { summaryQuery, type Summary, type SummaryContact } from '../summary.ts';
 import type { QuickAddStart } from './add-contact-context.ts';
 import { contactLabel, DuplicateNote, LinkedInTaken } from './duplicate-notes.tsx';
-import {
-  NO_ORGANIZATION,
-  OrganizationField,
-  organizationOf,
-  type OrganizationDraft,
-} from './organization-field.tsx';
 import { prospectingStageOf, STATUS_LABEL } from './status.ts';
 
 /**

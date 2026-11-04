@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { fakeApi } from '../../test/fake-api.ts';
+import type { NewContact, ProfileReading } from '../messages.ts';
 import { createBackground, type Badge, type Storage } from './background.ts';
 
 const APP_ORIGIN = 'https://app.battlecrm.test';
@@ -24,11 +25,34 @@ function memoryStorage(): Storage {
 /** The badge of each tab, as the icon shows it. */
 type Badges = Map<number, Badge>;
 
+/**
+ * The LinkedIn tabs, as their content scripts answer: what each one reads of its profile, and the
+ * tabs told to show their profile again.
+ */
+function fakeTabs(readings: Record<number, ProfileReading | null> = {}) {
+  const read: { tabId: number; url: string }[] = [];
+  const refreshed: number[] = [];
+  return {
+    read,
+    refreshed,
+    port: {
+      read: async (tabId: number, url: string) => {
+        read.push({ tabId, url });
+        return readings[tabId] ?? null;
+      },
+      refresh: async (tabId: number) => {
+        refreshed.push(tabId);
+      },
+    },
+  };
+}
+
 /** A background as Firefox wakes it up: a new one each time, on the same storage. */
 function wake(
   api: ReturnType<typeof fakeApi>,
   storage = memoryStorage(),
   badges: Badges = new Map(),
+  tabs = fakeTabs(),
 ) {
   return createBackground({
     appOrigin: APP_ORIGIN,
@@ -38,6 +62,7 @@ function wake(
     setBadge: async (tabId, badge) => {
       badges.set(tabId, badge);
     },
+    tabs: tabs.port,
   });
 }
 
@@ -297,10 +322,10 @@ const PROFILE = 'https://www.linkedin.com/in/ga%C3%ABtan-lef%C3%A8vre-b7c41e2d/'
 const TAB = 7;
 
 /** A signed-in background, its storage holding the token. */
-async function signedIn(api: ReturnType<typeof fakeApi>, badges: Badges) {
+async function signedIn(api: ReturnType<typeof fakeApi>, badges: Badges, tabs = fakeTabs()) {
   const storage = memoryStorage();
   await storage.set({ token: 'token-1', email: 'jane@example.com' });
-  return wake(api, storage, badges);
+  return wake(api, storage, badges, tabs);
 }
 
 describe('presence', () => {
@@ -433,24 +458,47 @@ const CARD = {
   lastDoneInteractionOn: '2026-09-12',
 } as const;
 
+/** What the tab reads of the profile. */
+const READING: ProfileReading = {
+  name: 'Gaëtan Lefèvre',
+  jobTitle: 'Gérant',
+  organizationName: 'VOLTÉO',
+  email: null,
+  phone: null,
+};
+
 describe('lookup', () => {
   test('a profile that is a Contact: its card, asked once with the address of the tab', async () => {
     const api = fakeApi({ [LOOKUP]: () => Response.json({ contact: CARD }) });
 
-    expect(await (await signedIn(api, new Map())).handle({ type: 'lookup', url: PROFILE })).toEqual(
-      { status: 'contact', contact: CARD },
-    );
+    expect(
+      await (await signedIn(api, new Map())).handle({ type: 'lookup', url: PROFILE, tabId: TAB }),
+    ).toEqual({ status: 'contact', contact: CARD });
     const sent = api.last(LOOKUP);
     expect(new URL(sent?.request.url ?? '').searchParams.get('url')).toBe(PROFILE);
     expect(sent?.request.headers.get('Authorization')).toBe('Bearer token-1');
   });
 
-  test('another profile: no Contact', async () => {
-    const api = fakeApi({ [LOOKUP]: () => Response.json({ contact: null }) });
+  test('another profile: what the form needs, and what the tab reads of it', async () => {
+    const answer = {
+      contact: null,
+      organizations: [{ id: 'o-1', name: 'VOLTÉO', type: 'end_client' }],
+      stages: [{ id: 's-1', name: 'Premier message' }],
+    } as const;
+    const api = fakeApi({ [LOOKUP]: () => Response.json(answer) });
+    const tabs = fakeTabs({ [TAB]: READING });
 
-    expect(await (await signedIn(api, new Map())).handle({ type: 'lookup', url: PROFILE })).toEqual(
-      { status: 'notContact' },
-    );
+    expect(
+      await (
+        await signedIn(api, new Map(), tabs)
+      ).handle({ type: 'lookup', url: PROFILE, tabId: TAB }),
+    ).toEqual({
+      status: 'notContact',
+      reading: READING,
+      organizations: answer.organizations,
+      stages: answer.stages,
+    });
+    expect(tabs.read).toEqual([{ tabId: TAB, url: PROFILE }]);
   });
 
   test('off a profile: the API is not asked', async () => {
@@ -459,7 +507,7 @@ describe('lookup', () => {
     expect(
       await (
         await signedIn(api, new Map())
-      ).handle({ type: 'lookup', url: 'https://www.linkedin.com/feed/' }),
+      ).handle({ type: 'lookup', url: 'https://www.linkedin.com/feed/', tabId: TAB }),
     ).toEqual({ status: 'elsewhere' });
     expect(api.last(LOOKUP)).toBeUndefined();
   });
@@ -472,7 +520,7 @@ describe('lookup', () => {
     const down = fakeApi();
     down.down();
 
-    const lookup = { type: 'lookup', url: PROFILE } as const;
+    const lookup = { type: 'lookup', url: PROFILE, tabId: TAB } as const;
     expect(await (await signedIn(ended, new Map())).handle(lookup)).toEqual({
       status: 'signedOut',
     });
@@ -481,5 +529,125 @@ describe('lookup', () => {
     expect(
       await (await signedIn(fakeApi({ [LOOKUP]: outdated }), new Map())).handle(lookup),
     ).toEqual({ status: 'outdated' });
+  });
+});
+
+const ADD = 'POST /api/contacts';
+const NEW_CONTACT: NewContact = {
+  name: 'Gaëtan Lefèvre',
+  status: 'prospecting',
+  stageId: '0190a000-0000-7000-8000-000000000001',
+  newOrganization: { name: 'VOLTÉO', type: 'end_client' },
+  linkedinUrl: 'https://linkedin.com/in/gaëtan-lefèvre-b7c41e2d',
+  jobTitle: 'Gérant',
+};
+
+describe('addContact', () => {
+  test('sent to the API as it is; its token to undo it, the tab told to show its Contact', async () => {
+    let sent: unknown;
+    const api = fakeApi({
+      [ADD]: async (request) => {
+        sent = await request.json();
+        return Response.json({ changes: {}, undoToken: 'g-1' }, { status: 201 });
+      },
+    });
+    const tabs = fakeTabs();
+
+    expect(
+      await (
+        await signedIn(api, new Map(), tabs)
+      ).handle({ type: 'addContact', tabId: TAB, contact: NEW_CONTACT }),
+    ).toEqual({ status: 'added', undoToken: 'g-1' });
+    expect(sent).toEqual(NEW_CONTACT);
+    expect(api.last(ADD)?.request.headers.get('Authorization')).toBe('Bearer token-1');
+    expect(tabs.refreshed).toEqual([TAB]);
+  });
+
+  test('the profile taken meanwhile (from another tab): said so, the tab told', async () => {
+    const api = fakeApi({
+      [ADD]: () =>
+        Response.json({ error: 'linkedin_url_taken', contactId: 'c-1' }, { status: 409 }),
+    });
+    const tabs = fakeTabs();
+
+    expect(
+      await (
+        await signedIn(api, new Map(), tabs)
+      ).handle({ type: 'addContact', tabId: TAB, contact: NEW_CONTACT }),
+    ).toEqual({ status: 'taken' });
+    expect(tabs.refreshed).toEqual([TAB]);
+  });
+
+  test('refused for data changed in the app meanwhile, or in error: said as such, nothing told', async () => {
+    const answering = (body: object | null, status: number) =>
+      fakeApi({
+        [ADD]: () => (body ? Response.json(body, { status }) : new Response(null, { status })),
+      });
+    const add = { type: 'addContact', tabId: TAB, contact: NEW_CONTACT } as const;
+    const tabs = fakeTabs();
+    const down = fakeApi();
+    down.down();
+
+    for (const error of ['unknown_stage', 'organization_taken'] as const) {
+      expect(
+        await (await signedIn(answering({ error }, 400), new Map(), tabs)).handle(add),
+      ).toEqual({ status: 'refused', error });
+    }
+    expect(
+      await (await signedIn(answering({ error: 'invalid' }, 400), new Map(), tabs)).handle(add),
+    ).toEqual({ status: 'refused', error: 'error' });
+    expect(await (await signedIn(answering(null, 503), new Map(), tabs)).handle(add)).toEqual({
+      status: 'refused',
+      error: 'error',
+    });
+    expect(await (await signedIn(down, new Map(), tabs)).handle(add)).toEqual({
+      status: 'refused',
+      error: 'error',
+    });
+    expect(
+      await (
+        await signedIn(answering({ error: 'unauthenticated' }, 401), new Map(), tabs)
+      ).handle(add),
+    ).toEqual({ status: 'signedOut' });
+    expect(
+      await (await signedIn(fakeApi({ [ADD]: outdated }), new Map(), tabs)).handle(add),
+    ).toEqual({ status: 'outdated' });
+    expect(tabs.refreshed).toEqual([]);
+  });
+});
+
+const UNDO = 'POST /api/gestures/g-1/undo';
+
+describe('undo', () => {
+  test('the addition undone on the API; the tab told to show the profile to add again', async () => {
+    const api = fakeApi({ [UNDO]: () => Response.json({ changes: {} }) });
+    const tabs = fakeTabs();
+
+    expect(
+      await (
+        await signedIn(api, new Map(), tabs)
+      ).handle({ type: 'undo', tabId: TAB, undoToken: 'g-1' }),
+    ).toEqual({ status: 'undone' });
+    expect(api.last(UNDO)?.request.headers.get('Authorization')).toBe('Bearer token-1');
+    expect(tabs.refreshed).toEqual([TAB]);
+  });
+
+  test('too late, or the Contact changed since in the app: refused, nothing told', async () => {
+    const tabs = fakeTabs();
+    const undo = { type: 'undo', tabId: TAB, undoToken: 'g-1' } as const;
+
+    for (const error of ['expired', 'superseded'] as const) {
+      const api = fakeApi({ [UNDO]: () => Response.json({ error }, { status: 409 }) });
+      expect(await (await signedIn(api, new Map(), tabs)).handle(undo)).toEqual({
+        status: 'refused',
+        error,
+      });
+    }
+    const gone = fakeApi({ [UNDO]: () => Response.json({ error: 'not_found' }, { status: 404 }) });
+    expect(await (await signedIn(gone, new Map(), tabs)).handle(undo)).toEqual({
+      status: 'refused',
+      error: 'error',
+    });
+    expect(tabs.refreshed).toEqual([]);
   });
 });

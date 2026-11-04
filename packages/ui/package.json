@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@battlecrm/contract": "workspace:*",
+    "@battlecrm/domain": "workspace:*",
     "@battlecrm/i18n": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",

@@ -41,7 +41,7 @@ import { EditCoordinates } from './edit-coordinates.tsx';
 import { FollowUpHead, FollowUpPanels, useFollowUpGesture } from './follow-up.tsx';
 import { formatLocalDay } from './format.ts';
 import { InteractionPanels, useInteractionGesture } from './interactions.tsx';
-import { targetText } from './organization-field.tsx';
+import { targetText } from './target.ts';
 import {
   TrialBlock,
   TrialPanels,

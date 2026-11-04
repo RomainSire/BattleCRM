@@ -1,4 +1,4 @@
-import { CONTACT_STATUSES } from '@battlecrm/contract';
+import { CONTACT_STATUSES, ORGANIZATION_TYPES } from '@battlecrm/contract';
 import { expect, test } from 'vitest';
 import { z } from 'zod';
 
@@ -11,6 +11,7 @@ import {
   recordReply,
   summaryOf,
 } from '../../test/factories/contact.ts';
+import { archiveStage } from '../../test/factories/stage.ts';
 import { makeUser } from '../../test/factories/user.ts';
 import { postJson } from '../../test/http.ts';
 
@@ -23,10 +24,13 @@ const profileOf = (harness: Harness, user: User, url?: string) =>
     { headers: { Cookie: user.cookie } },
   );
 
-/** The card of a Contact found on a LinkedIn profile, or none (spec extension §8). */
-const profile = z.strictObject({
-  contact: z
-    .strictObject({
+/**
+ * The card of a Contact found on a LinkedIn profile, or what the form to add one needs (spec extension
+ * §8).
+ */
+const profile = z.union([
+  z.strictObject({
+    contact: z.strictObject({
       id: z.uuid(),
       name: z.string(),
       status: z.enum(CONTACT_STATUSES),
@@ -34,9 +38,16 @@ const profile = z.strictObject({
       organizationName: z.string().nullable(),
       jobTitle: z.string().nullable(),
       lastDoneInteractionOn: z.iso.date().nullable(),
-    })
-    .nullable(),
-});
+    }),
+  }),
+  z.strictObject({
+    contact: z.null(),
+    organizations: z.array(
+      z.strictObject({ id: z.uuid(), name: z.string(), type: z.enum(ORGANIZATION_TYPES) }),
+    ),
+    stages: z.array(z.strictObject({ id: z.uuid(), name: z.string() })),
+  }),
+]);
 
 const read = async (response: Response) => {
   expect(response.status).toBe(200);
@@ -107,14 +118,13 @@ test('an Archived Contact has its card; a deleted one, an unknown profile and no
     id: contact.id,
     status: 'archived',
   });
-  expect(await read(await profileOf(harness, user, deleted))).toEqual({ contact: null });
+  expect((await read(await profileOf(harness, user, deleted))).contact).toBeNull();
   expect(
-    await read(await profileOf(harness, user, 'https://www.linkedin.com/in/julien-moreau')),
-  ).toEqual({ contact: null });
+    (await read(await profileOf(harness, user, 'https://www.linkedin.com/in/julien-moreau')))
+      .contact,
+  ).toBeNull();
   // Ignored, never refused.
-  expect(await read(await profileOf(harness, user, 'https://example.com/'))).toEqual({
-    contact: null,
-  });
+  expect((await read(await profileOf(harness, user, 'https://example.com/'))).contact).toBeNull();
   expect((await profileOf(harness, user)).status).toBe(400);
 });
 
@@ -129,11 +139,47 @@ test("another User's Contact is never found, by the cookie or by the extension's
   });
   const token = await extensionTokenOf(harness, alice);
 
-  expect(await read(await profileOf(harness, bob, url))).toEqual({ contact: null });
+  expect(await read(await profileOf(harness, bob, url))).toMatchObject({
+    contact: null,
+    organizations: [],
+  });
   const asAliceExtension = await extensionRequest(
     harness.app,
     `/api/contacts/linkedin-profile?${new URLSearchParams({ url }).toString()}`,
     { token },
   );
   expect((await read(asAliceExtension)).contact).toMatchObject({ id: alices.id, status: 'ally' });
+});
+
+test('a profile that is no Contact: every Organization with its type, the Stages of the Funnel in order', async () => {
+  const harness = testApp();
+  const user = await makeUser(harness);
+  const { stages } = await summaryOf(harness, user);
+  const [first, second, ...others] = stages;
+  if (!first || !second) throw new Error('The User has fewer than two Stages');
+  await archiveStage(user, first.id, new Date());
+  await addContact(harness, user, 'Camille Durand', {
+    newOrganization: { name: 'Zénith', type: 'end_client' },
+  });
+  await addContact(harness, user, 'Inès L.', {
+    newOrganization: { name: 'Altémis Conseil', type: 'consultancy' },
+  });
+  const zenith = (await summaryOf(harness, user)).organizations.find(
+    ({ name }) => name === 'Zénith',
+  );
+
+  const found = await read(
+    await profileOf(harness, user, 'https://www.linkedin.com/in/julien-moreau-482915307/'),
+  );
+
+  expect(found).toEqual({
+    contact: null,
+    // By name.
+    organizations: [
+      { id: expect.any(String), name: 'Altémis Conseil', type: 'consultancy' },
+      { id: zenith?.id, name: 'Zénith', type: 'end_client' },
+    ],
+    // The archived one left out.
+    stages: [second, ...others].map(({ id, name }) => ({ id, name })),
+  });
 });

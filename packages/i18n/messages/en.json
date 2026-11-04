@@ -1367,5 +1367,8 @@
   "extension_presence_add": "+ Add to BattleCRM",
   "extension_presence_sign_in": "BattleCRM: sign in",
   "extension_last_done_interaction": "Last exchange: {day}",
-  "extension_no_done_interaction": "No exchange yet"
+  "extension_no_done_interaction": "No exchange yet",
+  "extension_added_pool": "Added to the Pool",
+  "extension_added_prospecting": "Added Prospecting at {stage}",
+  "extension_added_ally": "Added to the Circle"
 }

@@ -15,7 +15,10 @@ import {
   Input,
   invalidInputClass,
   Label,
+  OrganizationField,
+  organizationOf,
   Textarea,
+  type OrganizationDraft,
 } from '@battlecrm/ui';
 import { useMutation } from '@tanstack/react-query';
 import { useDeferredValue, useId, useState } from 'react';
@@ -25,12 +28,7 @@ import { useSendGesture } from '../gesture.ts';
 import { useApi } from '../session.ts';
 import { type Summary, type SummaryContact } from '../summary.ts';
 import { contactLabel, DuplicateNote, LinkedInTaken } from './duplicate-notes.tsx';
-import {
-  OrganizationField,
-  organizationOf,
-  targetText,
-  type OrganizationDraft,
-} from './organization-field.tsx';
+import { targetText } from './target.ts';
 
 /** A field of the Contact sent only when filled: left out, it is emptied. */
 const filled = (text: string) => text.trim() || undefined;

@@ -18,6 +18,7 @@ import {
   FieldErrorMessage,
   Input,
   Label,
+  ORGANIZATION_TYPE_LABEL,
   SegmentedControl,
   SegmentedControlItem,
   SegmentedControlItems,
@@ -30,7 +31,6 @@ import { Form, TextField } from 'react-aria-components';
 
 import { OfflineNote } from '../components/ui/offline-note.tsx';
 import { ContactName } from '../contacts/contact-name.tsx';
-import { ORGANIZATION_TYPE_LABEL } from '../contacts/organization-field.tsx';
 import { prospectingStageOf, STATUS_LABEL } from '../contacts/status.ts';
 import { useSendGesture } from '../gesture.ts';
 import { useLocale } from '../i18n.ts';

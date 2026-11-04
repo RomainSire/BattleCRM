@@ -1,7 +1,7 @@
 import { render } from 'vitest-browser-react';
 
 import type { AnswerTo, Message, Send } from '../src/messages.ts';
-import type { WatchActiveTab } from '../src/sidebar/active-tab.ts';
+import type { ActiveTab, WatchActiveTab } from '../src/sidebar/active-tab.ts';
 import { Sidebar } from '../src/sidebar/sidebar.tsx';
 
 export const APP_ORIGIN = 'https://app.battlecrm.test';
@@ -41,23 +41,27 @@ export function fakeBackground(answers: Answers = {}) {
   };
 }
 
+/** The id of the tab `fakeTab()` plays, unless `go()` says another. */
+export const TAB = 7;
+
 /**
  * The active tab of the sidebar's window, played by the test: its address at first, then each one
- * `go()` moves it to. `undefined`, an address the extension may not read (another site).
+ * `go()` moves it to, in the same tab unless another is given. `undefined`, an address the extension
+ * may not read (another site).
  */
 export function fakeTab(url?: string) {
-  let current = url;
-  const listeners = new Set<(url: string | undefined) => void>();
-  const watch: WatchActiveTab = (onAddress) => {
-    listeners.add(onAddress);
-    onAddress(current);
-    return () => listeners.delete(onAddress);
+  let current: ActiveTab | undefined = url === undefined ? undefined : { id: TAB, url };
+  const listeners = new Set<(tab: ActiveTab | undefined) => void>();
+  const watch: WatchActiveTab = (onTab) => {
+    listeners.add(onTab);
+    onTab(current);
+    return () => listeners.delete(onTab);
   };
   return {
     watch,
-    go(address: string | undefined) {
-      current = address;
-      for (const listener of listeners) listener(address);
+    go(address: string | undefined, id = TAB) {
+      current = address === undefined ? undefined : { id, url: address };
+      for (const listener of listeners) listener(current);
     },
   };
 }

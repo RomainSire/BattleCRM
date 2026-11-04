@@ -1367,5 +1367,8 @@
   "extension_presence_add": "+ Ajouter à BattleCRM",
   "extension_presence_sign_in": "BattleCRM : se connecter",
   "extension_last_done_interaction": "Dernier échange : {day}",
-  "extension_no_done_interaction": "Aucun échange"
+  "extension_no_done_interaction": "Aucun échange",
+  "extension_added_pool": "Ajouté au Vivier",
+  "extension_added_prospecting": "Ajouté En prospection à {stage}",
+  "extension_added_ally": "Ajouté au Cercle"
 }

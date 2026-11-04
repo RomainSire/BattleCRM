@@ -72,7 +72,7 @@ import {
   RecordGesturePanels,
   useRecordGestures,
 } from '../contacts/contact-record.tsx';
-import { targetText } from '../contacts/organization-field.tsx';
+import { targetText } from '../contacts/target.ts';
 import { STATUS_VERB } from '../contacts/status.ts';
 import { agendaOf } from './agenda.ts';
 import { FunnelList } from './funnel-list.tsx';
