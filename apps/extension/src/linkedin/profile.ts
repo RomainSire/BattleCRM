@@ -61,6 +61,37 @@ export function profileName(
   return null;
 }
 
+/** How long to wait for LinkedIn to show a profile, and whether the tab moved on meanwhile. */
+export type ProfileWait = { timeoutMs: number; stale: () => boolean };
+
+/**
+ * The name of the profile at this address once LinkedIn shows it, `timeoutMs` at most (spec extension
+ * §5, §7); `null` past that, or as soon as `stale()` says the tab moved on.
+ */
+export function profileShown(page: Document, url: string, { timeoutMs, stale }: ProfileWait) {
+  return new Promise<ReturnType<typeof profileName>>((resolve) => {
+    /** Whether the wait is over: the tab moved on, or the name shows. */
+    const check = () => {
+      if (stale()) {
+        finish(null);
+        return true;
+      }
+      const named = profileName(page, url);
+      if (named !== null) finish(named);
+      return named !== null;
+    };
+    const observer = new MutationObserver(() => void check());
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    const finish = (named: ReturnType<typeof profileName>) => {
+      observer.disconnect();
+      clearTimeout(timer);
+      resolve(named);
+    };
+    if (check()) return;
+    observer.observe(page.documentElement, { childList: true, subtree: true, characterData: true });
+  });
+}
+
 /** The text of an element as it reads, its spaces folded. */
 const textOf = (element: Element) => element.textContent.replace(/\s+/g, ' ').trim();
 
@@ -80,6 +111,19 @@ export function readProfile(page: Document, url: string): ProfileReading | null 
     organizationName: post?.organizationName ?? null,
     ...contactInfoOf(page, profileUrl),
   };
+}
+
+/**
+ * `readProfile` once LinkedIn shows the profile at this address, `timeoutMs` at most: “Read the page
+ * again” (spec extension §4). `null` when it never shows, or the tab moved on.
+ */
+export async function readProfileShown(
+  page: Document,
+  url: string,
+  wait: ProfileWait,
+): Promise<ProfileReading | null> {
+  const named = await profileShown(page, url, wait);
+  return named === null || wait.stale() ? null : readProfile(page, url);
 }
 
 /** The name of an Organization without the contract type after it; `null` for a type unknown. */

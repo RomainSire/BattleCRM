@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import expected from '../../test/linkedin/expected.json';
 import { pageOf, PROFILES } from '../../test/linkedin/pages.ts';
-import { profileName, profileUrlOf, readProfile } from './profile.ts';
+import { profileName, profileUrlOf, readProfile, readProfileShown } from './profile.ts';
 
 describe('profileUrlOf', () => {
   test('the address of a profile, normalized, from any of its pages', () => {
@@ -145,5 +145,46 @@ describe('readProfile', () => {
       if (heading.textContent.trim() === 'Camille Durand') heading.remove();
     }
     expect(readProfile(page, expected['profile-contract-type.html'].url)).toBeNull();
+  });
+});
+
+/** The page of a LinkedIn tab, showing this profile now. */
+function shows(page: Document, fixture: string) {
+  const next = pageOf(fixture);
+  page.title = next.title;
+  page.body.replaceWith(page.importNode(next.body, true));
+}
+
+describe('readProfileShown', () => {
+  const CAMILLE = expected['profile-contract-type.html'];
+
+  test('a profile LinkedIn renders late: read once its name shows', async () => {
+    // The address changed; the page still shows the previous profile.
+    const page = pageOf('profile-out-of-network.html');
+
+    const reading = readProfileShown(page, CAMILLE.url, { timeoutMs: 10_000, stale: () => false });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    shows(page, 'profile-contract-type.html');
+
+    expect(await reading).toMatchObject({ name: CAMILLE.name, jobTitle: CAMILLE.jobTitle });
+  });
+
+  test('without the h2 of the name: nothing read, once the wait is over', async () => {
+    const page = pageOf('profile-contract-type.html');
+    for (const heading of page.querySelectorAll('h2')) {
+      if (heading.textContent.trim() === 'Camille Durand') heading.remove();
+    }
+
+    expect(
+      await readProfileShown(page, CAMILLE.url, { timeoutMs: 200, stale: () => false }),
+    ).toBeNull();
+  });
+
+  test('the tab moved on: nothing read, without waiting', async () => {
+    const page = pageOf('profile-out-of-network.html');
+
+    expect(
+      await readProfileShown(page, CAMILLE.url, { timeoutMs: 60_000, stale: () => true }),
+    ).toBeNull();
   });
 });

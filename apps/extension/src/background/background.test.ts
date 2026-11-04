@@ -27,17 +27,21 @@ type Badges = Map<number, Badge>;
 
 /**
  * The LinkedIn tabs, as their content scripts answer: what each one reads of its profile, and the
- * tabs told to show their profile again.
+ * tabs told to show their profile again. `loading`: how many reads find no content script yet, as
+ * while a page loads.
  */
-function fakeTabs(readings: Record<number, ProfileReading | null> = {}) {
-  const read: { tabId: number; url: string }[] = [];
+function fakeTabs(readings: Record<number, ProfileReading | null> = {}, { loading = 0 } = {}) {
+  const read: { tabId: number; url: string; timeoutMs: number }[] = [];
   const refreshed: number[] = [];
+  let unanswered = loading;
   return {
     read,
     refreshed,
     port: {
-      read: async (tabId: number, url: string) => {
-        read.push({ tabId, url });
+      read: async (tabId: number, url: string, timeoutMs: number) => {
+        read.push({ tabId, url, timeoutMs });
+        if (unanswered-- > 0)
+          throw new Error('Could not establish connection. Receiving end does not exist.');
         return readings[tabId] ?? null;
       },
       refresh: async (tabId: number) => {
@@ -46,6 +50,9 @@ function fakeTabs(readings: Record<number, ProfileReading | null> = {}) {
     },
   };
 }
+
+/** How long the tests' LinkedIn has to show a profile: 10 s in Firefox. */
+const READ_TIMEOUT_MS = 1_000;
 
 /** A background as Firefox wakes it up: a new one each time, on the same storage. */
 function wake(
@@ -63,6 +70,7 @@ function wake(
       badges.set(tabId, badge);
     },
     tabs: tabs.port,
+    readTimeoutMs: READ_TIMEOUT_MS,
   });
 }
 
@@ -467,6 +475,10 @@ const READING: ProfileReading = {
   phone: null,
 };
 
+/** A profile that is no Contact, nothing else known. */
+const NOT_CONTACT = () =>
+  Response.json({ contact: null, sameName: [], organizations: [], stages: [] });
+
 describe('lookup', () => {
   test('a profile that is a Contact: its card, asked once with the address of the tab', async () => {
     const api = fakeApi({ [LOOKUP]: () => Response.json({ contact: CARD }) });
@@ -479,9 +491,10 @@ describe('lookup', () => {
     expect(sent?.request.headers.get('Authorization')).toBe('Bearer token-1');
   });
 
-  test('another profile: what the form needs, and what the tab reads of it', async () => {
+  test('another profile: what the form needs, and what the tab reads of it, its name sent', async () => {
     const answer = {
       contact: null,
+      sameName: [{ id: 'c-2', name: 'Gaetan Lefevre', organizationName: 'Acme' }],
       organizations: [{ id: 'o-1', name: 'VOLTÉO', type: 'end_client' }],
       stages: [{ id: 's-1', name: 'Premier message' }],
     } as const;
@@ -495,10 +508,62 @@ describe('lookup', () => {
     ).toEqual({
       status: 'notContact',
       reading: READING,
+      sameName: answer.sameName,
       organizations: answer.organizations,
       stages: answer.stages,
     });
-    expect(tabs.read).toEqual([{ tabId: TAB, url: PROFILE }]);
+    // Read at once: the sidebar shows what the page shows now.
+    expect(tabs.read).toEqual([{ tabId: TAB, url: PROFILE, timeoutMs: 0 }]);
+    expect(new URL(api.last(LOOKUP)?.request.url ?? '').searchParams.get('name')).toBe(
+      READING.name,
+    );
+  });
+
+  test('no name read: none sent; “Read the page again” waits for the profile', async () => {
+    const api = fakeApi({
+      [LOOKUP]: () => Response.json({ contact: null, sameName: [], organizations: [], stages: [] }),
+    });
+    const tabs = fakeTabs();
+    const background = await signedIn(api, new Map(), tabs);
+
+    expect(
+      await background.handle({ type: 'lookup', url: PROFILE, tabId: TAB, wait: true }),
+    ).toMatchObject({ status: 'notContact', reading: null, sameName: [] });
+    expect(tabs.read).toEqual([{ tabId: TAB, url: PROFILE, timeoutMs: expect.any(Number) }]);
+    expect(tabs.read[0]?.timeoutMs).toBeGreaterThan(READ_TIMEOUT_MS - 100);
+    expect(tabs.read[0]?.timeoutMs).toBeLessThanOrEqual(READ_TIMEOUT_MS);
+    expect(new URL(api.last(LOOKUP)?.request.url ?? '').searchParams.has('name')).toBe(false);
+  });
+
+  test('“Read the page again” on a page still loading: read once its content script answers', async () => {
+    const tabs = fakeTabs({ [TAB]: READING }, { loading: 2 });
+    const background = await signedIn(fakeApi({ [LOOKUP]: NOT_CONTACT }), new Map(), tabs);
+
+    expect(
+      await background.handle({ type: 'lookup', url: PROFILE, tabId: TAB, wait: true }),
+    ).toMatchObject({ status: 'notContact', reading: READING });
+    expect(tabs.read).toHaveLength(3);
+    // What is left of the wait, never more: 10 s in all.
+    const [first, , last] = tabs.read;
+    expect(last?.timeoutMs).toBeLessThan(first?.timeoutMs ?? 0);
+  });
+
+  test('a content script that never answers: nothing read once the wait is over; at once without it', async () => {
+    const waited = fakeTabs({ [TAB]: READING }, { loading: Infinity });
+    const background = await signedIn(fakeApi({ [LOOKUP]: NOT_CONTACT }), new Map(), waited);
+    const started = Date.now();
+
+    expect(
+      await background.handle({ type: 'lookup', url: PROFILE, tabId: TAB, wait: true }),
+    ).toMatchObject({ status: 'notContact', reading: null });
+    expect(Date.now() - started).toBeGreaterThanOrEqual(READ_TIMEOUT_MS - 50);
+    expect(Date.now() - started).toBeLessThan(READ_TIMEOUT_MS + 500);
+
+    const atOnce = fakeTabs({ [TAB]: READING }, { loading: Infinity });
+    await (
+      await signedIn(fakeApi({ [LOOKUP]: NOT_CONTACT }), new Map(), atOnce)
+    ).handle({ type: 'lookup', url: PROFILE, tabId: TAB });
+    expect(atOnce.read).toHaveLength(1);
   });
 
   test('off a profile: the API is not asked', async () => {

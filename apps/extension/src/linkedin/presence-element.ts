@@ -2,11 +2,14 @@ import { m } from '@battlecrm/i18n';
 
 import type { Message, Presence } from '../messages.ts';
 import { STATUS_LABEL } from '../status.ts';
-import { profileName, profileUrlOf } from './profile.ts';
+import { profileShown, profileUrlOf } from './profile.ts';
 
 // What the extension puts in a LinkedIn profile, right after the h2 of the name (spec extension §5):
 // plain DOM in a shadow root, its own small CSS, the colours of the theme for the page's background.
 // It only informs: only the icon opens the sidebar (Firefox refuses it from the page).
+
+/** What the console says when LinkedIn shows no profile the extension can read (spec extension §7). */
+export const UNREADABLE = 'BattleCRM: unreadable profile, LinkedIn may have changed its layout';
 
 /** Marks the element in the page, with the profile it belongs to. */
 const MARK = 'data-battlecrm-presence';
@@ -114,37 +117,9 @@ function removeAll(page: Document, but: string | null = null) {
 }
 
 /**
- * The name of the profile at this address once LinkedIn shows it, `timeoutMs` at most; `null` past
- * that, or when `stale()` says the tab moved on.
- */
-function nameShown(page: Document, url: string, timeoutMs: number, stale: () => boolean) {
-  return new Promise<ReturnType<typeof profileName>>((resolve) => {
-    /** Whether the wait is over: the tab moved on, or the name shows. */
-    const check = () => {
-      if (stale()) {
-        finish(null);
-        return true;
-      }
-      const named = profileName(page, url);
-      if (named !== null) finish(named);
-      return named !== null;
-    };
-    const observer = new MutationObserver(() => void check());
-    const timer = setTimeout(() => finish(null), timeoutMs);
-    const finish = (named: ReturnType<typeof profileName>) => {
-      observer.disconnect();
-      clearTimeout(timer);
-      resolve(named);
-    };
-    if (check()) return;
-    observer.observe(page.documentElement, { childList: true, subtree: true, characterData: true });
-  });
-}
-
-/**
  * Follows the address of a LinkedIn tab (spec extension §2, §5): at each change, the background
  * recalculates the badge, and the element after the name follows, put only once the name of the right
- * profile shows, never twice.
+ * profile shows, never twice. A profile that never shows its name is said in the console (§7).
  */
 export function createProfileWatch({
   page,
@@ -166,14 +141,19 @@ export function createProfileWatch({
       removeAll(page, profileUrl);
       const presence = await send({ type: 'presence', url });
       if (stale()) return;
-      const content = profileUrl === null ? null : contentOf(page, presence);
-      if (profileUrl === null || content === null) return removeAll(page);
-      const named = await nameShown(page, url, timeoutMs, stale);
+      if (profileUrl === null) return removeAll(page);
+      // The API in error or the extension outdated: no element, the profile still checked.
+      const content = contentOf(page, presence);
+      if (content === null) removeAll(page);
+      const named = await profileShown(page, url, { timeoutMs, stale });
+      if (stale()) return;
       if (named === null) {
-        if (!stale()) removeAll(page);
+        removeAll(page);
+        // For Romain, never for the API (spec extension §7, §13 A8): only the DOM can tell.
+        console.warn(UNREADABLE);
         return;
       }
-      place(named.heading, profileUrl, content);
+      if (content !== null) place(named.heading, profileUrl, content);
     },
   };
 }

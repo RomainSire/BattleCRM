@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import expected from '../../test/linkedin/expected.json';
 import { pageOf } from '../../test/linkedin/pages.ts';
@@ -50,6 +50,12 @@ const watch = (send: ReturnType<typeof background>['send'], timeoutMs = 10_000) 
 beforeEach(() => {
   document.body.removeAttribute('style');
 });
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+const UNREADABLE = 'BattleCRM: unreadable profile, LinkedIn may have changed its layout';
 
 describe('the element after the name', () => {
   test.each<[string, Presence, string]>([
@@ -112,13 +118,43 @@ describe('the element after the name', () => {
     expect(elements()).toHaveLength(1);
   });
 
-  test('without the h2 of the name, no element, once the wait is over', async () => {
-    show('profile-contract-type.html');
-    headingOf('Camille Durand')?.remove();
+  test.each<[string, Presence]>([
+    ['a profile to add', { status: 'notContact' }],
+    ['a Contact', { status: 'contact', contactId: 'c-1', contactStatus: 'pool' }],
+    ['the API in error', { status: 'error' }],
+  ])(
+    'without the h2 of the name (%s): no element, and a warning in the console once the wait is over',
+    async (_, presence) => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      show('profile-contract-type.html');
+      headingOf('Camille Durand')?.remove();
+
+      await watch(background(presence).send, 200).changed(CAMILLE);
+
+      expect(elements()).toEqual([]);
+      expect(warn.mock.calls).toEqual([[UNREADABLE]]);
+    },
+  );
+
+  test('a page that never shows the profile of its address: the same warning', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    show('profile-out-of-network.html');
 
     await watch(background({ status: 'notContact' }).send, 200).changed(CAMILLE);
 
-    expect(elements()).toEqual([]);
+    expect(warn.mock.calls).toEqual([[UNREADABLE]]);
+  });
+
+  test('another address before the wait is over: no warning about the one left', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    show('profile-out-of-network.html');
+    const profile = watch(background({ status: 'notContact' }).send, 200);
+
+    const left = profile.changed(CAMILLE);
+    await profile.changed(JULIEN);
+    await left;
+
+    expect(warn).not.toHaveBeenCalled();
   });
 
   test('a profile LinkedIn renders late: the element waits for its name', async () => {
@@ -134,6 +170,15 @@ describe('the element after the name', () => {
 
     expect(elements()).toHaveLength(1);
     expect(headingOf('Camille Durand')?.nextElementSibling).toBe(elements()[0]);
+  });
+
+  test('a profile that shows: no warning', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    show('profile-contract-type.html');
+
+    await watch(background({ status: 'notContact' }).send).changed(CAMILLE);
+
+    expect(warn).not.toHaveBeenCalled();
   });
 
   test('another profile: the element of the previous one goes, the new one comes after its name', async () => {

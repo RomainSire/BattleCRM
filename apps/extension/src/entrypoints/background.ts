@@ -24,19 +24,22 @@ export default defineBackground(() => {
       if (badge !== '')
         await browser.action.setBadgeBackgroundColor({ tabId, color: BADGE_COLORS[badge] });
     },
-    // The content script of the tab answers; a tab without one (loaded before the extension, or off
-    // LinkedIn) reads nothing.
+    // The content script of the tab answers; a tab without one (a page still loading, one loaded
+    // before the extension, or off LinkedIn) rejects.
     tabs: {
-      read: (tabId, url) =>
-        browser.tabs
-          .sendMessage(tabId, { type: 'readProfile', url } satisfies TabMessage)
-          .catch(() => null),
+      read: (tabId, url, timeoutMs) =>
+        browser.tabs.sendMessage(tabId, {
+          type: 'readProfile',
+          url,
+          timeoutMs,
+        } satisfies TabMessage),
       refresh: async (tabId) => {
         await browser.tabs
           .sendMessage(tabId, { type: 'refresh' } satisfies TabMessage)
           .catch(() => undefined);
       },
     },
+    readTimeoutMs: 10_000,
   });
 
   browser.runtime.onMessage.addListener((message: Message, sender) =>

@@ -23,17 +23,18 @@ import {
   type OrganizationDraft,
 } from '@battlecrm/ui';
 import { useId, useState } from 'react';
-import { Form, TextField } from 'react-aria-components';
+import { Form, Link, TextField } from 'react-aria-components';
 
 import type {
   AddOutcome,
   NewContact,
   OrganizationChoice,
   ProfileReading,
+  SameNameContact,
   StageChoice,
 } from '../messages.ts';
 import { STATUS_LABEL } from '../status.ts';
-import { ScreenTitle } from './layout.tsx';
+import { linkClass, ScreenTitle } from './layout.tsx';
 
 /** What the form holds: it belongs to the profile, and is lost with it (spec extension §4). */
 export type Draft = {
@@ -109,27 +110,45 @@ function refusalText(outcome: AddOutcome | undefined, failed: boolean) {
   return m.auth_error();
 }
 
+/** A Contact of the same name, as its line names it: “Jean Dupont · Capgemini”. */
+const contactLabel = ({ name, organizationName }: SameNameContact) =>
+  organizationName === null ? name : `${name} · ${organizationName}`;
+
 /**
  * The form to add the Contact of a LinkedIn profile (spec extension §4): the quick add of the app,
  * every field shown, the LinkedIn URL shown and disabled. `Enter` adds it; no `Ctrl Enter`, the
- * gestures of the Funnel are for its record in the app.
+ * gestures of the Funnel are for its record in the app. The Contacts of the same name are only worth
+ * knowing; a profile that could not be read is said above, and blocks nothing either.
  */
 export function AddContactForm({
   linkedinUrl,
+  appOrigin,
+  sameName,
   organizations,
   stages,
   draft,
-  onDraft,
+  onChange,
+  onReadAgain,
+  isReading,
+  unreadable,
   onAdd,
   isAdding,
   outcome,
   failed,
 }: {
   linkedinUrl: string;
+  appOrigin: string;
+  sameName: readonly SameNameContact[];
   organizations: readonly OrganizationChoice[];
   stages: readonly StageChoice[];
   draft: Draft;
-  onDraft: (draft: Draft) => void;
+  /** The fields the User changed: a reading of the page leaves them alone. */
+  onChange: (fields: Partial<Draft>) => void;
+  /** “Read the page again”. */
+  onReadAgain: () => void;
+  isReading: boolean;
+  /** The page shows no profile the extension can read (spec extension §7). */
+  unreadable: boolean;
   onAdd: (contact: NewContact) => void;
   isAdding: boolean;
   /** The answer to the latest addition, for its refusal. */
@@ -139,12 +158,20 @@ export function AddContactForm({
 }) {
   const stageFieldId = useId();
   const [wasSent, setWasSent] = useState(false);
-  const change = (fields: Partial<Draft>) => onDraft({ ...draft, ...fields });
   // A Stage chosen and gone from the Funnel since: the first one again.
   const stageId = stages.some(({ id }) => id === draft.stageId) ? draft.stageId : stages[0]?.id;
   return (
     <>
       <ScreenTitle>{m.add_contact()}</ScreenTitle>
+      {unreadable && (
+        // A status: said by a screen reader once the wait is over, never blocking.
+        <output className="block rounded-control border px-3 py-2 text-sm text-neutral-text">
+          {m.extension_unreadable_profile()}
+        </output>
+      )}
+      <Button variant="outline" className="self-start" isDisabled={isReading} onPress={onReadAgain}>
+        {m.extension_read_page_again()}
+      </Button>
       <Form
         className="flex flex-col gap-4"
         onSubmit={(event) => {
@@ -157,7 +184,7 @@ export function AddContactForm({
         <TextField
           name="name"
           value={draft.name}
-          onChange={(name) => change({ name })}
+          onChange={(name) => onChange({ name })}
           autoComplete="off"
           maxLength={CONTACT_NAME_MAX_LENGTH}
           validate={(name) => (name.trim() === '' ? m.contact_name_required() : null)}
@@ -167,10 +194,27 @@ export function AddContactForm({
           <Input />
           <FieldErrorMessage />
         </TextField>
+        {sameName.length > 0 && (
+          <ul className="flex flex-col gap-1 text-sm text-neutral-text">
+            {sameName.map((contact) => (
+              <li key={contact.id}>
+                {m.extension_same_name({ contact: contactLabel(contact) })}{' '}
+                <Link
+                  href={`${appOrigin}/contacts/${contact.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={linkClass}
+                >
+                  {m.open_contact()}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
         <TextField
           name="jobTitle"
           value={draft.jobTitle}
-          onChange={(jobTitle) => change({ jobTitle })}
+          onChange={(jobTitle) => onChange({ jobTitle })}
           maxLength={CONTACT_JOB_TITLE_MAX_LENGTH}
           className="flex flex-col gap-1.5"
         >
@@ -179,7 +223,7 @@ export function AddContactForm({
         </TextField>
         <OrganizationField
           draft={draft.organization}
-          onChange={(organization) => change({ organization })}
+          onChange={(organization) => onChange({ organization })}
           organizations={organizations}
           isTypeMissing={wasSent}
           // Filled from the page: emptied as when it is edited in the app.
@@ -188,7 +232,7 @@ export function AddContactForm({
         <TextField
           name="email"
           value={draft.email}
-          onChange={(email) => change({ email })}
+          onChange={(email) => onChange({ email })}
           autoComplete="off"
           maxLength={CONTACT_EMAIL_MAX_LENGTH}
           className="flex flex-col gap-1.5"
@@ -200,7 +244,7 @@ export function AddContactForm({
           name="phone"
           type="tel"
           value={draft.phone}
-          onChange={(phone) => change({ phone })}
+          onChange={(phone) => onChange({ phone })}
           autoComplete="off"
           maxLength={CONTACT_PHONE_MAX_LENGTH}
           className="flex flex-col gap-1.5"
@@ -211,7 +255,7 @@ export function AddContactForm({
         <TextField
           name="note"
           value={draft.note}
-          onChange={(note) => change({ note })}
+          onChange={(note) => onChange({ note })}
           maxLength={CONTACT_NOTE_MAX_LENGTH}
           className="flex flex-col gap-1.5"
         >
@@ -227,7 +271,7 @@ export function AddContactForm({
           value={draft.status}
           onChange={(value) => {
             const status = ADDABLE_CONTACT_STATUSES.find((candidate) => candidate === value);
-            if (status) change({ status });
+            if (status) onChange({ status });
           }}
         >
           <Label>{m.contact_status()}</Label>
@@ -245,7 +289,7 @@ export function AddContactForm({
             <select
               id={stageFieldId}
               value={stageId}
-              onChange={(event) => change({ stageId: event.target.value })}
+              onChange={(event) => onChange({ stageId: event.target.value })}
               className="h-8 w-full rounded-control border border-input bg-background px-2 text-sm focus-ring"
             >
               {stages.map((stage) => (

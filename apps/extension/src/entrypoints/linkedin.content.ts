@@ -2,7 +2,7 @@ import { defineContentScript } from '#imports';
 import { overwriteGetLocale } from '@battlecrm/i18n/runtime';
 
 import { createProfileWatch } from '../linkedin/presence-element.ts';
-import { readProfile } from '../linkedin/profile.ts';
+import { profileUrlOf, readProfile, readProfileShown } from '../linkedin/profile.ts';
 import { send, type TabMessage } from '../messages.ts';
 import { browserLocale } from '../sidebar/locale.ts';
 
@@ -13,7 +13,9 @@ export default defineContentScript({
     const locale = browserLocale(navigator.languages);
     overwriteGetLocale(() => locale);
 
-    const profile = createProfileWatch({ page: document, send, timeoutMs: 10_000 });
+    /** How long LinkedIn has to show a profile (spec extension §5, §7). */
+    const timeoutMs = 10_000;
+    const profile = createProfileWatch({ page: document, send, timeoutMs });
     void profile.changed(location.href);
     // LinkedIn moves from page to page without loading one (`pushState`): Firefox keeps the badge of
     // the previous page, so each change of address recalculates it (spec extension §2).
@@ -21,8 +23,15 @@ export default defineContentScript({
     // The background, for the sidebar: what the page shows of a profile, and a Contact added or taken
     // back, which the badge and the element follow.
     browser.runtime.onMessage.addListener((message: TabMessage) => {
-      if (message.type === 'readProfile')
-        return Promise.resolve(readProfile(document, message.url));
+      if (message.type === 'readProfile') {
+        const { url, timeoutMs: waitMs } = message;
+        if (waitMs === 0) return Promise.resolve(readProfile(document, url));
+        // The tab moved on to another profile, or off one: the profile waited for is gone.
+        const stale = () => profileUrlOf(location.href) !== profileUrlOf(url);
+        // The page being left, as a load starts: as if no content script answered, to be asked again.
+        if (stale()) return Promise.reject(new Error('This page shows another address'));
+        return readProfileShown(document, url, { timeoutMs: waitMs, stale });
+      }
       void profile.changed(location.href);
       return undefined;
     });

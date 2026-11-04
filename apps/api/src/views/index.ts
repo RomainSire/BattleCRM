@@ -12,7 +12,7 @@ import {
   type SummaryPositioning,
   type SummaryStage,
 } from '@battlecrm/contract';
-import { archivedBy, normalizeLinkedInUrl } from '@battlecrm/domain';
+import { archivedBy, normalizeLinkedInUrl, normalizeName } from '@battlecrm/domain';
 import { and, desc, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { validator } from 'hono/validator';
@@ -743,6 +743,42 @@ async function linkedinProfileOf(tx: Transaction, userId: string, url: string) {
   return found ?? null;
 }
 
+/** How many Contacts of the same name the form of the extension names (spec extension §8). */
+const SAME_NAME_MAX = 5;
+
+/**
+ * The Contacts whose name is this one, case, accents and spaces aside (`normalizeName`, ST-96): the
+ * Archived ones too, the deleted ones never; the latest Interaction first, `SAME_NAME_MAX` at most.
+ * Compared here, without a column of its own: a User has few enough Contacts to read all their names.
+ */
+async function sameNameOf(tx: Transaction, userId: string, name: string) {
+  const wanted = normalizeName(name);
+  if (wanted === '') return [];
+  const latest = tx
+    .select({ occurredAt: interaction.occurredAt })
+    .from(interaction)
+    .where(and(eq(interaction.userId, userId), eq(interaction.contactId, contact.id)))
+    .orderBy(desc(interaction.occurredAt), desc(interaction.id))
+    .limit(1);
+  const contacts = await tx
+    .select({
+      id: contact.id,
+      // Never null: a deleted Contact is left out.
+      name: sql<string>`${contact.name}`,
+      organizationName: organization.name,
+    })
+    .from(contact)
+    .leftJoin(
+      organization,
+      and(eq(organization.userId, userId), eq(organization.id, contact.organizationId)),
+    )
+    .where(and(eq(contact.userId, userId), isNull(contact.anonymizedAt)))
+    .orderBy(sql`(${latest}) desc nulls last`, contact.id);
+  return contacts
+    .filter((candidate) => normalizeName(candidate.name) === wanted)
+    .slice(0, SAME_NAME_MAX);
+}
+
 /** The Stages of the Funnel, archived ones left out, in its order: where a Contact may be added. */
 const funnelStages = (tx: Transaction, userId: string) =>
   tx
@@ -868,17 +904,19 @@ export function createViews({
       '/contacts/linkedin-profile',
       requireUser,
       validator('query', (value, c) => {
-        const parsed = z.object({ url: z.string() }).safeParse(value);
+        // `name`: the name read on the profile, for the Contacts of the same name.
+        const parsed = z.object({ url: z.string(), name: z.string().optional() }).safeParse(value);
         return parsed.success ? parsed.data : c.json({ error: 'invalid' as const }, 400);
       }),
       async (c) => {
         const { userId } = c.var;
-        const { url } = c.req.valid('query');
+        const { url, name } = c.req.valid('query');
         const answer = await withUser(userId, async (tx) => {
           const card = await linkedinProfileOf(tx, userId, url);
           if (card !== null) return { contact: card };
           return {
             contact: card,
+            sameName: name === undefined ? [] : await sameNameOf(tx, userId, name),
             organizations: await summaryOrganizations(tx, userId),
             stages: await funnelStages(tx, userId),
           };

@@ -7,7 +7,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-aria-components';
 
 import { profileUrlOf } from '../linkedin/profile.ts';
@@ -167,7 +167,17 @@ function Profile({ url, tabId, appOrigin }: { url: string; tabId: number; appOri
     gcTime: 0,
   });
   const readAgain = () => queryClient.refetchQueries({ queryKey: lookupKey });
-  const [draft, setDraft] = useState<Draft>();
+  // “Read the page again” (spec extension §4): waits for LinkedIn to show the profile, 10 s at most.
+  const pageRead = useMutation({
+    mutationFn: async () => {
+      const answer = await send({ type: 'lookup', url, tabId, wait: true });
+      queryClient.setQueryData(lookupKey, answer);
+      return answer;
+    },
+  });
+  const { mutate: readPage } = pageRead;
+  // What the User changed in the form: the rest follows what the page reads.
+  const [edits, setEdits] = useState<Partial<Draft>>({});
   const [added, setAdded] = useState<{ undoToken: string; message: string }>();
   /** The session's own screens come first (spec extension §3): the background tells which. */
   const followSession = useCallback(
@@ -209,6 +219,14 @@ function Profile({ url, tabId, appOrigin }: { url: string; tabId: number; appOri
   const endLine = useCallback(() => setAdded(undefined), []);
   const status = lookup.data?.status;
   useEffect(() => followSession(status), [status, followSession]);
+  // The name not read: LinkedIn may not have shown the profile yet. Read again, once, on its own.
+  const nameUnread = status === 'notContact' && lookup.data?.reading === null;
+  const readOnItsOwn = useRef(false);
+  useEffect(() => {
+    if (!nameUnread || readOnItsOwn.current) return;
+    readOnItsOwn.current = true;
+    readPage();
+  }, [nameUnread, readPage]);
 
   if (lookup.isPending) return null;
   if (lookup.isError || lookup.data.status === 'error') {
@@ -231,20 +249,23 @@ function Profile({ url, tabId, appOrigin }: { url: string; tabId: number; appOri
     );
   }
   if (lookup.data.status !== 'notContact') return null;
-  const { reading, organizations, stages } = lookup.data;
-  const current = draft ?? draftOf(reading, organizations);
+  const { reading, sameName, organizations, stages } = lookup.data;
+  const current: Draft = { ...draftOf(reading, organizations), ...edits };
   return (
     <AddContactForm
       linkedinUrl={url}
+      appOrigin={appOrigin}
+      sameName={sameName}
       organizations={organizations}
       stages={stages}
       draft={current}
-      onDraft={setDraft}
-      onAdd={(contact) => {
-        // Kept as sent: “Undo” brings it back.
-        setDraft(current);
-        add.mutate({ contact, stages });
-      }}
+      onChange={(fields) => setEdits((previous) => ({ ...previous, ...fields }))}
+      onReadAgain={() => readPage()}
+      isReading={pageRead.isPending}
+      // Once the page was read again, waiting for the profile: never while it may still show.
+      unreadable={reading === null && (pageRead.isSuccess || pageRead.isError)}
+      // The edits stay: “Undo” brings the form back as sent, the page read again.
+      onAdd={(contact) => add.mutate({ contact, stages })}
       isAdding={add.isPending}
       outcome={add.data}
       failed={add.isError}

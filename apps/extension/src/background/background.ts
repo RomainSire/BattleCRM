@@ -42,8 +42,12 @@ const BADGES: Record<Presence['status'], Badge> = {
 
 /** The LinkedIn tabs, through their content scripts: a tab without one reads nothing. */
 export type Tabs = {
-  /** What the tab shows of the profile at this address; `null` when it shows none it can read. */
-  read(tabId: number, url: string): Promise<ProfileReading | null>;
+  /**
+   * What the tab shows of the profile at this address, once it shows it, `timeoutMs` at most (at once
+   * with 0); `null` when it shows none it can read. Rejects while the tab has no content script to
+   * answer: a page that is still loading, or no LinkedIn page.
+   */
+  read(tabId: number, url: string, timeoutMs: number): Promise<ProfileReading | null>;
   /** The Contact of its profile changed: the badge and the element after the name follow. */
   refresh(tabId: number): Promise<void>;
 };
@@ -60,6 +64,7 @@ export function createBackground({
   fetch,
   setBadge,
   tabs,
+  readTimeoutMs,
 }: {
   appOrigin: string;
   /** Of the extension, sent in `X-Client`: the API answers 426 below the oldest it serves. */
@@ -68,6 +73,8 @@ export function createBackground({
   fetch: typeof globalThis.fetch;
   setBadge: (tabId: number, badge: Badge) => Promise<void>;
   tabs: Tabs;
+  /** How long LinkedIn has to show a profile when the sidebar reads it again: 10 s (§4). */
+  readTimeoutMs: number;
 }) {
   /**
    * The latest address asked about, by tab: an answer to an earlier one leaves the badge alone. Lost
@@ -213,20 +220,45 @@ export function createBackground({
   }
 
   /**
-   * The card of the Contact at this address, for the sidebar: one call per profile shown (§3). Not a
-   * Contact, what the form needs, and what the tab reads of the profile.
+   * What the tab shows of the profile at this address, `timeoutMs` at most. A page that loads has no
+   * content script until it is ready: asked again until one answers, within the same wait.
    */
-  function lookup(url: string, tabId: number): Promise<Lookup> {
+  async function readTab(tabId: number, url: string, timeoutMs: number) {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      try {
+        return await tabs.read(tabId, url, Math.max(deadline - Date.now(), 0));
+      } catch {
+        if (Date.now() >= deadline) return null;
+        await new Promise((resolve) => setTimeout(resolve, READ_RETRY_MS));
+      }
+    }
+  }
+
+  /**
+   * The card of the Contact at this address, for the sidebar: one call per profile shown (§3). Not a
+   * Contact, what the tab reads of the profile, and what the form needs: the Contacts of the name read
+   * among them.
+   */
+  function lookup(url: string, tabId: number, wait: boolean): Promise<Lookup> {
+    let reading: ProfileReading | null = null;
     return aboutProfile(
       url,
-      () => api.contacts['linkedin-profile'].$get({ query: { url } }),
+      async () => {
+        reading = await readTab(tabId, url, wait ? readTimeoutMs : 0);
+        const name = reading?.name;
+        return api.contacts['linkedin-profile'].$get({
+          query: { url, ...(name !== undefined && { name }) },
+        });
+      },
       async (response) => {
         const answer = await response.json();
         if (answer.contact !== null) return { status: 'contact', contact: answer.contact };
         if (!('organizations' in answer)) throw new Error('The API gave no Organization to choose');
         return {
           status: 'notContact',
-          reading: await tabs.read(tabId, url),
+          reading,
+          sameName: answer.sameName,
           organizations: answer.organizations,
           stages: answer.stages,
         };
@@ -281,7 +313,7 @@ export function createBackground({
 
   function dispatch(message: Message, tabId: number | undefined): Promise<AnswerTo<Message>> {
     if (message.type === 'presence') return presence(message.url, tabId);
-    if (message.type === 'lookup') return lookup(message.url, message.tabId);
+    if (message.type === 'lookup') return lookup(message.url, message.tabId, message.wait ?? false);
     if (message.type === 'addContact') return addContact(message.contact, message.tabId);
     if (message.type === 'undo') return undo(message.undoToken, message.tabId);
     if (message.type === 'session') return session();
@@ -307,6 +339,9 @@ export function createBackground({
     },
   };
 }
+
+/** How often a tab is asked again while its page loads. */
+const READ_RETRY_MS = 250;
 
 /** The API answered 426: it no longer serves this version of the extension. */
 class Outdated extends Error {}

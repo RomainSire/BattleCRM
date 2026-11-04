@@ -219,6 +219,7 @@ const ally: ContactCard = {
 const toAdd = (fields: Partial<Extract<Lookup, { status: 'notContact' }>> = {}): Lookup => ({
   status: 'notContact',
   reading: null,
+  sameName: [],
   organizations: [],
   stages: [],
   ...fields,
@@ -603,6 +604,140 @@ describe('the form to add a Contact', () => {
   });
 });
 
+const UNREADABLE =
+  "BattleCRM n'a pas pu lire ce profil : LinkedIn a peut-être changé sa présentation. Remplis les champs à la main.";
+
+describe('“Read the page again” and a profile that cannot be read', () => {
+  test('fills only the fields the User has not touched, “Coordonnées” opened since', async () => {
+    const background = addable({ reading: { ...READING, email: null, phone: null } });
+    const { screen } = await renderSidebar(background, fakeTab(PROFILE));
+    const jobTitle = screen.getByRole('textbox', { name: 'Poste' });
+    await expect.element(jobTitle).toHaveValue('Gérant');
+    await jobTitle.fill('Gérant fondateur');
+    await screen.getByRole('textbox', { name: 'Note' }).fill('Vu au salon');
+    background.answer('lookup', () =>
+      toAdd({
+        reading: { ...READING, jobTitle: 'CEO' },
+        organizations: [VOLTEO],
+        stages: STAGES,
+      }),
+    );
+
+    await screen.getByRole('button', { name: 'Relire la page' }).click();
+
+    await expect
+      .element(screen.getByRole('textbox', { name: 'E-mail' }))
+      .toHaveValue('gaetan.lefevre@exemple.fr');
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Téléphone' }))
+      .toHaveValue('0611223344');
+    await expect.element(jobTitle).toHaveValue('Gérant fondateur');
+    await expect.element(screen.getByRole('textbox', { name: 'Note' })).toHaveValue('Vu au salon');
+    // Waiting for the profile to show, as the content script does (10 s at most).
+    expect(lookups(background).at(-1)).toEqual({
+      type: 'lookup',
+      url: ASKED,
+      tabId: TAB,
+      wait: true,
+    });
+    expect(screen.getByText(UNREADABLE).query()).toBeNull();
+  });
+
+  test('the name not read: read again at once, waiting for the profile; no alert once it shows', async () => {
+    const background = addable();
+    background.answer('lookup', ({ wait }) =>
+      toAdd({ reading: wait ? READING : null, organizations: [VOLTEO], stages: STAGES }),
+    );
+    const { screen } = await renderSidebar(background, fakeTab(PROFILE));
+
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Nom' }))
+      .toHaveValue('Gaëtan Lefèvre');
+    expect(lookups(background)).toEqual([
+      { type: 'lookup', url: ASKED, tabId: TAB },
+      { type: 'lookup', url: ASKED, tabId: TAB, wait: true },
+    ]);
+    expect(screen.getByText(UNREADABLE).query()).toBeNull();
+  });
+
+  test('a profile that stays unreadable: the form all the same, the URL only, a discreet alert above', async () => {
+    const background = addable({ reading: null });
+    const { screen } = await renderSidebar(background, fakeTab(PROFILE));
+
+    await expect.element(screen.getByText(UNREADABLE)).toBeVisible();
+    expect(lookups(background)).toHaveLength(2);
+    await expect.element(screen.getByRole('textbox', { name: 'Nom' })).toHaveValue('');
+    await expect.element(screen.getByRole('textbox', { name: 'Poste' })).toHaveValue('');
+    await expect.element(screen.getByRole('textbox', { name: 'URL LinkedIn' })).toHaveValue(ASKED);
+    expect(screen.getByText(/Même nom/).query()).toBeNull();
+    // Never blocking: added by hand; “Read the page again” still there.
+    await expect.element(screen.getByRole('button', { name: 'Relire la page' })).toBeEnabled();
+    await screen.getByRole('textbox', { name: 'Nom' }).fill('Gaëtan L.');
+    await userEvent.keyboard('{Enter}');
+    await expect.element(screen.getByText('Ajouté au Vivier')).toBeVisible();
+  });
+
+  test('read again, the profile shows at last: the alert goes, the form is filled', async () => {
+    const background = addable({ reading: null });
+    const { screen } = await renderSidebar(background, fakeTab(PROFILE));
+    await expect.element(screen.getByText(UNREADABLE)).toBeVisible();
+    background.answer('lookup', () =>
+      toAdd({ reading: READING, organizations: [VOLTEO], stages: STAGES }),
+    );
+
+    await screen.getByRole('button', { name: 'Relire la page' }).click();
+
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Nom' }))
+      .toHaveValue('Gaëtan Lefèvre');
+    expect(screen.getByText(UNREADABLE).query()).toBeNull();
+  });
+
+  test('a Contact found keeps its card, without any alert, nor a second read', async () => {
+    const background = withCards({ [ASKED]: prospecting });
+    const { screen } = await renderSidebar(background, fakeTab(PROFILE));
+
+    await expect.element(screen.getByRole('heading', { name: 'Gaëtan Lefèvre' })).toBeVisible();
+    expect(screen.getByText(UNREADABLE).query()).toBeNull();
+    expect(lookups(background)).toHaveLength(1);
+  });
+});
+
+describe('Contacts of the same name', () => {
+  const SAME_NAME = [
+    { id: 'c-7', name: 'Gaëtan Lefèvre', organizationName: 'Capgemini' },
+    { id: 'c-8', name: 'Gaetan Lefevre', organizationName: null },
+  ];
+
+  test('one discreet line each, with its record; adding is never blocked', async () => {
+    const background = addable({ sameName: SAME_NAME });
+    const { screen } = await renderSidebar(background, fakeTab(PROFILE));
+
+    await expect.element(screen.getByText('Même nom : Gaëtan Lefèvre · Capgemini')).toBeVisible();
+    expect(
+      screen
+        .getByRole('listitem')
+        .elements()
+        .map((line) => line.textContent),
+    ).toEqual([
+      'Même nom : Gaëtan Lefèvre · Capgemini Ouvrir sa fiche',
+      'Même nom : Gaetan Lefevre Ouvrir sa fiche',
+    ]);
+    const records = screen.getByRole('link', { name: 'Ouvrir sa fiche' });
+    expect(records.elements().map((link) => link.getAttribute('href'))).toEqual([
+      `${APP_ORIGIN}/contacts/c-7`,
+      `${APP_ORIGIN}/contacts/c-8`,
+    ]);
+    expect(records.elements().map((link) => link.getAttribute('target'))).toEqual([
+      '_blank',
+      '_blank',
+    ]);
+
+    await screen.getByRole('button', { name: 'Ajouter' }).click();
+    await expect.element(screen.getByText('Ajouté au Vivier')).toBeVisible();
+  });
+});
+
 describe('theme', () => {
   test('follows the system', async () => {
     await renderSidebar();
@@ -677,6 +812,19 @@ describe('accessibility', () => {
       await choose(screen, 'État', 'En prospection');
       await screen.getByRole('button', { name: 'Ajouter' }).click();
       return screen.getByText('Choisis le type de cette nouvelle Organisation.');
+    },
+    'form with Contacts of the same name': async () => {
+      const { screen } = await renderSidebar(
+        addable({
+          sameName: [{ id: 'c-7', name: 'Gaëtan Lefèvre', organizationName: 'Capgemini' }],
+        }),
+        fakeTab(PROFILE),
+      );
+      return screen.getByText('Même nom : Gaëtan Lefèvre · Capgemini');
+    },
+    'form of an unreadable profile': async () => {
+      const { screen } = await renderSidebar(addable({ reading: null }), fakeTab(PROFILE));
+      return screen.getByText(UNREADABLE);
     },
     'card after an addition': async () => {
       const { screen } = await renderSidebar(addable(), fakeTab(PROFILE));

@@ -18,9 +18,12 @@ import { postJson } from '../../test/http.ts';
 type Harness = ReturnType<typeof testApp>;
 type User = Awaited<ReturnType<typeof makeUser>>;
 
-const profileOf = (harness: Harness, user: User, url?: string) =>
+const profileOf = (harness: Harness, user: User, url?: string, name?: string) =>
   harness.app.request(
-    `/api/contacts/linkedin-profile${url === undefined ? '' : `?${new URLSearchParams({ url }).toString()}`}`,
+    `/api/contacts/linkedin-profile?${new URLSearchParams({
+      ...(url !== undefined && { url }),
+      ...(name !== undefined && { name }),
+    }).toString()}`,
     { headers: { Cookie: user.cookie } },
   );
 
@@ -42,6 +45,9 @@ const profile = z.union([
   }),
   z.strictObject({
     contact: z.null(),
+    sameName: z.array(
+      z.strictObject({ id: z.uuid(), name: z.string(), organizationName: z.string().nullable() }),
+    ),
     organizations: z.array(
       z.strictObject({ id: z.uuid(), name: z.string(), type: z.enum(ORGANIZATION_TYPES) }),
     ),
@@ -174,6 +180,8 @@ test('a profile that is no Contact: every Organization with its type, the Stages
 
   expect(found).toEqual({
     contact: null,
+    // No name read: none of the same name.
+    sameName: [],
     // By name.
     organizations: [
       { id: expect.any(String), name: 'Altémis Conseil', type: 'consultancy' },
@@ -182,4 +190,57 @@ test('a profile that is no Contact: every Organization with its type, the Stages
     // The archived one left out.
     stages: [second, ...others].map(({ id, name }) => ({ id, name })),
   });
+});
+
+const JULIEN = 'https://www.linkedin.com/in/julien-moreau-482915307/';
+
+test('the Contacts of the same name, case, accents and spaces aside: 5 at most, the latest Interaction first', async () => {
+  const harness = testApp();
+  const user = await makeUser(harness);
+  const added = [];
+  // Each added a day after the other: the latest added has the latest Interaction.
+  for (const name of ['Julien Moreau', 'julien  moreau', 'Julién Moreau', 'JULIEN MOREAU']) {
+    added.push((await addContact(harness, user, name)).contact);
+    harness.clock.advance('P1D');
+  }
+  const { contact: atAcme } = await addContact(harness, user, 'Julien Moreau', {
+    newOrganization: { name: 'Acme', type: 'end_client' },
+  });
+  harness.clock.advance('P1D');
+  const { contact: archived } = await addContact(harness, user, 'Julien Moreau');
+  await changeStatus(harness, user, archived.id, { status: 'archived' });
+  // Another name, and a Contact deleted: never.
+  await addContact(harness, user, 'Julien Morel');
+  const { contact: gone } = await addContact(harness, user, 'Julien Moreau');
+  expect(
+    (await postJson(harness.app, `/api/contacts/${gone.id}/delete`, {}, user.cookie)).status,
+  ).toBe(200);
+  // The first one added comes back to the top with an Interaction of today, later on.
+  harness.clock.advance('PT1H');
+  await noteInteraction(harness, user, added[0]?.id ?? '', {
+    kind: 'call',
+    occurredOn: '2026-01-10',
+  });
+
+  const found = await read(await profileOf(harness, user, JULIEN, 'Julien Moreau'));
+
+  if (found.contact !== null) throw new Error('The profile is no Contact');
+  expect(found.sameName).toEqual([
+    { id: added[0]?.id, name: 'Julien Moreau', organizationName: null },
+    { id: archived.id, name: 'Julien Moreau', organizationName: null },
+    { id: atAcme.id, name: 'Julien Moreau', organizationName: 'Acme' },
+    { id: added[3]?.id, name: 'JULIEN MOREAU', organizationName: null },
+    { id: added[2]?.id, name: 'Julién Moreau', organizationName: null },
+  ]);
+});
+
+test("another User's Contacts are never of the same name", async () => {
+  const harness = testApp();
+  const alice = await makeUser(harness);
+  const bob = await makeUser(harness);
+  await addContact(harness, alice, 'Julien Moreau');
+
+  const found = await read(await profileOf(harness, bob, JULIEN, 'Julien Moreau'));
+
+  expect(found).toMatchObject({ contact: null, sameName: [] });
 });

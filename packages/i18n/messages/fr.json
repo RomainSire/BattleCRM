@@ -1370,5 +1370,8 @@
   "extension_no_done_interaction": "Aucun échange",
   "extension_added_pool": "Ajouté au Vivier",
   "extension_added_prospecting": "Ajouté En prospection à {stage}",
-  "extension_added_ally": "Ajouté au Cercle"
+  "extension_added_ally": "Ajouté au Cercle",
+  "extension_same_name": "Même nom : {contact}",
+  "extension_read_page_again": "Relire la page",
+  "extension_unreadable_profile": "BattleCRM n'a pas pu lire ce profil : LinkedIn a peut-être changé sa présentation. Remplis les champs à la main."
 }
