@@ -1,3 +1,5 @@
+import type { ContactStatus } from '@battlecrm/contract';
+
 /**
  * What the sidebar and the content scripts ask the background, the only part of the extension that
  * calls the API (spec extension §9): one type per gesture, written by hand, no library.
@@ -6,7 +8,9 @@ export type Message =
   | { type: 'session' }
   | { type: 'signIn'; email: string; password: string }
   | { type: 'verifyCode'; code: string }
-  | { type: 'signOut' };
+  | { type: 'signOut' }
+  /** The tab moved to this address (spec extension §2): its badge, and what the page shows after the name. */
+  | { type: 'presence'; url: string };
 
 /** What the sidebar shows first, before any page (spec extension §3). */
 export type Session =
@@ -34,11 +38,25 @@ export type CodeOutcome =
     }
   | { status: 'outdated' };
 
+/** Whether the profile of a tab is a Contact, as its badge shows it (spec extension §2, §13 A3). */
+export type Presence =
+  /** No profile at this address: no badge. */
+  | { status: 'elsewhere' }
+  | { status: 'contact'; contactId: string; contactStatus: ContactStatus }
+  | { status: 'notContact' }
+  /** No session, or it ended. */
+  | { status: 'signedOut' }
+  /** No answer, or a 5xx. */
+  | { status: 'error' }
+  /** 426. */
+  | { status: 'outdated' };
+
 type Answers = {
   session: Session;
   signIn: SignInOutcome;
   verifyCode: CodeOutcome;
   signOut: null;
+  presence: Presence;
 };
 
 export type AnswerTo<M extends Message> = Answers[M['type']];

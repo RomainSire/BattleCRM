@@ -314,6 +314,9 @@ importers:
       '@battlecrm/contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@battlecrm/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@battlecrm/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n

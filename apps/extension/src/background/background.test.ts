@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { fakeApi } from '../../test/fake-api.ts';
-import { createBackground, type Storage } from './background.ts';
+import { createBackground, type Badge, type Storage } from './background.ts';
 
 const APP_ORIGIN = 'https://app.battlecrm.test';
 const SESSION = 'GET /api/session';
@@ -21,9 +21,24 @@ function memoryStorage(): Storage {
   };
 }
 
+/** The badge of each tab, as the icon shows it. */
+type Badges = Map<number, Badge>;
+
 /** A background as Firefox wakes it up: a new one each time, on the same storage. */
-function wake(api: ReturnType<typeof fakeApi>, storage = memoryStorage()) {
-  return createBackground({ appOrigin: APP_ORIGIN, version: '0.7.0', storage, fetch: api.fetch });
+function wake(
+  api: ReturnType<typeof fakeApi>,
+  storage = memoryStorage(),
+  badges: Badges = new Map(),
+) {
+  return createBackground({
+    appOrigin: APP_ORIGIN,
+    version: '0.7.0',
+    storage,
+    fetch: api.fetch,
+    setBadge: async (tabId, badge) => {
+      badges.set(tabId, badge);
+    },
+  });
 }
 
 describe('session', () => {
@@ -274,5 +289,135 @@ describe('signOut', () => {
     expect(await wake(api, storage).handle({ type: 'signOut' })).toBeNull();
 
     expect(await storage.get(['token', 'email'])).toEqual({});
+  });
+});
+
+const PRESENCE = 'POST /api/contacts/presence';
+const PROFILE = 'https://www.linkedin.com/in/ga%C3%ABtan-lef%C3%A8vre-b7c41e2d/';
+const TAB = 7;
+
+/** A signed-in background, its storage holding the token. */
+async function signedIn(api: ReturnType<typeof fakeApi>, badges: Badges) {
+  const storage = memoryStorage();
+  await storage.set({ token: 'token-1', email: 'jane@example.com' });
+  return wake(api, storage, badges);
+}
+
+describe('presence', () => {
+  test('a profile that is a Contact: ✓ on the tab, and its Status, asked with the address of the tab only', async () => {
+    const badges: Badges = new Map();
+    let asked: unknown;
+    const api = fakeApi({
+      [PRESENCE]: async (request) => {
+        const body: { linkedinUrls: string[] } = await request.json();
+        asked = body;
+        const { linkedinUrls } = body;
+        return Response.json({
+          matches: [{ linkedinUrl: linkedinUrls[0], contactId: 'c-1', status: 'ally' }],
+        });
+      },
+    });
+
+    expect(
+      await (await signedIn(api, badges)).handle({ type: 'presence', url: PROFILE }, TAB),
+    ).toEqual({ status: 'contact', contactId: 'c-1', contactStatus: 'ally' });
+    expect(badges.get(TAB)).toBe('✓');
+    expect(asked).toEqual({ linkedinUrls: [PROFILE] });
+    expect(api.last(PRESENCE)?.request.headers.get('Authorization')).toBe('Bearer token-1');
+  });
+
+  test('another profile: + on the tab', async () => {
+    const badges: Badges = new Map();
+    const api = fakeApi({ [PRESENCE]: () => Response.json({ matches: [] }) });
+
+    expect(
+      await (await signedIn(api, badges)).handle({ type: 'presence', url: PROFILE }, TAB),
+    ).toEqual({ status: 'notContact' });
+    expect(badges.get(TAB)).toBe('+');
+  });
+
+  test('off a profile: no badge, and the API is not asked', async () => {
+    const badges: Badges = new Map([[TAB, '✓']]);
+    const api = fakeApi();
+
+    expect(
+      await (
+        await signedIn(api, badges)
+      ).handle({ type: 'presence', url: 'https://www.linkedin.com/feed/' }, TAB),
+    ).toEqual({ status: 'elsewhere' });
+    expect(badges.get(TAB)).toBe('');
+    expect(api.last(PRESENCE)).toBeUndefined();
+  });
+
+  test('without a session, or once it ended: ! on the tab, to sign in', async () => {
+    const badges: Badges = new Map();
+    const api = fakeApi({
+      [PRESENCE]: () => Response.json({ error: 'unauthenticated' }, { status: 401 }),
+    });
+
+    expect(
+      await wake(api, memoryStorage(), badges).handle({ type: 'presence', url: PROFILE }, TAB),
+    ).toEqual({
+      status: 'signedOut',
+    });
+    expect(api.last(PRESENCE)).toBeUndefined();
+    expect(badges.get(TAB)).toBe('!');
+
+    badges.clear();
+    expect(
+      await (await signedIn(api, badges)).handle({ type: 'presence', url: PROFILE }, TAB),
+    ).toEqual({ status: 'signedOut' });
+    expect(badges.get(TAB)).toBe('!');
+  });
+
+  test.each([
+    ['no answer', (api: ReturnType<typeof fakeApi>) => api.down()],
+    ['a 5xx', () => {}],
+  ])('the API in error (%s): ! on the tab', async (_, cut) => {
+    const badges: Badges = new Map();
+    const api = fakeApi({ [PRESENCE]: () => new Response(null, { status: 503 }) });
+    cut(api);
+
+    expect(
+      await (await signedIn(api, badges)).handle({ type: 'presence', url: PROFILE }, TAB),
+    ).toEqual({ status: 'error' });
+    expect(badges.get(TAB)).toBe('!');
+  });
+
+  test('426: ! on the tab, the extension outdated', async () => {
+    const badges: Badges = new Map();
+    const api = fakeApi({ [PRESENCE]: outdated });
+
+    expect(
+      await (await signedIn(api, badges)).handle({ type: 'presence', url: PROFILE }, TAB),
+    ).toEqual({ status: 'outdated' });
+    expect(badges.get(TAB)).toBe('!');
+  });
+
+  test('two changes of profile in a row: the badge is the one of the latest, whichever answers last', async () => {
+    const badges: Badges = new Map();
+    let answerFirst: (() => void) | undefined;
+    const api = fakeApi({
+      [PRESENCE]: async (request) => {
+        const { linkedinUrls } = await request.json();
+        if (linkedinUrls[0] !== PROFILE) return Response.json({ matches: [] });
+        await new Promise<void>((resolve) => (answerFirst = resolve));
+        return Response.json({
+          matches: [{ linkedinUrl: PROFILE, contactId: 'c-1', status: 'pool' }],
+        });
+      },
+    });
+    const background = await signedIn(api, badges);
+
+    const first = background.handle({ type: 'presence', url: PROFILE }, TAB);
+    await expect.poll(() => api.last(PRESENCE)).toBeDefined();
+    await background.handle(
+      { type: 'presence', url: 'https://www.linkedin.com/in/julien-moreau-482915307/' },
+      TAB,
+    );
+    answerFirst?.();
+    await first;
+
+    expect(badges.get(TAB)).toBe('+');
   });
 });

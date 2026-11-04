@@ -1,5 +1,6 @@
 import {
   INSIGHTS_PERIODS,
+  PRESENCE_MAX_URLS,
   type BattleTrial,
   type DeletedContactDays,
   type TrialOutcome,
@@ -11,7 +12,7 @@ import {
   type SummaryPositioning,
   type SummaryStage,
 } from '@battlecrm/contract';
-import { archivedBy } from '@battlecrm/domain';
+import { archivedBy, normalizeLinkedInUrl } from '@battlecrm/domain';
 import { and, desc, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { validator } from 'hono/validator';
@@ -36,6 +37,7 @@ import {
   trial,
 } from '../prospecting/index.ts';
 import type { Random } from '../random.ts';
+import { jsonBody } from '../json-body.ts';
 import { idOf } from '../route-id.ts';
 import { localDateOf, settingsOf, timeZoneAt } from '../settings/index.ts';
 import { celebratedOnOf, recordCelebration } from './celebration.ts';
@@ -659,6 +661,38 @@ async function contactRecord(tx: Transaction, userId: string, contactId: string)
 }
 
 /**
+ * Which of the LinkedIn profiles sent are Contacts of the User (spec extension §8), each under the
+ * address as sent: the server normalizes them itself, and leaves out what is no profile. An Archived
+ * Contact is found like the others; a deleted one has no address left (ADR 0006).
+ */
+async function presenceOf(tx: Transaction, userId: string, sent: string[]) {
+  const sentByNormalized = new Map<string, string[]>();
+  for (const linkedinUrl of sent) {
+    const normalized = normalizeLinkedInUrl(linkedinUrl);
+    if (normalized !== null)
+      sentByNormalized.set(normalized, [...(sentByNormalized.get(normalized) ?? []), linkedinUrl]);
+  }
+  if (sentByNormalized.size === 0) return [];
+  const found = await tx
+    .select({ id: contact.id, status: contact.status, linkedinUrl: contact.linkedinUrl })
+    .from(contact)
+    .where(
+      and(
+        eq(contact.userId, userId),
+        isNull(contact.anonymizedAt),
+        inArray(contact.linkedinUrl, [...sentByNormalized.keys()]),
+      ),
+    );
+  return found.flatMap(({ id, status, linkedinUrl }) =>
+    (sentByNormalized.get(linkedinUrl ?? '') ?? []).map((url) => ({
+      linkedinUrl: url,
+      contactId: id,
+      status,
+    })),
+  );
+}
+
+/**
  * The days the deleted Contacts still count on (ADR 0006), all together: each Funnel entry and each
  * Prospecting action, as `summaryContacts` gives them for a Contact.
  */
@@ -756,6 +790,19 @@ export function createViews({
       if (!record) return c.json({ error: 'not_found' as const }, 404);
       return c.json(record, 200);
     })
+    // The Firefox extension: which profiles of a LinkedIn page are Contacts (spec extension §8), for
+    // the badge of a profile and the marks of a search.
+    .post(
+      '/contacts/presence',
+      requireUser,
+      jsonBody(z.strictObject({ linkedinUrls: z.array(z.string()).max(PRESENCE_MAX_URLS) })),
+      async (c) => {
+        const { userId } = c.var;
+        const { linkedinUrls } = c.req.valid('json');
+        const matches = await withUser(userId, (tx) => presenceOf(tx, userId, linkedinUrls));
+        return c.json({ matches }, 200);
+      },
+    )
     // The Trials of a Battle, for its panel (spec UX §5.5): Trials and By Target.
     .get('/battles/:id/trials', requireUser, async (c) => {
       const { userId } = c.var;

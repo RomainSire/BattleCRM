@@ -2,13 +2,36 @@ import type { AppType } from '@battlecrm/api';
 import { isTotpCode } from '@battlecrm/contract';
 import { hc } from 'hono/client';
 
-import type { AnswerTo, CodeOutcome, Message, Session, SignInOutcome } from '../messages.ts';
+import { profileUrlOf } from '../linkedin/profile.ts';
+import type {
+  AnswerTo,
+  CodeOutcome,
+  Message,
+  Presence,
+  Session,
+  SignInOutcome,
+} from '../messages.ts';
 
 /** The part of `browser.storage.local` the background uses: it outlives the event page. */
 export type Storage = {
   get(keys: string[]): Promise<Record<string, unknown>>;
   set(items: Record<string, unknown>): Promise<void>;
   remove(keys: string[]): Promise<void>;
+};
+
+/**
+ * The badge of a tab's icon (spec extension §2): ✓ a Contact, + not yet one, ! no session or the API in
+ * error, nothing off a profile.
+ */
+export type Badge = '✓' | '+' | '!' | '';
+
+const BADGES: Record<Presence['status'], Badge> = {
+  elsewhere: '',
+  contact: '✓',
+  notContact: '+',
+  signedOut: '!',
+  error: '!',
+  outdated: '!',
 };
 
 /**
@@ -21,13 +44,20 @@ export function createBackground({
   version,
   storage,
   fetch,
+  setBadge,
 }: {
   appOrigin: string;
   /** Of the extension, sent in `X-Client`: the API answers 426 below the oldest it serves. */
   version: string;
   storage: Storage;
   fetch: typeof globalThis.fetch;
+  setBadge: (tabId: number, badge: Badge) => Promise<void>;
 }) {
+  /**
+   * The latest address asked about, by tab: an answer to an earlier one leaves the badge alone. Lost
+   * when Firefox stops the background, which it never does while a call is under way.
+   */
+  const latest = new Map<number, string>();
   const api = hc<AppType>(appOrigin, {
     // Every answer passes here first: the one place that learns the session ended or the API moved on.
     fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -124,7 +154,40 @@ export function createBackground({
     return storeSession(await response.json());
   }
 
-  function dispatch(message: Message): Promise<AnswerTo<Message>> {
+  /** Whether the profile at this address is a Contact: one call with its address only (§13, A3). */
+  async function presenceAt(url: string): Promise<Presence> {
+    const profileUrl = profileUrlOf(url);
+    if (profileUrl === null) return { status: 'elsewhere' };
+    const { token } = await storage.get(['token']);
+    if (typeof token !== 'string') return { status: 'signedOut' };
+    let response;
+    try {
+      response = await api.contacts.presence.$post({ json: { linkedinUrls: [url] } });
+    } catch (error) {
+      if (error instanceof Outdated) return { status: 'outdated' };
+      if (error instanceof TypeError) return { status: 'error' };
+      throw error;
+    }
+    if (response.status !== 200) {
+      // `requireUser` answers 401 before the route, whose types do not know it.
+      return (response.status as number) === 401 ? { status: 'signedOut' } : { status: 'error' };
+    }
+    const [match] = (await response.json()).matches;
+    return match === undefined
+      ? { status: 'notContact' }
+      : { status: 'contact', contactId: match.contactId, contactStatus: match.status };
+  }
+
+  async function presence(url: string, tabId: number | undefined): Promise<Presence> {
+    if (tabId !== undefined) latest.set(tabId, url);
+    const answer = await presenceAt(url);
+    if (tabId !== undefined && latest.get(tabId) === url)
+      await setBadge(tabId, BADGES[answer.status]);
+    return answer;
+  }
+
+  function dispatch(message: Message, tabId: number | undefined): Promise<AnswerTo<Message>> {
+    if (message.type === 'presence') return presence(message.url, tabId);
     if (message.type === 'session') return session();
     if (message.type === 'signIn') return signIn(message);
     if (message.type === 'verifyCode') return verifyCode(message);
@@ -132,10 +195,13 @@ export function createBackground({
   }
 
   return {
-    /** Answers a message of the sidebar or of a content script, with what `send()` promises. */
-    async handle(message: Message): Promise<AnswerTo<Message>> {
+    /**
+     * Answers a message of the sidebar or of a content script, with what `send()` promises; `tabId` is
+     * the tab of the content script that sent it.
+     */
+    async handle(message: Message, tabId?: number): Promise<AnswerTo<Message>> {
       try {
-        return await dispatch(message);
+        return await dispatch(message, tabId);
       } catch (error) {
         if (error instanceof Outdated) return { status: 'outdated' };
         // No answer from the API to a gesture: it failed (the session check says unreachable itself).

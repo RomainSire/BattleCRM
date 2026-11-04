@@ -13,6 +13,8 @@
     "src",
     "test/*.ts",
     "test/*.tsx",
+    "test/linkedin/*.ts",
+    "test/linkedin/*.json",
     "*.config.ts",
     "web-ext.config.example.ts",
     ".wxt/wxt.d.ts"

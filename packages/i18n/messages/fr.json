@@ -1362,5 +1362,8 @@
   "extension_unreachable": "BattleCRM ne répond pas",
   "extension_retry": "Réessayer",
   "extension_elsewhere": "Ouvre un profil LinkedIn pour voir ou ajouter un Contact.",
-  "extension_signed_in_as": "Connecté : {email}"
+  "extension_signed_in_as": "Connecté : {email}",
+  "extension_presence_of": "BattleCRM :",
+  "extension_presence_add": "+ Ajouter à BattleCRM",
+  "extension_presence_sign_in": "BattleCRM : se connecter"
 }

@@ -36,6 +36,9 @@ export const CONTACT_PHONE_MAX_LENGTH = 40;
 export const CONTACT_LINKEDIN_URL_MAX_LENGTH = 500;
 export const CONTACT_NOTE_MAX_LENGTH = 5000;
 
+/** The profiles the extension asks about in one call (spec extension §8): a page of search results. */
+export const PRESENCE_MAX_URLS = 50;
+
 /** What Settings accept for a Stage (spec UX §5.8): a name, and an optional Aim. */
 export const STAGE_NAME_MAX_LENGTH = 100;
 export const STAGE_AIM_MAX_LENGTH = 200;
